@@ -1,0 +1,11 @@
+# Python-related temp files
+*.egg-info/
+**/__pycache__/
+.coverage
+.pytest_cache/
+.ipynb_checkpoints/
+.vscode/
+
+# OS-related files/folders
+__MACOSX/
+.DS_Store
