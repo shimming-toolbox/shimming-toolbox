@@ -305,3 +305,73 @@ class TestCore(object):
         if os.path.isfile(Path(self.testFileName + '.json')):
             os.remove(str(Path(self.testFileName + '.json')))
 
+    # --------------generate_signal method tests-------------- #
+
+    def test_generate_signal_case_1(self):
+        protonDensity = 80
+
+        T2star = 100
+        FA = 90
+        TE = 0
+        deltaB0 = 0
+        gamma = 42.58 * 10**6
+        handedness = 'left'
+
+        actual_signal = NumericalModel.generate_signal(
+            protonDensity,
+            T2star,
+            FA,
+            TE,
+            deltaB0,
+            gamma,
+            handedness
+            )
+        expected_signal = protonDensity
+            
+        assert actual_signal == expected_signal
+
+    def test_generate_signal_case_2(self):
+
+        FA = 0
+
+        protonDensity = 80
+        T2star = 100
+        TE = 0
+        deltaB0 = 0
+        gamma = 42.58 * 10**6
+        handedness = 'left'
+
+        actual_signal = NumericalModel.generate_signal(
+            protonDensity,
+            T2star,
+            FA,
+            TE,
+            deltaB0,
+            gamma,
+            handedness
+            )
+        expected_signal = 0
+
+        assert actual_signal == expected_signal
+
+
+    def test_generate_signal_case_3(self):
+
+        FA = 20
+        protonDensity = 80
+        T2star = 100
+        TE = 0.010
+        deltaB0 = 2
+        gamma = 42.58 * 10**6
+        handedness = 'left'
+
+        if handedness == 'left':
+            sign = -1
+        elif handedness == 'right':
+            sign = 1
+
+        actual_signal = NumericalModel.generate_signal(protonDensity, T2star, FA, TE, deltaB0, gamma, handedness)
+        expected_signal = protonDensity*np.sin(np.deg2rad(FA))*np.exp(-TE/T2star-sign*1j*gamma*deltaB0*TE)
+            
+        assert ~np.isreal(expected_signal)
+        assert actual_signal == expected_signal
