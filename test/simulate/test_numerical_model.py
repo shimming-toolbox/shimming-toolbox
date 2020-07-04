@@ -122,3 +122,25 @@ class TestCore(object):
         assert np.isreal(test_obj.get_phase().all())
         assert np.isreal(test_obj.get_real().all())
         assert np.isreal(test_obj.get_imaginary().all())
+
+    def test_simulate_signal_SNR_results_in_noisy_backgroun(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+        SNR = 50
+
+        test_obj.simulate_measurement(FA, TE, SNR)
+
+        magnitude_data = test_obj.get_magnitude()
+
+        vecMagnitudeROI = magnitude_data[0:10, 0:10, 0, 0]
+        vecMagnitudeROI = vecMagnitudeROI[:]
+
+        assert np.std(vecMagnitudeROI)!=0
+
+        phase_data = test_obj.get_phase()
+        vecPhaseROI = phase_data[0:10, 0:10, 0, 0]
+        vecPhaseROI = vecPhaseROI[:]
+
+        assert np.std(vecPhaseROI)!=0
