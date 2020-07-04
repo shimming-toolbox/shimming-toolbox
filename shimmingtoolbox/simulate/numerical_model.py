@@ -148,6 +148,7 @@ class NumericalModel():
         elif 'right':
             sign = 1
 
+        deltaB0 = np.array(deltaB0)
         volDims = deltaB0.shape
 
         if len(volDims) == 2:
