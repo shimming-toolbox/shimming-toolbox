@@ -7,6 +7,8 @@ from phantominator import shepp_logan
 
 class NumericalModel():
 
+    gamma = 267.52218744 * 10**6 # rad*Hz/Tesla
+
     num_vox = None
     starting_volume = None
     volume = {
@@ -44,6 +46,22 @@ class NumericalModel():
             self.T2_star['GM'],
             self.T2_star['CSF']
             )
+
+    def generate_deltaB0(self, fieldType, params):
+            
+        if fieldType == 'linear':
+            m = params[0]
+            b = params[1]
+                    
+            dims = self.starting_volume.shape
+
+            [X, Y] = np.meshgrid(np.linspace(-dims[0], dims[0], dims[0]), np.linspace(-dims[1], dims[1], dims[1]))
+
+            self.deltaB0 = m*X+b
+
+            self.deltaB0 = self.deltaB0 / (self.gamma / (2*np.pi))
+        else:
+            Exception('Undefined deltaB0 field type')
 
     def __customize_shepp_logan__(
         self,
