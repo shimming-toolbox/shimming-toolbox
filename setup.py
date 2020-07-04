@@ -27,7 +27,8 @@ setup(
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        #"numpy~=1.16.0",
+        "numpy~=1.19.0",
+        "phantominator~=0.6.4",
     ],
     extras_require={
         'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
