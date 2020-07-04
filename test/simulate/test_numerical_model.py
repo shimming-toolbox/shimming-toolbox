@@ -3,6 +3,7 @@
 import pytest
 import numpy as np
 from shimmingtoolbox.simulate import *
+from phantominator import shepp_logan
 
 class TestCore(object):
     def setup(self):
@@ -24,6 +25,15 @@ class TestCore(object):
         test_obj = NumericalModel()
 
         expected_volume = np.zeros((128, 128))
+        actual_volume = test_obj.starting_volume
+
+        np.testing.assert_array_equal(actual_volume, expected_volume)
+
+    # --------------Shepp-Logan type tests instance test-------------- #
+    def test_shepplogan_init_returns_expected_starting_volume(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        expected_volume = shepp_logan(128)
         actual_volume = test_obj.starting_volume
 
         np.testing.assert_array_equal(actual_volume, expected_volume)
