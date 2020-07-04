@@ -68,3 +68,30 @@ class TestCore(object):
         assert np.all(test_obj.volume['proton_density'][np.logical_and((abs(test_obj.starting_volume)<0.0001), test_obj.starting_volume!=0)] == test_obj.proton_density['WM']/2)
         assert np.all(test_obj.volume['proton_density'][abs(test_obj.starting_volume-0.1)<0.001] == (test_obj.proton_density['GM']+test_obj.proton_density['WM'])/2)
         assert np.all(test_obj.volume['proton_density'][abs(test_obj.starting_volume-0.4)<0.001] == test_obj.proton_density['GM'] * 1.5)
+
+    # --------------simulate_signal method tests-------------- #
+    def test_generate_deltaB0_linear_floor_value(self):
+
+        test_obj = NumericalModel(model='shepp-logan')
+
+        m = 0
+        b = 2
+        test_obj.generate_deltaB0('linear', [m, b])
+            
+        deltaB0_map = test_obj.deltaB0
+            
+        assert np.allclose(np.mean(deltaB0_map[:]), b/(test_obj.gamma/(2*np.pi)), rtol=10**-6)
+
+    def test_generate_deltaB0_linear_slope_value(testCase):
+        test_obj = NumericalModel(model='shepp-logan')
+            
+        m = 1
+        b = 0
+        test_obj.generate_deltaB0('linear', [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        dims = deltaB0_map.shape
+        [X, Y] = np.meshgrid(np.linspace(-dims[0], dims[0], dims[0]), np.linspace(-dims[1], dims[1], dims[1]))
+
+        assert np.allclose(deltaB0_map[int(dims[0]/2), int(dims[0]/4)], m*X[int(dims[0]/2), int(dims[0]/4)]/(test_obj.gamma/(2*np.pi)))
