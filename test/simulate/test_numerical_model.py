@@ -1,13 +1,18 @@
 # coding: utf-8
 
 import pytest
+import os
+from pathlib import Path
+import json
 import numpy as np
 from shimmingtoolbox.simulate import *
 from phantominator import shepp_logan
 
 class TestCore(object):
     def setup(self):
-        pass
+        self.testFileName = 'test'
+        self.testFileNameNii = 'test.nii'
+        self.testFileNameMat = 'test.mat'
 
     @classmethod
     def teardown_class(cls):
@@ -181,3 +186,34 @@ class TestCore(object):
         B0_meas_hz = B0_meas/(2*np.pi)
 
         assert np.allclose(B0_hz, -B0_meas_hz, rtol=10**-6)
+
+    # --------------save method tests-------------- #
+
+    def test_save_nii(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+
+        test_obj.save('Magnitude', self.testFileName); # Default option for save is a NIfTI output.
+
+        assert os.path.isfile(Path(self.testFileName + '.nii'))
+
+        # Verify that JSON was written correctly
+        assert os.path.isfile(Path(self.testFileName + '.json'))
+
+        fname = Path(self.testFileName + '.json')
+
+        with open(str(fname)) as f:
+            data = json.load(f)
+
+        np.testing.assert_equal(data['EchoTime'], TE)
+        np.testing.assert_equal(data['FlipAngle'], FA)
+
+        if os.path.isfile(Path(self.testFileName + '.nii')):
+            os.remove(str(Path(self.testFileName + '.nii')))
+
+        if os.path.isfile(Path(self.testFileName + '.json')):
+            os.remove(str(Path(self.testFileName + '.json')))

@@ -1,9 +1,14 @@
 # coding: utf-8
 
 # Scientific modules imports
+import os
+from pathlib import Path
+import json
 import numpy as np
+from scipy.io import savemat
 from copy import deepcopy
 from phantominator import shepp_logan
+import nibabel as nib
 
 np.seterr(divide='ignore', invalid='ignore')
 
@@ -180,3 +185,50 @@ class NumericalModel():
 
         noisyVolume = noisyReal + 1j*noisyImaginary
         return noisyVolume
+
+    def save(self, dataType, fileName, saveFormat=None):
+
+        if saveFormat is None:
+            saveFormat = 'nifti'
+
+        if fileName[-3:] == '.nii':
+            if saveFormat != 'nifti':
+                print('File extension and saveFormat do not match - saving to NIfTI format')
+                saveFormat = 'nifti'
+            fileName = fileName[0:-4]
+        elif fileName[-3:] == '.mat':
+            if saveFormat != 'mat':
+                print('File extension and saveFormat do not match - saving to MAT format')
+                saveFormat = 'mat'
+            fileName = fileName[0:-4]
+
+        if dataType == 'Magnitude':
+            vol = self.get_magnitude()
+        elif dataType == 'Phase':
+            vol = self.get_phase()
+        elif dataType == 'Real':
+            vol = self.get_real()
+        elif dataType == 'Imaginary':
+            vol = self.get_imaginary()
+        else:
+            Exception('Unknown datatype')
+
+        if saveFormat == 'nifti':
+            empty_header = nib.Nifti1Header()
+
+            img = nib.Nifti1Image(np.rot90(vol), affine=np.eye(4), header=empty_header)
+            nib.save(img, Path(fileName + '.nii'))
+
+            self.writeJson(fileName)
+        elif saveFormat == 'mat':
+            savemat(Path(fileName + '.mat'), vol)
+            self.writeJson(fileName)
+
+    def writeJson(self, fileName):
+        pulseSeqProperties = {
+            "EchoTime": self.TE,
+            "FlipAngle": self.FA
+            }
+
+        with open(Path(fileName + '.json'), 'w') as outfile:
+            json.dump(pulseSeqProperties, outfile)
