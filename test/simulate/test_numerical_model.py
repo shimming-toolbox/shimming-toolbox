@@ -217,3 +217,91 @@ class TestCore(object):
 
         if os.path.isfile(Path(self.testFileName + '.json')):
             os.remove(str(Path(self.testFileName + '.json')))
+
+    def test_save_nii_with_extension(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+
+        test_obj.save('Magnitude', self.testFileNameNii); # Default option for save is a NIfTI output.
+
+        assert os.path.isfile(Path(self.testFileNameNii))
+
+        # Verify that JSON was written correctly
+        assert os.path.isfile(Path(self.testFileName + '.json'))
+
+        fname = Path(self.testFileName + '.json')
+
+        with open(str(fname)) as f:
+            data = json.load(f)
+
+        np.testing.assert_equal(data['EchoTime'], TE)
+        np.testing.assert_equal(data['FlipAngle'], FA)
+
+        if os.path.isfile(Path(self.testFileNameNii)):
+            os.remove(str(Path(self.testFileNameNii)))
+
+        if os.path.isfile(Path(self.testFileName + '.json')):
+            os.remove(str(Path(self.testFileName + '.json')))
+
+    def test_save_mat(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+
+        test_obj.save('Magnitude', self.testFileName, 'mat'); 
+
+        assert os.path.isfile(Path(self.testFileName + '.mat'))
+
+        # Verify that JSON was written correctly
+        assert os.path.isfile(Path(self.testFileName + '.json'))
+
+        fname = Path(self.testFileName + '.json')
+
+        with open(str(fname)) as f:
+            data = json.load(f)
+
+        np.testing.assert_equal(data['EchoTime'], TE)
+        np.testing.assert_equal(data['FlipAngle'], FA)
+
+        if os.path.isfile(Path(self.testFileName + '.mat')):
+            os.remove(str(Path(self.testFileName + '.mat')))
+
+        if os.path.isfile(Path(self.testFileName + '.json')):
+            os.remove(str(Path(self.testFileName + '.json')))
+
+    def test_save_mat_with_extension(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+
+        test_obj.save('Magnitude', self.testFileNameMat, 'mat'); 
+
+        assert os.path.isfile(Path(self.testFileNameMat))
+
+        # Verify that JSON was written correctly
+        assert os.path.isfile(Path(self.testFileName + '.json'))
+
+        fname = Path(self.testFileName + '.json')
+
+        with open(str(fname)) as f:
+            data = json.load(f)
+
+        np.testing.assert_equal(data['EchoTime'], TE)
+        np.testing.assert_equal(data['FlipAngle'], FA)
+
+        if os.path.isfile(Path(self.testFileNameMat)):
+            os.remove(str(Path(self.testFileNameMat)))
+
+        if os.path.isfile(Path(self.testFileName + '.json')):
+            os.remove(str(Path(self.testFileName + '.json')))
+
