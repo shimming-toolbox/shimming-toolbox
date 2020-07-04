@@ -89,7 +89,7 @@ class NumericalModel():
 
         return customVolume
 
-    def simulate_measurement(self, FA, TE):
+    def simulate_measurement(self, FA, TE, SNR=None):
 
         self.FA = FA
         self.TE = TE
@@ -101,7 +101,6 @@ class NumericalModel():
             self.measurement = np.zeros((volDims[0], volDims[1], 1, numTE), dtype = 'complex_')
         elif len(volDims) == 3:
             self.measurement = np.zeros((volDims[0], volDims[1], volDims[2], numTE), dtype = 'complex_')
-        
 
         for ii in range(0,numTE):
             if len(volDims) == 2:
@@ -124,6 +123,9 @@ class NumericalModel():
                     self.gamma,
                     self.handedness
                     )
+
+        if SNR is not None:
+            self.measurement = NumericalModel.add_noise(self.measurement, SNR)
 
     @staticmethod  
     def generate_signal(
@@ -167,3 +169,14 @@ class NumericalModel():
     def get_imaginary(self):
         # Get imaginary data
         return np.imag(self.measurement)
+    
+    @staticmethod  
+    def add_noise(volume, SNR):
+        noiseSTD = np.max(volume[:])/SNR
+
+        volDims = volume.shape
+        noisyReal =      np.real(volume) + np.random.randn(volDims[0], volDims[1], volDims[2], volDims[3]) * noiseSTD
+        noisyImaginary = np.imag(volume) + np.random.randn(volDims[0], volDims[1], volDims[2], volDims[3]) * noiseSTD
+
+        noisyVolume = noisyReal + 1j*noisyImaginary
+        return noisyVolume
