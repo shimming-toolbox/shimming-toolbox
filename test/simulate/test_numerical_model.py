@@ -69,7 +69,7 @@ class TestCore(object):
         assert np.all(test_obj.volume['proton_density'][abs(test_obj.starting_volume-0.1)<0.001] == (test_obj.proton_density['GM']+test_obj.proton_density['WM'])/2)
         assert np.all(test_obj.volume['proton_density'][abs(test_obj.starting_volume-0.4)<0.001] == test_obj.proton_density['GM'] * 1.5)
 
-    # --------------simulate_signal method tests-------------- #
+    # --------------generate_deltaB0 method tests-------------- #
     def test_generate_deltaB0_linear_floor_value(self):
 
         test_obj = NumericalModel(model='shepp-logan')
@@ -82,7 +82,7 @@ class TestCore(object):
             
         assert np.allclose(np.mean(deltaB0_map[:]), b/(test_obj.gamma/(2*np.pi)), rtol=10**-6)
 
-    def test_generate_deltaB0_linear_slope_value(testCase):
+    def test_generate_deltaB0_linear_slope_value(self):
         test_obj = NumericalModel(model='shepp-logan')
             
         m = 1
@@ -95,3 +95,30 @@ class TestCore(object):
         [X, Y] = np.meshgrid(np.linspace(-dims[0], dims[0], dims[0]), np.linspace(-dims[1], dims[1], dims[1]))
 
         assert np.allclose(deltaB0_map[int(dims[0]/2), int(dims[0]/4)], m*X[int(dims[0]/2), int(dims[0]/4)]/(test_obj.gamma/(2*np.pi)))
+
+    # --------------simulate_signal method tests-------------- #
+    def test_simulate_signal_returns_expected_volume_size(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+                        
+        expectedDims = (128, 128, 1, len(TE))
+        actualDims = test_obj.measurement.shape
+
+        assert actualDims == expectedDims
+
+    def test_simulate_signal_get_returns_volume_of_expected_datatype(self):
+        test_obj = NumericalModel(model='shepp-logan')
+            
+        FA = 15
+        TE = [0.003, 0.015]
+
+        test_obj.simulate_measurement(FA, TE)
+
+        assert np.isreal(test_obj.get_magnitude().all())
+        assert np.isreal(test_obj.get_phase().all())
+        assert np.isreal(test_obj.get_real().all())
+        assert np.isreal(test_obj.get_imaginary().all())
