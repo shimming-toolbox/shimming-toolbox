@@ -191,12 +191,12 @@ class NumericalModel():
         if saveFormat is None:
             saveFormat = 'nifti'
 
-        if fileName[-3:] == '.nii':
+        if fileName[-4:] == '.nii':
             if saveFormat != 'nifti':
                 print('File extension and saveFormat do not match - saving to NIfTI format')
                 saveFormat = 'nifti'
             fileName = fileName[0:-4]
-        elif fileName[-3:] == '.mat':
+        elif fileName[-4:] == '.mat':
             if saveFormat != 'mat':
                 print('File extension and saveFormat do not match - saving to MAT format')
                 saveFormat = 'mat'
@@ -221,7 +221,7 @@ class NumericalModel():
 
             self.writeJson(fileName)
         elif saveFormat == 'mat':
-            savemat(Path(fileName + '.mat'), vol)
+            savemat(Path(fileName + '.mat'), {'vol': vol})
             self.writeJson(fileName)
 
     def writeJson(self, fileName):
