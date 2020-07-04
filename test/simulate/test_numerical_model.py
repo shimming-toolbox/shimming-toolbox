@@ -144,3 +144,21 @@ class TestCore(object):
         vecPhaseROI = vecPhaseROI[:]
 
         assert np.std(vecPhaseROI)!=0
+
+    def test_simulate_signal_dual_echo_calculates_expected_B0(self):
+        test_obj = NumericalModel(model='shepp-logan')
+
+        B0_hz = 13
+        test_obj.generate_deltaB0('linear', [0.0, B0_hz])
+        TR = 0.025
+        TE = [0.004, 0.008]
+        test_obj.simulate_measurement(TR, TE)
+        phaseMeas = test_obj.get_phase()
+
+        phaseTE1 = np.squeeze(phaseMeas[:,:,0,0])
+        phaseTE2 = np.squeeze(phaseMeas[:,:,0,1])
+
+        B0_meas = (phaseTE2[63, 63] - phaseTE1[63, 63])/(TE[1] - TE[0])
+        B0_meas_hz = B0_meas/(2*np.pi)
+
+        assert np.allclose(B0_hz, B0_meas_hz, rtol=10**-6)
