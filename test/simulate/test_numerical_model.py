@@ -11,9 +11,9 @@ from phantominator import shepp_logan
 
 class TestCore(object):
     def setup(self):
-        self.testFileName = "test"
-        self.testFileNameNii = "test.nii"
-        self.testFileNameMat = "test.mat"
+        self.test_filename = "test"
+        self.test_filename_nii = "test.nii"
+        self.test_filename_mat = "test.mat"
 
     @classmethod
     def teardown_class(cls):
@@ -31,7 +31,7 @@ class TestCore(object):
         test_obj = NumericalModel()
 
         expected_volume = np.zeros((128, 128))
-        actual_volume = test_obj.starting_volume
+        actual_volume = test_obj._starting_volume
 
         np.testing.assert_array_equal(actual_volume, expected_volume)
 
@@ -40,7 +40,7 @@ class TestCore(object):
         test_obj = NumericalModel(model="shepp-logan")
 
         expected_volume = shepp_logan(128)
-        actual_volume = test_obj.starting_volume
+        actual_volume = test_obj._starting_volume
 
         np.testing.assert_array_equal(actual_volume, expected_volume)
 
@@ -49,7 +49,7 @@ class TestCore(object):
         test_obj = NumericalModel(model="shepp-logan", num_vox=dims)
 
         expected_volume = shepp_logan(dims)
-        actual_volume = test_obj.starting_volume
+        actual_volume = test_obj._starting_volume
 
         np.testing.assert_array_equal(actual_volume, expected_volume)
 
@@ -58,32 +58,32 @@ class TestCore(object):
         test_obj = NumericalModel(model="shepp-logan", num_vox=dims)
 
         assert np.all(
-            test_obj.volume["T2_star"][abs(test_obj.starting_volume - 0.2) < 0.001]
+            test_obj._volume["T2_star"][abs(test_obj._starting_volume - 0.2) < 0.001]
             == test_obj.T2_star["WM"]
         )
         assert np.all(
-            test_obj.volume["T2_star"][abs(test_obj.starting_volume - 0.3) < 0.001]
+            test_obj._volume["T2_star"][abs(test_obj._starting_volume - 0.3) < 0.001]
             == test_obj.T2_star["GM"]
         )
         assert np.all(
-            test_obj.volume["T2_star"][abs(test_obj.starting_volume - 1) < 0.001]
+            test_obj._volume["T2_star"][abs(test_obj._starting_volume - 1) < 0.001]
             == test_obj.T2_star["CSF"]
         )
         assert np.all(
-            test_obj.volume["T2_star"][
+            test_obj._volume["T2_star"][
                 np.logical_and(
-                    (abs(test_obj.starting_volume) < 0.0001),
-                    test_obj.starting_volume != 0,
+                    (abs(test_obj._starting_volume) < 0.0001),
+                    test_obj._starting_volume != 0,
                 )
             ]
             == test_obj.T2_star["WM"] / 2
         )
         assert np.all(
-            test_obj.volume["T2_star"][abs(test_obj.starting_volume - 0.1) < 0.001]
+            test_obj._volume["T2_star"][abs(test_obj._starting_volume - 0.1) < 0.001]
             == (test_obj.T2_star["GM"] + test_obj.T2_star["WM"]) / 2
         )
         assert np.all(
-            test_obj.volume["T2_star"][abs(test_obj.starting_volume - 0.4) < 0.001]
+            test_obj._volume["T2_star"][abs(test_obj._starting_volume - 0.4) < 0.001]
             == test_obj.T2_star["GM"] * 1.5
         )
 
@@ -92,39 +92,41 @@ class TestCore(object):
         test_obj = NumericalModel(model="shepp-logan", num_vox=dims)
 
         assert np.all(
-            test_obj.volume["proton_density"][
-                abs(test_obj.starting_volume - 0.2) < 0.001
+            test_obj._volume["proton_density"][
+                abs(test_obj._starting_volume - 0.2) < 0.001
             ]
             == test_obj.proton_density["WM"]
         )
         assert np.all(
-            test_obj.volume["proton_density"][
-                abs(test_obj.starting_volume - 0.3) < 0.001
+            test_obj._volume["proton_density"][
+                abs(test_obj._starting_volume - 0.3) < 0.001
             ]
             == test_obj.proton_density["GM"]
         )
         assert np.all(
-            test_obj.volume["proton_density"][abs(test_obj.starting_volume - 1) < 0.001]
+            test_obj._volume["proton_density"][
+                abs(test_obj._starting_volume - 1) < 0.001
+            ]
             == test_obj.proton_density["CSF"]
         )
         assert np.all(
-            test_obj.volume["proton_density"][
+            test_obj._volume["proton_density"][
                 np.logical_and(
-                    (abs(test_obj.starting_volume) < 0.0001),
-                    test_obj.starting_volume != 0,
+                    (abs(test_obj._starting_volume) < 0.0001),
+                    test_obj._starting_volume != 0,
                 )
             ]
             == test_obj.proton_density["WM"] / 2
         )
         assert np.all(
-            test_obj.volume["proton_density"][
-                abs(test_obj.starting_volume - 0.1) < 0.001
+            test_obj._volume["proton_density"][
+                abs(test_obj._starting_volume - 0.1) < 0.001
             ]
             == (test_obj.proton_density["GM"] + test_obj.proton_density["WM"]) / 2
         )
         assert np.all(
-            test_obj.volume["proton_density"][
-                abs(test_obj.starting_volume - 0.4) < 0.001
+            test_obj._volume["proton_density"][
+                abs(test_obj._starting_volume - 0.4) < 0.001
             ]
             == test_obj.proton_density["GM"] * 1.5
         )
@@ -173,10 +175,10 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        expectedDims = (128, 128, 1, len(TE))
-        actualDims = test_obj.measurement.shape
+        expected_dims = (128, 128, 1, len(TE))
+        actual_dims = test_obj.measurement.shape
 
-        assert actualDims == expectedDims
+        assert actual_dims == expected_dims
 
     def test_simulate_signal_get_returns_volume_of_expected_datatype(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -202,16 +204,16 @@ class TestCore(object):
 
         magnitude_data = test_obj.get_magnitude()
 
-        vecMagnitudeROI = magnitude_data[0:10, 0:10, 0, 0]
-        vecMagnitudeROI = vecMagnitudeROI[:]
+        vec_magnitude_roi = magnitude_data[0:10, 0:10, 0, 0]
+        vec_magnitude_roi = vec_magnitude_roi[:]
 
-        assert np.std(vecMagnitudeROI) != 0
+        assert np.std(vec_magnitude_roi) != 0
 
         phase_data = test_obj.get_phase()
-        vecPhaseROI = phase_data[0:10, 0:10, 0, 0]
-        vecPhaseROI = vecPhaseROI[:]
+        vec_phase_roi = phase_data[0:10, 0:10, 0, 0]
+        vec_phase_roi = vec_phase_roi[:]
 
-        assert np.std(vecPhaseROI) != 0
+        assert np.std(vec_phase_roi) != 0
 
     def test_simulate_signal_dual_echo_calculates_expected_B0(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -221,12 +223,12 @@ class TestCore(object):
         TR = 0.025
         TE = [0.004, 0.008]
         test_obj.simulate_measurement(TR, TE)
-        phaseMeas = test_obj.get_phase()
+        phase_meas = test_obj.get_phase()
 
-        phaseTE1 = np.squeeze(phaseMeas[:, :, 0, 0])
-        phaseTE2 = np.squeeze(phaseMeas[:, :, 0, 1])
+        phase_TE1 = np.squeeze(phase_meas[:, :, 0, 0])
+        phase_TE2 = np.squeeze(phase_meas[:, :, 0, 1])
 
-        B0_meas = (phaseTE2[63, 63] - phaseTE1[63, 63]) / (TE[1] - TE[0])
+        B0_meas = (phase_TE2[63, 63] - phase_TE1[63, 63]) / (TE[1] - TE[0])
         B0_meas_hz = B0_meas / (2 * np.pi)
 
         assert np.allclose(B0_hz, B0_meas_hz, rtol=10 ** -6)
@@ -240,12 +242,12 @@ class TestCore(object):
         TR = 0.025
         TE = [0.004, 0.008]
         test_obj.simulate_measurement(TR, TE)
-        phaseMeas = test_obj.get_phase()
+        phase_meas = test_obj.get_phase()
 
-        phaseTE1 = np.squeeze(phaseMeas[:, :, 0, 0])
-        phaseTE2 = np.squeeze(phaseMeas[:, :, 0, 1])
+        phase_TE1 = np.squeeze(phase_meas[:, :, 0, 0])
+        phase_TE2 = np.squeeze(phase_meas[:, :, 0, 1])
 
-        B0_meas = (phaseTE2[63, 63] - phaseTE1[63, 63]) / (TE[1] - TE[0])
+        B0_meas = (phase_TE2[63, 63] - phase_TE1[63, 63]) / (TE[1] - TE[0])
         B0_meas_hz = B0_meas / (2 * np.pi)
 
         assert np.allclose(B0_hz, -B0_meas_hz, rtol=10 ** -6)
@@ -260,27 +262,27 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.testFileName)
+        test_obj.save("Magnitude", self.test_filename)
         # Default option for save is a NIfTI output.
 
-        assert os.path.isfile(Path(self.testFileName + ".nii"))
+        assert os.path.isfile(Path(self.test_filename + ".nii"))
 
         # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.testFileName + ".json"))
+        assert os.path.isfile(Path(self.test_filename + ".json"))
 
-        fname = Path(self.testFileName + ".json")
+        file_name = Path(self.test_filename + ".json")
 
-        with open(str(fname)) as f:
+        with open(str(file_name)) as f:
             data = json.load(f)
 
         np.testing.assert_equal(data["EchoTime"], TE)
         np.testing.assert_equal(data["FlipAngle"], FA)
 
-        if os.path.isfile(Path(self.testFileName + ".nii")):
-            os.remove(str(Path(self.testFileName + ".nii")))
+        if os.path.isfile(Path(self.test_filename + ".nii")):
+            os.remove(str(Path(self.test_filename + ".nii")))
 
-        if os.path.isfile(Path(self.testFileName + ".json")):
-            os.remove(str(Path(self.testFileName + ".json")))
+        if os.path.isfile(Path(self.test_filename + ".json")):
+            os.remove(str(Path(self.test_filename + ".json")))
 
     def test_save_nii_with_extension(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -290,27 +292,27 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.testFileNameNii)
         # Default option for save is a NIfTI output.
+        test_obj.save("Magnitude", self.test_filename_nii)
 
-        assert os.path.isfile(Path(self.testFileNameNii))
+        assert os.path.isfile(Path(self.test_filename_nii))
 
         # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.testFileName + ".json"))
+        assert os.path.isfile(Path(self.test_filename + ".json"))
 
-        fname = Path(self.testFileName + ".json")
+        file_name = Path(self.test_filename + ".json")
 
-        with open(str(fname)) as f:
+        with open(str(file_name)) as f:
             data = json.load(f)
 
         np.testing.assert_equal(data["EchoTime"], TE)
         np.testing.assert_equal(data["FlipAngle"], FA)
 
-        if os.path.isfile(Path(self.testFileNameNii)):
-            os.remove(str(Path(self.testFileNameNii)))
+        if os.path.isfile(Path(self.test_filename_nii)):
+            os.remove(str(Path(self.test_filename_nii)))
 
-        if os.path.isfile(Path(self.testFileName + ".json")):
-            os.remove(str(Path(self.testFileName + ".json")))
+        if os.path.isfile(Path(self.test_filename + ".json")):
+            os.remove(str(Path(self.test_filename + ".json")))
 
     def test_save_mat(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -320,26 +322,26 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.testFileName, "mat")
+        test_obj.save("Magnitude", self.test_filename, "mat")
 
-        assert os.path.isfile(Path(self.testFileName + ".mat"))
+        assert os.path.isfile(Path(self.test_filename + ".mat"))
 
         # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.testFileName + ".json"))
+        assert os.path.isfile(Path(self.test_filename + ".json"))
 
-        fname = Path(self.testFileName + ".json")
+        file_name = Path(self.test_filename + ".json")
 
-        with open(str(fname)) as f:
+        with open(str(file_name)) as f:
             data = json.load(f)
 
         np.testing.assert_equal(data["EchoTime"], TE)
         np.testing.assert_equal(data["FlipAngle"], FA)
 
-        if os.path.isfile(Path(self.testFileName + ".mat")):
-            os.remove(str(Path(self.testFileName + ".mat")))
+        if os.path.isfile(Path(self.test_filename + ".mat")):
+            os.remove(str(Path(self.test_filename + ".mat")))
 
-        if os.path.isfile(Path(self.testFileName + ".json")):
-            os.remove(str(Path(self.testFileName + ".json")))
+        if os.path.isfile(Path(self.test_filename + ".json")):
+            os.remove(str(Path(self.test_filename + ".json")))
 
     def test_save_mat_with_extension(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -349,31 +351,31 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.testFileNameMat, "mat")
+        test_obj.save("Magnitude", self.test_filename_mat, "mat")
 
-        assert os.path.isfile(Path(self.testFileNameMat))
+        assert os.path.isfile(Path(self.test_filename_mat))
 
         # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.testFileName + ".json"))
+        assert os.path.isfile(Path(self.test_filename + ".json"))
 
-        fname = Path(self.testFileName + ".json")
+        file_name = Path(self.test_filename + ".json")
 
-        with open(str(fname)) as f:
+        with open(str(file_name)) as f:
             data = json.load(f)
 
         np.testing.assert_equal(data["EchoTime"], TE)
         np.testing.assert_equal(data["FlipAngle"], FA)
 
-        if os.path.isfile(Path(self.testFileNameMat)):
-            os.remove(str(Path(self.testFileNameMat)))
+        if os.path.isfile(Path(self.test_filename_mat)):
+            os.remove(str(Path(self.test_filename_mat)))
 
-        if os.path.isfile(Path(self.testFileName + ".json")):
-            os.remove(str(Path(self.testFileName + ".json")))
+        if os.path.isfile(Path(self.test_filename + ".json")):
+            os.remove(str(Path(self.test_filename + ".json")))
 
     # --------------generate_signal method tests-------------- #
 
     def test_generate_signal_case_1(self):
-        protonDensity = 80
+        proton_density = 80
 
         T2star = 100
         FA = 90
@@ -383,9 +385,9 @@ class TestCore(object):
         handedness = "left"
 
         actual_signal = NumericalModel.generate_signal(
-            protonDensity, T2star, FA, TE, deltaB0, gamma, handedness
+            proton_density, T2star, FA, TE, deltaB0, gamma, handedness
         )
-        expected_signal = protonDensity
+        expected_signal = proton_density
 
         assert actual_signal == expected_signal
 
@@ -393,7 +395,7 @@ class TestCore(object):
 
         FA = 0
 
-        protonDensity = 80
+        proton_density = 80
         T2star = 100
         TE = 0
         deltaB0 = 0
@@ -401,7 +403,7 @@ class TestCore(object):
         handedness = "left"
 
         actual_signal = NumericalModel.generate_signal(
-            protonDensity, T2star, FA, TE, deltaB0, gamma, handedness
+            proton_density, T2star, FA, TE, deltaB0, gamma, handedness
         )
         expected_signal = 0
 
@@ -410,7 +412,7 @@ class TestCore(object):
     def test_generate_signal_case_3(self):
 
         FA = 20
-        protonDensity = 80
+        proton_density = 80
         T2star = 100
         TE = 0.010
         deltaB0 = 2
@@ -423,10 +425,10 @@ class TestCore(object):
             sign = 1
 
         actual_signal = NumericalModel.generate_signal(
-            protonDensity, T2star, FA, TE, deltaB0, gamma, handedness
+            proton_density, T2star, FA, TE, deltaB0, gamma, handedness
         )
         expected_signal = (
-            protonDensity
+            proton_density
             * np.sin(np.deg2rad(FA))
             * np.exp(-TE / T2star - sign * 1j * gamma * deltaB0 * TE)
         )
