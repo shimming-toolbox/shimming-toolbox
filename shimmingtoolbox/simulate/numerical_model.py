@@ -10,7 +10,7 @@ considers features like: background B0 field, flip angle, echo time, and noise.
 
   b0_sim = NumericalModel(model="shepp-logan")
   
-  # Generate a backgroung B0
+  # Generate a background B0
   b0_field = 13 # (Hz)
   b0_sim.generate_deltaB0("linear", [0.0, b0_field])
 
