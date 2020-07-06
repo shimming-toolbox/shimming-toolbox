@@ -24,6 +24,12 @@ setup(
     author="NeuroPoly Lab, Polytechnique Montreal",
     author_email="neuropoly@googlegroups.com",
     keywords="",
+    entry_points={
+        'console_scripts': [
+            "shim-referencemaps=shimmingtoolbox.cli.referencemaps:main",
+            "shim-b0maps=shimmingtoolbox.cli.b0maps:main"
+        ]
+    },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=install_reqs,
     package_dir={"shimmingtoolbox": "shimmingtoolbox"},
