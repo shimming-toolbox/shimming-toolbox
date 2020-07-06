@@ -9,11 +9,6 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
-req_path = path.join(here, "requirements.txt")
-with open(req_path, "r") as f:
-    install_reqs = f.read().strip()
-    install_reqs = install_reqs.split("\n")
-
 setup(
     name="shimmingtoolbox",
     python_requires=">=3.7",
@@ -25,6 +20,10 @@ setup(
     author_email="neuropoly@googlegroups.com",
     keywords="",
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
-    install_requires=install_reqs,
-    package_dir={"shimmingtoolbox": "shimmingtoolbox"},
+    install_requires=[
+        #"numpy~=1.16.0",
+    ],
+    extras_require={
+        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
+    },
 )
