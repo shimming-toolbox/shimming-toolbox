@@ -26,7 +26,7 @@ setup(
     keywords="",
     entry_points={
         'console_scripts': [
-            "shim-referencemaps=shimmingtoolbox.cli.referencemap:main",
+            "shim-referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "shim-b0maps=shimmingtoolbox.cli.b0map:main"
         ]
     },
