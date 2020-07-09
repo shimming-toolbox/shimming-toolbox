@@ -4,70 +4,110 @@ import nibabel as nib
 import numpy as np
 import os
 
+def read_nii(niiFile, rescaling='auto'):
+    assert (rescaling in "off" "basic" "auto"), 'Invalid assignment to rescale: Value must be "off", "basic", or "auto"'
 
-def read_nii(nii_path):
-    """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
-    Args:
-        nii_path (str): direct path to the .nii or .nii.gz file that is going to be read
-        return_image (:obj:`bool`, optional): Defines if the function should (True) or should not (False) return `image`
-    Returns:
-        info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
-        json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
-        image (ndarray): Image contained in the read nifti file. Siemens phase images are rescaled between 0 and 2pi.
-    """
-
-    info = nib.load(nii_path)
+    info = nib.load(niiFile)
+    image = info.get_fdata()
 
     # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
-    json_path = nii_path.split('.nii')[0] + '.json'
+    jsonPath = niiFile.split('.nii')[0] + '.json'
 
-    if os.path.isfile(json_path):
-        json_data = json.load(open(json_path))
+    if os.path.isfile(jsonPath):
+        jsonData = json.load(open(jsonPath))
     else:
-        raise ValueError('Missing json file')
+        jsonData = []
 
-    image = np.asanyarray(info.dataobj)
-    # NOTE: nib.load automatically scales the nifti and replaces scl_inter and scl_slope with 'nan' in the header
-    # More info in the "Data scaling" section in https://nipy.org/nibabel/nifti_images.html
-    if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-            and (image_type(json_data) == 'phase'):
-        PHASE_SCALING_SIEMENS = 4096
-        image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
+    # Optional rescaling
+    if rescaling == 'off' or rescaling == 'auto':
+        pass
 
-    return info, json_data, image
+    if rescaling == 'basic':
+        image, info = rescale(image, info)
+
+    # NOTE: Other approaches to rescaling and / or converting from raw file values could be added (including cases
+    # where the json sidecar is unavailable)
+    if ('Manufacturer' in jsonData) and (jsonData['Manufacturer'] == 'Siemens') \
+            and (check_json_image_type(jsonData) == 'phase'):
+
+        image, info = convert_siemens_phase(image, info)
+
+    else:
+        image, info = rescale(image, info)
+
+    return image, info, jsonData
+
+# -----------------------------------------------------------------------------
+# Local functions
+# -----------------------------------------------------------------------------
 
 
-def image_type(json_data):
-    """ Returns the nifti image type indicated by the json file
-    Args:
-        json_data (dict): Contains the same fields as the json file corresponding to a nifti file
-    Returns:
-        img_type (str): Type of the image. It can take the values `phase`, `magnitude`.
-    """
+def convert_siemens_phase(img, info):
 
-    # Check that jsonData exists
-    if not json_data:
-        raise TypeError("json_data is empty")
+    PHASE_SCALING_SIEMENS = 4096
 
-    # Check that jsonData is a dictionary
-    if not isinstance(json_data, dict):
-        raise TypeError("json_data is not a dictionary")
+    if (info.header['scl_inter'] == -PHASE_SCALING_SIEMENS) and (info.header['scl_slope'] == 2):
 
-    if 'ImageType' in json_data:
-        is_phase = "P" in json_data['ImageType']
-        is_mag = "M" in json_data['ImageType']
+        img, infoConverted = rescale(img, info)
+        imgConverted = img * (math.pi / PHASE_SCALING_SIEMENS)
 
-        if is_phase and is_mag:
-            # Both true: json file and/or DICOM issue
-            raise ValueError('Ambiguous ImageType entry in json file: Indicates magnitude AND phase')
-        elif is_phase:
-            img_type = 'phase'
-        elif is_mag:
-            img_type = 'magnitude'
+        # Update header: 16 is the NIfTI code for float; bitpix = number of bits
+        infoConverted.header['datatype'] = 16
+        infoConverted.header['bitpix'] = 32
+
+    else:
+        print('Warning: The nii header differs from that expected of Siemens phase data.\n '
+              'Output values (units) are effectively unknown')
+        imgConverted, infoConverted = rescale(img, info)
+    return imgConverted, infoConverted
+
+
+def check_json_image_type(jsonData):
+    imgType = []
+
+    if not jsonData:
+        return imgType
+
+    assert isinstance(jsonData, dict)
+
+    if 'ImageType' in jsonData:
+        isPhase = "P" in jsonData['ImageType']
+        isMag = "M" in jsonData['ImageType']
+
+        if isPhase and isMag:
+            # Both true: json file and / or DICOM issue(hopefully this doesn't occur?)
+            print('Warning: Ambiguous ImageType entry in json file: Indicates magnitude AND phase?')
+        elif isPhase:
+            imgType = 'phase'
+        elif isMag:
+            imgType = 'magnitude'
         else:
-            if ('Manufacturer' in json_data) and (json_data['Manufacturer'] != 'Siemens'):
-                raise ValueError('Unknown image type. Possibly due to images sourced from non-Siemens MRI')
-            else:
-                raise ValueError('Unknown image type')
+            imgType = 'unknown'
+            if ('Manufacturer' in jsonData) and (jsonData['Manufacturer'] != 'Siemens'):
+                print('Warning: Unknown image type. Possibly due to images sourced from non-Siemens MRI')
 
-        return img_type
+        return imgType
+
+
+def rescale(img, info):
+    img1 = info.AdditiveOffset + np.multiply(info.MultiplicativeScaling, img)
+
+    # Check for possible integer overflow / type issues
+    if np.array_equal(img1, float(info.AdditiveOffset) + float(info.MultiplicativeScaling) * float(img)):
+
+        imgRescaled = img1
+        infoRescaled = info
+
+        # Update header:
+        infoRescaled.MultiplicativeScaling = 1
+        infoRescaled.AdditiveOffset = 0
+        infoRescaled.raw.scl_slope = 1
+        infoRescaled.raw.scl_inter = 0
+
+    else:
+        print('Warning: Aborting image rescaling to avoid integer overflow.\nThe NIfTI header may contain errors.\n')
+
+        imgRescaled = img
+        infoRescaled = info
+
+    return imgRescaled, infoRescaled
