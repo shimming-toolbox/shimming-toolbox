@@ -63,11 +63,12 @@ def prelude(complexArray, affine, mask=np.array([-1]), path2UnwrappedPhase="./un
     unwrappedPhase = nib.load(path2UnwrappedPhase)
     unwrappedPhase = np.array(unwrappedPhase.dataobj)
     # Delete temporary files according to options
-    if isSavingNiftis:
-        os.remove(os.path.join("dataSaveDirectory", "complex.nii"))
-        os.remove(os.path.join("dataSaveDirectory", "unwrappedPhase.nii"))
-        if mask.all() == -1:
-            os.remove(os.path.join("dataSaveDirectory", "mask.nii"))
+    if not isSavingNiftis:
+        os.remove(os.path.join(dataSaveDirectory, "mag.nii"))
+        os.remove(os.path.join(dataSaveDirectory, "rawPhase.nii"))
+        os.remove(os.path.join(dataSaveDirectory, "unwrappedPhase.nii"))
+        if not mask.all() == -1:
+            os.remove(os.path.join(dataSaveDirectory, "mask.nii"))
 
     return unwrappedPhase
 
