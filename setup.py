@@ -24,6 +24,11 @@ setup(
     author="NeuroPoly Lab, Polytechnique Montreal",
     author_email="neuropoly@googlegroups.com",
     keywords="",
+    entry_points={
+        'console_scripts': [
+            "st_unwrap_script=examples.unwrap_script:main"
+        ]
+    },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=install_reqs,
     package_dir={"shimmingtoolbox": "shimmingtoolbox"},
