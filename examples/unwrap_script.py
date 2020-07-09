@@ -1,18 +1,34 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """ Description
-
 """
 
-
-from shimmingtoolbox.unwrap import unwrap_phase
-import nibabel as nib
+import os
 import numpy as np
 import matplotlib.pyplot as plt
+from zipfile import ZipFile
+import glob
+import shutil
+
+import nibabel as nib
+
+from shimmingtoolbox.unwrap import unwrap_phase
 import cmath
 
 
 def main():
+
+    # Download example data
+    url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200709.zip'
+    filename = 'data-testing.zip'
+    # TODO: replace with download function
+    os.system('curl -o {} -L {}'.format(filename, url))
+    with ZipFile(filename, 'r') as zipObj:
+        # Extract all the contents of zip file in current directory
+        zipObj.extractall()
+    os.remove(filename)
+    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
+    path_data = glob.glob('data-test*')[0]
 
     # Import phase
     phasePath = ""
