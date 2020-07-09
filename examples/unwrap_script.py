@@ -1,6 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-""" Description
+""" This script will:
+- download 2-echo phase fieldmap data
+- do the subtraction
+- unwrap phase difference
 """
 
 import os
@@ -8,12 +11,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from zipfile import ZipFile
 import glob
-import shutil
 
 import nibabel as nib
 
 from shimmingtoolbox.unwrap import unwrap_phase
-import cmath
 
 
 def main():
@@ -30,10 +31,13 @@ def main():
     # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
     path_data = glob.glob('data-test*')[0]
 
-    # Import phase
-    phasePath = ""
-    phaseNii = nib.load(phasePath)
-    phase = np.array(phaseNii.dataobj)
+    # Open phase data
+    fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
+    nii_e1 = nib.load(fname_phases[0])
+    nii_e2 = nib.load(fname_phases[1])
+
+    # Subtract phase
+    phase_diff = nii_e2.get_fdata() - nii_e1.get_fdata()
 
     magPath = ""
     magNii = nib.load(magPath)
