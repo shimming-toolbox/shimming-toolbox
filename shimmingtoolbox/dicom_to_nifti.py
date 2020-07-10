@@ -1,15 +1,9 @@
 import os
 import numpy as np
-import shimmingtoolbox as st
+from .read_nii import read_nii
+
 
 def dicom_to_nifti(unsortedDicomDir, niftiPath):
-    # DICOM_TO_NIFTI converts dicoms into niftis with dcm2bids output
-    #
-    # dicom_to_nifti(unsortedDicomDir, niftiPath)
-    #
-    # The input `unsortedDicomDir` is a path to a folder containing either be
-    # ".dcm" or ".IMA".The input `niftiPath` is a folder for the output.
-    # The output will be niftis in separate folders according to their acquisition names that are in `niftiPath`.
 
     #os.mkdir(niftiPath)
     print(unsortedDicomDir)
@@ -45,7 +39,7 @@ def dicom_to_nifti(unsortedDicomDir, niftiPath):
         raise Exception('Error: dcm2bids_helper')
 
     # Check if there is data
-    helperPath = os.path.join(niftiPath, 'tmp_dcm2bids','helper')
+    helperPath = os.path.join(niftiPath, 'tmp_dcm2bids', 'helper')
     if not os.path.isdir(helperPath):
         raise Exception('Error: dcm2bids_helper could not create directory helper')
 
@@ -69,7 +63,7 @@ def dicom_to_nifti(unsortedDicomDir, niftiPath):
             niftiFile = helperfileList[booleanList.index(1)]  # Returns an exception if no True is found
 
         # Read json file
-        _, _, jsonInfo = st.read_nii(os.path.join(helperPath, niftiFile))
+        _, _, jsonInfo = read_nii(os.path.join(helperPath, niftiFile))
 #     iAcq = iAcq + 1;
 #
 #     # Create future folder name acquisitionNumbers
