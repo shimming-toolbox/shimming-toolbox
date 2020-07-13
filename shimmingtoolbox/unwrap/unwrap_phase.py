@@ -35,7 +35,6 @@ def unwrap_phase(complex_array, affine, unwrap_function="prelude"):
             raise Exception('Number of dimensions not supported')
 
     else:
-        print("The unwrap function ", unwrap_function, " is not implemented")
-        return -1
+        raise Exception('The unwrap function ', unwrap_function, ' is not implemented')
 
     return unwrapped_phase
