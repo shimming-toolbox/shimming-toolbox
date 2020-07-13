@@ -1,3 +1,4 @@
+# Context: this is blablabla
 # Things to consider:
 # - with this large refactoring, we should try to accommodate Jason's current code
 # - log file should be created for each action.
@@ -17,13 +18,13 @@
 # dcm2bids is used to create folder structure and nifti conversion
 # unsortedDicomDir: path to the folder containing the dicoms
 # niftiPath: path where we want dcm2bids to store the nifti files
-# dicom_to_nifti( unsortedDicomDir, niftiPath )
-#
+# 
+# > dicom_to_nifti( unsortedDicomDir, niftiPath )
 #
 # Load images from the path
 # Using niftiPath will prompt the user to select the appropriate acquisition. Alternatively, if the path to the acquisition is known, the path can be changed and the function won't prompt the user
-# mag = load_niftis( niftiPath ) 5D array (x, y, z, nEcho, nAcq)
-# phase = load_niftis( niftiPath ) 5D array (x, y, z, nEcho, nAcq)
+# > mag = load_niftis( niftiPath ) 5D array (x, y, z, nEcho, nAcq)
+# > phase = load_niftis( niftiPath ) 5D array (x, y, z, nEcho, nAcq)
 #
 # Convert to complex
 # complexArray = mag.*exp( 1i.*phase ); 5D array (x, y, z, nEcho, nAcq)
