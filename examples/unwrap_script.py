@@ -33,40 +33,37 @@ def main():
 
     # Open phase data
     fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
-    nii_e1 = nib.load(fname_phases[0])
-    nii_e2 = nib.load(fname_phases[1])
+    nii_phase_e1 = nib.load(fname_phases[0])
+    nii_phase_e2 = nib.load(fname_phases[1])
 
     # Subtract phase
-    phase_diff = nii_e2.get_fdata() - nii_e1.get_fdata()
+    phase_diff = nii_phase_e2.get_fdata() - nii_phase_e1.get_fdata()
 
-    magPath = ""
-    magNii = nib.load(magPath)
-    mag = np.array(magNii.dataobj)
+    # Open mag data
+    fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
+    nii_mag_e1 = nib.load(fname_phases[0])
+    nii_mag_e2 = nib.load(fname_phases[1])
 
     # Convert to radians (Assumes there are wraps)
-    phase = - np.min(phase) + phase
-    phase = phase / 4096 * 2 * np.pi - np.pi
+    phase_diff = - np.min(phase_diff) + phase_diff
+    phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
 
-    # print(wrappedPhase)
-    # print(nifti.header)
-    # print(wrappedPhase.shape)
+    complex_array = nii_mag_e1.get_fdata() * np.exp(1j * phase_diff)
+    affine = nii_phase_e1.affine
+    unwrap_function = "prelude"
+    # temp test
+    # complex_array = complex_array[..., np.newaxis, np.newaxis]
+    #
+    unwrapped_phase = unwrap_phase(complex_array, affine, unwrap_function)
+    unwrapped_phase = np.real(unwrapped_phase)
 
-    # Need to iterate on 4th dimension
-    mappingAlgo = "prelude"
-    complexArray = mag / 4096 * np.exp(1j * phase)
-    affine = phaseNii.affine
-    # print(complexArray)
-
-    unwrappedPhase = unwrap_phase(complexArray, affine, mappingAlgo)
-
-
-    plt.figure(figsize = (10, 10))
+    plt.figure(figsize=(10, 10))
     plt.subplot(1, 2, 1)
-    plt.imshow(np.angle(complexArray[:-1, :-1, 0, 0]))
+    plt.imshow(np.angle(complex_array[:-1, :-1, 0]))
     plt.title("Wrapped")
     plt.colorbar()
     plt.subplot(1, 2, 2)
-    plt.imshow(unwrappedPhase[:-1, :-1])
+    plt.imshow(unwrapped_phase[:-1, :-1, 0])
     plt.title("Unwrapped")
     plt.colorbar()
     # plt.show()
