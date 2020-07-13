@@ -30,7 +30,8 @@ def main():
 
     # Create temporary folder for processing
     tmp = tempfile.TemporaryDirectory()
-    niftiPath = os.path.join(tmp.name, 'niftis')  # Path where the niftis will be temporarily stored
+    # Path where the niftis will be temporarily stored
+    niftiPath = os.path.join(tmp.name, 'niftis')
 
     dicom_to_nifti(unsortedDicomDir, niftiPath)
     print('Conversion from dicom to nifti done')
