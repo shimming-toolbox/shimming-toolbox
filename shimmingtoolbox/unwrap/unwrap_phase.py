@@ -19,8 +19,8 @@ def unwrap_phase(complex_array, affine, unwrap_function="prelude"):
     if unwrap_function == "prelude":
 
         if complex_array.ndim == 2:
-            # TODO: implement
-            raise Exception('Not implemented')
+            complex_array = complex_array[..., np.newaxis]
+            unwrapped_phase = prelude(complex_array, affine)
         elif complex_array.ndim == 3:
             unwrapped_phase = prelude(complex_array, affine)
         elif complex_array.ndim == 4:
