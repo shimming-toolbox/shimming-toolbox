@@ -3,12 +3,13 @@
 # Sort unorganized images from DICOM socket transfer
 # dcm2bids is used to create folder structure and nifti conversion
 # unsorted_dicom_dir: path to the folder containing the dicoms
-# nifti_path: path where we want dcm2bids to store the nifti files
+# nifti_path: path to the directory where we want dcm2bids to store the nifti files corresponding to the different acquisition
 # 
 # > dicom_to_nifti( unsorted_dicom_dir, nifti_path )
 #
 # Load images from the path
-# Using nifti_path will prompt the user to select the appropriate acquisition. Alternatively, if the path to the acquisition is known, the path can be changed and the function won't prompt the user
+# Using nifti_path will prompt the user to select the appropriate acquisition (stored in nifti_path)
+# Alternatively, if the direct path to the acquisition is known, it can be directly use as an input and the function won't prompt the user
 # > mag = load_niftis( nifti_path ) 
 # > phase = load_niftis( nifti_path )
 # 5D arrays (x, y, z, nEcho, nAcq)
