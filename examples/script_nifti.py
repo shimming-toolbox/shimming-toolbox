@@ -16,18 +16,18 @@ def main():
     if not os.path.isdir(dataPath):
         url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip'
         try:
-            with ur.urlopen(url) as resp, open("osf_data.zip", 'wb') as out_file:
+            fname_archive = 'data-testing.zip'
+            with ur.urlopen(url) as resp, open(fname_archive, 'wb') as out_file:
                 shutil.copyfileobj(resp, out_file)
-                with ZipFile("osf_data.zip", 'r') as zipObj:
+                with ZipFile(fname_archive, 'r') as zipObj:
                     # Extract all the contents of zip file in current directory
-                    zipObj.extractall(scriptPath)
+                    zipObj.extractall('.')
         except IndexError:
             print("ERROR - {0}:{1}".format(sys.exc_info()[0], sys.exc_info()[1]))
 
-    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
-    path_data = glob.glob('data-test*')[0]
+    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox)
+    path_data = 'data-testing-r20200713'
 
-    unsortedDicomDir = os.path.join(dataPath, 'dicom_unsorted')  # Path to the unsorted dicoms
     # Create temporary folder for processing
     tmp = tempfile.TemporaryDirectory()
     niftiPath = os.path.join(tmp.name, 'niftis')  # Path where the niftis will be temporarily stored
