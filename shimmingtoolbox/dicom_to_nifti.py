@@ -4,6 +4,12 @@ from .read_nii import read_nii
 
 
 def dicom_to_nifti(unsortedDicomDir, niftiPath):
+    """
+    TODO: indicate the purpose of this function
+    :param unsortedDicomDir:
+    :param niftiPath:
+    :return:
+    """
 
     #os.mkdir(niftiPath)
     print(unsortedDicomDir)
