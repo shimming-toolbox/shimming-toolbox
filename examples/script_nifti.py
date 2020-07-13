@@ -14,7 +14,7 @@ def main():
 
     # Download data when not already present
     if not os.path.isdir(dataPath):
-        url = "https://osf.io/7d2j5/download?versi"
+        url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip'
         try:
             with ur.urlopen(url) as resp, open("osf_data.zip", 'wb') as out_file:
                 shutil.copyfileobj(resp, out_file)
@@ -23,6 +23,9 @@ def main():
                     zipObj.extractall(scriptPath)
         except IndexError:
             print("ERROR - {0}:{1}".format(sys.exc_info()[0], sys.exc_info()[1]))
+
+    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
+    path_data = glob.glob('data-test*')[0]
 
     unsortedDicomDir = os.path.join(dataPath, 'dicom_unsorted')  # Path to the unsorted dicoms
     # Create temporary folder for processing
