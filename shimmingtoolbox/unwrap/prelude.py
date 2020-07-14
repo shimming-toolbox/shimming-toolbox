@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-""" Description
+"""prelude is a wrapper function to FSL Prelude
+
 
 """
 
@@ -11,6 +12,26 @@ import nibabel as nib
 
 def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase="./unwrapped_phase.nii",
             is_unwrapping_in_2d=True, is_saving_nii=False):
+    """wrapper to FSL prelude
+
+    This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
+    the complex image provided. 2D unwrapping can be turned off. The output path can be specified. THe temporary niis
+    can optionally be saved.
+
+    Args:
+        complex_array (numpy.ndarray): 3D complex values numpy array to perform phase unwrapping
+        affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be acquired by :
+            nii = nib.load("nii_path")
+            affine = nii.affine
+        mask (numpy.ndarray): numpy array of booleans with shape of `complex_array` to mask during phase unwrapping
+        path_2_unwrapped_phase (string): relative or absolute path to output the nii unwrapped phase
+        is_unwrapping_in_2d (bool): prelude parameter to unwrap un 2d
+        is_saving_nii (bool): specify whether `complex_array`, `affine`, `mask` and `unwrapped_phase` nii files will be
+        saved
+
+    Returns:
+        numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
+    """
     # Get absolute path
     abs_path = os.path.abspath(path_2_unwrapped_phase)
     data_save_directory = os.path.dirname(abs_path)
