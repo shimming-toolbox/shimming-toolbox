@@ -3,17 +3,17 @@ import numpy as np
 from .read_nii import read_nii
 
 
-def dicom_to_nifti(unsortedDicomDir, niftiPath):
+def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
     """
     TODO: indicate the purpose of this function
-    :param unsortedDicomDir:
-    :param niftiPath:
+    :param unsorted_dicom_dir:
+    :param nifti_path:
     :return:
     """
 
-    #os.mkdir(niftiPath)
-    print(unsortedDicomDir)
-    print(niftiPath)
+    os.mkdir(nifti_path)
+    print(unsorted_dicom_dir)
+    print(nifti_path)
 
     # Check for which "which" to use depending on OS
     if os.name == 'nt':  # If OS is Windows
@@ -33,102 +33,102 @@ def dicom_to_nifti(unsortedDicomDir, niftiPath):
 
     # Create bids structure for data
     participant = ''
-    if os.system('dcm2bids_scaffold -o ' + niftiPath) != 0:
+    if os.system('dcm2bids_scaffold -o ' + nifti_path) != 0:
         raise Exception('Error: dcm2bids_scaffold')
 
-    # Add original data to niftiPath/sourcedata
-    if os.system(copy + ' ' + unsortedDicomDir + ' ' + os.path.join(niftiPath, 'sourcedata')) != 0:
+    # Add original data to nifti_path/sourcedata
+    if os.system(copy + ' ' + unsorted_dicom_dir + ' ' + os.path.join(nifti_path, 'sourcedata')) != 0:
         raise Exception('Error: copy')
 
     # Call the dcm2bids_helper
-    if os.system('dcm2bids_helper -d ' + unsortedDicomDir + ' -o ' + niftiPath) != 0:
+    if os.system('dcm2bids_helper -d ' + unsorted_dicom_dir + ' -o ' + nifti_path) != 0:
         raise Exception('Error: dcm2bids_helper')
 
     # Check if there is data
-    helperPath = os.path.join(niftiPath, 'tmp_dcm2bids', 'helper')
-    if not os.path.isdir(helperPath):
+    helper_path = os.path.join(nifti_path, 'tmp_dcm2bids', 'helper')
+    if not os.path.isdir(helper_path):
         raise Exception('Error: dcm2bids_helper could not create directory helper')
 
-    # Make sure there is data in niftiPath / tmp_dcm2bids / helper
-    helperfileList = os.listdir(helperPath)
-    if not helperfileList:
+    # Make sure there is data in nifti_path / tmp_dcm2bids / helper
+    helper_file_list = os.listdir(helper_path)
+    if not helper_file_list:
         raise Exception('No data to process')
 
     # Create list of acquisitions
-    acquisitionNames = list()
-    acquisitionNumbers = list()
-    iAcq = 0
+    acquisition_names = []
+    acquisition_numbers = []
+    modality = []
 
     # Create list containing all files
-    for iFile in range(len(helperfileList)):
+    for iFile in range(len(helper_file_list)):
         # If it's a json file
-        name, ext = os.path.splitext(helperfileList[iFile])
+        name, ext = os.path.splitext(helper_file_list[iFile])
         if ext == '.json':
-            # Check for both.gz and .nii
-            booleanList = (np.in1d(helperfileList, name + '.nii') + np.in1d(helperfileList, name + '.nii.gz')).tolist()
-            niftiFile = helperfileList[booleanList.index(1)]  # Returns an exception if no True is found
+            # Check for both .nii.gz and .nii
+            if name + '.nii.gz' in helper_file_list:
+                nifti_index = helper_file_list.index(name + '.nii.gz')
+            elif name + '.nii' in helper_file_list:
+                nifti_index = helper_file_list.index(name + '.nii')
+            else:
+                print('Nifti file ' + name + ' not found')
 
-        # Read json file
-        _, _, jsonInfo = read_nii(os.path.join(helperPath, niftiFile))
-#     iAcq = iAcq + 1;
-#
-#     # Create future folder name acquisitionNumbers
-#     {iAcq, 1} = sprintf('#03d', jsonInfo.SeriesNumber);
-#     acquisitionNames
-#     {iAcq, 1} = jsonInfo.SeriesDescription;
-#     # ** ** ** *Modality could be acquisition name ** ** ** **
-#     modality{iAcq, 1} = jsonInfo.Modality;
-#
-# # Remove duplicates(stable is specified to keep the same order)
-# [acquisitionNumbers, ia] = unique(acquisitionNumbers, 'stable');
-# acquisitionNames = acquisitionNames(ia);
-# modality = modality(ia);
-#
-# # For every acqs,
-# outputDir = fullfile(niftiPath, 'code');
-#
-# clear iAcq
-# for iAcq = 1:length(acquisitionNames):
-#     # create config file, place in niftiPath / code
-#     configFilePath = createConfig(outputDir, acquisitionNumbers{iAcq}, acquisitionNames{iAcq}, modality{iAcq});
-#
-#     # call dcm2bids
-#     if system(['dcm2bids -d "' unsortedDicomDir '"' ' -o '  '"' niftiPath '"' ' -p '  '"' participant '"' ' -c 'configFilePath]) ~= 0:
-#         error('dcm2bids failed')
-#
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# # Local functions
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# def filePath = createConfig(outputDir, acquisitionNumber, acquisitionName, modality)
-#
-# # Create names
-# name = [acquisitionNumber '_' acquisitionName];
-# ext = '.json';
-# filePath = fullfile(outputDir, [name ext]);
-#
-# # Create file
-# fid = fopen(filePath, 'w');
-# if fid == -1:
-#     error('could not create config file')
-#
-# # Write to file
-# fprintf(fid, '{\n');
-# fprintf(fid, '    "searchMethod": "fnmatch",\n');
-# fprintf(fid, '    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",\n');
-# fprintf(fid, '    "descriptions": [\n');
-# fprintf(fid, '        {\n');
-# fprintf(fid, '            "dataType": "#s",\n', name);
-# fprintf(fid, '            "SeriesDescription": "#s",\n', name);
-# fprintf(fid, '            "modalityLabel": "#s",\n', modality);
-# fprintf(fid, '            "criteria": {\n');
-# fprintf(fid, '                "SeriesDescription": "#s",\n', acquisitionName);
-# fprintf(fid, '                "SeriesNumber": "#s"\n', num2str(str2num(acquisitionNumber)));
-# fprintf(fid, '              }\n');
-# fprintf(fid, '        }\n');
-# fprintf(fid, '    ]\n');
-# fprintf(fid, '}\n');
-#
-# # TODO: Add criteria in each file to add phase and magnitude seperation?
-#
-# # Close file
-# fclose(fid);
+            nifti_file = helper_file_list[nifti_index]
+            # Read json file
+            _, _, jsonInfo = read_nii(os.path.join(helper_path, nifti_file))
+
+            # Create future folder name
+            acquisition_numbers.append(jsonInfo['SeriesNumber'])
+            acquisition_names.append(jsonInfo['SeriesDescription'])
+            # Modality could be used as acquisition name
+            modality.append(jsonInfo['Modality'])
+
+    # Remove
+    acquisition_numbers, ia = np.unique(acquisition_numbers, return_index=True)
+    acquisition_names_short = []
+    modality_short = []
+    for iAcq in ia:
+        acquisition_names_short.append(acquisition_names[iAcq])
+        modality_short.append(modality[iAcq])
+
+    # Folder where the niftis will be stored
+    output_dir = os.path.join(nifti_path, 'code')
+
+    for iAcq in range(len(acquisition_names_short)):
+        # Create a config.json file, place it in nifti_path / code
+        config_file_path = create_config(output_dir, acquisition_numbers[iAcq], acquisition_names_short[iAcq], modality_short[iAcq])
+
+        # Call dcm2bids
+        if os.system('dcm2bids -d "' + unsorted_dicom_dir + '"' ' -o '  '"' + nifti_path + '"' ' -p '  '"' + participant + '"' ' -c ' + config_file_path) != 0:
+            print('Error: dcm2bids failed')
+
+
+def create_config(output_dir, acquisition_number, acquisition_name, modality):
+
+    # Create file name
+    name = str(acquisition_number) + '_' + str(acquisition_name) + '.json'
+    file_path = os.path.join(output_dir, name)
+
+    # Create file
+    fid = open(file_path, "w+")
+
+    # Write to file
+    fid.write('{\n')
+    fid.write('    "searchMethod": "fnmatch",\n')
+    fid.write('    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",\n')
+    fid.write('    "descriptions": [\n')
+    fid.write('        {\n')
+    fid.write('            "dataType": "' + name + '",\n')
+    fid.write('            "SeriesDescription": "' + name + '",\n')
+    fid.write('            "modalityLabel": "' + modality + '",\n')
+    fid.write('            "criteria": {\n')
+    fid.write('                "SeriesDescription": "' + acquisition_name + '",\n')
+    fid.write('                "SeriesNumber": "' + str(acquisition_number) + '"\n')
+    fid.write('              }\n')
+    fid.write('        }\n')
+    fid.write('    ]\n')
+    fid.write('}\n')
+
+    # Close file
+    fid.close()
+
+    return file_path
