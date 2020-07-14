@@ -4,6 +4,7 @@
 - download 2-echo phase fieldmap data
 - do the subtraction
 - unwrap phase difference
+- save wrapped and unwrapped plot of first X,Y volume as myplot.png in current directory
 """
 
 import os
