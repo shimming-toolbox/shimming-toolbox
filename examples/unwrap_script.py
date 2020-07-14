@@ -56,7 +56,7 @@ def main():
 
     # TODO: create mask (probably in script)
     # Call SCT or user defined mask
-    mask = np.ones(phase_diff.shape)
+    # mask = np.ones(phase_diff.shape)
 
     complex_array = nii_mag_e1.get_fdata() * np.exp(1j * phase_diff)
     affine = nii_phase_e1.affine
@@ -64,7 +64,7 @@ def main():
     # temp test
     # complex_array = complex_array[..., np.newaxis, np.newaxis]
     #
-    unwrapped_phase = unwrap_phase(complex_array, affine, unwrap_function, mask)
+    unwrapped_phase = unwrap_phase(complex_array, affine, unwrap_function)
     unwrapped_phase = np.real(unwrapped_phase)
 
     plt.figure(figsize=(10, 10))
