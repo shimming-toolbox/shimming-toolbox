@@ -51,6 +51,7 @@ def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase="
 
     # Add mask data and options if there is a mask provided
     if not np.any(mask == -1):
+        # TODO: Make sure values are either 1 or 0
         assert mask.shape == complex_array.shape, "Mask must be the same shape as the array"
         mask_nii = nib.Nifti1Image(mask, affine)
 
