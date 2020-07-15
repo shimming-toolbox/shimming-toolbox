@@ -37,6 +37,9 @@ def main():
 
     # Open phase data
     fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
+    if len(fname_phases) > 2:
+        raise IndexError('Phase data parsing is wrongly parsed')
+
     nii_phase_e1 = nib.load(fname_phases[0])
     nii_phase_e2 = nib.load(fname_phases[1])
 
@@ -44,9 +47,13 @@ def main():
     phase_diff = nii_phase_e2.get_fdata() - nii_phase_e1.get_fdata()
 
     # Open mag data
-    fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
-    nii_mag_e1 = nib.load(fname_phases[0])
-    nii_mag_e2 = nib.load(fname_phases[1])
+    fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
+
+    if len(fname_mags) > 2:
+        raise IndexError('Mag data parsing is wrongly parsed')
+
+    nii_mag_e1 = nib.load(fname_mags[0])
+    nii_mag_e2 = nib.load(fname_mags[1])
 
     # TODO: Convert to a function b0_map
     # phasediff: (matlab code for 2 echoes)
@@ -54,8 +61,8 @@ def main():
     # Z2(:,:,:) = mag_data(:,:,:,2).*exp(1i*ph_data(:,:,:,2));
     # atan2(imag(Z1(:,:,:).*conj(Z2(:,:,:))),real(Z1(:,:,:).*conj(Z2(:,:,:))));
     # Convert to radians (Assumes there are wraps)
-    phase_diff = - np.min(phase_diff) + phase_diff
-    phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
+
+    phase_diff = np.interp(phase_diff, [0, 4096], [-np.pi, np.pi])
 
     # TODO: create mask (probably in script)
     # Call SCT or user defined mask
@@ -63,11 +70,10 @@ def main():
 
     complex_array = nii_mag_e1.get_fdata() * np.exp(1j * phase_diff)
     affine = nii_phase_e1.affine
-    unwrap_function = "prelude"
     # temp test
     # complex_array = complex_array[..., np.newaxis, np.newaxis]
     #
-    unwrapped_phase = unwrap_phase(complex_array, affine, unwrap_function)
+    unwrapped_phase = unwrap_phase(complex_array, affine, 'prelude')
     unwrapped_phase = np.real(unwrapped_phase)
 
     plt.figure(figsize=(10, 10))
@@ -80,7 +86,7 @@ def main():
     plt.title("Unwrapped")
     plt.colorbar()
     # plt.show()
-    plt.savefig("myplot.png")
+    plt.savefig("unwrap_phase_plot.png")
 
 
 if __name__ == '__main__':
