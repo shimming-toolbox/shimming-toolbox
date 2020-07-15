@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from zipfile import ZipFile
 import glob
+import requests
 
 import nibabel as nib
 
@@ -23,8 +24,11 @@ def main():
     # Download example data
     url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200709.zip'
     filename = 'data-testing.zip'
-    # TODO: replace with download function
-    os.system('curl -o {} -L {}'.format(filename, url))
+
+    # tried urllib.request.urlopen(url) but did not work, "certificate error"
+    r = requests.get(url)
+    open(filename, 'wb').write(r.content)
+
     with ZipFile(filename, 'r') as zipObj:
         # Extract all the contents of zip file in current directory
         zipObj.extractall()
