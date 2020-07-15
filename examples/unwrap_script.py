@@ -25,7 +25,6 @@ def main():
     url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200709.zip'
     filename = 'data-testing.zip'
 
-    # tried urllib.request.urlopen(url) but did not work, "certificate error"
     r = requests.get(url)
     open(filename, 'wb').write(r.content)
 
