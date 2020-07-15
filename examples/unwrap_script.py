@@ -62,7 +62,7 @@ def main():
     # atan2(imag(Z1(:,:,:).*conj(Z2(:,:,:))),real(Z1(:,:,:).*conj(Z2(:,:,:))));
     # Convert to radians (Assumes there are wraps)
 
-    phase_diff = np.interp(phase_diff, [0, 4096], [-np.pi, np.pi])
+    phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
 
     # TODO: create mask (probably in script)
     # Call SCT or user defined mask
