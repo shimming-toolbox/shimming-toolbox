@@ -1,4 +1,6 @@
 import os
+import subprocess
+
 import numpy as np
 from .read_nii import read_nii
 
@@ -23,36 +25,33 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
         which = 'which'
         copy = 'cp -r'
 
-    # Make sur dcm2niix is installed
-    if os.system(which + ' dcm2niix') != 0:
-        print('Error: dcm2niix is not installed.')
+    # Make sure dcm2niix is installed
+    subprocess.run(which + ' dcm2niix', check=True)
 
     # Make sure dcm2bids is installed
-    if os.system(which + ' dcm2bids') != 0:
-        raise Exception('Error: dcm2bids is not installed.')
+    subprocess.run(which + ' dcm2bids', check=True)
 
     # Create bids structure for data
     participant = ''
-    if os.system('dcm2bids_scaffold -o ' + nifti_path) != 0:
-        raise Exception('Error: dcm2bids_scaffold')
+    subprocess.run('dcm2bids_scaffold -o ' + nifti_path, check=True)
 
     # Add original data to nifti_path/sourcedata
+    # subprocess.run(copy + ' ' + unsorted_dicom_dir + ' ' + os.path.join(nifti_path, 'sourcedata'), check=True)
     if os.system(copy + ' ' + unsorted_dicom_dir + ' ' + os.path.join(nifti_path, 'sourcedata')) != 0:
         raise Exception('Error: copy')
 
     # Call the dcm2bids_helper
-    if os.system('dcm2bids_helper -d ' + unsorted_dicom_dir + ' -o ' + nifti_path) != 0:
-        raise Exception('Error: dcm2bids_helper')
+    subprocess.run('dcm2bids_helper -d ' + unsorted_dicom_dir + ' -o ' + nifti_path, check=True)
 
     # Check if there is data
     helper_path = os.path.join(nifti_path, 'tmp_dcm2bids', 'helper')
     if not os.path.isdir(helper_path):
-        raise Exception('Error: dcm2bids_helper could not create directory helper')
+        raise ValueError('dcm2bids_helper could not create directory helper')
 
     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
     helper_file_list = os.listdir(helper_path)
     if not helper_file_list:
-        raise Exception('No data to process')
+        raise ValueError('No data to process')
 
     # Create list of acquisitions
     acquisition_names = []
@@ -70,7 +69,7 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
             elif name + '.nii' in helper_file_list:
                 nifti_index = helper_file_list.index(name + '.nii')
             else:
-                print('Nifti file ' + name + ' not found')
+                raise TypeError('Nifti file "' + name + '" not found')
 
             nifti_file = helper_file_list[nifti_index]
             # Read json file
@@ -99,7 +98,7 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
 
         # Call dcm2bids
         if os.system('dcm2bids -d "' + unsorted_dicom_dir + '"' ' -o '  '"' + nifti_path + '"' ' -p '  '"' + participant + '"' ' -c ' + config_file_path) != 0:
-            print('Error: dcm2bids failed')
+            raise TypeError("The call to dcm2bids failed")
 
 
 def create_config(output_dir, acquisition_number, acquisition_name, modality):

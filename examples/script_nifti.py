@@ -4,15 +4,18 @@ import os
 import pathlib
 import shutil
 import sys
-from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
 import tempfile
 import urllib.request as ur
 from zipfile import ZipFile
 
+from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
+
 
 def main():
-    script_path = pathlib.Path(__file__).parent.absolute()  # Folder where this script is located
-    data_path = os.path.join(script_path, 'data-testing-r20200713')  # Folder where the data will be downloaded
+    # Folder where this script is located
+    script_path = pathlib.Path(__file__).parent.absolute()
+    # Folder where the data will be downloaded
+    data_path = os.path.join(script_path, 'data-testing-r20200713')
 
     # Download data when not already present
     if not os.path.isdir(data_path):
@@ -27,8 +30,6 @@ def main():
             print('Downloading test data from github')
         except IndexError:
             print("ERROR - {0}:{1}".format(sys.exc_info()[0], sys.exc_info()[1]))
-
-    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox)
 
     unsorted_dicom_path = os.path.join(data_path, 'dicom_unsorted')
     # Create temporary folder for processing
