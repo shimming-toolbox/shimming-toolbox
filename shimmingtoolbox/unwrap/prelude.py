@@ -8,9 +8,10 @@
 import numpy as np
 import os
 import nibabel as nib
+import subprocess
 
 
-def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase="./unwrapped_phase.nii",
+def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase='./unwrapped_phase.nii',
             is_unwrapping_in_2d=True, is_saving_nii=False):
     """wrapper to FSL prelude
 
@@ -40,42 +41,42 @@ def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase="
     #  to just pass entire nibabel object)
     phase_nii = nib.Nifti1Image(np.angle(complex_array), affine)
     mag_nii = nib.Nifti1Image(np.abs(complex_array), affine)
-    nib.save(phase_nii, os.path.join(data_save_directory, "rawPhase.nii"))
-    nib.save(mag_nii, os.path.join(data_save_directory, "mag.nii"))
+    nib.save(phase_nii, os.path.join(data_save_directory, 'rawPhase.nii'))
+    nib.save(mag_nii, os.path.join(data_save_directory, 'mag.nii'))
 
     # Fill options
-    options = " "
-
+    options = ' '
     if is_unwrapping_in_2d:
-        options += "-s "
+        options = '-s '
 
     # Add mask data and options if there is a mask provided
     if not np.any(mask == -1):
         # TODO: Make sure values are either 1 or 0
-        assert mask.shape == complex_array.shape, "Mask must be the same shape as the array"
+        if mask.shape != complex_array.shape:
+            raise Exception('Mask must be the same shape as the array')
         mask_nii = nib.Nifti1Image(mask, affine)
 
-        options += "-m "
-        options += os.path.join(data_save_directory, "mask.nii")
-        nib.save(mask_nii, os.path.join(data_save_directory, "mask.nii"))
+        options += '-m '
+        options += os.path.join(data_save_directory, 'mask.nii')
+        nib.save(mask_nii, os.path.join(data_save_directory, 'mask.nii'))
 
     # Unwrap
-    unwrap_command = "prelude -p {} -a {} -o {} {}".format(os.path.join(data_save_directory, "rawPhase"),
-                                                           os.path.join(data_save_directory, "mag"),
+    unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(data_save_directory, 'rawPhase'),
+                                                           os.path.join(data_save_directory, 'mag'),
                                                            path_2_unwrapped_phase, options)
-    os.system(unwrap_command)
+    subprocess.run(unwrap_command, shell=True, check=True)
 
     # Uncompress
-    os.system("gunzip " + path_2_unwrapped_phase + ".gz -df")
+    subprocess.run(['gunzip', path_2_unwrapped_phase + '.gz', '-df'], check=True)
     unwrapped_phase = nib.load(path_2_unwrapped_phase)
     unwrapped_phase = unwrapped_phase.get_fdata()
 
     # Delete temporary files according to options
     if not is_saving_nii:
-        os.remove(os.path.join(data_save_directory, "mag.nii"))
-        os.remove(os.path.join(data_save_directory, "rawPhase.nii"))
-        os.remove(os.path.join(data_save_directory, "unwrapped_phase.nii"))
+        os.remove(os.path.join(data_save_directory, 'mag.nii'))
+        os.remove(os.path.join(data_save_directory, 'rawPhase.nii'))
+        os.remove(os.path.join(data_save_directory, 'unwrapped_phase.nii'))
         if not np.any(mask == -1):
-            os.remove(os.path.join(data_save_directory, "mask.nii"))
+            os.remove(os.path.join(data_save_directory, 'mask.nii'))
 
     return unwrapped_phase
