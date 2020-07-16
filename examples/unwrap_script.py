@@ -64,8 +64,6 @@ def main():
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])
 
-
-
     # TODO: create mask (probably in script)
     # Call SCT or user defined mask
     # mask = np.ones(phase_diff.shape)
