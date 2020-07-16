@@ -46,6 +46,15 @@ def main():
     # Subtract phase
     phase_diff = nii_phase_e2.get_fdata() - nii_phase_e1.get_fdata()
 
+    # TODO: Convert to a function b0_map
+    # phasediff: (matlab code for 2 echoes)
+    # Z1(:,:,:) = mag_data(:,:,:,1).*exp(1i*ph_data(:,:,:,1));
+    # Z2(:,:,:) = mag_data(:,:,:,2).*exp(1i*ph_data(:,:,:,2));
+    # atan2(imag(Z1(:,:,:).*conj(Z2(:,:,:))),real(Z1(:,:,:).*conj(Z2(:,:,:))));
+    # Convert to radians (Assumes there are wraps)
+
+    phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
+
     # Open mag data
     fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
 
@@ -55,14 +64,7 @@ def main():
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])
 
-    # TODO: Convert to a function b0_map
-    # phasediff: (matlab code for 2 echoes)
-    # Z1(:,:,:) = mag_data(:,:,:,1).*exp(1i*ph_data(:,:,:,1));
-    # Z2(:,:,:) = mag_data(:,:,:,2).*exp(1i*ph_data(:,:,:,2));
-    # atan2(imag(Z1(:,:,:).*conj(Z2(:,:,:))),real(Z1(:,:,:).*conj(Z2(:,:,:))));
-    # Convert to radians (Assumes there are wraps)
 
-    phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
 
     # TODO: create mask (probably in script)
     # Call SCT or user defined mask
