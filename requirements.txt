@@ -1,7 +1,0 @@
-pytest==4.6.3
-pytest-cov==2.5.1
-nibabel==2.5.1
-
-shimmingtoolbox~=0.1
-setuptools~=49.1.0
-numpy~=1.19.0
