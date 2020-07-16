@@ -5,6 +5,7 @@
 .pytest_cache/
 .ipynb_checkpoints/
 .vscode/
+*.pyc
 .idea/
 
 # OS-related files/folders
