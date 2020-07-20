@@ -68,8 +68,9 @@ class TestCore(object):
         nii_phase_e1 = nib.load(fname_phases[0])
         nii_phase_e2 = nib.load(fname_phases[1])
 
-        # Subtract phase
-        phase_diff = nii_phase_e2.get_fdata() - nii_phase_e1.get_fdata()
+        # Scale to phase to radians
+        phase_e1 = nii_phase_e1.get_fdata() / 4096 * 2 * np.pi - np.pi
+        phase_e2 = nii_phase_e2.get_fdata() / 4096 * 2 * np.pi - np.pi
 
         # Open mag data
         fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
@@ -80,11 +81,15 @@ class TestCore(object):
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])
 
-        phase_diff = phase_diff / 4096 * 2 * np.pi - np.pi
+        unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1.get_fdata(), nii_phase_e1.affine)
+        unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2.get_fdata(), nii_phase_e1.affine)
 
-        complex_array = nii_mag_e1.get_fdata() * np.exp(1j * phase_diff)
-        affine = nii_phase_e1.affine
+        # Compute phase difference
+        unwrapped_phase = unwrapped_phase_e2 - unwrapped_phase_e1
 
-        unwrapped_phase = prelude(complex_array, affine)
+        # Compute wrapped phase diff
+        wrapped_phase = phase_e2 - phase_e1
 
-        assert(complex_array.shape == unwrapped_phase.shape)
+        assert(unwrapped_phase.shape == wrapped_phase.shape)
+
+# TODO: More thorough tests. (eg: Test for all different options, test error handling, etc)
