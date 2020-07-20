@@ -25,6 +25,9 @@ install:
   - pip install python-coveralls
 # command to run tests
 script:
+  - echo "Download testing data"
+  - st_download_data testing_data
+script:
   - echo "Launch general integrity test"
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 after_success:
