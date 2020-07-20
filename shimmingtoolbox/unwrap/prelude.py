@@ -11,7 +11,7 @@ import nibabel as nib
 import subprocess
 
 
-def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase='./unwrapped_phase.nii',
+def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_phase='./unwrapped_phase.nii',
             is_unwrapping_in_2d=True, is_saving_nii=False):
     """wrapper to FSL prelude
 
@@ -20,14 +20,15 @@ def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase='
     can optionally be saved.
 
     Args:
-        complex_array (numpy.ndarray): 3D complex values numpy array to perform phase unwrapping
+        wrapped_phase (numpy.ndarray): 3D radian numpy array to perform phase unwrapping
+        mag (numpy.ndarray): 3D magnitude numpy array corresponding to the phase array
         affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be acquired by :
             nii = nib.load("nii_path")
             affine = nii.affine
-        mask (numpy.ndarray): numpy array of booleans with shape of `complex_array` to mask during phase unwrapping
-        path_2_unwrapped_phase (string): relative or absolute path to output the nii unwrapped phase
-        is_unwrapping_in_2d (bool): prelude parameter to unwrap un 2d
-        is_saving_nii (bool): specify whether `complex_array`, `affine`, `mask` and `unwrapped_phase` nii files will be
+        mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase unwrapping
+        path_2_unwrapped_phase (string, optional): relative or absolute path to output the nii unwrapped phase
+        is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap un 2d
+        is_saving_nii (bool, optional): specify whether `complex_array`, `affine`, `mask` and `unwrapped_phase` nii files will be
         saved
 
     Returns:
@@ -37,10 +38,15 @@ def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase='
     abs_path = os.path.abspath(path_2_unwrapped_phase)
     data_save_directory = os.path.dirname(abs_path)
 
-    # Save complex image TODO: Save voxelSize when saving nifti (Maybe affine does it) (if it does, might be easier
-    #  to just pass entire nibabel object)
-    phase_nii = nib.Nifti1Image(np.angle(complex_array), affine)
-    mag_nii = nib.Nifti1Image(np.abs(complex_array), affine)
+    # Make sure phase and mag are the right shape
+    if wrapped_phase.ndim != 3:
+        raise Exception('wrapped_phase must be 3d')
+    if wrapped_phase.shape != mag.shape:
+        raise Exception('mag must be the same shape as wrapped_phase')
+
+    # Save phase and mag images
+    phase_nii = nib.Nifti1Image(wrapped_phase, affine)
+    mag_nii = nib.Nifti1Image(mag, affine)
     nib.save(phase_nii, os.path.join(data_save_directory, 'rawPhase.nii'))
     nib.save(mag_nii, os.path.join(data_save_directory, 'mag.nii'))
 
@@ -52,7 +58,7 @@ def prelude(complex_array, affine, mask=np.array([-1]), path_2_unwrapped_phase='
     # Add mask data and options if there is a mask provided
     if not np.any(mask == -1):
         # TODO: Make sure values are either 1 or 0
-        if mask.shape != complex_array.shape:
+        if mask.shape != wrapped_phase.shape:
             raise Exception('Mask must be the same shape as the array')
         mask_nii = nib.Nifti1Image(mask, affine)
 
