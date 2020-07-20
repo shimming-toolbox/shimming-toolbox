@@ -26,7 +26,7 @@ setup(
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        "click"
+        "click",
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
         "numpy~=1.19.0",
         "phantominator~=0.6.4",
