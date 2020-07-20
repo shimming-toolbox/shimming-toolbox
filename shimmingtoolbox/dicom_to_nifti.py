@@ -5,6 +5,8 @@ import os
 import subprocess
 from .read_nii import read_nii
 
+# TODO: check in unit test if dcm2bids_scaffold is installed, and also check for the required version.
+
 
 def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
     """ Converts dicom files into nifti files by calling dcm2bids
