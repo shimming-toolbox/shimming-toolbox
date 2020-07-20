@@ -3,6 +3,14 @@ dist: bionic
 language: python
 python:
   - "3.7"
+  
+# limit tested branches
+# branches with PRs will only be tested once via https://docs.travis-ci.com/user/pull-requests,
+#  instead of twice: https://docs.travis-ci.com/user/pull-requests#double-builds-on-pull-requests
+# and master will be tested after merges as a double-check
+branches:
+  only:
+  - master
 
 # command to install dependencies
 install:
