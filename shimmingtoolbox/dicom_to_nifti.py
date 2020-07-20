@@ -50,7 +50,7 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
         nifti = str(niftis[0])
 
         # Read json file
-        _, _, json_data = read_nii(os.path.join(helper_path, nifti))
+        _, json_data = read_nii(os.path.join(helper_path, nifti))
 
         # Create future folder name
         acquisition_numbers.append(json_data['SeriesNumber'])
