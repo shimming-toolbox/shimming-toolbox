@@ -10,7 +10,7 @@ install:
   - sudo apt-get update
   - sudo apt-get install -y dcm2niix
   - pip install -e .[testing]
-  - pip install python-coveralls  # Add me to install python-coveralls
+  - pip install python-coveralls
 # command to run tests
 script:
   - echo "Launch general integrity test"
