@@ -142,7 +142,7 @@ def install_data(url, dest_folder, keep=False):
 
     tmp_file = download_data(url)
 
-    extraction_folder = tempfile.mkdtemp('st_download')
+    extraction_folder = tempfile.mkdtemp(prefix='st_download_')
 
     unzip(tmp_file, extraction_folder)
 
