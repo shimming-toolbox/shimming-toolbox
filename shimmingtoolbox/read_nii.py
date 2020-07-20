@@ -1,21 +1,23 @@
-import copy
 import json
 import math
 import nibabel as nib
 import numpy as np
 import os
 
-def read_nii(nii_path):
-    """ Reads a nifti file and returns image, info and json_data
+def read_nii(nii_path, return_image=False):
+    """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
-        nii_path (str): direct path to the .nii or .nii.gz file
+        nii_path (str): direct path to the .nii or .nii.gz file that is going to be read
+        return_image (:obj:`bool`, optional): Defines if the function should return `image`
 
     Returns:
+        info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
+        json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
+        image (ndarray): Image contained in the read nifti file. Siemens phase images are rescaled between 0 and 2pi.
 
     """
 
     info = nib.load(nii_path)
-    image = np.asanyarray(info.dataobj)
 
     # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
     json_path = nii_path.split('.nii')[0] + '.json'
@@ -25,14 +27,17 @@ def read_nii(nii_path):
     else:
         raise ValueError('Missing json file')
 
-    # NOTE: nib.load automatically scales the nifti and replaces scl_inter and scl_slope with 'nan'
-    # More info in the "Data scaling" section in https://nipy.org/nibabel/nifti_images.html
-    if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-            and (image_type(json_data) == 'phase'):
+    if return_image:
+        image = np.asanyarray(info.dataobj)
+        # NOTE: nib.load automatically scales the nifti and replaces scl_inter and scl_slope with 'nan' in the header
+        # More info in the "Data scaling" section in https://nipy.org/nibabel/nifti_images.html
+        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
+                and (image_type(json_data) == 'phase'):
 
-        image = rescale_siemens_phase(image)
-
-    return image, info, json_data
+            image = rescale_siemens_phase(image)
+        return info, json_data, image
+    else:
+        return info, json_data
 
 
 def image_type(json_data):
@@ -75,7 +80,7 @@ def image_type(json_data):
 
 
 def rescale_siemens_phase(image):
-    """ Rescales a siemens phase image
+    """ Rescales a siemens phase image between 0 and 2*pi
 
     Args:
         image (ndarray): Phase image from a siemens system with integer values from 0 to 4095
@@ -87,6 +92,6 @@ def rescale_siemens_phase(image):
 
     PHASE_SCALING_SIEMENS = 4096
 
-    img_rescaled = image * (math.pi / PHASE_SCALING_SIEMENS)
+    img_rescaled = image * (2*math.pi / PHASE_SCALING_SIEMENS)
 
     return img_rescaled

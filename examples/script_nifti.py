@@ -11,6 +11,8 @@ from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
 
 
 def main():
+    """ Loads testing data if not already present and call dcm2bids to convert dicoms into niftis in a temporary folder.
+    """
     # Folder where the data will be downloaded
     data_path = 'data-testing-r20200713'
 
@@ -35,7 +37,7 @@ def main():
 
         dicom_to_nifti(unsorted_dicom_path, nifti_path)
         print('Conversion from dicom to nifti done')
-        breakpoint()
+
 
 if __name__ == "__main__":
     main()
