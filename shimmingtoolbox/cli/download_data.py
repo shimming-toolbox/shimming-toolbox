@@ -8,7 +8,7 @@ from shimmingtoolbox.download import install_data
 
 
 dict_url = {
-    "sct_example_data":
+    "testing_data":
         ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip",
     ]
 }
@@ -27,7 +27,7 @@ def main(verbose, output, data):
     logging.info(f'{output}, {data}')
     url = dict_url[data]
     if output is None:
-        output = os.path.join(os.path.abspath(os.curdir))
+        output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output)
 
 
