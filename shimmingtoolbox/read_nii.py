@@ -30,12 +30,21 @@ def read_nii(nii_path):
     if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
             and (image_type(json_data) == 'phase'):
 
-        image, info = convert_siemens_phase(image, info)
+        image = rescale_siemens_phase(image)
 
     return image, info, json_data
 
 
 def image_type(json_data):
+    """ Returns the nifti image type indicated by the json file
+
+    Args:
+        json_data (dict): Contains the same fields as the json file corresponding to a nifti file
+
+    Returns:
+        img_type (str): Type of the image. It can take the values `phase`, `magnitude`.
+
+    """
 
     # Check that jsonData exists
     if not json_data:
@@ -65,11 +74,19 @@ def image_type(json_data):
         return img_type
 
 
-def convert_siemens_phase(image, info):
+def rescale_siemens_phase(image):
+    """ Rescales a siemens phase image
+
+    Args:
+        image (ndarray): Phase image from a siemens system with integer values from 0 to 4095
+
+    Returns:
+        img_rescaled (ndarray): Rescaled phase image with float values from -pi to pi
+
+    """
 
     PHASE_SCALING_SIEMENS = 4096
 
-    info_converted = copy.copy(info)
-    img_converted = image * (math.pi / PHASE_SCALING_SIEMENS)
+    img_rescaled = image * (math.pi / PHASE_SCALING_SIEMENS)
 
-    return img_converted, info_converted
+    return img_rescaled
