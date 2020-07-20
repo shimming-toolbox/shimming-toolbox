@@ -30,7 +30,9 @@ setup(
         "numpy~=1.19.0",
         "phantominator~=0.6.4",
         "nibabel~=3.1.1",
+        "requests"
         "scipy~=1.5.0",
+        "tqdm"
     ],
     extras_require={
         'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
