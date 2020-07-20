@@ -1,4 +1,5 @@
 from distutils.dir_util import copy_tree
+import json
 import numpy as np
 import os
 import subprocess
@@ -6,11 +7,11 @@ from .read_nii import read_nii
 
 
 def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
-    """ Converts dicom files into nifti files following bids convention
+    """ Converts dicom files into nifti files by calling dcm2bids
 
     Args:
-        unsorted_dicom_dir: path to the folder where the unsorted dicom files are stored
-        nifti_path: path to the folder where we want dcm2bids to store the nifti files
+        unsorted_dicom_dir (str): path to the folder where the unsorted dicom files are stored
+        nifti_path (str): path to the folder where we want dcm2bids to store the nifti files
 
     """
 
@@ -41,28 +42,21 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
     acquisition_numbers = []
     modality = []
 
-    # Create list containing all files
-    for iFile in range(len(helper_file_list)):
-        # If it's a json file
-        name, ext = os.path.splitext(helper_file_list[iFile])
-        if ext == '.json':
-            # Check for both .nii.gz and .nii
-            if name + '.nii.gz' in helper_file_list:
-                nifti_index = helper_file_list.index(name + '.nii.gz')
-            elif name + '.nii' in helper_file_list:
-                nifti_index = helper_file_list.index(name + '.nii')
-            else:
-                raise TypeError('Nifti file "' + name + '" not found')
+    # Create lists containing all acquisition names and numbers
+    for file in [file for file in helper_file_list if file.endswith(".json")]:
+        name, ext = os.path.splitext(file)
+        # Check for both.gz and .nii
+        niftis = [name + ext for ext in [".nii", ".nii.gz"] if (name + ext) in helper_file_list]
+        nifti = str(niftis[0])
 
-            nifti_file = helper_file_list[nifti_index]
-            # Read json file
-            _, _, json_data = read_nii(os.path.join(helper_path, nifti_file))
+        # Read json file
+        _, _, json_data = read_nii(os.path.join(helper_path, nifti))
 
-            # Create future folder name
-            acquisition_numbers.append(json_data['SeriesNumber'])
-            acquisition_names.append(json_data['SeriesDescription'])
-            # Modality could be used as acquisition name
-            modality.append(json_data['Modality'])
+        # Create future folder name
+        acquisition_numbers.append(json_data['SeriesNumber'])
+        acquisition_names.append(json_data['SeriesDescription'])
+        # Modality could be used as acquisition name
+        modality.append(json_data['Modality'])
 
     # Remove duplicates
     acquisition_numbers, ia = np.unique(acquisition_numbers, return_index=True)
@@ -85,30 +79,40 @@ def dicom_to_nifti(unsorted_dicom_dir, nifti_path):
 
 
 def create_config(output_dir, acquisition_number, acquisition_name, modality):
+    """ Creates a config.json file used by dcm2bids to sort the nifti files of a same acquisition into a same folder
 
+    Args:
+        output_dir (str): path to the folder where dcm2bids will store the acquisitions as a folder
+        acquisition_number (int): number of the acquisition
+        acquisition_name (str): name of the acquisition
+        modality (str): name of the modality used during the acquisition
+
+    Returns:
+        file_path: path to the folder where the nifti and json files corresponding to the acquisition have been stored
+
+    """
     # Define the config file name
     name = str(acquisition_number) + '_' + str(acquisition_name) + '.json'
     file_path = os.path.join(output_dir, name)
 
-    # Create file
-    config_file = open(file_path, "w+")
+    # Create a dictionary that will be used to write a config.json file
+    config = {
+        "searchMethod": "fnmatch",
+        "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
+        "descriptions": [{
+            "dataType": name,
+            "SeriesDescription": name,
+            "modalityLabel": modality,
+            "criteria": {
+                "SeriesDescription": acquisition_name,
+                "SeriesNumber": str(acquisition_number)
+            },
+        }],
+    }
 
-    # Write to file
-    config_file.write('{\n')
-    config_file.write('    "searchMethod": "fnmatch",\n')
-    config_file.write('    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",\n')
-    config_file.write('    "descriptions": [\n')
-    config_file.write('        {\n')
-    config_file.write('            "dataType": "' + name + '",\n')
-    config_file.write('            "SeriesDescription": "' + name + '",\n')
-    config_file.write('            "modalityLabel": "' + modality + '",\n')
-    config_file.write('            "criteria": {\n')
-    config_file.write('                "SeriesDescription": "' + acquisition_name + '",\n')
-    config_file.write('                "SeriesNumber": "' + str(acquisition_number) + '"\n')
-    config_file.write('              }\n')
-    config_file.write('        }\n')
-    config_file.write('    ]\n')
-    config_file.write('}\n')
+    # Create a config.json file that will be used by dcm2bids to separate the nifti files
+    with open(file_path, 'w') as config_file:
+        json.dump(config, config_file)
 
     # Close file
     config_file.close()

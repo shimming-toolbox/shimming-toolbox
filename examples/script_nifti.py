@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import pathlib
 import shutil
-import sys
 import tempfile
 from urllib.request import urlopen
 from zipfile import ZipFile
@@ -13,7 +11,6 @@ from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
 
 
 def main():
-
     # Folder where the data will be downloaded
     data_path = 'data-testing-r20200713'
 
@@ -39,7 +36,6 @@ def main():
         dicom_to_nifti(unsorted_dicom_path, nifti_path)
         print('Conversion from dicom to nifti done')
         breakpoint()
-
 
 if __name__ == "__main__":
     main()
