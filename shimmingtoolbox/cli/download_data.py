@@ -13,8 +13,10 @@ dict_url = {
     ]
 }
 
-
-@click.command()
+# TODO: display automatically the list of data avaialble from the dict above
+# TODO: wrap the help properly
+@click.command(help="Download data from the internet. The available datasets are:"
+                    "- testing_data: Light-weighted dataset for testing purpose.")
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
 @click.option("--output", help="Output folder.")
 @click.argument("data")
