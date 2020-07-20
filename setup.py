@@ -19,9 +19,9 @@ setup(
     keywords="",
     entry_points={
         'console_scripts': [
-            "shim-referencemaps=shimmingtoolbox.cli.referencemaps:main",
-            "shim-b0maps=shimmingtoolbox.cli.b0map:main",
-            "shim-download-data=shimmingtoolbox.cli.download_data:main"
+            "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
+            "st_b0maps=shimmingtoolbox.cli.b0map:main",
+            "st_download_data=shimmingtoolbox.cli.download_data:main"
         ]
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
