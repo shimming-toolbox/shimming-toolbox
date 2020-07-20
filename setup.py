@@ -30,7 +30,7 @@ setup(
         "numpy~=1.19.0",
         "phantominator~=0.6.4",
         "nibabel~=3.1.1",
-        "requests"
+        "requests",
         "scipy~=1.5.0",
         "tqdm"
     ],
