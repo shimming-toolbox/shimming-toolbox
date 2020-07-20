@@ -6,6 +6,9 @@
 .ipynb_checkpoints/
 .vscode/
 
+# Project's data
+testing_data
+
 # Pycharm stuff
 *.pyc
 .idea
