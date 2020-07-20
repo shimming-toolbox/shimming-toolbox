@@ -1,4 +1,3 @@
-
 # https://packaging.python.org/guides/single-sourcing-package-version/
 try:
     from importlib import metadata

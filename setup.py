@@ -17,10 +17,19 @@ setup(
     author="NeuroPoly Lab, Polytechnique Montreal",
     author_email="neuropoly@googlegroups.com",
     keywords="",
+    entry_points={
+        'console_scripts': [
+            "shim-referencemaps=shimmingtoolbox.cli.referencemaps:main",
+            "shim-b0maps=shimmingtoolbox.cli.b0map:main"
+        ]
+    },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
-        #"numpy~=1.16.0",
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
+        "numpy~=1.19.0",
+        "phantominator~=0.6.4",
+        "nibabel~=3.1.1",
+        "scipy~=1.5.0",
     ],
     extras_require={
         'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
