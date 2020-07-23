@@ -65,7 +65,7 @@ class TestCore(object):
 
         return phase_e1, phase_e2, nii_mag_e1.get_fdata(), nii_mag_e2.get_fdata(), nii_phase_e1, nii_phase_e2
 
-    def test_prelude_default_works(self):
+    def test_default_works(self):
         # Get the phase, mag and affine matrices
         phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
 
@@ -81,9 +81,8 @@ class TestCore(object):
 
         assert (unwrapped_phase.shape == wrapped_phase.shape)
 
-    # TODO: More thorough tests. (eg: Test for all different options, test error handling, etc)
-
-    def test_prelude_non_default_path(self):
+    def test_non_default_path(self):
+        # Get the phase, mag and affine matrices
         phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
 
         unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine,
@@ -91,5 +90,36 @@ class TestCore(object):
                                      is_saving_nii=True)
 
         assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'data.nii')))
+
+    def test_non_default_mask(self):
+        # Get the phase, mag and affine matrices
+        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
+
+        # Create mask with all ones
+        mask = np.ones(phase_e1.shape)
+
+        # Call prelude with mask
+        unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine, mask)
+
+        # Make sure the phase is not 0. When there isn't a mask, the phase is 0
+        assert(unwrapped_phase_e1[5, 5, 5] != 0)
+
+    def test_wrong_size_mask(self):
+        # Get the phase, mag and affine matrices
+        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
+
+        # Create mask with wrong dimensions
+        mask = np.ones([4, 4, 4])
+
+        # Call prelude with mask
+        try:
+            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine, mask)
+        except Exception:
+            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nWrong dimensions for mask does not throw an error')
+        assert False
 
 
