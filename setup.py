@@ -33,7 +33,7 @@ setup(
         "nibabel~=3.1.1",
         "requests",
         "scipy~=1.5.0",
-        "tqdm"
+        "tqdm",
         'matplotlib~=3.1.2',
     ],
     extras_require={
