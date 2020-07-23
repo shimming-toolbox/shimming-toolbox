@@ -8,9 +8,8 @@ from shimmingtoolbox.download import install_data
 
 
 dict_url = {
-    "testing_data":
-        ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip",
-    ]
+    "testing_data": ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"],
+    "prelude": ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"]
 }
 
 # TODO: display automatically the list of data avaialble from the dict above
@@ -24,6 +23,7 @@ def main(verbose, output, data):
     """
     Download data from the internet.
     """
+    # TODO: logging does not seem to output on the terminal
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')

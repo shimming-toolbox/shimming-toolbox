@@ -81,7 +81,8 @@ def download_data(urls):
 
 def unzip(compressed, dest_folder):
     """
-    Extract compressed file to the dest_folder. Can handle .zip, .tar.gz.
+    Extract compressed file to the dest_folder. Can handle .zip, .tar.gz. If none of this extension is found, simply
+    copy the file in dest_folder.
     """
     logger.info('Unzip data to: %s' % dest_folder)
 
@@ -92,12 +93,14 @@ def unzip(compressed, dest_folder):
         if compressed.lower().endswith(format):
             break
     else:
-        raise TypeError('ERROR: The file %s is of wrong format' % (compressed,))
+        logger.info('File extension is not included in {}'.format(formats.keys()))
+        shutil.copy(compressed, dest_folder)
+        return
 
     try:
         open(compressed).extractall(dest_folder)
     except:
-        logging.error('ZIP package corrupted. Please try downloading again.', verbose, 'error')
+        logger.error('ZIP package corrupted. Please try downloading again.')
         raise
 
 
