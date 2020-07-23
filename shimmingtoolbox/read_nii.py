@@ -35,8 +35,9 @@ def read_nii(nii_path, return_image=False):
         # More info in the "Data scaling" section in https://nipy.org/nibabel/nifti_images.html
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
                 and (image_type(json_data) == 'phase'):
+            PHASE_SCALING_SIEMENS = 4096
+            image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
-            image = rescale_siemens_phase(image)
         return info, json_data, image
     else:
         return info, json_data
@@ -79,21 +80,3 @@ def image_type(json_data):
                 raise ValueError('Unknown image type')
 
         return img_type
-
-
-def rescale_siemens_phase(image):
-    """ Rescales a siemens phase image between 0 and 2*pi
-
-    Args:
-        image (ndarray): Phase image from a siemens system with integer values from 0 to 4095
-
-    Returns:
-        img_rescaled (ndarray): Rescaled phase image with float values from -pi to pi
-
-    """
-
-    PHASE_SCALING_SIEMENS = 4096
-
-    img_rescaled = image * (2*math.pi / PHASE_SCALING_SIEMENS)
-
-    return img_rescaled
