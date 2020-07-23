@@ -13,5 +13,5 @@ def test_dicom_to_nifti():
         path_nifti = os.path.join(tmp, 'niftis')
         dicom_to_nifti(__dir_testing__, path_nifti)
         # Check if one of the file is created
-        assert os.path.exists(os.path.join(path_nifti, 'sub-', '6_a_gre_DYNshim.json', 'sub-_run-01_MR.nii.gz'))
+        assert os.path.exists(os.path.join(path_nifti, 'sub-', '6_a_gre_DYNshim', 'sub-_run-01_MR.nii.gz'))
         # TODO: check if json is created, or maybe implement more sensitive test (e.g. integrity, etc.)
