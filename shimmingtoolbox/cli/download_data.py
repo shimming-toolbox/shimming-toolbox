@@ -6,14 +6,14 @@ import click
 
 from shimmingtoolbox.download import install_data
 
-
 dict_url = {
     "testing_data":
         ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip",
-    ]
+         ]
 }
 
-# TODO: display automatically the list of data avaialble from the dict above
+
+# TODO: display automatically the list of data available from the dict above
 # TODO: wrap the help properly
 @click.command(help="Download data from the internet. The available datasets are:"
                     "- testing_data: Light-weighted dataset for testing purpose.")
