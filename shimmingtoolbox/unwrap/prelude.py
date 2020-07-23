@@ -38,6 +38,11 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
     abs_path = os.path.abspath(path_2_unwrapped_phase)
     data_save_directory = os.path.dirname(abs_path)
 
+    # Make sure directory exists, if not create it
+    if not os.path.exists(data_save_directory):
+        print('\nCreating directory for unwrapped phase at {}'.format(data_save_directory))
+        os.mkdir(data_save_directory)
+
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim != 3:
         raise Exception('wrapped_phase must be 3d')
