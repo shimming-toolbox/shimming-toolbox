@@ -8,13 +8,11 @@ def read_nii(nii_path, return_image=False):
     """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
         nii_path (str): direct path to the .nii or .nii.gz file that is going to be read
-        return_image (:obj:`bool`, optional): Defines if the function should return `image`
-
+        return_image (:obj:`bool`, optional): Defines if the function should (True) or should not (False) return `image`
     Returns:
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
         json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
         image (ndarray): Image contained in the read nifti file. Siemens phase images are rescaled between 0 and 2pi.
-
     """
 
     info = nib.load(nii_path)
@@ -43,13 +41,10 @@ def read_nii(nii_path, return_image=False):
 
 def image_type(json_data):
     """ Returns the nifti image type indicated by the json file
-
     Args:
         json_data (dict): Contains the same fields as the json file corresponding to a nifti file
-
     Returns:
         img_type (str): Type of the image. It can take the values `phase`, `magnitude`.
-
     """
 
     # Check that jsonData exists
