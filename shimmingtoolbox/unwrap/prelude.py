@@ -1,8 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-"""prelude is a wrapper function to FSL Prelude
-
-
+"""
+Wrapper to FSL Prelude (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29)
 """
 
 import numpy as np
@@ -45,9 +44,9 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
 
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim != 3:
-        raise Exception('wrapped_phase must be 3d')
+        raise RuntimeError('wrapped_phase must be 3d')
     if wrapped_phase.shape != mag.shape:
-        raise Exception('mag must be the same shape as wrapped_phase')
+        raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
 
     # Save phase and mag images
     phase_nii = nib.Nifti1Image(wrapped_phase, affine)
@@ -64,7 +63,7 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
     if not np.any(mask == -1):
         # TODO: Make sure values are either 1 or 0
         if mask.shape != wrapped_phase.shape:
-            raise Exception('Mask must be the same shape as the array')
+            raise RuntimeError('Mask must be the same shape as wrapped_phase')
         mask_nii = nib.Nifti1Image(mask, affine)
 
         options += '-m '

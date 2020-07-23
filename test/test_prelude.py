@@ -7,8 +7,6 @@ import glob
 import nibabel as nib
 import numpy as np
 
-import pytest
-
 from shimmingtoolbox.unwrap import prelude
 
 
@@ -29,6 +27,8 @@ class TestCore(object):
         print(self.tmp_path)
         self.toolbox_path = self.test_path.parent
 
+        self.get_phases_mags_affines()
+
     def teardown(self):
         # Get the directory where this current file is saved
         print(self.full_path)
@@ -40,6 +40,9 @@ class TestCore(object):
             pass
 
     def get_phases_mags_affines(self):
+        """
+        Get the phase and mag images (as np.array) and affine matrices from the testing data.
+        """
         path_data = glob.glob(os.path.join(self.toolbox_path, 'testing_data*'))[0]
 
         # Open phase data
@@ -63,29 +66,36 @@ class TestCore(object):
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])
 
-        return phase_e1, phase_e2, nii_mag_e1.get_fdata(), nii_mag_e2.get_fdata(), nii_phase_e1, nii_phase_e2
+        self.phase_e1 = phase_e1
+        self.phase_e2 = phase_e2
+        self.mag_e1 = nii_mag_e1.get_fdata()
+        self.mag_e2 = nii_mag_e2.get_fdata()
+        self.affine_phase_e1 = nii_phase_e1.affine
+        self.affine_phase_e2 = nii_phase_e2.affine
 
     def test_default_works(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
+        """
+        Runs prelude and check output integrity.
+        :return:
+        """
         # default prelude call
-        unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
-        unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2, nii_phase_e1.affine)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
+        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2)
 
         # Compute phase difference
         unwrapped_phase = unwrapped_phase_e2 - unwrapped_phase_e1
 
         # Compute wrapped phase diff
-        wrapped_phase = phase_e2 - phase_e1
+        wrapped_phase = self.phase_e2 - self.phase_e1
 
         assert (unwrapped_phase.shape == wrapped_phase.shape)
 
     def test_non_default_path(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
-        unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine,
+        """
+        Check the output location
+        :return:
+        """
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1,
                                      path_2_unwrapped_phase=os.path.join(self.tmp_path, 'tmp', 'data.nii'),
                                      is_saving_nii=True)
 
@@ -94,29 +104,27 @@ class TestCore(object):
         assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'rawPhase.nii')))
 
     def test_non_default_mask(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
+        """
+        Check prelude function with input binary mask.
+        :return:
+        """
         # Create mask with all ones
-        mask = np.ones(phase_e1.shape)
+        mask = np.ones(self.phase_e1.shape)
 
         # Call prelude with mask
-        unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine, mask)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
         assert(unwrapped_phase_e1[5, 5, 5] != 0)
 
     def test_wrong_size_mask(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
         # Create mask with wrong dimensions
         mask = np.ones([4, 4, 4])
 
         # Call prelude with mask
         try:
-            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine, mask)
-        except Exception:
+            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
+        except RuntimeError:
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
 
@@ -125,15 +133,12 @@ class TestCore(object):
         assert False
 
     def test_wrong_phase_dimensions(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
         # Call prelude phase with wrong dimensions
         phase_e1 = np.ones([4, 4])
 
         try:
-            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
-        except Exception:
+            prelude(phase_e1, self.mag_e1, self.affine_phase_e1)
+        except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -142,15 +147,12 @@ class TestCore(object):
         assert False
 
     def test_wrong_mag_dimensions(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
         # Call prelude phase with wrong dimensions
-        nii_mag_e1 = np.ones([4, 4, 4])
+        mag_e1 = np.ones([4, 4, 4])
 
         try:
-            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
-        except Exception:
+            prelude(self.phase_e1, mag_e1, self.affine_phase_e1)
+        except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -159,16 +161,13 @@ class TestCore(object):
         assert False
 
     def test_wrong_mag_and_phase_dimensions(self):
-        # Get the phase, mag and affine matrices
-        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
-
         # Call prelude phase with wrong dimensions
-        nii_mag_e1 = np.ones([4, 4, 4])
-        nii_phase_e1 = np.ones([4, 4, 4])
+        mag_e1 = np.ones([4, 4, 4])
+        phase_e1 = np.ones([4])
 
         try:
-            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
-        except Exception:
+            prelude(phase_e1, mag_e1, self.affine_phase_e1)
+        except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
