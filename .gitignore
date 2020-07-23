@@ -5,8 +5,11 @@
 .pytest_cache/
 .ipynb_checkpoints/
 .vscode/
+
+# Pycharm stuff
 *.pyc
-.idea/
+.idea
+
 
 # OS-related files/folders
 __MACOSX/
