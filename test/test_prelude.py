@@ -90,6 +90,8 @@ class TestCore(object):
                                      is_saving_nii=True)
 
         assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'data.nii')))
+        assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'mag.nii')))
+        assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'rawPhase.nii')))
 
     def test_non_default_mask(self):
         # Get the phase, mag and affine matrices
