@@ -2,8 +2,6 @@
 
 from pathlib import Path
 import shutil
-import requests
-from zipfile import ZipFile
 import os
 import glob
 import nibabel as nib
@@ -29,36 +27,21 @@ class TestCore(object):
         if not self.tmp_path.exists():
             self.tmp_path.mkdir()
         print(self.tmp_path)
-
-        self.download_data()
+        self.toolbox_path = self.test_path.parent
 
     def teardown(self):
         # Get the directory where this current file is saved
         print(self.full_path)
         print(self.test_path)
-        print(self.test_path)
+        print(self.tmp_path)
 
         if self.tmp_path.exists():
             shutil.rmtree(self.tmp_path)
             pass
 
-    def download_data(self):
-        # Download example data
-        url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200709.zip'
-        filename = os.path.join(self.tmp_path, 'data-testing.zip')
-
-        r = requests.get(url)
-        open(filename, 'wb').write(r.content)
-
-        with ZipFile(filename, 'r') as zipObj:
-            # Extract all the contents of zip file in current directory
-            zipObj.extractall(path=self.tmp_path)
-        os.remove(filename)
-        # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
-
     @pytest.mark.unit
     def test_prelude_default_works(self):
-        path_data = glob.glob(os.path.join(self.tmp_path, 'data-test*'))[0]
+        path_data = glob.glob(os.path.join(self.toolbox_path, 'testing_data*'))[0]
 
         # Open phase data
         fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
