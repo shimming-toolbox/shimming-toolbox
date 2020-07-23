@@ -94,8 +94,8 @@ def create_config(output_dir, acquisition_number, acquisition_name, modality):
 
     """
     # Define the config file name
-    name = str(acquisition_number) + '_' + str(acquisition_name) + '.json'
-    file_path = os.path.join(output_dir, name)
+    name = str(acquisition_number) + '_' + acquisition_name
+    file_path = os.path.join(output_dir, name + '.json')
 
     # Create a dictionary that will be used to write a config.json file
     config = {
