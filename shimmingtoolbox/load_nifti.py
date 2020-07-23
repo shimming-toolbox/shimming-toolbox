@@ -10,8 +10,12 @@ logger = logging.getLogger(__name__)
 def load_nifti(file_path):
     """
     Load data from a NIFTI type file with dcm2bids.
-    :param file_path: file path for the data
-    :return: nifti data, info and json_info
+    Args:
+        file_path (str): absolute or relative path to the directory the acquisition data
+    Returns:
+        info (ndarray): List containing all information from every Nifti image
+        json_info (ndarray): List containing all information in JSON format from every Nifti image
+        niftis (ndarray): Array of all acquisition in time
     """
 
     if not os.path.exists(file_path):
@@ -20,7 +24,7 @@ def load_nifti(file_path):
     file_list = []
     [file_list.append(f) for f in os.listdir(file_path) if f not in file_list]
 
-    if len([f for f in file_list if os.path.isdir(f)]) != 1:
+    if not all([f for f in file_list if os.path.isdir(f)]):
         raise("Directories and files in input path")
     else:
         acquisitions = [f for f in file_list if os.path.isdir(f)]
@@ -51,7 +55,7 @@ def load_nifti(file_path):
     if n_echos <= 0:
         raise("No acquisition images in selected path {}".format(nifti_path))
 
-    _, info_init, _ = imutils.read_nii(nifti_list[1])
+    _, info_init, _ = read_nii(nifti_list[1])
 
     niftis = numpy.empty([info_init.x, info_init.y, info_init.z, n_echos, info_init.time], dtype = float)
     info = numpy.empty([n_echos], dtype = int)
@@ -59,10 +63,10 @@ def load_nifti(file_path):
 
     if len(info.ImageSize) == 3:
         for i_echo in range(n_echos):
-            niftis[:,:,:,i_echo,:], info[i_echo], json_info[i_echo] = imutils.read_nii(os.path.abspath(nifti_list[i_echo]))
+            info[i_echo], json_info[i_echo],  niftis[:,:,:,i_echo,:] = read_nii(os.path.abspath(nifti_list[i_echo]))
     else
         for i_echo in range(n_echos):
-            niftis[:, :, :, i_echo, :], info[i_echo], json_info[i_echo] = imutils.read_nii(os.path.abspath(nifti_list[i_echo]))
+            info[i_echo], json_info[i_echo], niftis[:, :, :, i_echo, :] = read_nii(os.path.abspath(nifti_list[i_echo]))
 
 if __name__ == "__main__":
     load_nifti("..")
