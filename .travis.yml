@@ -23,6 +23,8 @@ install:
 script:
   - echo "Download testing data"
   - st_download_data testing_data
+  - st_download_data prelude
+  - export prelude="`pwd`"/prelude/prelude
   - echo "Launch general integrity test"
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 after_success:
