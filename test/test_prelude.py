@@ -122,4 +122,54 @@ class TestCore(object):
         print('\nWrong dimensions for mask does not throw an error')
         assert False
 
+    def test_wrong_phase_dimensions(self):
+        # Get the phase, mag and affine matrices
+        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
 
+        # Call prelude phase with wrong dimensions
+        phase_e1 = np.ones([4, 4])
+
+        try:
+            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
+        except Exception:
+            # If an exception occurs, this is the desired behaviour
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nWrong dimensions for phase input')
+        assert False
+
+    def test_wrong_mag_dimensions(self):
+        # Get the phase, mag and affine matrices
+        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
+
+        # Call prelude phase with wrong dimensions
+        nii_mag_e1 = np.ones([4, 4, 4])
+
+        try:
+            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
+        except Exception:
+            # If an exception occurs, this is the desired behaviour
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nWrong dimensions for mag input')
+        assert False
+
+    def test_wrong_mag_and_phase_dimensions(self):
+        # Get the phase, mag and affine matrices
+        phase_e1, phase_e2, nii_mag_e1, nii_mag_e2, nii_phase_e1, nii_phase_e2 = self.get_phases_mags_affines()
+
+        # Call prelude phase with wrong dimensions
+        nii_mag_e1 = np.ones([4, 4, 4])
+        nii_phase_e1 = np.ones([4, 4, 4])
+
+        try:
+            prelude(phase_e1, nii_mag_e1, nii_phase_e1.affine)
+        except Exception:
+            # If an exception occurs, this is the desired behaviour
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nWrong dimensions both mag and phase input')
+        assert False
