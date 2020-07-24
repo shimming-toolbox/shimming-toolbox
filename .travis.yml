@@ -24,7 +24,9 @@ script:
   - echo "Download testing data"
   - st_download_data testing_data
   - st_download_data prelude
-  - PATH="`pwd`"/prelude:${PATH}
+  - prelude_path="`pwd`"/prelude
+  - chmod 777 ${prelude_path}/prelude
+  - PATH="${prelude_path}:${PATH}
   - export PATH
   - prelude -h
   - echo "Launch general integrity test"
