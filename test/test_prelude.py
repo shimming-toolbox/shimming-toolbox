@@ -74,14 +74,6 @@ class TestCore(object):
         self.affine_phase_e1 = nii_phase_e1.affine
         self.affine_phase_e2 = nii_phase_e2.affine
 
-    def test_command_line_prelude(self):
-        """
-        Run prelude from command line
-        Returns:
-
-        """
-        subprocess.run('prelude -h', shell=True)
-
     def test_default_works(self):
         """
         Runs prelude and check output integrity.
