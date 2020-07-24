@@ -79,10 +79,8 @@ class TestCore(object):
         :return:
         """
         # default prelude call
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1,
-                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
-        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2,
-                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
+        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2)
 
         # Compute phase difference
         unwrapped_phase = unwrapped_phase_e2 - unwrapped_phase_e1
