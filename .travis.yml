@@ -27,7 +27,7 @@ script:
   - st_download_data prelude
   - echo "Set up prelude"
   - prelude_path="`pwd`"/prelude
-  - chmod 777 ${prelude_path}/prelude
+  - chmod 500 ${prelude_path}/prelude
   - PATH=${prelude_path}:${PATH}
   - export PATH
   - FSLOUTPUTTYPE=NIFTI_GZ
