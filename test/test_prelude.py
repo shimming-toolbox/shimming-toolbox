@@ -79,8 +79,10 @@ class TestCore(object):
         :return:
         """
         # default prelude call
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
-        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1,
+                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2,
+                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
 
         # Compute phase difference
         unwrapped_phase = unwrapped_phase_e2 - unwrapped_phase_e1
@@ -112,7 +114,8 @@ class TestCore(object):
         mask = np.ones(self.phase_e1.shape)
 
         # Call prelude with mask
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask,
+                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
         assert(unwrapped_phase_e1[5, 5, 5] != 0)
@@ -123,7 +126,8 @@ class TestCore(object):
 
         # Call prelude with mask
         try:
-            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
+            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask,
+                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
@@ -137,7 +141,8 @@ class TestCore(object):
         phase_e1 = np.ones([4, 4])
 
         try:
-            prelude(phase_e1, self.mag_e1, self.affine_phase_e1)
+            prelude(phase_e1, self.mag_e1, self.affine_phase_e1,
+                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -151,7 +156,8 @@ class TestCore(object):
         mag_e1 = np.ones([4, 4, 4])
 
         try:
-            prelude(self.phase_e1, mag_e1, self.affine_phase_e1)
+            prelude(self.phase_e1, mag_e1, self.affine_phase_e1,
+                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -166,7 +172,8 @@ class TestCore(object):
         phase_e1 = np.ones([4])
 
         try:
-            prelude(phase_e1, mag_e1, self.affine_phase_e1)
+            prelude(phase_e1, mag_e1, self.affine_phase_e1,
+                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
