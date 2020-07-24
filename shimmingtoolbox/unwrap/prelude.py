@@ -85,7 +85,7 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
     if not is_saving_nii:
         os.remove(os.path.join(data_save_directory, 'mag.nii'))
         os.remove(os.path.join(data_save_directory, 'rawPhase.nii'))
-        os.remove(os.path.join(data_save_directory, 'unwrapped_phase.nii'))
+        os.remove(abs_path)
         if not np.any(mask == -1):
             os.remove(os.path.join(data_save_directory, 'mask.nii'))
 
