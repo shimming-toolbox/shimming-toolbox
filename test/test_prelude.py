@@ -6,6 +6,7 @@ import os
 import glob
 import nibabel as nib
 import numpy as np
+import subprocess
 
 from shimmingtoolbox.unwrap import prelude
 
@@ -72,6 +73,14 @@ class TestCore(object):
         self.mag_e2 = nii_mag_e2.get_fdata()
         self.affine_phase_e1 = nii_phase_e1.affine
         self.affine_phase_e2 = nii_phase_e2.affine
+
+    def test_command_line_prelude(self):
+        """
+        Run prelude from command line
+        Returns:
+
+        """
+        subprocess.run('prelude -h', shell=True)
 
     def test_default_works(self):
         """
