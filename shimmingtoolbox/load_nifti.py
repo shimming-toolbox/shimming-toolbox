@@ -22,17 +22,22 @@ def load_nifti(file_path):
         raise("Not an existing NIFTI path")
 
     file_list = []
-    [file_list.append(f) for f in os.listdir(file_path) if f not in file_list]
-
-    if not all([f for f in file_list if os.path.isdir(f)]):
-        raise("Directories and files in input path")
-    else:
-        acquisitions = [f for f in file_list if os.path.isdir(f)]
+    [file_list.append(os.path.join(file_path,f)) for f in os.listdir(file_path) if f not in file_list]
 
     nifti_path = ""
-    if acquisitions:
+    if all([os.path.isdir(f) for f in file_list]):
+        acquisitions = [f for f in file_list if os.path.isdir(f)]
+        print("Multiple acquisition directories in path. Choosing only one.")
+    elif all([os.path.isfile(f) for f in file_list]):
+        print("Acqusition directory given. Using acquisitions.")
+        nifti_path = file_path
+    else:
+        raise ("Directories and files in input path")
+
+
+    if not nifti_path:
         for i in range(len(acquisitions)):
-            print("{}:{}\n".format( i, file_list[i]))
+            print("{}:{}\n".format( i, os.path.basename(file_list[i])))
 
         select_acquisition = -1
         while 1:
@@ -43,13 +48,12 @@ def load_nifti(file_path):
             select_acquisition = int(input_resp)
 
             if (select_acquisition in range(len(acquisitions))):
+                print("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
                 break
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
-    else:
-        nifti_path = file_path
 
-    nifti_list = [f for f in os.listdir(os.path.abspath(nifti_path)) if f.endswith(".nii")]
+    nifti_list = [f for f in os.listdir(os.path.abspath(nifti_path)) if (f.endswith(".nii") or f.endswith(".nii.gz"))]
     n_echos = len(nifti_list)
 
     if n_echos <= 0:
@@ -64,9 +68,11 @@ def load_nifti(file_path):
     if len(info.ImageSize) == 3:
         for i_echo in range(n_echos):
             info[i_echo], json_info[i_echo],  niftis[:,:,:,i_echo,:] = read_nii(os.path.abspath(nifti_list[i_echo]))
-    else
+    else:
         for i_echo in range(n_echos):
             info[i_echo], json_info[i_echo], niftis[:, :, :, i_echo, :] = read_nii(os.path.abspath(nifti_list[i_echo]))
 
+
+
 if __name__ == "__main__":
-    load_nifti("..")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\test_nifti\\sub-")
