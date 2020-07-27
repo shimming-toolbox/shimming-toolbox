@@ -2,17 +2,16 @@
 # -*- coding: utf-8 -*-
 """ This script will:
 - download 2-echo phase fieldmap data
-- do the subtraction
 - unwrap phase difference
+- do the subtraction
 - save wrapped and unwrapped plot of first X,Y volume as myplot.png in current directory
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from zipfile import ZipFile
 import glob
-import requests
+import subprocess
 
 import nibabel as nib
 
@@ -22,20 +21,10 @@ from shimmingtoolbox.unwrap import prelude
 def main():
 
     # Download example data
-    url = 'https://github.com/shimming-toolbox/data-testing/archive/r20200709.zip'
-    filename = 'data-testing.zip'
-
-    r = requests.get(url)
-    open(filename, 'wb').write(r.content)
-
-    with ZipFile(filename, 'r') as zipObj:
-        # Extract all the contents of zip file in current directory
-        zipObj.extractall()
-    os.remove(filename)
-    # TODO: use systematic name for data-testing (could be in metadata of shimmingtoolbox
-    path_data = glob.glob('data-test*')[0]
+    subprocess.run(['st_download_data testing_data'], shell=True, check=True)
 
     # Open phase data
+    path_data = glob.glob(os.path.join('.', 'testing_data*'))[0]
     fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
     if len(fname_phases) > 2:
         raise IndexError('Phase data parsing is wrongly parsed')
@@ -65,7 +54,7 @@ def main():
 
     # TODO: create mask
     # Call SCT or user defined mask
-    # mask = np.ones(phase_diff.shape)
+    # mask = np.ones(phase_e1.shape)
 
     # Call prelude to unwrap the phase
     unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1.get_fdata(), nii_phase_e1.affine)
