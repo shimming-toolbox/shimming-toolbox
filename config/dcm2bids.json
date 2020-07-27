@@ -48,38 +48,110 @@
         },
         {
             "dataType": "fmap",
-            "SeriesDescription": "a_gre_DYNshim",
-            "modalityLabel": "mag",
+            "modalityLabel": "magnitude1",
             "criteria": {
                 "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"]
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
             }
         },
         {
             "dataType": "fmap",
-            "SeriesDescription": "a_gre_DYNshim",
-            "modalityLabel": "phase",
+            "modalityLabel": "magnitude2",
             "criteria": {
                 "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"]
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
             }
         },
         {
-            "dataType": "gre_field_mapping_PMUlog_mag",
-            "SeriesDescription": "gre_field_mapping_PMUlog",
-            "modalityLabel": "mag",
+            "dataType": "fmap",
+            "modalityLabel": "magnitude3",
             "criteria": {
-                "SeriesDescription": "gre_field_mapping_PMUlog",
-                "ImageType": ["*", "*", "M", "*"]
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "3"
             }
         },
         {
-            "dataType": "gre_field_mapping_PMUlog_phase",
-            "SeriesDescription": "gre_field_mapping_PMUlog",
-            "modalityLabel": "phase",
+            "dataType": "fmap",
+            "modalityLabel": "magnitude4",
             "criteria": {
-                "SeriesDescription": "gre_field_mapping_PMUlog",
-                "ImageType": ["*", "*", "P", "*", "*"]
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude5",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude6",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase3",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase4",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase5",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase6",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "6"
             }
         }
     ]
