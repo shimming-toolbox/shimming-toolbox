@@ -27,7 +27,7 @@ setup(
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
         "click",
-        "dcm2bids",
+        "dcm2bids==2.1.4",
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
         "numpy~=1.19.0",
         "phantominator~=0.6.4",
