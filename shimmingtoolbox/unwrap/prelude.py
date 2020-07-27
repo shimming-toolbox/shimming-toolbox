@@ -10,7 +10,7 @@ import nibabel as nib
 import subprocess
 
 
-def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_phase='./unwrapped_phase.nii',
+def prelude(wrapped_phase, mag, affine, mask=None, path_2_unwrapped_phase='./unwrapped_phase.nii',
             is_unwrapping_in_2d=True, is_saving_nii=False):
     """wrapper to FSL prelude
 
@@ -61,7 +61,7 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
         options = '-s '
 
     # Add mask data and options if there is a mask provided
-    if not np.any(mask == -1):
+    if mask is not None:
         if mask.shape != wrapped_phase.shape:
             raise RuntimeError('Mask must be the same shape as wrapped_phase')
         mask_nii = nib.Nifti1Image(mask, affine)
