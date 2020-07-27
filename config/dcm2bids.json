@@ -1,0 +1,86 @@
+{
+    "searchMethod": "fnmatch",
+    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
+    "descriptions": [
+        {
+            "dataType": "anat",
+            "modalityLabel": "T1w",
+            "criteria": {
+                "SeriesDescription": "*T1W_3D*"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "T2w",
+            "criteria": {
+                "SidecarFilename": "007*",
+                "EchoTime": 0.1
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "PD",
+            "criteria": {
+                "SeriesDescription": "*TSE*",
+                "EchoTime": 0.008
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "FLAIR",
+            "criteria": {
+                "SeriesDescription": "*FLAIR*"
+            }
+        },
+        {
+            "dataType": "dwi",
+            "modalityLabel": "dwi",
+            "criteria": {
+                "SeriesDescription": "*DWI*"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "SWI",
+            "criteria": {
+                "SeriesDescription": "*SWI*"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "SeriesDescription": "a_gre_DYNshim",
+            "modalityLabel": "mag",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"]
+            }
+        },
+        {
+            "dataType": "fmap",
+            "SeriesDescription": "a_gre_DYNshim",
+            "modalityLabel": "phase",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"]
+            }
+        },
+        {
+            "dataType": "gre_field_mapping_PMUlog_mag",
+            "SeriesDescription": "gre_field_mapping_PMUlog",
+            "modalityLabel": "mag",
+            "criteria": {
+                "SeriesDescription": "gre_field_mapping_PMUlog",
+                "ImageType": ["*", "*", "M", "*"]
+            }
+        },
+        {
+            "dataType": "gre_field_mapping_PMUlog_phase",
+            "SeriesDescription": "gre_field_mapping_PMUlog",
+            "modalityLabel": "phase",
+            "criteria": {
+                "SeriesDescription": "gre_field_mapping_PMUlog",
+                "ImageType": ["*", "*", "P", "*", "*"]
+            }
+        }
+    ]
+}
