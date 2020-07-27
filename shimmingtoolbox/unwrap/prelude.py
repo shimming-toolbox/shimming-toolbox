@@ -4,14 +4,15 @@
 Wrapper to FSL Prelude (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29)
 """
 
-import numpy as np
+import glob
 import os
 import nibabel as nib
+import pathlib
 import subprocess
+import tempfile
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, path_2_unwrapped_phase='./unwrapped_phase.nii',
-            is_unwrapping_in_2d=True, is_saving_nii=False):
+def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True, is_saving_nii=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -26,7 +27,6 @@ def prelude(wrapped_phase, mag, affine, mask=None, path_2_unwrapped_phase='./unw
             affine = nii.affine
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
-        path_2_unwrapped_phase (string, optional): relative or absolute path to output the nii unwrapped phase
         is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap in 2d
         is_saving_nii (bool, optional): specify whether `wrapped_phase`, `mag`, `affine`, `mask` and `unwrapped_phase`
                                         nii files will be saved
@@ -34,26 +34,20 @@ def prelude(wrapped_phase, mag, affine, mask=None, path_2_unwrapped_phase='./unw
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
     """
-    # Get absolute path
-    abs_path = os.path.abspath(path_2_unwrapped_phase)
-    data_save_directory = os.path.dirname(abs_path)
-
-    # Make sure directory exists, if not create it
-    if not os.path.exists(data_save_directory):
-        print('\nCreating directory for unwrapped phase at {}'.format(data_save_directory))
-        os.mkdir(data_save_directory)
-
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim != 3:
         raise RuntimeError('wrapped_phase must be 3d')
     if wrapped_phase.shape != mag.shape:
         raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
 
+    tmp = tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem)
+    path_tmp = tmp.name
+
     # Save phase and mag images
     phase_nii = nib.Nifti1Image(wrapped_phase, affine)
+    nib.save(phase_nii, os.path.join(path_tmp, 'rawPhase.nii'))
     mag_nii = nib.Nifti1Image(mag, affine)
-    nib.save(phase_nii, os.path.join(data_save_directory, 'rawPhase.nii'))
-    nib.save(mag_nii, os.path.join(data_save_directory, 'mag.nii'))
+    nib.save(mag_nii, os.path.join(path_tmp, 'mag.nii'))
 
     # Fill options
     options = ' '
@@ -67,26 +61,14 @@ def prelude(wrapped_phase, mag, affine, mask=None, path_2_unwrapped_phase='./unw
         mask_nii = nib.Nifti1Image(mask, affine)
 
         options += '-m '
-        options += os.path.join(data_save_directory, 'mask.nii')
-        nib.save(mask_nii, os.path.join(data_save_directory, 'mask.nii'))
+        options += os.path.join(path_tmp.name, 'mask.nii')
+        nib.save(mask_nii, os.path.join(path_tmp, 'mask.nii'))
 
     # Unwrap
-    unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(data_save_directory, 'rawPhase'),
-                                                           os.path.join(data_save_directory, 'mag'),
-                                                           path_2_unwrapped_phase, options)
+    unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(path_tmp, 'rawPhase'),
+                                                           os.path.join(path_tmp, 'mag'),
+                                                           os.path.join(path_tmp, 'rawPhase_unwrapped'), options)
     subprocess.run(unwrap_command, shell=True, check=True)
+    fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
-    # Uncompress
-    subprocess.run(['gunzip', path_2_unwrapped_phase + '.gz', '-df'], check=True)
-    unwrapped_phase = nib.load(path_2_unwrapped_phase)
-    unwrapped_phase = unwrapped_phase.get_fdata()
-
-    # Delete temporary files according to options
-    if not is_saving_nii:
-        os.remove(os.path.join(data_save_directory, 'mag.nii'))
-        os.remove(os.path.join(data_save_directory, 'rawPhase.nii'))
-        os.remove(abs_path)
-        if not np.any(mask == -1):
-            os.remove(os.path.join(data_save_directory, 'mask.nii'))
-
-    return unwrapped_phase
+    return nib.load(fname_phase_unwrapped).get_fdata()
