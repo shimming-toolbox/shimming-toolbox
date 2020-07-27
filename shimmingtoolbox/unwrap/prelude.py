@@ -15,20 +15,21 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
-    the complex image provided. 2D unwrapping can be turned off. The output path can be specified. THe temporary niis
+    the phase image provided. 2D unwrapping can be turned off. The output path can be specified. The temporary niis
     can optionally be saved.
 
     Args:
-        wrapped_phase (numpy.ndarray): 3D radian numpy array to perform phase unwrapping
+        wrapped_phase (numpy.ndarray): 3D radian numpy array to perform phase unwrapping. (2 pi interval)
         mag (numpy.ndarray): 3D magnitude numpy array corresponding to the phase array
-        affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be acquired by :
+        affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be calculated by using:
             nii = nib.load("nii_path")
             affine = nii.affine
-        mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase unwrapping
+        mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
+                                        unwrapping
         path_2_unwrapped_phase (string, optional): relative or absolute path to output the nii unwrapped phase
-        is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap un 2d
-        is_saving_nii (bool, optional): specify whether `complex_array`, `affine`, `mask` and `unwrapped_phase` nii files will be
-        saved
+        is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap in 2d
+        is_saving_nii (bool, optional): specify whether `wrapped_phase`, `mag`, `affine`, `mask` and `unwrapped_phase`
+                                        nii files will be saved
 
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
@@ -61,7 +62,6 @@ def prelude(wrapped_phase, mag, affine, mask=np.array([-1]), path_2_unwrapped_ph
 
     # Add mask data and options if there is a mask provided
     if not np.any(mask == -1):
-        # TODO: Make sure values are either 1 or 0
         if mask.shape != wrapped_phase.shape:
             raise RuntimeError('Mask must be the same shape as wrapped_phase')
         mask_nii = nib.Nifti1Image(mask, affine)
