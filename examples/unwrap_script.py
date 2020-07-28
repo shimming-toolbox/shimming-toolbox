@@ -12,7 +12,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import subprocess
-import logging
 
 import nibabel as nib
 
