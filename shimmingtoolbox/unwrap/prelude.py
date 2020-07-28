@@ -35,8 +35,8 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
     """
     # Make sure phase and mag are the right shape
-    if not((wrapped_phase.ndim == 2) or (wrapped_phase.ndim == 3)):
-        raise RuntimeError('wrapped_phase must be 2 or 3d')
+    if not wrapped_phase.ndim in [2, 3]:
+        raise RuntimeError('wrapped_phase must be 2d or 3d')
     if wrapped_phase.shape != mag.shape:
         raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
 
