@@ -13,7 +13,7 @@ import tempfile
 import logging
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True):
+def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -21,21 +21,21 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True):
     can optionally be saved.
 
     Args:
-        wrapped_phase (numpy.ndarray): 3D radian numpy array to perform phase unwrapping. (2 pi interval)
-        mag (numpy.ndarray): 3D magnitude numpy array corresponding to the phase array
-        affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be calculated by using:
+        wrapped_phase (numpy.ndarray): 2D or 3D radian numpy array to perform phase unwrapping. (2 pi interval)
+        mag (numpy.ndarray): 2D or 3D magnitude numpy array corresponding to the phase array
+        affine (numpy.ndarray): 2D array containing the transformation coefficients. Can be calculated by using:
             nii = nib.load("nii_path")
             affine = nii.affine
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
-        is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap in 2d
+        is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap slice by slice
 
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
     """
     # Make sure phase and mag are the right shape
-    if wrapped_phase.ndim != 3:
-        raise RuntimeError('wrapped_phase must be 3d')
+    if not((wrapped_phase.ndim == 2) or (wrapped_phase.ndim == 3)):
+        raise RuntimeError('wrapped_phase must be 2 or 3d')
     if wrapped_phase.shape != mag.shape:
         raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
 
