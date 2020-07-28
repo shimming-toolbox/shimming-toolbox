@@ -164,4 +164,4 @@ class TestCore(object):
         Call prelude with a threshold for masking
         """
         unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200)
-        assert(unwrapped_phase_e1.shape == self.phase_e1)
+        assert(unwrapped_phase_e1.shape == self.phase_e1.shape)
