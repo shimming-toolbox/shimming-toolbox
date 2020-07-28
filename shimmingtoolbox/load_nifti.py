@@ -5,30 +5,35 @@ import os
 import logging
 import numpy
 
+from shimmingtoolbox.read_nii import read_nii
+
 logger = logging.getLogger(__name__)
 
 def load_nifti(file_path):
     """
     Load data from a NIFTI type file with dcm2bids.
-    Args:
-        file_path (str): absolute or relative path to the directory the acquisition data
-    Returns:
-        info (ndarray): List containing all information from every Nifti image
-        json_info (ndarray): List containing all information in JSON format from every Nifti image
-        niftis (ndarray): Array of all acquisition in time
+    :param file_path: absolute or relative path to the directory the acquisition data
+    :return:    List containing all information from every Nifti image
+                List containing all information in JSON format from every Nifti image
+                5D array of all acquisition in time (x, y, z, time, echoe)
+
+    Note:
+        If 'path' is a folder containing niftis, directly output niftis. It 'path' is a folder containing acquisitions,
+        ask the user for which acquisition to use.
     """
 
     if not os.path.exists(file_path):
         raise("Not an existing NIFTI path")
 
     file_list = []
-    [file_list.append(os.path.join(file_path,f)) for f in os.listdir(file_path) if f not in file_list]
+    [file_list.append(os.path.join(file_path, f)) for f in os.listdir(file_path) if f not in file_list]
 
     nifti_path = ""
     if all([os.path.isdir(f) for f in file_list]):
         acquisitions = [f for f in file_list if os.path.isdir(f)]
         print("Multiple acquisition directories in path. Choosing only one.")
     elif all([os.path.isfile(f) for f in file_list]):
+        #TODO check if JSON available
         print("Acqusition directory given. Using acquisitions.")
         nifti_path = file_path
     else:
@@ -48,30 +53,33 @@ def load_nifti(file_path):
             select_acquisition = int(input_resp)
 
             if (select_acquisition in range(len(acquisitions))):
-                print("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
                 break
+            else:
+                print("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
-    nifti_list = [f for f in os.listdir(os.path.abspath(nifti_path)) if (f.endswith(".nii") or f.endswith(".nii.gz"))]
+    nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if (f.endswith(".nii") or f.endswith(".nii.gz"))]
     n_echos = len(nifti_list)
 
     if n_echos <= 0:
         raise("No acquisition images in selected path {}".format(nifti_path))
 
-    _, info_init, _ = read_nii(nifti_list[1])
+    _, _, img_init = read_nii(nifti_list[0])
 
-    niftis = numpy.empty([info_init.x, info_init.y, info_init.z, n_echos, info_init.time], dtype = float)
-    info = numpy.empty([n_echos], dtype = int)
-    json_info = numpy.empty([n_echos], dtype = str)
 
-    if len(info.ImageSize) == 3:
-        for i_echo in range(n_echos):
-            info[i_echo], json_info[i_echo],  niftis[:,:,:,i_echo,:] = read_nii(os.path.abspath(nifti_list[i_echo]))
-    else:
-        for i_echo in range(n_echos):
-            info[i_echo], json_info[i_echo], niftis[:, :, :, i_echo, :] = read_nii(os.path.abspath(nifti_list[i_echo]))
+    niftis = numpy.empty([img_init.shape[0], img_init.shape[1], img_init.shape[2], n_echos], dtype = float)
+    info = []
+    json_info = []
 
+    for i_echo in range(n_echos):
+        #TODO Check read_nii
+        tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
+        info.append(tmp_nii[0].header)
+        json_info.append(tmp_nii[1])
+        niftis[:, :, :, i_echo, :] = tmp_nii[2]
+
+    return niftis, info, json_info
 
 
 if __name__ == "__main__":
