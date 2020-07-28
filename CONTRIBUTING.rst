@@ -1,5 +1,5 @@
 Contributing to shimming-toolbox
-===================
+================================
 
 
 
@@ -223,7 +223,14 @@ syntax above so that the issue(s) will be closed upon merging the PR.
 PR Labels
 ~~~~~~~~~
 
-Add the labels that best describe your PR ('enhancement', 'documentation', etc...
+You **must** add labels to your PRs, as these are used to automatically generate Changelog:
+
+- **Category:** Choose **one** label that describes the `category <https://github.com/shimming-toolbox/shimming-toolbox-py/wiki/Label-definition#Category>`_ (purple labels).
+
+- **Shimming-toolbox Function:** Choose one or multiple labels corresponding to the files/functions that are mainly affected by the PR (light blue labels).
+
+- **Cross-compatibility:** If your PR breaks cross-compatibility with a previous stable release of SCT, you should add the label ``compatibility`` (orange label).
+
 
 
 Work in progress 
@@ -260,4 +267,8 @@ reviewers will be notified when you add them.
 
 Versioning
 ----------
---> TODO
+Versioning uses the following convention: MAJOR.MINOR.PATCH, where:
+
+PATCH version when there are backwards-compatible bug fixes or enhancements, without alteration to Python's modules or data/binaries. MINOR version when there are minor API changes or new functionality in a backwards-compatible manner, or when there are alteration to Python's modules or data/binaries (which requires to re-run installer for people working on the dev version), MAJOR version when there are major incompatible API changes, Beta releases follow the following convention:
+
+MAJOR.MINOR.PATCH-beta.x (with x = 0, 1, 2, etc.) Stable version is indicated in the file version.txt. For development version (on master), the version is "dev".
