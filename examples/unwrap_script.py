@@ -45,13 +45,6 @@ def main():
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])
 
-    # TODO: Convert to a function b0_map
-    # phasediff: (matlab code for 2 echoes)
-    # Z1(:,:,:) = mag_data(:,:,:,1).*exp(1i*ph_data(:,:,:,1));
-    # Z2(:,:,:) = mag_data(:,:,:,2).*exp(1i*ph_data(:,:,:,2));
-    # atan2(imag(Z1(:,:,:).*conj(Z2(:,:,:))),real(Z1(:,:,:).*conj(Z2(:,:,:))));
-    # Convert to radians (Assumes there are wraps)
-
     # TODO: create mask
     # Call SCT or user defined mask
     # mask = np.ones(phase_e1.shape)
