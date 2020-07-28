@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True, is_saving_nii=False):
+def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -28,8 +28,6 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True, is_
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
         is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap in 2d
-        is_saving_nii (bool, optional): specify whether `wrapped_phase`, `mag`, `affine`, `mask` and `unwrapped_phase`
-                                        nii files will be saved
 
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
@@ -44,10 +42,10 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True, is_
     path_tmp = tmp.name
 
     # Save phase and mag images
-    phase_nii = nib.Nifti1Image(wrapped_phase, affine)
-    nib.save(phase_nii, os.path.join(path_tmp, 'rawPhase.nii'))
-    mag_nii = nib.Nifti1Image(mag, affine)
-    nib.save(mag_nii, os.path.join(path_tmp, 'mag.nii'))
+    nii_phase = nib.Nifti1Image(wrapped_phase, affine)
+    nib.save(nii_phase, os.path.join(path_tmp, 'rawPhase.nii'))
+    nii_mag = nib.Nifti1Image(mag, affine)
+    nib.save(nii_mag, os.path.join(path_tmp, 'mag.nii'))
 
     # Fill options
     options = ' '
@@ -58,11 +56,11 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True, is_
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
             raise RuntimeError('Mask must be the same shape as wrapped_phase')
-        mask_nii = nib.Nifti1Image(mask, affine)
+        nii_mask = nib.Nifti1Image(mask, affine)
 
         options += '-m '
         options += os.path.join(path_tmp.name, 'mask.nii')
-        nib.save(mask_nii, os.path.join(path_tmp, 'mask.nii'))
+        nib.save(nii_mask, os.path.join(path_tmp, 'mask.nii'))
 
     # Unwrap
     unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(path_tmp, 'rawPhase'),
