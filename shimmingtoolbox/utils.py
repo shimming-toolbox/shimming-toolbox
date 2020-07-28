@@ -4,15 +4,29 @@
 
 import os
 import tqdm
+import subprocess
+import logging
+
+
+def run_subprocess(cmd):
+    """
+    Wrapper for subprocess.run() that enables to input cmd as a full string (easier for debugging).
+    Args:
+        cmd (string): full command to be run on the command line
+    """
+    logging.debug('{}'.format(cmd))
+    subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, text=True, check=True)
 
 
 def add_suffix(fname, suffix):
     """
     Add suffix between end of file name and extension.
 
-    :param fname: absolute or relative file name. Example: t2.nii
-    :param suffix: suffix. Example: _mean
-    :return: file name with suffix. Example: t2_mean.nii
+    Args:
+        fname: absolute or relative file name. Example: t2.nii
+        suffix: suffix. Example: _mean
+
+    :Return: file name with suffix. Example: t2_mean.nii
 
     Examples:
 
