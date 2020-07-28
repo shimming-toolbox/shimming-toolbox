@@ -10,6 +10,7 @@ import nibabel as nib
 import pathlib
 import subprocess
 import tempfile
+import logging
 
 
 def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True):
@@ -59,13 +60,15 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=True):
         nii_mask = nib.Nifti1Image(mask, affine)
 
         options += '-m '
-        options += os.path.join(path_tmp.name, 'mask.nii')
+        options += os.path.join(path_tmp, 'mask.nii')
         nib.save(nii_mask, os.path.join(path_tmp, 'mask.nii'))
 
     # Unwrap
     unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(path_tmp, 'rawPhase'),
                                                            os.path.join(path_tmp, 'mag'),
                                                            os.path.join(path_tmp, 'rawPhase_unwrapped'), options)
+    logging.info('Unwrap with prelude')
+    logging.debug('prelude command: %s', unwrap_command)
     subprocess.run(unwrap_command, shell=True, check=True)
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
