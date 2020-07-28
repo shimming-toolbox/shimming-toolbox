@@ -74,15 +74,8 @@ class TestCore(object):
         """
         # default prelude call
         unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
-        unwrapped_phase_e2 = prelude(self.phase_e2, self.mag_e2, self.affine_phase_e2)
 
-        # Compute phase difference
-        unwrapped_phase = unwrapped_phase_e2 - unwrapped_phase_e1
-
-        # Compute wrapped phase diff
-        wrapped_phase = self.phase_e2 - self.phase_e1
-
-        assert (unwrapped_phase.shape == wrapped_phase.shape)
+        assert (unwrapped_phase_e1.shape == self.phase_e1.shape)
 
     def test_non_default_mask(self):
         """
