@@ -8,9 +8,10 @@ import glob
 import os
 import nibabel as nib
 import pathlib
-import subprocess
 import tempfile
 import logging
+
+from shimmingtoolbox.utils import run_subprocess
 
 
 def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping_in_2d=False):
@@ -35,12 +36,12 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
     """
     # Make sure phase and mag are the right shape
-    if not wrapped_phase.ndim in [2, 3]:
+    if wrapped_phase.ndim not in [2, 3]:
         raise RuntimeError('wrapped_phase must be 2d or 3d')
     if wrapped_phase.shape != mag.shape:
         raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
 
-    tmp = tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem)
+    tmp = tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem)
     path_tmp = tmp.name
 
     # Save phase and mag images
@@ -50,9 +51,9 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
     nib.save(nii_mag, os.path.join(path_tmp, 'mag.nii'))
 
     # Fill options
-    options = ' '
+    options = ''
     if is_unwrapping_in_2d:
-        options = '-s '
+        options = ' -s'
 
     # Add mask data and options if there is a mask provided
     if mask is not None:
@@ -60,7 +61,7 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
             raise RuntimeError('Mask must be the same shape as wrapped_phase')
         nii_mask = nib.Nifti1Image(mask, affine)
 
-        options += '-m '
+        options += ' -m '
         options += os.path.join(path_tmp, 'mask.nii')
         nib.save(nii_mask, os.path.join(path_tmp, 'mask.nii'))
 
@@ -71,12 +72,12 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
                             'expected')
 
     # Unwrap
-    unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(path_tmp, 'rawPhase'),
-                                                           os.path.join(path_tmp, 'mag'),
-                                                           os.path.join(path_tmp, 'rawPhase_unwrapped'), options)
+    unwrap_command = 'prelude -p {} -a {} -o {}{}'.format(os.path.join(path_tmp, 'rawPhase'),
+                                                          os.path.join(path_tmp, 'mag'),
+                                                          os.path.join(path_tmp, 'rawPhase_unwrapped'), options)
     logging.info('Unwrap with prelude')
-    logging.debug('prelude command: %s', unwrap_command)
-    subprocess.run(unwrap_command, shell=True, check=True)
+    run_subprocess(unwrap_command)
+
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
     return nib.load(fname_phase_unwrapped).get_fdata()

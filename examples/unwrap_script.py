@@ -11,12 +11,12 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
-import subprocess
 import logging
 
 import nibabel as nib
 
 from shimmingtoolbox.unwrap import prelude
+from shimmingtoolbox.utils import run_subprocess
 
 
 def main():
@@ -24,7 +24,7 @@ def main():
     logging.basicConfig(level='INFO')
 
     # Download example data
-    subprocess.run(['st_download_data testing_data'], shell=True, check=True)
+    run_subprocess('st_download_data testing_data')
 
     # Open phase data
     path_data = glob.glob(os.path.join('.', 'testing_data*'))[0]
