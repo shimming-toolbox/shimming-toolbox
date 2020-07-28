@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import subprocess
+import logging
 
 import nibabel as nib
 
@@ -38,9 +39,6 @@ def main():
 
     # Open mag data
     fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
-
-    if len(fname_mags) > 2:
-        raise IndexError('Mag data parsing is wrongly parsed')
 
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])
