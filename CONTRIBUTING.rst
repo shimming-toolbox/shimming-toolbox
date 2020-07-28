@@ -227,7 +227,6 @@ You **must** add labels to your PRs, as these are used to automatically generate
 
 - **Category:** Choose **one** label that describes the `category <https://github.com/shimming-toolbox/shimming-toolbox-py/labels?q=bug+documentation+feature+enhancement+testing+installation>`_.
 
-- **Shimming-toolbox Function:** Choose one or multiple labels corresponding to the files/functions that are mainly affected by the PR (light blue labels).
 
 - **Cross-compatibility:** If your PR breaks cross-compatibility with a previous stable release of SCT, you should add the label ``compatibility`` (orange label).
 
