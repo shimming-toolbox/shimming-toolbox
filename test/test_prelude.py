@@ -16,7 +16,6 @@ class TestCore(object):
     def setup(self):
         # Get the directory where this current file is saved
         self.full_path = Path(__file__).resolve().parent
-        print(self.full_path)
         # "test/" directory
         self.test_path = self.full_path
 
@@ -25,17 +24,12 @@ class TestCore(object):
         self.tmp_path = self.test_path / '__tmp__'
         if not self.tmp_path.exists():
             self.tmp_path.mkdir()
-        print(self.tmp_path)
         self.toolbox_path = self.test_path.parent
 
         self.get_phases_mags_affines()
 
     def teardown(self):
-        # Get the directory where this current file is saved
-        print(self.full_path)
-        print(self.test_path)
-        print(self.tmp_path)
-
+        # Remove temporary files
         if self.tmp_path.exists():
             shutil.rmtree(self.tmp_path)
             pass
@@ -77,7 +71,6 @@ class TestCore(object):
     def test_default_works(self):
         """
         Runs prelude and check output integrity.
-        :return:
         """
         # default prelude call
         unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
@@ -91,30 +84,15 @@ class TestCore(object):
 
         assert (unwrapped_phase.shape == wrapped_phase.shape)
 
-    def test_non_default_path(self):
-        """
-        Check the output location
-        :return:
-        """
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1,
-                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'tmp', 'data.nii'),
-                                     is_saving_nii=True)
-
-        assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'data.nii')))
-        assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'mag.nii')))
-        assert (os.path.exists(os.path.join(self.tmp_path, 'tmp', 'rawPhase.nii')))
-
     def test_non_default_mask(self):
         """
         Check prelude function with input binary mask.
-        :return:
         """
         # Create mask with all ones
         mask = np.ones(self.phase_e1.shape)
 
-        # Call prelude with mask
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask,
-                                     path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+        # Call prelude with mask (is_unwrapping_in_2d is also used because it is significantly faster)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask, is_unwrapping_in_2d=True)
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
         assert(unwrapped_phase_e1[5, 5, 5] != 0)
@@ -125,8 +103,7 @@ class TestCore(object):
 
         # Call prelude with mask
         try:
-            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask,
-                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
@@ -140,8 +117,7 @@ class TestCore(object):
         phase_e1 = np.ones([4, 4])
 
         try:
-            prelude(phase_e1, self.mag_e1, self.affine_phase_e1,
-                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+            prelude(phase_e1, self.mag_e1, self.affine_phase_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -155,8 +131,7 @@ class TestCore(object):
         mag_e1 = np.ones([4, 4, 4])
 
         try:
-            prelude(self.phase_e1, mag_e1, self.affine_phase_e1,
-                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+            prelude(self.phase_e1, mag_e1, self.affine_phase_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -171,8 +146,7 @@ class TestCore(object):
         phase_e1 = np.ones([4])
 
         try:
-            prelude(phase_e1, mag_e1, self.affine_phase_e1,
-                    path_2_unwrapped_phase=os.path.join(self.tmp_path, 'data.nii'))
+            prelude(phase_e1, mag_e1, self.affine_phase_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -180,3 +154,14 @@ class TestCore(object):
         # If there isn't an error, then there is a problem
         print('\nWrong dimensions both mag and phase input')
         assert False
+
+    def test_phase_2d(self):
+        """
+        Call prelude with a 2D phase and mag array
+        """
+        # Get first slice
+        phase_e1_2d = self.phase_e1[:, :, 0]
+        mag_e1_2d = self.mag_e1[:, :, 0]
+        unwrapped_phase_e1 = prelude(phase_e1_2d, mag_e1_2d, self.affine_phase_e1)
+
+        assert(unwrapped_phase_e1.shape == phase_e1_2d.shape)
