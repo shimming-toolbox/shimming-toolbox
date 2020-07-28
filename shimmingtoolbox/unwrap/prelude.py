@@ -13,7 +13,7 @@ import tempfile
 import logging
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=False):
+def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -28,6 +28,7 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=False):
             affine = nii.affine
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
+        threshold: Threshold value for automatic mask generation (Use either mask or threshold, not both)
         is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap slice by slice
 
     Returns:
@@ -62,6 +63,12 @@ def prelude(wrapped_phase, mag, affine, mask=None, is_unwrapping_in_2d=False):
         options += '-m '
         options += os.path.join(path_tmp, 'mask.nii')
         nib.save(nii_mask, os.path.join(path_tmp, 'mask.nii'))
+
+    if threshold is not None:
+        options += ' -t {}'.format(threshold)
+        if mask is not None:
+            logging.warning('Specifying both a mask and a threshold is not recommended, results might not be what is '
+                            'expected')
 
     # Unwrap
     unwrap_command = 'prelude -p {} -a {} -o {} {}'.format(os.path.join(path_tmp, 'rawPhase'),

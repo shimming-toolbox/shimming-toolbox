@@ -6,7 +6,7 @@ import os
 import glob
 import nibabel as nib
 import numpy as np
-import subprocess
+import logging
 
 from shimmingtoolbox.unwrap import prelude
 
@@ -158,3 +158,10 @@ class TestCore(object):
         unwrapped_phase_e1 = prelude(phase_e1_2d, mag_e1_2d, self.affine_phase_e1)
 
         assert(unwrapped_phase_e1.shape == phase_e1_2d.shape)
+
+    def test_threshold(self):
+        """
+        Call prelude with a threshold for masking
+        """
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200)
+        assert(unwrapped_phase_e1.shape == self.phase_e1)

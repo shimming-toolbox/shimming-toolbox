@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 import subprocess
+import logging
 
 import nibabel as nib
 
@@ -19,6 +20,8 @@ from shimmingtoolbox.unwrap import prelude
 
 
 def main():
+
+    logging.basicConfig(level='INFO')
 
     # Download example data
     subprocess.run(['st_download_data testing_data'], shell=True, check=True)
@@ -48,7 +51,7 @@ def main():
 
     # Call prelude to unwrap the phase
     unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1.get_fdata(), nii_phase_e1.affine)
-    unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2.get_fdata(), nii_phase_e2.affine)
+    unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2.get_fdata(), nii_phase_e2.affine, threshold=200)
 
     # Plot results
     plt.figure(figsize=(10, 10))
