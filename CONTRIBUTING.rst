@@ -156,7 +156,7 @@ Licensing
 ~~~~~~~~~
 
 Ensure that you are the original author of your changes, and if that is not the case, ensure that the borrowed/adapted code is compatible with
-the `project's license`. --> tODO
+the `project's license <https://github.com/shimming-toolbox/shimming-toolbox-py/blob/master/LICENSE>`_. 
 
 
 Committing
