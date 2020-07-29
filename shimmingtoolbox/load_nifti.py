@@ -4,8 +4,9 @@
 import os
 import logging
 import numpy as np
+import nibabel
 
-from read_nii import read_nii
+from shimmingtoolbox.read_nii import read_nii
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,8 @@ def load_nifti(file_path):
         If 'path' is a folder containing niftis, directly output niftis. It 'path' is a folder containing acquisitions,
         ask the user for which acquisition to use.
     """
-
     if not os.path.exists(file_path):
-        raise("Not an existing NIFTI path")
+        raise RuntimeError("Not an existing NIFTI path")
 
     file_list = []
     [file_list.append(os.path.join(file_path, f)) for f in os.listdir(file_path) if f not in file_list]
@@ -37,7 +37,7 @@ def load_nifti(file_path):
         logging.info("Acqusition directory given. Using acquisitions.")
         nifti_path = file_path
     else:
-        raise ("Directories and files in input path")
+        raise RuntimeError("Directories and files in input path")
 
 
     if not nifti_path:
@@ -63,7 +63,7 @@ def load_nifti(file_path):
     n_echos = len(nifti_list)
 
     if n_echos <= 0:
-        raise("No acquisition images in selected path {}".format(nifti_path))
+        raise RuntimeError("No acquisition images in selected path {}".format(nifti_path))
 
     _, _, img_init = read_nii(nifti_list[0])
 
@@ -89,4 +89,4 @@ def load_nifti(file_path):
 
 
 if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\test_nifti\\sub-")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\test_nifti\\tt")
