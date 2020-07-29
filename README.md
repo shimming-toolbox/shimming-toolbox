@@ -14,18 +14,4 @@ or write it with `install --user` (for a user-local install) in order to be allo
 
 ## Development
 
-To set up a development environment, make sure python is installed, then run
-
-```
-$ pip install -e ".[testing]"
-```
-
-This will add the project folder to your python path and install the necessary dependencies to run tests.
-
-To run tests manually, do
-
-```
-$ pytest
-```
-
-See https://docs.pytest.org/ for more options.
+Please see the documentation for instructions on building and testing a [development version](docs/2_getting_started/1_installation.md) of shimming-toolbox-py.
