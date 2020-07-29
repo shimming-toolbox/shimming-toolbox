@@ -15,3 +15,7 @@ or write it with `install --user` (for a user-local install) in order to be allo
 ## Development
 
 Please see the documentation for instructions on building and testing a [development version](docs/2_getting_started/1_installation.md) of shimming-toolbox-py.
+
+## Contributing
+
+Please see our [contribution guidelines](docs/source/3_contributing/CONTRIBUTING.rst).
