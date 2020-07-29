@@ -73,10 +73,11 @@ Zsh
 Windows
 -------
 
-!!! note The shimming-toolbox-py installation instruction using the
-Miniconda have only been tested for Windows 10. Older versions of
-Windows may not be compatible with the tools required to run
-shimming-toolbox-py.
+.. NOTE ::
+   The shimming-toolbox-py installation instruction using the
+   Miniconda have only been tested for Windows 10. Older versions of
+   Windows may not be compatible with the tools required to run
+   shimming-toolbox-py.
 
 To install Miniconda, go to the `Miniconda installation
 website <https://conda.io/miniconda.html>`__ and click on the Python 3.x
@@ -158,11 +159,12 @@ that you followed the ``git clone`` instruction above:
    cd shimming-toolbox-py
    pip install -e ".[testing]"
 
-!!! note If you downloaded shimming-toolbox-py using the link above
-instead of ``git clone``, you may need to cd to a different folder
-(e.g. ``Downloads`` folder located within your home folder ``~``), and
-the shimming-toolbox-py folder may have a different name
-(e.g. ``shimming-toolbox-py-master``).
+.. NOTE ::
+   If you downloaded shimming-toolbox-py using the link above
+   instead of ``git clone``, you may need to cd to a different folder
+   (e.g. ``Downloads`` folder located within your home folder ``~``), and
+   the shimming-toolbox-py folder may have a different name
+   (e.g. ``shimming-toolbox-py-master``).
 
 Updating
 ^^^^^^^^

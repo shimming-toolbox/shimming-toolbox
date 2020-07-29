@@ -1,7 +1,8 @@
 .. figure:: ./_static/shimming_toolbox_logo.png
    :alt: logo
 
-!!! note This website is a work in progress.
+.. NOTE ::
+    This website is a work in progress.
 
 The ``shimming-toolbox`` is an open-source Python software package enabling
 a variety of MRI shimming (magnetic field homogenization) techniques
