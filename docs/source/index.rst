@@ -1,4 +1,4 @@
-.. figure:: ../_static/shimming_toolbox_logo.png
+.. figure:: ./_static/shimming_toolbox_logo.png
    :alt: logo
 
 !!! note This website is a work in progress.
@@ -10,3 +10,22 @@ such as
 and `real-time <https://doi.org/10.1002/mrm.27089>`__ shimming for use
 with standard manufacturer-supplied gradient/shim coils or with custom
 "multi-coil" arrays.
+
+.. toctree::
+   :maxdepth: 4
+   :glob:
+   :caption: Contents:
+
+   1_overview/*
+   2_getting_started/*
+   3_contributing/*
+   4_about/*
+   5_other-resources/hardware/*
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
