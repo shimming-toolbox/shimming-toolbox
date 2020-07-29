@@ -3,9 +3,9 @@
 
 import os
 import logging
-import numpy
+import numpy as np
 
-from shimmingtoolbox.read_nii import read_nii
+from read_nii import read_nii
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +31,10 @@ def load_nifti(file_path):
     nifti_path = ""
     if all([os.path.isdir(f) for f in file_list]):
         acquisitions = [f for f in file_list if os.path.isdir(f)]
-        print("Multiple acquisition directories in path. Choosing only one.")
+        logging.info("Multiple acquisition directories in path. Choosing only one.")
     elif all([os.path.isfile(f) for f in file_list]):
         #TODO check if JSON available
-        print("Acqusition directory given. Using acquisitions.")
+        logging.info("Acqusition directory given. Using acquisitions.")
         nifti_path = file_path
     else:
         raise ("Directories and files in input path")
@@ -42,7 +42,7 @@ def load_nifti(file_path):
 
     if not nifti_path:
         for i in range(len(acquisitions)):
-            print("{}:{}\n".format( i, os.path.basename(file_list[i])))
+            logging.info("{}:{}\n".format( i, os.path.basename(file_list[i])))
 
         select_acquisition = -1
         while 1:
@@ -55,7 +55,7 @@ def load_nifti(file_path):
             if (select_acquisition in range(len(acquisitions))):
                 break
             else:
-                print("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
+                logging.error("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
@@ -67,17 +67,23 @@ def load_nifti(file_path):
 
     _, _, img_init = read_nii(nifti_list[0])
 
-
-    niftis = numpy.empty([img_init.shape[0], img_init.shape[1], img_init.shape[2], n_echos], dtype = float)
     info = []
     json_info = []
-
-    for i_echo in range(n_echos):
-        #TODO Check read_nii
-        tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
-        info.append(tmp_nii[0].header)
-        json_info.append(tmp_nii[1])
-        niftis[:, :, :, i_echo, :] = tmp_nii[2]
+    niftis = np.empty([1,1], dtype=float)
+    if len(img_init.shape) == 3:
+        niftis = np.empty([img_init.shape[0], img_init.shape[1], img_init.shape[2], n_echos], dtype = float)
+        for i_echo in range(n_echos):
+            tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
+            info.append(tmp_nii[0].header)
+            json_info.append(tmp_nii[1])
+            niftis[:, :, :, i_echo] = tmp_nii[2]
+    else:
+        niftis = np.empty([img_init.shape[0], img_init.shape[1], img_init.shape[2], n_echos, img_init.shape[3]], dtype=float)
+        for i_echo in range(n_echos):
+            tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
+            info.append(tmp_nii[0].header)
+            json_info.append(tmp_nii[1])
+            niftis[:, :, :, i_echo, :] = tmp_nii[2]
 
     return niftis, info, json_info
 
