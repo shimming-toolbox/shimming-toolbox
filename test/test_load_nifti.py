@@ -9,6 +9,7 @@ import numpy as np
 import nibabel as nib
 import json
 
+from io import StringIO
 from shimmingtoolbox.load_nifti import load_nifti
 from pathlib import Path
 
@@ -85,11 +86,23 @@ class TestCore(object):
         self.toolbox_path = self.test_path.parent
 
         self.data_path = self.tmp_path / 'test_data'
+        self.data_path_2 = self.tmp_path / 'test_data_2'
         self.data_path.mkdir()
+        self.data_path_2.mkdir()
 
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy.nii'))
-        with open(os.path.join(self.data_path, 'data.json'), 'w') as json_file:
+        with open(os.path.join(self.data_path, 'dummy.json'), 'w') as json_file:
+            json.dump(self._json, json_file)
+        nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
+        with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
+            json.dump(self._json, json_file)
+
+        nib.save(dummy_data, os.path.join(self.data_path_2, 'dummy.nii'))
+        with open(os.path.join(self.data_path_2, 'dummy.json'), 'w') as json_file:
+            json.dump(self._json, json_file)
+        nib.save(dummy_data, os.path.join(self.data_path_2, 'dummy2.nii'))
+        with open(os.path.join(self.data_path_2, 'dummy2.json'), 'w') as json_file:
             json.dump(self._json, json_file)
 
 
@@ -102,4 +115,100 @@ class TestCore(object):
             shutil.rmtree(self.tmp_path)
             pass
 
+    def test_load_nifti_no_folder_fail(self):
+        """
+        Assert fails without existing path
+        :return:
+        """
+        try:
+            load_nifti("dummy")
+        except RuntimeError:
+            return 0
 
+        assert (False), "Did not fail if no valid path given"
+
+    def test_load_nifti_mix_file_types_fail(self):
+        """
+        Assert fails if folder and files in path
+        :return:
+        """
+        try:
+            load_nifti(self.toolbox_path)
+        except:
+            return 0
+
+        assert (False), "Did not fail with folder and files in the same path"
+
+    def test_load_nifti_folders(self, monkeypatch):
+        """
+        Assert that pass if path contains only folders
+        :return:
+        """
+        if self.data_path_2.exists():
+            shutil.rmtree(self.data_path_2)
+        os.remove(os.path.join(self.data_path, "dummy2.nii"))
+        os.remove(os.path.join(self.data_path, "dummy2.json"))
+        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
+        niftis, info, json_info = load_nifti(self.tmp_path)
+        assert (len(info) == 1), "Wrong number od info data"
+        assert (len(json_info) == 1), "Wrong number of JSON data"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (niftis.shape == (3, 3, 3, 1)), "Wrong shape for the Nifti output data"
+
+    def test_load_nifti_files(self):
+        """
+        Assert that pass if path contains only files
+        :return:
+        """
+        if self.data_path_2.exists():
+            shutil.rmtree(self.data_path_2)
+        os.remove(os.path.join(self.data_path, "dummy2.nii"))
+        os.remove(os.path.join(self.data_path, "dummy2.json"))
+        niftis, info, json_info = load_nifti(self.data_path)
+        assert (len(info) == 1), "Wrong number od info data"
+        assert (len(json_info) == 1), "Wrong number of JSON data"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (niftis.shape == (3, 3, 3, 1)), "Wrong shape for the Nifti output data"
+
+    def test_load_nifti_json_missing_fail(self):
+        """
+        Assert fails if json missing
+        :return:
+        """
+        os.remove(os.path.join(self.data_path, "dummy.json"))
+        try:
+            load_nifti(self.data_path)
+        except ValueError:
+            return 0
+
+        assert (False), "Did not fail with missing JSON file"
+
+    def test_load_nifti_multiple_echoes(self, monkeypatch):
+        """
+        Assert passes with correct data for multiple echoes
+        :return:
+        """
+        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
+        niftis, info, json_info = load_nifti(self.tmp_path)
+        assert (len(info) == 2), "Wrong number od info data 1"
+        assert (len(json_info) == 2), "Wrong number of JSON data 1"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON1"
+        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 1"
+        assert (niftis.shape == (3, 3, 3, 2)), "Wrong shape for the Nifti output data 1"
+
+        monkeypatch.setattr('sys.stdin', StringIO('1\n'))
+        niftis, info, json_info = load_nifti(self.tmp_path)
+        assert (len(info) == 2), "Wrong number od info data 2"
+        assert (len(json_info) == 2), "Wrong number of JSON data 2"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON 2"
+        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 2"
+        assert (niftis.shape == (3, 3, 3, 2)), "Wrong shape for the Nifti output data 2"
+
+    def test_load_nifti_quit(self, monkeypatch):
+        """
+        Assert q quits loading with return 0
+        :return:
+        """
+        monkeypatch.setattr('sys.stdin', StringIO('q\n'))
+        ret = load_nifti(self.tmp_path)
+        assert (ret == 0), "Should have returned 0 for quit input"
