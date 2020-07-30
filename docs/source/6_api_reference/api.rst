@@ -2,7 +2,7 @@
 API Reference
 =============
 
-The following section outlines the API of shimming-toolbox-py.
+The following section outlines the API of shimming-toolbox.
 
 .. automodule:: shimmingtoolbox.download
    :members:

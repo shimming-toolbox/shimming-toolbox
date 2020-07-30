@@ -1,13 +1,13 @@
 Installation
 ============
 
-We recommend that shimming-toolbox-py be used with
+We recommend that shimming-toolbox be used with
 `Miniconda <https://conda.io/docs/glossary.html#miniconda-glossary>`__,
 a lightweight version of the `Anaconda
 distribution <https://www.anaconda.com/distribution/>`__. Miniconda is
 typically used to create virtual Python environments, which provides a
 separation of installation dependencies between different Python
-projects. Although it is possible to install shimming-toolbox-py without
+projects. Although it is possible to install shimming-toolbox without
 Miniconda or virtual environments, we only provide instructions for this
 recommended installation setup.
 
@@ -74,10 +74,10 @@ Windows
 -------
 
 .. NOTE ::
-   The shimming-toolbox-py installation instruction using the
+   The shimming-toolbox installation instruction using the
    Miniconda have only been tested for Windows 10. Older versions of
    Windows may not be compatible with the tools required to run
-   shimming-toolbox-py.
+   shimming-toolbox.
 
 To install Miniconda, go to the `Miniconda installation
 website <https://conda.io/miniconda.html>`__ and click on the Python 3.x
@@ -89,13 +89,13 @@ installation options, we recommend you use the default settings.
 Git (optional)
 --------------
 
-Git is a software version control system. Because shimming-toolbox-py is
+Git is a software version control system. Because shimming-toolbox is
 hosted on GitHub, a service that hosts Git repositories, having Git
 installed on your system allows you to download the most up-to-date
-development version of shimming-toolbox-py from a terminal, and also
+development version of shimming-toolbox from a terminal, and also
 allows you to contribute to the project if you wish to do so.
 
-Although an optional step (shimming-toolbox-py can also be downloaded
+Although an optional step (shimming-toolbox can also be downloaded
 other ways, see below), if you want to install Git, please follow
 instructions for your operating system on the `Git
 website <https://git-scm.com/downloads>`__.
@@ -132,49 +132,49 @@ To switch back to your default environment, run:
 
    conda deactivate
 
-shimming-toolbox-py
--------------------
+shimming-toolbox
+----------------
 
 Development version
 ~~~~~~~~~~~~~~~~~~~
 
-To install the development version of shimming-toolbox-py, clone
-shimming-toolbox-py's repository (you will need to have Git installed on
+To install the development version of shimming-toolbox, clone
+shimming-toolbox's repository (you will need to have Git installed on
 your system):
 
 .. code:: bash
 
-   git clone https://github.com/shimming-toolbox/shimming-toolbox.git
+   git clone https://github.com/shimming-toolbox/shimming-toolbox-py.git
 
 If you don’t have Git installed, download and extract
-shimming-toolbox-py from this
-`link <https://github.com/shimming-toolbox/shimming-toolbox/archive/master.zip>`__.
+shimming-toolbox from this
+`link <https://github.com/shimming-toolbox/shimming-toolbox-py/archive/master.zip>`__.
 
-Then, in your Terminal, go to the shimming-toolbox-py folder and install
-the shimming-toolbox-py package. The following ``cd`` command assumes
+Then, in your Terminal, go to the shimming-toolbox folder and install
+the shimming-toolbox package. The following ``cd`` command assumes
 that you followed the ``git clone`` instruction above:
 
 .. code:: bash
 
-   cd shimming-toolbox-py
+   cd shimming-toolbox
    pip install -e ".[testing]"
 
 .. NOTE ::
-   If you downloaded shimming-toolbox-py using the link above
+   If you downloaded shimming-toolbox using the link above
    instead of ``git clone``, you may need to cd to a different folder
    (e.g. ``Downloads`` folder located within your home folder ``~``), and
-   the shimming-toolbox-py folder may have a different name
-   (e.g. ``shimming-toolbox-py-master``).
+   the shimming-toolbox folder may have a different name
+   (e.g. ``shimming-toolbox-master``).
 
 Updating
 ^^^^^^^^
 
-To update an already cloned shimming-toolbox-py package, pull the latest
+To update an already cloned shimming-toolbox package, pull the latest
 version of the project from GitHub and reinstall the application:
 
 .. code:: bash
 
-   cd shimming-toolbox-py
+   cd shimming-toolbox
    git pull
    pip install -e ".[testing]"
 
@@ -185,13 +185,13 @@ Comprehensive test
 ~~~~~~~~~~~~~~~~~~
 
 To run the entire testing suite, run ``pytest`` from the
-shimming-toolbox-py directory:
+shimming-toolbox directory:
 
 .. code:: bash
 
-   cd shimming-toolbox-py
+   cd shimming-toolbox
    pytest
 
 See https://docs.pytest.org/ for more options.
 
-If all tests pass, shimming-toolbox-py was installed successfully.
+If all tests pass, shimming-toolbox was installed successfully.
