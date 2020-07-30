@@ -25,3 +25,4 @@ with standard manufacturer-supplied gradient/shim coils or with custom
    3_contributing/*
    4_about/*
    5_other-resources/hardware/*
+   6_api_reference/api.rst
