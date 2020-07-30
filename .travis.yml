@@ -15,8 +15,12 @@ branches:
 # command to install dependencies
 install:
   - echo "Installation of the repository"
-  - sudo apt-get update
-  - sudo apt-get install -y dcm2niix
+  -
+  - # Install bleeding-edge dcm2niix
+  - curl -JLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
+  - unzip -o dcm2niix_lnx.zip
+  - sudo install dcm2nii* /usr/bin/
+  -
   - pip install -e .[testing]
   - pip install python-coveralls
 # command to run tests
