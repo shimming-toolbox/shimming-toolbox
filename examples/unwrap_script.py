@@ -9,7 +9,7 @@
 
 import os
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 import glob
 import logging
 
@@ -55,26 +55,22 @@ def main():
     unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2.get_fdata(), nii_phase_e2.affine, threshold=200)
 
     # Plot results
-    plt.figure(figsize=(10, 10))
-    plt.subplot(2, 2, 1)
-    plt.imshow(phase_e1[:-1, :-1, 0])
-    plt.title("Wrapped e1")
-    plt.subplot(2, 2, 2)
-    plt.imshow(phase_e2[:-1, :-1, 0])
-    plt.title("Wrapped e2")
-    plt.colorbar()
-
-    plt.subplot(2, 2, 3)
-    plt.imshow(unwrapped_phase_e1[:-1, :-1, 0])
-    plt.title("Unwrapped e1")
-    plt.colorbar()
-    plt.subplot(2, 2, 4)
-    plt.imshow(unwrapped_phase_e2[:-1, :-1, 0])
-    plt.title("Unwrapped e2")
-    plt.colorbar()
-
-    # plt.show()
-    plt.savefig("unwrap_phase_plot.png")
+    fig = Figure(figsize=(10, 10))
+    # FigureCanvas(fig)
+    ax = fig.add_subplot(2, 2, 1)
+    ax.imshow(phase_e1[:-1, :-1, 0])
+    ax.set_title("Wrapped e1")
+    ax = fig.add_subplot(2, 2, 2)
+    ax.imshow(phase_e2[:-1, :-1, 0])
+    ax.set_title("Wrapped e2")
+    ax = fig.add_subplot(2, 2, 3)
+    ax.imshow(unwrapped_phase_e1[:-1, :-1, 0])
+    ax.set_title("Unwrapped e1")
+    ax = fig.add_subplot(2, 2, 4)
+    ax.imshow(unwrapped_phase_e2[:-1, :-1, 0])
+    ax.set_title("Unwrapped e2")
+    # fig.colorbar()  # TODO: add
+    fig.savefig("unwrap_phase_plot.png")
 
 
 if __name__ == '__main__':
