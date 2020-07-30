@@ -21,7 +21,8 @@ setup(
         'console_scripts': [
             "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
-            "st_download_data=shimmingtoolbox.cli.download_data:main"
+            "st_download_data=shimmingtoolbox.cli.download_data:main",
+            "st_unwrap_script=examples.unwrap_script:main",
         ]
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
@@ -34,7 +35,8 @@ setup(
         "nibabel~=3.1.1",
         "requests",
         "scipy~=1.5.0",
-        "tqdm"
+        "tqdm",
+        'matplotlib~=3.1.2',
     ],
     extras_require={
         'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"],
