@@ -37,9 +37,9 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
     """
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
-        raise RuntimeError('wrapped_phase must be 2d or 3d')
+        raise RuntimeError("Wrapped_phase must be 2d or 3d")
     if wrapped_phase.shape != mag.shape:
-        raise RuntimeError('The magnitude image (mag) must be the same shape as wrapped_phase')
+        raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
 
     tmp = tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem)
     path_tmp = tmp.name
@@ -58,7 +58,7 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
     # Add mask data and options if there is a mask provided
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
-            raise RuntimeError('Mask must be the same shape as wrapped_phase')
+            raise RuntimeError("Mask must be the same shape as wrapped_phase")
         nii_mask = nib.Nifti1Image(mask, affine)
 
         options += ' -m '
