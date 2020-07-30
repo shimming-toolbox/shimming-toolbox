@@ -138,6 +138,8 @@ shimming-toolbox
 Development version
 ~~~~~~~~~~~~~~~~~~~
 
+Ensure that you have ``dcm2niix`` installed on your system.
+
 To install the development version of shimming-toolbox, clone
 shimming-toolbox's repository (you will need to have Git installed on
 your system):
