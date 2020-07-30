@@ -36,6 +36,7 @@ extensions = ["sphinx.ext.githubpages", "sphinx.ext.autodoc"]
 
 # Autodoc configuration
 autodoc_mock_imports=[
+    "click",
     "importlib-metadata",
     "numpy",
     "phantominator",
