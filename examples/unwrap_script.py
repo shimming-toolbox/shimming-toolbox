@@ -17,6 +17,7 @@ import nibabel as nib
 
 from shimmingtoolbox.unwrap import prelude
 from shimmingtoolbox.utils import run_subprocess
+from shimmingtoolbox import __dir_testing__
 
 
 def main():
@@ -27,7 +28,7 @@ def main():
     run_subprocess('st_download_data testing_data')
 
     # Open phase data
-    path_data = glob.glob(os.path.join('.', 'testing_data*'))[0]
+    path_data = __dir_testing__
     fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
     if len(fname_phases) > 2:
         raise IndexError('Phase data parsing is wrongly parsed')
