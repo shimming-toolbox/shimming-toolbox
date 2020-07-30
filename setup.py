@@ -26,6 +26,8 @@ setup(
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
     install_requires=[
+        "click",
+        "dcm2bids==2.1.4",
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
         "numpy~=1.19.0",
         "phantominator~=0.6.4",
@@ -35,6 +37,7 @@ setup(
         "tqdm"
     ],
     extras_require={
-        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
+        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"],
+        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
     },
 )

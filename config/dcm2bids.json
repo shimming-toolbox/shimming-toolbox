@@ -1,0 +1,158 @@
+{
+    "searchMethod": "fnmatch",
+    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
+    "descriptions": [
+        {
+            "dataType": "anat",
+            "modalityLabel": "T1w",
+            "criteria": {
+                "SeriesDescription": "*T1W_3D*"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "T2w",
+            "criteria": {
+                "SidecarFilename": "007*",
+                "EchoTime": 0.1
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "PD",
+            "criteria": {
+                "SeriesDescription": "*TSE*",
+                "EchoTime": 0.008
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "FLAIR",
+            "criteria": {
+                "SeriesDescription": "*FLAIR*"
+            }
+        },
+        {
+            "dataType": "dwi",
+            "modalityLabel": "dwi",
+            "criteria": {
+                "SeriesDescription": "*DWI*"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "SWI",
+            "criteria": {
+                "SeriesDescription": "*SWI*"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude3",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude4",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude5",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude6",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase3",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase4",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase5",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase6",
+            "criteria": {
+                "SeriesDescription": "a_gre_*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "6"
+            }
+        }
+    ]
+}
