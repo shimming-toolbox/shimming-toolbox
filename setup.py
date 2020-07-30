@@ -37,6 +37,7 @@ setup(
         "tqdm"
     ],
     extras_require={
-        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"]
+        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"],
+        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
     },
 )
