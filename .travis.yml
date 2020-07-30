@@ -27,6 +27,15 @@ install:
 script:
   - echo "Download testing data"
   - st_download_data testing_data
+  - echo "Download prelude"
+  - st_download_data prelude
+  - echo "Set up prelude"
+  - prelude_path="`pwd`"/prelude
+  - chmod 500 ${prelude_path}/prelude
+  - PATH=${prelude_path}:${PATH}
+  - export PATH
+  - FSLOUTPUTTYPE=NIFTI_GZ
+  - export FSLOUTPUTTYPE
   - echo "Launch general integrity test"
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 after_success:
