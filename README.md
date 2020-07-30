@@ -1,5 +1,6 @@
 # shimming-toolbox-py
-[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py)
+[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox-py/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest)
+
 
 Code for performing real-time shimming using external MRI shim coils
 
