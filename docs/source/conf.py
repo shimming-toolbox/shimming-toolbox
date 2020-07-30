@@ -34,6 +34,17 @@ author = "NeuroPoly Lab, Polytechnique Montreal"
 # ones.
 extensions = ["sphinx.ext.githubpages", "sphinx.ext.autodoc"]
 
+# Autodoc configuration
+autodoc_mock_imports=[
+    "importlib-metadata",
+    "numpy",
+    "phantominator",
+    "nibabel",
+    "requests",
+    "scipy",
+    "tqdm"
+]
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
 
