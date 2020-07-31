@@ -32,10 +32,10 @@ author = "NeuroPoly Lab, Polytechnique Montreal"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.githubpages", "sphinx.ext.autodoc"]
+extensions = ["sphinx.ext.githubpages", "sphinx.ext.napoleon"]
 
 # Autodoc configuration
-autodoc_mock_imports=[
+autodoc_mock_imports = [
     "click",
     "importlib-metadata",
     "numpy",
@@ -43,7 +43,7 @@ autodoc_mock_imports=[
     "nibabel",
     "requests",
     "scipy",
-    "tqdm"
+    "tqdm",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
