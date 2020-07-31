@@ -10,6 +10,7 @@
 import os
 import numpy as np
 from matplotlib.figure import Figure
+from matplotlib import cm
 import glob
 import logging
 
@@ -61,24 +62,30 @@ def main():
     fig = Figure(figsize=(10, 10))
     # FigureCanvas(fig)
     ax = fig.add_subplot(3, 2, 1)
-    ax.imshow(nii_mag_e1.get_fdata()[:-1, :-1, 0])
+    im = ax.imshow(nii_mag_e1.get_fdata()[:-1, :-1, 0])
+    fig.colorbar(im)
     ax.set_title("Mag e1")
     ax = fig.add_subplot(3, 2, 2)
-    ax.imshow(nii_mag_e2.get_fdata()[:-1, :-1, 0])
-    ax.set_title("Mag e1")
+    im = ax.imshow(nii_mag_e2.get_fdata()[:-1, :-1, 0])
+    fig.colorbar(im)
+    ax.set_title("Mag e2")
     ax = fig.add_subplot(3, 2, 3)
-    ax.imshow(phase_e1[:-1, :-1, 0])
+    im = ax.imshow(phase_e1[:-1, :-1, 0])
+    fig.colorbar(im)
     ax.set_title("Wrapped e1")
     ax = fig.add_subplot(3, 2, 4)
-    ax.imshow(phase_e2[:-1, :-1, 0])
+    im = ax.imshow(phase_e2[:-1, :-1, 0])
+    fig.colorbar(im)
     ax.set_title("Wrapped e2")
     ax = fig.add_subplot(3, 2, 5)
-    ax.imshow(unwrapped_phase_e1[:-1, :-1, 0])
+    im = ax.imshow(unwrapped_phase_e1[:-1, :-1, 0])
+    fig.colorbar(im)
     ax.set_title("Unwrapped e1")
     ax = fig.add_subplot(3, 2, 6)
-    ax.imshow(unwrapped_phase_e2[:-1, :-1, 0])
+    im = ax.imshow(unwrapped_phase_e2[:-1, :-1, 0])
+    fig.colorbar(im)
     ax.set_title("Unwrapped e2")
-    # fig.colorbar()  # TODO: add
+
     fig.savefig("unwrap_phase_plot.png")
 
 
