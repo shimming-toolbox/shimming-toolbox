@@ -10,7 +10,6 @@
 import os
 import numpy as np
 from matplotlib.figure import Figure
-from matplotlib import cm
 import glob
 import logging
 
