@@ -91,7 +91,7 @@ def load_nifti(path_data):
     return niftis, info, json_info
 
 
-def read_nii(nii_path, auto_scale=True):
+def read_nii(nii_path, auto_scale = True):
     """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
         nii_path (str): direct path to the .nii or .nii.gz file that is going to be read

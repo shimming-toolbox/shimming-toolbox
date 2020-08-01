@@ -80,7 +80,7 @@ class TestCore(object):
         self.full_path = Path(__file__).resolve().parent
         self.test_path = self.full_path
 
-        self.tmp_path = self.test_path / '__temp__'
+        self.tmp_path = self.test_path / '__temp_nifti__'
         if not self.tmp_path.exists():
             self.tmp_path.mkdir()
         self.toolbox_path = self.test_path.parent
@@ -153,7 +153,7 @@ class TestCore(object):
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
-        assert (niftis.shape == (3, 3, 3, 1)), "Wrong shape for the Nifti output data"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_files(self):
         """
@@ -168,7 +168,7 @@ class TestCore(object):
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
-        assert (niftis.shape == (3, 3, 3, 1)), "Wrong shape for the Nifti output data"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_json_missing_fail(self):
         """
@@ -194,7 +194,7 @@ class TestCore(object):
         assert (len(json_info) == 2), "Wrong number of JSON data 1"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON1"
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 1"
-        assert (niftis.shape == (3, 3, 3, 2)), "Wrong shape for the Nifti output data 1"
+        assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.tmp_path)
@@ -202,7 +202,7 @@ class TestCore(object):
         assert (len(json_info) == 2), "Wrong number of JSON data 2"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON 2"
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 2"
-        assert (niftis.shape == (3, 3, 3, 2)), "Wrong shape for the Nifti output data 2"
+        assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 2"
 
     def test_load_nifti_quit(self, monkeypatch):
         """
