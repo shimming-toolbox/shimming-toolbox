@@ -15,11 +15,18 @@ from pathlib import Path
 
 __testing_url__ = ""
 
+
 class TestCore(object):
     _data = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
                       [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                       [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
-    _aff  = np.array([[1,2,3,4],[5,6,7,8],[9,10,11,12],[13,14,15,16]])
+    _data_volume = np.array([[[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                            [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                            [[19, 20, 21], [22, 23, 24], [25, 26, 27]]],
+                            [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
+                            [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
+                            [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]])
+    _aff = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]])
     _json = {"Modality": "MR",
              "MagneticFieldStrength": 3,
              "ImagingFrequency": 123.259,
@@ -87,10 +94,13 @@ class TestCore(object):
 
         self.data_path = self.tmp_path / 'test_data'
         self.data_path_2 = self.tmp_path / 'test_data_2'
+        self.data_path_volume = self.tmp_path / 'test_data_volume'
         self.data_path.mkdir()
         self.data_path_2.mkdir()
+        self.data_path_volume.mkdir()
 
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
+        dummy_data_volume = nib.nifti1.Nifti1Image(dataobj=self._data_volume, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy.nii'))
         with open(os.path.join(self.data_path, 'dummy.json'), 'w') as json_file:
             json.dump(self._json, json_file)
@@ -103,6 +113,10 @@ class TestCore(object):
             json.dump(self._json, json_file)
         nib.save(dummy_data, os.path.join(self.data_path_2, 'dummy2.nii'))
         with open(os.path.join(self.data_path_2, 'dummy2.json'), 'w') as json_file:
+            json.dump(self._json, json_file)
+
+        nib.save(dummy_data_volume, os.path.join(self.data_path_volume, 'dummy_volume.nii'))
+        with open(os.path.join(self.data_path_volume, 'dummy_volume.json'), 'w') as json_file:
             json.dump(self._json, json_file)
 
 
@@ -125,7 +139,7 @@ class TestCore(object):
         except RuntimeError:
             return 0
 
-        assert (False), "Did not fail if no valid path given"
+        assert False, "Did not fail if no valid path given"
 
     def test_load_nifti_mix_file_types_fail(self):
         """
@@ -137,7 +151,7 @@ class TestCore(object):
         except:
             return 0
 
-        assert (False), "Did not fail with folder and files in the same path"
+        assert False, "Did not fail with folder and files in the same path"
 
     def test_load_nifti_folders(self, monkeypatch):
         """
@@ -162,6 +176,8 @@ class TestCore(object):
         """
         if self.data_path_2.exists():
             shutil.rmtree(self.data_path_2)
+        if self.data_path_volume.exists():
+            shutil.rmtree(self.data_path_volume)
         os.remove(os.path.join(self.data_path, "dummy2.nii"))
         os.remove(os.path.join(self.data_path, "dummy2.json"))
         niftis, info, json_info = load_nifti(self.data_path)
@@ -192,16 +208,20 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 2), "Wrong number od info data 1"
         assert (len(json_info) == 2), "Wrong number of JSON data 1"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON1"
-        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 1"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
+            "JSON file is not correctly loaded for first JSON1"
+        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
+            "JSON file is not correctly loaded for second JSON 1"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 2), "Wrong number od info data 2"
         assert (len(json_info) == 2), "Wrong number of JSON data 2"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for first JSON 2"
-        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded for second JSON 2"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
+            "JSON file is not correctly loaded for first JSON 2"
+        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
+            "JSON file is not correctly loaded for second JSON 2"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 2"
 
     def test_load_nifti_quit(self, monkeypatch):
@@ -212,3 +232,18 @@ class TestCore(object):
         monkeypatch.setattr('sys.stdin', StringIO('q\n'))
         ret = load_nifti(self.tmp_path)
         assert (ret == 0), "Should have returned 0 for quit input"
+
+    def test_load_nifti_volume(self):
+        """
+        Assert data containing volume is correctly parsed
+        :return:
+        """
+        if self.data_path_2.exists():
+            shutil.rmtree(self.data_path_2)
+        if self.data_path.exists():
+            shutil.rmtree(self.data_path)
+        niftis, info, json_info = load_nifti(self.data_path_volume)
+        assert (len(info) == 1), "Wrong number of info data"
+        assert (len(json_info) == 1), "Wrong number of JSON data"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (niftis.shape == (3, 3, 3, 1, 2)), "Wrong shape for the Nifti output data"

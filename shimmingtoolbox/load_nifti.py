@@ -11,6 +11,7 @@ import math
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
+
 def load_nifti(path_data):
     """
     Load data from a NIFTI type file with dcm2bids.
@@ -41,10 +42,10 @@ def load_nifti(path_data):
     else:
         raise RuntimeError("Directories and files in input path")
 
-
     if not nifti_path:
         for i in range(len(acquisitions)):
-            logging.info("{}:{}\n".format( i, os.path.basename(file_list[i])))
+            logging.info("{}:{}\n".format(i, os.path.basename(file_list[i])))
+            print("{}:{}\n".format(i, os.path.basename(file_list[i])))
 
         select_acquisition = -1
         while 1:
@@ -54,14 +55,14 @@ def load_nifti(path_data):
 
             select_acquisition = int(input_resp)
 
-            if (select_acquisition in range(len(acquisitions))):
+            if select_acquisition in range(len(acquisitions)):
                 break
             else:
                 logging.error("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
-    nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if (f.endswith(".nii") or f.endswith(".nii.gz"))]
+    nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
     n_echos = len(nifti_list)
 
     if n_echos <= 0:
@@ -72,26 +73,29 @@ def load_nifti(path_data):
     info = []
     json_info = []
     niftis = np.empty([1, 1], dtype=float)
+    print(info_init.shape)
     if info_init.ndim == 3:
-        niftis = np.empty([info_init.shape[0], info_init.shape[1], info_init.shape[2], n_echos, 1], dtype = float)
+        niftis = np.empty([info_init.shape[0], info_init.shape[1], info_init.shape[2], n_echos, 1], dtype=float)
         for i_echo in range(n_echos):
             tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
             info.append(tmp_nii[0].header)
             json_info.append(tmp_nii[1])
             niftis[:, :, :, i_echo, 0] = tmp_nii[2]
     else:
-        niftis = np.empty([info_init.shape[0], info_init.shape[1], info_init.shape[2], n_echos, info_init.shape[3], info_init.shape[3]], dtype=float)
+        niftis = np.empty([
+            info_init.shape[1], info_init.shape[2], info_init.shape[3],
+            n_echos, info_init.shape[0]], dtype=float)
         for i_echo in range(n_echos):
             tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
             info.append(tmp_nii[0].header)
             json_info.append(tmp_nii[1])
-            for i_volume in range(info_init.shape[3]):
-                niftis[:, :, :, i_echo, i_volume] = tmp_nii[2][:, :, :, i_volume]
+            for i_volume in range(info_init.shape[0]):
+                niftis[:, :, :, i_echo, i_volume] = tmp_nii[2][i_volume, :, :, :]
 
     return niftis, info, json_info
 
 
-def read_nii(nii_path, auto_scale = True):
+def read_nii(nii_path, auto_scale=True):
     """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
         nii_path (str): direct path to the .nii or .nii.gz file that is going to be read
@@ -112,9 +116,10 @@ def read_nii(nii_path, auto_scale = True):
     else:
         raise ValueError('Missing json file')
 
-    image = np.asanyarray(info.dataobj)
+    image = np.asarray(info.dataobj)
     if auto_scale:
-        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') and (image_type(json_data) == 'phase'):
+        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
+                and (image_type(json_data) == 'phase'):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
@@ -157,4 +162,4 @@ def image_type(json_data):
 
 
 if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\test_nifti\\sub-")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\shimming-toolbox-py\\test\\__temp_nifti__")
