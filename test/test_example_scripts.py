@@ -5,7 +5,7 @@ import shutil
 import os
 
 from examples import general_demo
-
+from shimmingtoolbox.utils import run_subprocess
 
 class TestCore(object):
 
@@ -30,6 +30,10 @@ class TestCore(object):
     def test_demo_script_outputs_figure(self):
 
         general_demo.main()
+        
+        # Degug
+        print(self.full_path)
+        run_subprocess('ls {}'.format(self.full_path))
 
         assert (os.path.isfile(self.fname_nifti))
         assert (os.path.isdir(self.path_nifti))
