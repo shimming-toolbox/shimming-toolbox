@@ -21,11 +21,6 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import dicom_to_nifti
 
 
-def scale_phase(phase_data, input_range, output_range):
-    # return np.substract(np.multiply(np.divide(phase_data, 4096.0), 2.0 * np.pi), np.pi)
-    return np.interp(phase_data, input_range, output_range)
-
-
 def main():
 
     logging.basicConfig(level='INFO')
@@ -45,8 +40,8 @@ def main():
     nii_phase_e2 = nib.load(fname_phases[1])
 
     # Scale phase to radians
-    phase_e1 = scale_phase(nii_phase_e1.get_fdata(), [0, 4096], [-np.pi, np.pi])
-    phase_e2 = scale_phase(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
+    phase_e1 = np.interp(nii_phase_e1.get_fdata(), [0, 4096], [-np.pi, np.pi])
+    phase_e2 = np.interp(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
 
     # Open mag data
     fname_mags = glob.glob(os.path.join(path_nifti, 'sub-01', 'fmap', '*magnitude*.nii.gz'))
