@@ -12,7 +12,6 @@ import json
 from io import StringIO
 from pathlib import Path
 from shimmingtoolbox.load_nifti import load_nifti
-from shimmingtoolbox import __dir_testing__
 
 class TestCore(object):
     _data = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -202,6 +201,8 @@ class TestCore(object):
         Assert passes with correct data for multiple echoes
         :return:
         """
+        if self.tmp_path.exists():
+            shutil.rmtree(self.data_path_volume)
         monkeypatch.setattr('sys.stdin', StringIO('0\n'))
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 2), "Wrong number od info data 1"
