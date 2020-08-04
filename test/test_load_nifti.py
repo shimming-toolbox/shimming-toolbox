@@ -10,11 +10,9 @@ import nibabel as nib
 import json
 
 from io import StringIO
-from shimmingtoolbox.load_nifti import load_nifti
 from pathlib import Path
-
-__testing_url__ = ""
-
+from shimmingtoolbox.load_nifti import load_nifti
+from shimmingtoolbox import __dir_testing__
 
 class TestCore(object):
     _data = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -33,7 +31,7 @@ class TestCore(object):
              "Manufacturer": "Siemens",
              "ManufacturersModelName": "Prisma_fit",
              "InstitutionName": "IUGM",
-             "InstitutionAddress": "Chemin_Queen-Mary_4565_Montreal_District_CA_H3W_1W5",
+             "InstitutionAddress": "",
              "DeviceSerialNumber": "167006",
              "StationName": "MRC35049",
              "BodyPartExamined": "BRAIN",
@@ -216,7 +214,7 @@ class TestCore(object):
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.tmp_path)
-        assert (len(info) == 2), "Wrong number od info data 2"
+        assert (len(info) == 2), "Wrong number of info data 2"
         assert (len(json_info) == 2), "Wrong number of JSON data 2"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON 2"
