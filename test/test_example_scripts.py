@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import os
 
-from shimmingtoolbox.utils import run_subprocess
+from examples import general_demo
 
 
 class TestCore(object):
@@ -29,7 +29,7 @@ class TestCore(object):
 
     def test_demo_script_outputs_figure(self):
 
-        run_subprocess('st_general_demo')
+        general_demo.main()
 
         assert (os.path.isfile(self.fname_nifti))
         assert (os.path.isdir(self.path_nifti))
