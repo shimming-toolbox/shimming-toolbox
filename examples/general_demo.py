@@ -3,7 +3,7 @@
 """ This script will:
 - download unsorted dicoms
 - run dcm2bids to convert to nifti with bids structure
-- unwrap phase difference
+- unwrap phase
 - save wrapped and unwrapped plot of first X,Y volume as myplot.png in current directory
 """
 
@@ -21,14 +21,15 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import dicom_to_nifti
 
 
-def main(path_output='./working_dir'):
+def main(path_output=os.path.join(os.path.curdir, 'output_dir')):
     """
     Args:
-        path_output: output directory to store data
+        path_output (str): Output directory to store data and results.
 
-    Return:
-        file name of output figure
+    Returns:
+        str: File name and path of output figure
     """
+
     logging.basicConfig(level='INFO')
 
     # Download example data
