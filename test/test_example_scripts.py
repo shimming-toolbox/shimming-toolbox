@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import os
 
-from examples import general_demo
+from examples.general_demo import general_demo
 
 
 class TestCore(object):
@@ -25,7 +25,7 @@ class TestCore(object):
 
     def test_demo_script_outputs_figure(self):
 
-        fname_nifti = general_demo.main(self.tmp_path)
+        fname_nifti = general_demo(self.tmp_path)
 
         assert (os.path.isfile(fname_nifti))
 
