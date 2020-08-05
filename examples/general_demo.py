@@ -95,7 +95,7 @@ def main(path_output='./working_dir'):
     fname_figure = os.path.join(path_output, 'unwrap_phase_plot.png')
     fig.savefig(fname_figure)
 
-    return
+    return fname_figure
 
 
 if __name__ == '__main__':
