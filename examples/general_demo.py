@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """ This script will:
-- download 2-echo phase fieldmap data
+- download unsorted dicoms
+- run dcm2bids to convert to nifti with bids structure
 - unwrap phase difference
-- do the subtraction
 - save wrapped and unwrapped plot of first X,Y volume as myplot.png in current directory
 """
 
@@ -21,16 +21,23 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import dicom_to_nifti
 
 
-def main():
+def main(path_output='./working_dir'):
+    """
+    Args:
+        path_output: output directory to store data
 
+    Return:
+        file name of output figure
+    """
     logging.basicConfig(level='INFO')
 
     # Download example data
-    run_subprocess('st_download_data testing_data')
+    path_testing_data = os.path.join(path_output, __dir_testing__)
+    run_subprocess('st_download_data {} --output {}'.format(__dir_testing__, path_testing_data))
 
     # Transfer from dicom to nifti
-    path_dicom_unsorted = os.path.join(__dir_testing__, 'dicom_unsorted')
-    path_nifti = os.path.join('.', 'niftis')
+    path_dicom_unsorted = os.path.join(path_testing_data, 'dicom_unsorted')
+    path_nifti = os.path.join(path_output, 'niftis')
     dicom_to_nifti(path_dicom_unsorted, path_nifti, subject_id='sub-01')
 
     # Open phase data
@@ -85,7 +92,10 @@ def main():
     fig.colorbar(im)
     ax.set_title("Unwrapped e2")
 
-    fig.savefig("unwrap_phase_plot.png")
+    fname_figure = os.path.join(path_output, 'unwrap_phase_plot.png')
+    fig.savefig(fname_figure)
+
+    return
 
 
 if __name__ == '__main__':
