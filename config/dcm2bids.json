@@ -153,6 +153,22 @@
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "6"
             }
+        },
+        {
+            "dataType": "rfmap",
+            "modalityLabel": "rfmap_mag",
+            "criteria": {
+                "SeriesDescription": "standard",
+                "ImageComments": "flip_angle_map*"
+            }
+        },
+        {
+            "dataType": "rfmap",
+            "modalityLabel": "rfmap_phase",
+            "criteria": {
+                "SeriesDescription": "standard",
+                "ImageComments": "*phase*"
+            }
         }
     ]
 }
