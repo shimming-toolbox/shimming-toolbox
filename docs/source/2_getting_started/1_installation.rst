@@ -159,7 +159,7 @@ that you followed the ``git clone`` instruction above:
 .. code:: bash
 
    cd shimming-toolbox
-   pip install -e ".[testing]"
+   pip install -e ".[testing,docs]"
 
 .. NOTE ::
    If you downloaded shimming-toolbox using the link above
@@ -178,7 +178,7 @@ version of the project from GitHub and reinstall the application:
 
    cd shimming-toolbox
    git pull
-   pip install -e ".[testing]"
+   pip install -e ".[testing,docs]"
 
 Testing the installation
 ------------------------
