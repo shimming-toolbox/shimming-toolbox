@@ -21,12 +21,12 @@ def test_dicom_to_nifti():
         for i in range(1, 7):
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
-                    assert os.path.exists(os.path.join(path_nifti, subject_id, 'fmap', subject_id + '_{}{}.{}'.format(
-                        modality, i, ext)))
+                    assert os.path.exists(os.path.join(path_nifti, subject_id, 'fmap',
+                                                       subject_id + f'_{modality}{i}.{ext}'))
 
         # Conversion of the RF maps
         dicom_to_nifti(os.path.join(__dir_testing__, 'b1_maps'), path_nifti, subject_id=subject_id, special_dicom=True)
         for modality in ['phase', 'mag']:
             for ext in ['nii.gz', 'json']:
                 assert os.path.exists(os.path.join(path_nifti, subject_id, 'rfmap',
-                                                   subject_id + '_rfmap_{}.{}'.format(modality, ext)))
+                                                   subject_id + f'_rfmap_{modality}.{ext}'))

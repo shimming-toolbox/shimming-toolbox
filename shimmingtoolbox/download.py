@@ -92,7 +92,7 @@ def unzip(compressed, dest_folder):
         if compressed.lower().endswith(format):
             break
     else:
-        logger.info('File extension is not included in {}'.format(formats.keys()))
+        logger.info(f'File extension is not included in {formats.keys()}')
         shutil.copy(compressed, dest_folder)
         return
 
