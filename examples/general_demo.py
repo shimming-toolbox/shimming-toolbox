@@ -1,10 +1,22 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-""" This script will:
-- download unsorted dicoms
-- run dcm2bids to convert to nifti with bids structure
-- unwrap phase
-- save wrapped and unwrapped plot of first X,Y volume as unwrap_phase_plot.png in the output directory
+"""
+This example script shows the process of using the toolbox with dicom data and processing them to output an unwrapped
+phase plot. More precisely, it will:
+
+* Download unsorted dicoms
+* Run dcm2bids to convert to nifti with bids structure
+* Unwrap phase
+* Save wrapped and unwrapped plot of first X, Y volume as unwrap_phase_plot.png in the output directory
+
+To use the script, simply provide an output directory where the processing and output figure will be generated, if no
+directory is provided, a directory *output_dir* will be created in the current directory.
+
+::
+
+    from examples.general_demo import general_demo
+    general_demo()
+
 """
 
 import os
@@ -56,10 +68,6 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
 
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])
-
-    # TODO: create mask
-    # Call SCT or user defined mask
-    # mask = np.ones(phase_e1.shape)
 
     # Call prelude to unwrap the phase
     unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1.get_fdata(), nii_phase_e1.affine)
