@@ -15,10 +15,11 @@ import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
 sys.path.insert(0, os.path.abspath("../../shimmingtoolbox/"))
+sys.path.insert(0, os.path.abspath("../../examples/"))
 
 # Project imports
 from shimmingtoolbox import *
-
+from examples import *
 
 # -- Project information -----------------------------------------------------
 
@@ -43,7 +44,8 @@ autodoc_mock_imports=[
     "nibabel",
     "requests",
     "scipy",
-    "tqdm"
+    "tqdm",
+    "matplotlib"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
