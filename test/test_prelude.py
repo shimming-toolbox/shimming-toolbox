@@ -49,8 +49,8 @@ class TestCore(object):
         nii_phase_e2 = nib.load(fname_phases[1])
 
         # Scale to phase to radians
-        phase_e1 = nii_phase_e1.get_fdata() / 4096 * 2 * np.pi - np.pi
-        phase_e2 = nii_phase_e2.get_fdata() / 4096 * 2 * np.pi - np.pi
+        phase_e1 = np.interp(nii_phase_e1.get_fdata(), [0, 4096], [-np.pi, np.pi])
+        phase_e2 = np.interp(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
 
         # Open mag data
         fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))

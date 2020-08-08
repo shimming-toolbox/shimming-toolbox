@@ -30,7 +30,7 @@ def main(verbose, output, data):
     url = dict_url[data]
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
-    install_data(url, output)
+    install_data(url, output, keep=True)
 
 
 if __name__ == '__main__':
