@@ -156,18 +156,10 @@
         },
         {
             "dataType": "TB1map",
-            "modalityLabel": "TB1map_mag",
+            "modalityLabel": "TB1map",
             "criteria": {
                 "SeriesDescription": "standard",
                 "ImageComments": "flip_angle_map*"
-            }
-        },
-        {
-            "dataType": "TB1map",
-            "modalityLabel": "TB1map_phase",
-            "criteria": {
-                "SeriesDescription": "standard",
-                "ImageComments": "*phase*"
             }
         }
     ]
