@@ -7,7 +7,7 @@ import click
 from shimmingtoolbox.download import install_data
 
 dict_url = {
-    "testing_data": ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"],
+    "testing_data": ["https://github.com/shimming-toolbox/data-testing/archive/r20200806.zip"],
     "prelude": ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"]
 }
 
