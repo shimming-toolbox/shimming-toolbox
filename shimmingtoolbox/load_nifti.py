@@ -45,7 +45,7 @@ def load_nifti(path_data):
     if not nifti_path:
         for i in range(len(acquisitions)):
             logging.info("{}:{}\n".format(i, os.path.basename(file_list[i])))
-            print("{}:{}\n".format(i, os.path.basename(file_list[i])))
+            print(f"{i}:{os.path.basename(file_list[i])}\n")
 
         select_acquisition = -1
         while 1:
@@ -58,7 +58,7 @@ def load_nifti(path_data):
             if select_acquisition in range(len(acquisitions)):
                 break
             else:
-                logging.error("Input must be linked to an acquisition folder. {} is out of range".format(input_resp))
+                logging.error(f"Input must be linked to an acquisition folder. {input_resp} is out of range")
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
@@ -66,7 +66,7 @@ def load_nifti(path_data):
     n_echos = len(nifti_list)
 
     if n_echos <= 0:
-        raise RuntimeError("No acquisition images in selected path {}".format(nifti_path))
+        raise RuntimeError(f"No acquisition images in selected path {nifti_path}")
 
     info_init, json_init, img_init = read_nii(nifti_list[0])
 
@@ -162,4 +162,4 @@ def image_type(json_data):
 
 
 if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\shimming-toolbox-py\\test\\__temp_nifti__")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
