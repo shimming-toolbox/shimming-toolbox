@@ -155,16 +155,16 @@
             }
         },
         {
-            "dataType": "rfmap",
-            "modalityLabel": "rfmap_mag",
+            "dataType": "TB1map",
+            "modalityLabel": "TB1map_mag",
             "criteria": {
                 "SeriesDescription": "standard",
                 "ImageComments": "flip_angle_map*"
             }
         },
         {
-            "dataType": "rfmap",
-            "modalityLabel": "rfmap_phase",
+            "dataType": "TB1map",
+            "modalityLabel": "TB1map_phase",
             "criteria": {
                 "SeriesDescription": "standard",
                 "ImageComments": "*phase*"
