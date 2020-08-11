@@ -159,7 +159,3 @@ def image_type(json_data):
                 raise ValueError('Unknown image type')
 
         return img_type
-
-
-if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
