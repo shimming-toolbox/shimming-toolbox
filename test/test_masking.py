@@ -15,12 +15,16 @@ dummy_data = [
 ]
 
 dummy_data_shape_square = [
-    (np.array([[3, 4], [5, 6], [7, 8]]), 'square'),
+    (np.ones([3, 2]), 'square', np.array([[True, True], [False, False], [False, False]])),
 ]
+
 dummy_data_shape_cube = [
-    (np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-               [[1, 2, 3], [4, 5, 6], [7, 8, 10]],
-               [[1, 2, 3], [4, 5, 6], [7, 8, 11]]]), 'cube'),
+    (np.ones([4, 3, 2]),
+     'cube',
+     np.array([[[False, False], [False, False], [False, False]],
+               [[False, True], [False, True], [False, True]],
+               [[False, False], [False, False], [False, False]],
+               [[False, False], [False, False], [False, False]]])),
 ]
 
 
@@ -29,21 +33,40 @@ def test_threshold(data, expected):
     assert np.all(shim.masking.threshold.threshold(data, thr=3) == expected)
 
 
-@pytest.mark.parametrize('data,shape', dummy_data_shape_square)
-def test_mask_square(data, shape):
-    mask = shim.masking.shape.shape(data, shape, center_x=0, center_y=1, len_x=1, len_y=3)
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(111)
-    ax.imshow(mask[:, :])
-    ax.set_title("Mask")
-    fig.savefig("mask.png")
+@pytest.mark.parametrize('data,shape,expected', dummy_data_shape_square)
+def test_mask_square(data, shape, expected):
+    assert(np.all(shim.masking.shape.shape(data, shape, center_dim1=0, center_dim2=1, len_dim1=1, len_dim2=3) ==
+                  expected))
 
 
-@pytest.mark.parametrize('data,shape', dummy_data_shape_cube)
-def test_mask_cube(data, shape):
-    mask = shim.masking.shape.shape(data, shape, center_x=0, center_y=1, center_z=1, len_x=1, len_y=3, len_z=1)
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(111)
-    ax.imshow(mask[:, :, 1])
-    ax.set_title("Mask")
-    fig.savefig("mask.png")
+def test_mask_square_wrong_dims():
+    data = np.ones([2, 2, 2])
+    try:
+        shim.masking.shape.shape(data, 'square', center_dim1=0, center_dim2=1, len_dim1=1, len_dim2=3)
+    except RuntimeError:
+        # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+        return 0
+
+    # If there isn't an error, then there is a problem
+    print('\n3D input data does not throw an error')
+    assert False
+
+
+@pytest.mark.parametrize('data,shape,expected', dummy_data_shape_cube)
+def test_mask_cube(data, shape, expected):
+    assert(np.all(shim.masking.shape.shape(data, shape, center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1,
+                                           len_dim2=3, len_dim3=1) == expected))
+
+
+def test_mask_cube_wrong_dims():
+    data = np.ones([2, 2])
+    try:
+        shim.masking.shape.shape(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1,
+                                 len_dim2=3, len_dim3=1)
+    except RuntimeError:
+        # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+        return 0
+
+    # If there isn't an error, then there is a problem
+    print('\n2D input data does not throw an error')
+    assert False
