@@ -2,95 +2,115 @@
 # -*- coding: utf-8 -*-
 """
 Image mask with shape API
-# TODO: Make sure specified center and length fit within data.shape
 """
 
 import numpy as np
 
 
-def shape_square(data, center_x, center_y, len_x, len_y):
+def shape_square(data, len_dim1, len_dim2, center_dim1=None, center_dim2=None):
     """
-    Create a square mask
+    Creates a square mask. Returns mask with the same shape as `data`.
 
     Args:
-
+        data (numpy.ndarray): Data to mask, must be 2 dimensional array.
+        len_dim1 (int): Length of the side of the square along first dimension (in pixels).
+        len_dim2 (int): Length of the side of the square along second dimension (in pixels).
+        center_dim1 (int): Center of the square along first dimension (in pixels). If no center is provided, the middle
+                           is used.
+        center_dim2 (int): Center of the square along second dimension (in pixels). If no center is provided, the middle
+                           is used.
     Returns:
-        nd.array: mask
+        numpy.ndarray: Mask with booleans. True where the square is located and False in the background.
     """
 
-    # Only takes data as an X,Y array
+    # Only takes data with 2 dimensions
     if data.ndim != 2:
         raise RuntimeError('shape_square only allows for 2 dimensions')
 
-    if center_x is None:
-        center_x = int(data.shape[0] / 2)
-    if center_y is None:
-        center_y = int(data.shape[1] / 2)
+    # Default to middle
+    if center_dim1 is None:
+        center_dim1 = int(data.shape[0] / 2)
+    if center_dim2 is None:
+        center_dim2 = int(data.shape[1] / 2)
 
     # Create a meshgrid of the size of input data
-    yv, xv = np.meshgrid(np.arange(0, data.shape[1]), np.arange(0, data.shape[0]))
+    dim1_v, dim2_v = np.meshgrid(np.arange(0, data.shape[0]), np.arange(0, data.shape[1]), indexing='ij')
 
     # Create the rectangle by allowing values from greater or lower than specified inputs
-    xv_logical = np.logical_and(xv >= center_x - int(np.floor(len_x / 2)), xv < center_x + int(np.ceil(len_x / 2)))
-    yv_logical = np.logical_and(yv >= center_y - int(np.floor(len_y / 2)), yv < center_y + int(np.ceil(len_y / 2)))
-    mask = np.logical_and(xv_logical, yv_logical)
+    dim1_v_logical = np.logical_and(dim1_v >= center_dim1 - int(np.floor(len_dim1 / 2)), dim1_v < center_dim1 + int(np.ceil(len_dim1 / 2)))
+    dym2_v_logical = np.logical_and(dim2_v >= center_dim2 - int(np.floor(len_dim2 / 2)), dim2_v < center_dim2 + int(np.ceil(len_dim2 / 2)))
+    mask = dim1_v_logical & dym2_v_logical
 
     return mask
 
 
-def shape_cube(data, center_x, center_y, center_z, len_x, len_y, len_z):
+def shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1=None, center_dim2=None, center_dim3=None):
     """
-    Create a cube mask
+    Creates a cube mask. Returns mask with the same shape as `data`.
 
     Args:
-
+        data (numpy.ndarray): Data to mask, must be 3 dimensional array.
+        len_dim1 (int): Length of the side of the square along first dimension (in pixels).
+        len_dim2 (int): Length of the side of the square along second dimension (in pixels).
+        len_dim3 (int): Length of the side of the square along third dimension (in pixels).
+        center_dim1 (int): Center of the square along first dimension (in pixels). If no center is provided, the middle
+                           is used.
+        center_dim2 (int): Center of the square along second dimension (in pixels). If no center is provided, the middle
+                           is used.
+        center_dim3 (int): Center of the square along third dimension (in pixels). If no center is provided, the middle
+                           is used.
     Returns:
-        nd.array: mask
+        numpy.ndarray: Mask with booleans. True where the cube is located and False in the background.
     """
 
-    # Only takes data as an X,Y array
+    # Only takes data with 3 dimensions
     if data.ndim != 3:
         raise RuntimeError('shape_square only allows for 2 dimensions')
 
-    if center_x is None:
-        center_x = int(data.shape[0] / 2)
-    if center_y is None:
-        center_y = int(data.shape[1] / 2)
-    if center_z is None:
-        center_z = int(data.shape[2] / 2)
+    # Default to middle
+    if center_dim1 is None:
+        center_dim1 = int(data.shape[0] / 2)
+    if center_dim2 is None:
+        center_dim2 = int(data.shape[1] / 2)
+    if center_dim3 is None:
+        center_dim3 = int(data.shape[2] / 2)
 
     # Create a meshgrid of the size of input data
-    yv, xv, zv = np.meshgrid(np.arange(0, data.shape[1]), np.arange(0, data.shape[0]), np.arange(0, data.shape[2]))
+    dim1_v, dim2_v, dim3_v = np.meshgrid(np.arange(0, data.shape[0]),
+                                         np.arange(0, data.shape[1]),
+                                         np.arange(0, data.shape[2]), indexing='ij')
 
     # Create the rectangle by allowing values from greater or lower than specified inputs
-    xv_logical = np.logical_and(xv >= center_x - int(np.floor(len_x / 2)), xv < center_x + int(np.ceil(len_x / 2)))
-    yv_logical = np.logical_and(yv >= center_y - int(np.floor(len_y / 2)), yv < center_y + int(np.ceil(len_y / 2)))
-    zv_logical = np.logical_and(zv >= center_z - int(np.floor(len_z / 2)), zv < center_z + int(np.ceil(len_z / 2)))
-    mask = np.logical_and(xv_logical, yv_logical, zv_logical)
+    dim1_v_logical = np.logical_and(dim1_v >= center_dim1 - int(np.floor(len_dim1 / 2)),
+                                    dim1_v < center_dim1 + int(np.ceil(len_dim1 / 2)))
+    dym2_v_logical = np.logical_and(dim2_v >= center_dim2 - int(np.floor(len_dim2 / 2)),
+                                    dim2_v < center_dim2 + int(np.ceil(len_dim2 / 2)))
+    dim3_v_logical = np.logical_and(dim3_v >= center_dim3 - int(np.floor(len_dim3 / 2)),
+                                    dim3_v < center_dim3 + int(np.ceil(len_dim3 / 2)))
+    mask = dim1_v_logical & dym2_v_logical & dim3_v_logical
 
     return mask
 
 
-def shape_disk(data, center_x, center_y, radius):
-    pass
-
-
-def shape_sphere(data, center_x, center_y, center_z, radius):
-    pass
-
-
-shape_mask = {'square': shape_square, 'cube': shape_cube, 'disk': shape_disk, 'sphere': shape_sphere}
+shape_mask = {'square': shape_square, 'cube': shape_cube}
 
 
 def shape(data, shape, **kargs):
-    # center_x=None, center_y=None, center_z=None, len_x=None, len_y=None, len_z=None, radius=None
     """
-    Wrapper to different shape masking algos
+    Wrapper to different shape masking functions.
 
     Args:
+        data (numpy.ndarray): Data to mask.
+        shape (str): Shape to mask, implemented shapes include: {'square', 'cube'}.
+        **kargs: Refer to the specific function in this file for the specific arguments for each shape.
+                 See example section for more details.
 
     Returns:
-        nd.array: mask
+        numpy.ndarray: Mask with booleans. True where the shape is located and False in the background.
+
+    Examples:
+        data = np.ones([4,3,2])
+        mask = shape(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1, len_dim2=3, len_dim3=1)
     """
 
     mask_info = {}
