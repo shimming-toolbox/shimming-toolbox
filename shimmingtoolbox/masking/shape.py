@@ -109,8 +109,9 @@ def shape(data, shape, **kargs):
         numpy.ndarray: Mask with booleans. True where the shape is located and False in the background.
 
     Examples:
-        data = np.ones([4,3,2])
-        mask = shape(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1, len_dim2=3, len_dim3=1)
+
+        >>> data = np.ones([4,3,2])
+        >>> mask = shape(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1, len_dim2=3, len_dim3=1)
     """
 
     mask_info = {}
