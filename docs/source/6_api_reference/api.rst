@@ -27,3 +27,9 @@ unwrap
 
 .. automodule:: shimmingtoolbox.unwrap.prelude
    :members:
+
+mask
+----
+
+.. automodule:: shimmingtoolbox.masking.shape
+    :members:
