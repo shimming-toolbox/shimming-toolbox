@@ -13,6 +13,8 @@ testing_data
 *.pyc
 .idea
 
+# Sphinx stuff
+docs/build/
 
 # OS-related files/folders
 __MACOSX/
