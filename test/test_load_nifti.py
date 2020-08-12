@@ -215,6 +215,7 @@ class TestCore(object):
         self._json['EchoNumber'] = 2
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON1"
+        self._json['EchoNumber'] = 1
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
             "JSON file is not correctly loaded for second JSON 1"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
@@ -226,6 +227,7 @@ class TestCore(object):
         self._json['EchoNumber'] = 2
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON 2"
+        self._json['EchoNumber'] = 1
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json, sort_keys=True)), \
             "JSON file is not correctly loaded for second JSON 2"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 2"
