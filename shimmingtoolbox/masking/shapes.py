@@ -37,8 +37,10 @@ def shape_square(data, len_dim1, len_dim2, center_dim1=None, center_dim2=None):
     dim1_v, dim2_v = np.meshgrid(np.arange(0, data.shape[0]), np.arange(0, data.shape[1]), indexing='ij')
 
     # Create the rectangle by allowing values from greater or lower than specified inputs
-    dim1_v_logical = np.logical_and(dim1_v >= center_dim1 - int(np.floor(len_dim1 / 2)), dim1_v < center_dim1 + int(np.ceil(len_dim1 / 2)))
-    dym2_v_logical = np.logical_and(dim2_v >= center_dim2 - int(np.floor(len_dim2 / 2)), dim2_v < center_dim2 + int(np.ceil(len_dim2 / 2)))
+    dim1_v_logical = np.logical_and(dim1_v >= center_dim1 - int(np.floor(len_dim1 / 2)),
+                                    dim1_v < center_dim1 + int(np.ceil(len_dim1 / 2)))
+    dym2_v_logical = np.logical_and(dim2_v >= center_dim2 - int(np.floor(len_dim2 / 2)),
+                                    dim2_v < center_dim2 + int(np.ceil(len_dim2 / 2)))
     mask = dim1_v_logical & dym2_v_logical
 
     return mask
@@ -95,7 +97,7 @@ def shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1=None, center_dim2
 shape_mask = {'square': shape_square, 'cube': shape_cube}
 
 
-def shape(data, shape, **kargs):
+def shapes(data, shape, **kargs):
     """
     Wrapper to different shape masking functions.
 
@@ -109,9 +111,8 @@ def shape(data, shape, **kargs):
         numpy.ndarray: Mask with booleans. True where the shape is located and False in the background.
 
     Examples:
-
-        >>> data = np.ones([4,3,2])
-        >>> mask = shape(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1, len_dim2=3, len_dim3=1)
+        >>> dummy_data = np.ones([4,3])
+        >>> dummy_mask = shapes(dummy_data, 'square', center_dim1=1, center_dim2=1, len_dim1=1, len_dim2=3)
     """
 
     mask_info = {}
