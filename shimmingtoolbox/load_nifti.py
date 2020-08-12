@@ -44,7 +44,7 @@ def load_nifti(path_data):
 
     if not nifti_path:
         for i in range(len(acquisitions)):
-            logging.info(f"{i}:{os.path.basename(file_list[i])}\n")
+            print(f"{i}:{os.path.basename(file_list[i])}\n")
 
         select_acquisition = -1
         while 1:
