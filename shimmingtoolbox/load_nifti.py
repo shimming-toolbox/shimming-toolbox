@@ -37,15 +37,14 @@ def load_nifti(path_data):
         acquisitions = [f for f in file_list if os.path.isdir(f)]
         logging.info("Multiple acquisition directories in path. Choosing only one.")
     elif all([os.path.isfile(f) for f in file_list]):
-        logging.info("Acqusition directory given. Using acquisitions.")
+        logging.info("Acquisition directory given. Using acquisitions.")
         nifti_path = path_data
     else:
         raise RuntimeError("Directories and files in input path")
 
     if not nifti_path:
         for i in range(len(acquisitions)):
-            logging.info("{}:{}\n".format(i, os.path.basename(file_list[i])))
-            print(f"{i}:{os.path.basename(file_list[i])}\n")
+            logging.info(f"{i}:{os.path.basename(file_list[i])}\n")
 
         select_acquisition = -1
         while 1:
@@ -63,33 +62,60 @@ def load_nifti(path_data):
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
     nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
-    n_echos = len(nifti_list)
 
-    if n_echos <= 0:
-        raise RuntimeError(f"No acquisition images in selected path {nifti_path}")
-
-    info_init, json_init, img_init = read_nii(nifti_list[0])
+    info_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
 
     info = []
     json_info = []
     niftis = np.empty([1, 1], dtype=float)
-    print(info_init.shape)
-    if info_init.ndim == 3:
-        niftis = np.empty([info_init.shape[0], info_init.shape[1], info_init.shape[2], n_echos, 1], dtype=float)
+
+    echo_list = []
+    run_list = {}
+    n_echos = 0
+    for file_info in info_init:
+        if (file_info[1]['AcquisitionNumber'] not in run_list.keys()):
+            run_list[file_info[1]['AcquisitionNumber']] = []
+        if (file_info[1]['EchoNumber'] not in echo_list):
+            n_echos += 1
+            echo_list.append(file_info[1]['EchoNumber'])
+        run_list[file_info[1]['AcquisitionNumber']].append(file_info)
+
+    select_run = -1
+    if len(list(run_list.keys())) > 1:
+        for i in list(run_list.keys()):
+            logging.info(f"{i}\n")
+
+        while 1:
+            input_resp = input("Enter the number for the appropriate run number, (type 'q' to quit) : ")
+            if input_resp == 'q':
+                return 0
+
+            select_run = int(input_resp)
+
+            if select_run in range(len(acquisitions)):
+                break
+            else:
+                logging.error(f"Input must be linked to a run number. {input_resp} is out of range")
+    else:
+        select_run = list(run_list.keys())[0]
+        logging.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
+
+    if info_init[0][0].ndim == 3:
+        niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], n_echos, 1], dtype=float)
         for i_echo in range(n_echos):
-            tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
+            tmp_nii = run_list[select_run][i_echo]
             info.append(tmp_nii[0].header)
             json_info.append(tmp_nii[1])
             niftis[:, :, :, i_echo, 0] = tmp_nii[2]
     else:
         niftis = np.empty([
-            info_init.shape[1], info_init.shape[2], info_init.shape[3],
-            n_echos, info_init.shape[0]], dtype=float)
+            info_init[0][0].shape[1], info_init[0].shape[2], info_init[0][0].shape[3],
+            n_echos, info_init[0][0].shape[0]], dtype=float)
         for i_echo in range(n_echos):
-            tmp_nii = read_nii(os.path.abspath(nifti_list[i_echo]))
+            tmp_nii = run_list[select_run][i_echo]
             info.append(tmp_nii[0].header)
             json_info.append(tmp_nii[1])
-            for i_volume in range(info_init.shape[0]):
+            for i_volume in range(info_init[0][0].shape[0]):
                 niftis[:, :, :, i_echo, i_volume] = tmp_nii[2][i_volume, :, :, :]
 
     return niftis, info, json_info
@@ -119,43 +145,10 @@ def read_nii(nii_path, auto_scale=True):
     image = np.asarray(info.dataobj)
     if auto_scale:
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and (image_type(json_data) == 'phase'):
+                and ("P" in json_data['ImageType']):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
 
-
-def image_type(json_data):
-    """ Returns the nifti image type indicated by the json file
-    Args:
-        json_data (dict): Contains the same fields as the json file corresponding to a nifti file
-    Returns:
-        img_type (str): Type of the image. It can take the values `phase`, `magnitude`.
-    """
-
-    # Check that jsonData exists
-    if not json_data:
-        raise TypeError("json_data is empty")
-
-    # Check that jsonData is a dictionary
-    if not isinstance(json_data, dict):
-        raise TypeError("json_data is not a dictionary")
-
-    if 'ImageType' in json_data:
-        is_phase = "P" in json_data['ImageType']
-        is_mag = "M" in json_data['ImageType']
-
-        if is_phase and is_mag:
-            # Both true: json file and/or DICOM issue
-            raise ValueError('Ambiguous ImageType entry in json file: Indicates magnitude AND phase')
-        elif is_phase:
-            img_type = 'phase'
-        elif is_mag:
-            img_type = 'magnitude'
-        else:
-            if ('Manufacturer' in json_data) and (json_data['Manufacturer'] != 'Siemens'):
-                raise ValueError('Unknown image type. Possibly due to images sourced from non-Siemens MRI')
-            else:
-                raise ValueError('Unknown image type')
-
-        return img_type
+if __name__ == "__main__":
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")

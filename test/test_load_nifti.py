@@ -100,20 +100,25 @@ class TestCore(object):
         dummy_data_volume = nib.nifti1.Nifti1Image(dataobj=self._data_volume, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy.nii'))
         with open(os.path.join(self.data_path, 'dummy.json'), 'w') as json_file:
+            self._json['EchoNumber'] = 1
             json.dump(self._json, json_file)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
+            self._json['EchoNumber'] = 2
             json.dump(self._json, json_file)
 
         nib.save(dummy_data, os.path.join(self.data_path_2, 'dummy.nii'))
         with open(os.path.join(self.data_path_2, 'dummy.json'), 'w') as json_file:
+            self._json['EchoNumber'] = 1
             json.dump(self._json, json_file)
         nib.save(dummy_data, os.path.join(self.data_path_2, 'dummy2.nii'))
         with open(os.path.join(self.data_path_2, 'dummy2.json'), 'w') as json_file:
+            self._json['EchoNumber'] = 2
             json.dump(self._json, json_file)
 
         nib.save(dummy_data_volume, os.path.join(self.data_path_volume, 'dummy_volume.nii'))
         with open(os.path.join(self.data_path_volume, 'dummy_volume.json'), 'w') as json_file:
+            self._json['EchoNumber'] = 1
             json.dump(self._json, json_file)
 
 
@@ -246,3 +251,34 @@ class TestCore(object):
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 2)), "Wrong shape for the Nifti output data"
+
+    def test_load_nifti_multiple_run(self, monkeypatch):
+        """
+        Assert data is correctly separated between runs
+        :return:
+        """
+        if self.data_path_2.exists():
+            shutil.rmtree(self.data_path_2)
+        if self.data_path_volume.exists():
+            shutil.rmtree(self.data_path_volume)
+        os.remove(os.path.join(self.data_path, "dummy2.nii"))
+        os.remove(os.path.join(self.data_path, "dummy2.json"))
+        dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
+        nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
+        with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
+            self._json['Acquisitionnumber'] = 2
+            json.dump(self._json, json_file)
+        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
+        niftis, info, json_info = load_nifti(self.data_path)
+        assert (len(info) == 1), "Wrong number od info data"
+        assert (len(json_info) == 1), "Wrong number of JSON data"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
+
+        monkeypatch.setattr('sys.stdin', StringIO('1\n'))
+        niftis, info, json_info = load_nifti(self.data_path)
+        assert (len(info) == 1), "Wrong number od info data"
+        assert (len(json_info) == 1), "Wrong number of JSON data"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json,
+                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
