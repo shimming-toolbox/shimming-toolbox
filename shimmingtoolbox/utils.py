@@ -10,7 +10,8 @@ import logging
 
 def run_subprocess(cmd):
     """
-    Wrapper for subprocess.run() that enables to input cmd as a full string (easier for debugging).
+    Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+
     Args:
         cmd (string): full command to be run on the command line
     """
