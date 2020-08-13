@@ -20,9 +20,9 @@ def main(verbose, coilshims, pulseseq, input, output):
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f"{coilshims}, {pulseseq}, {input}, {output}")
-    map, coilshims, pulseseq = b0map(input, coilshims=coilshims, pulseseq=pulseseq)
+    fieldmap, coilshims, pulseseq = b0map(input, coilshims=coilshims, pulseseq=pulseseq)
     with open(output, "w") as out:
-        out.write(str(map))  # definitely not the right file format
+        out.write(str(fieldmap))  # definitely not the right file format
 
 
 if __name__ == "__main__":
