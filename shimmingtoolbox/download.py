@@ -113,29 +113,34 @@ def unzip(compressed, dest_folder):
 
 
 def install_data(url, dest_folder, keep=False):
-    """
-    Download a data bundle from a URL and install in the destination folder.
-    :param url: URL or sequence thereof (if mirrors).
-    :param dest_folder: destination directory for the data (to be created).
-    :param keep: whether to keep existing data in the destination folder.
-    :return: None
+    """Download a data bundle from a URL and install in the destination folder.
+
+    Args:
+        url: URL or sequence thereof (if mirrors).
+        dest_folder: destination directory for the data (to be created).
+        keep: whether to keep existing data in the destination folder.
+    Returns:
+        ``NoneType``
     .. note::
         The function tries to be smart about the data contents.
+
         Examples:
-        a. If the archive only contains a `README.md`, and the destination folder is `${dst}`,
-            `${dst}/README.md` will be created.
-            Note: an archive not containing a single folder is commonly known as a "bomb" because
+
+            If the archive only contains a ``README.md``, and the destination folder is ``${dst}``,
+            ``${dst}/README.md`` will be created.
+            Note: an archive not containing a single folder is commonly known as a "tarbomb" because
             it puts files anywhere in the current working directory.
-            https://en.wikipedia.org/wiki/Tar_(computing)#Tarbomb
-        b. If the archive contains a `${dir}/README.md`, and the destination folder is `${dst}`,
-            `${dst}/README.md` will be created.
-            Note: typically the package will be called `${basename}-${revision}.zip` and contain
-            a root folder named `${basename}-${revision}/` under which all the other files will
+
+            If the archive contains a ``${dir}/README.md``, and the destination folder is ``${dst}``,
+            ``${dst}/README.md`` will be created.
+            Note: typically the package will be called ``${basename}-${revision}.zip`` and contain
+            a root folder named ``${basename}-${revision}/`` under which all the other files will
             be located.
             The right thing to do in this case is to take the files from there and install them
-            in `${dst}`.
-        - Uses `download_data()` to retrieve the data.
-        - Uses `unzip()` to extract the bundle.
+            in ``${dst}``.
+
+        - Uses ``download_data()`` to retrieve the data.
+        - Uses ``unzip()`` to extract the bundle.
     """
 
     if not keep and os.path.exists(dest_folder):
