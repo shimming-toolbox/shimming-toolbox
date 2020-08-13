@@ -24,7 +24,9 @@ def download_data(urls):
     """Download the binaries from a URL and return the destination filename
     Retry downloading if either server or connection errors occur on a SSL
     connection
-    urls: list of several urls (mirror servers) or single url (string)
+
+    Args:
+        urls: list of several urls (mirror servers) or single url (string)
     """
 
     # make sure urls becomes a list, in case user inputs a str
