@@ -93,8 +93,12 @@ def download_data(urls):
 
 def unzip(compressed, dest_folder):
     """
-    Extract compressed file to the dest_folder. Can handle .zip, .tar.gz. If none of this extension is found, simply
-    copy the file in dest_folder.
+    Extract compressed file to the ``dest_folder``. Can handle ``.zip``, ``.tar.gz``. If none of this extension is found, simply
+    copy the file in ``dest_folder``.
+
+    Args:
+        compressed: the compressed ``.zip`` or ``.tar.gz`` file
+        dest_folder: the destination dir that expanded files are written to
     """
     logger.info("Unzip data to: %s" % dest_folder)
 
