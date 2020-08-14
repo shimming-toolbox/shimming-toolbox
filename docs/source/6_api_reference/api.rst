@@ -34,5 +34,5 @@ unwrap
 mask
 ----
 
-.. automodule:: shimmingtoolbox.masking.shape
+.. automodule:: shimmingtoolbox.masking.shapes
     :members:
