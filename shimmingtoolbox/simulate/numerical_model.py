@@ -44,13 +44,12 @@ class NumericalModel:
 
     Simulate multi-echo B0 field mapping data in the presence of a B0 field. 
     Can simulate data under ideal conditions or with noise. Export simulations 
-    in a NIfTI or .mat file formats.
+    in a NIfTI or ``.mat`` file formats.
 
     Attributes:
-        gamma: Gyromagnetic ratio in rad*Hz/Tesla.
-        field_strength: Static field strength in Tesla.
-        handedness: Orientation of the cross-product for the Larmor equation.
-            The value of this attribute is MRI vendor-dependent.
+        gamma (float): Gyromagnetic ratio in rad * Hz / Tesla.
+        field_strength (float): Static field strength in Tesla.
+        handedness: Orientation of the cross-product for the Larmor equation. The value of this attribute is MRI vendor-dependent.
         measurement: Simulated measurement data array.
         proton_density: Default assumed brain proton density in %.
         T2_star: Default assumed brain T2* values in seconds at 3T.
