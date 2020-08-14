@@ -5,7 +5,7 @@ build:
 
 sphinx:
   configuration: docs/source/conf.py
-  fail_on_warning: false
+  fail_on_warning: true
   builder: html
 
 python:
