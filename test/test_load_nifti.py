@@ -337,7 +337,7 @@ class TestCore(object):
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
-        monkeypatch.setattr('sys.stdin', StringIO('2\n'))
+        monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
@@ -360,16 +360,14 @@ class TestCore(object):
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
             json.dump(self._json_phase, json_file)
-        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
-        niftis, info, json_info = load_nifti(self.tmp_path)
+        niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data 1"
         assert (len(json_info) == 1), "Wrong number of JSON data 1"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON1"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 1"
 
-        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
-        niftis, info, json_info = load_nifti(self.tmp_path, "magnitude")
+        niftis, info, json_info = load_nifti(self.data_path, "magnitude")
         assert (len(info) == 1), "Wrong number of info data 2"
         assert (len(json_info) == 1), "Wrong number of JSON data 2"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_mag, sort_keys=True)), \
