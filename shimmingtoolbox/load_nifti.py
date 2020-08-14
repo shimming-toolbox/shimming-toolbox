@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
 
-def load_nifti(path_data):
+def load_nifti(path_data, modality = 'phase'):
     """
     Load data from a NIFTI type file with dcm2bids.
     Args:
@@ -78,7 +78,7 @@ def load_nifti(path_data):
         if (file_info[1]['EchoNumber'] not in echo_list):
             n_echos += 1
             echo_list.append(file_info[1]['EchoNumber'])
-        run_list[file_info[1]['AcquisitionNumber']].append(file_info)
+        run_list[file_info[1]['AcquisitionNumber']].append((file_info, file_info[1]['ImageComments']))
 
     select_run = -1
     if len(list(run_list.keys())) > 1:
@@ -100,23 +100,29 @@ def load_nifti(path_data):
         select_run = list(run_list.keys())[0]
         logging.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
 
+    nifti_pos = 0
+    echo_shape = sum(1 for tmp_info in run_list[select_run] if modality in tmp_info[1])
     if info_init[0][0].ndim == 3:
-        niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], n_echos, 1], dtype=float)
+        niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], echo_shape, 1], dtype=float)
         for i_echo in range(n_echos):
-            tmp_nii = run_list[select_run][i_echo]
-            info.append(tmp_nii[0].header)
-            json_info.append(tmp_nii[1])
-            niftis[:, :, :, i_echo, 0] = tmp_nii[2]
+            tmp_nii = run_list[select_run][i_echo][0]
+            if modality in run_list[select_run][i_echo][1]:
+                info.append(tmp_nii[0].header)
+                json_info.append(tmp_nii[1])
+                niftis[:, :, :, nifti_pos, 0] = tmp_nii[2]
+                nifti_pos += 1
     else:
         niftis = np.empty([
-            info_init[0][0].shape[1], info_init[0][0].shape[2], info_init[0][0].shape[3],
-            n_echos, info_init[0][0].shape[0]], dtype=float)
+            info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2],
+            echo_shape, info_init[0][0].shape[3]], dtype=float)
         for i_echo in range(n_echos):
-            tmp_nii = run_list[select_run][i_echo]
-            info.append(tmp_nii[0].header)
-            json_info.append(tmp_nii[1])
-            for i_volume in range(info_init[0][0].shape[0]):
-                niftis[:, :, :, i_echo, i_volume] = tmp_nii[2][i_volume, :, :, :]
+            if modality in run_list[select_run][i_echo][1]:
+                tmp_nii = run_list[select_run][i_echo][0]
+                info.append(tmp_nii[0].header)
+                json_info.append(tmp_nii[1])
+                for i_volume in range(info_init[0][0].shape[3]):
+                    niftis[:, :, :, nifti_pos, i_volume] = tmp_nii[2][:, :, :, i_volume]
+                nifti_pos += 1
 
     return niftis, info, json_info
 
