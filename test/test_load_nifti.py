@@ -371,7 +371,7 @@ class TestCore(object):
             "JSON file is not correctly loaded for second JSON 1"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
 
-        monkeypatch.setattr('sys.stdin', StringIO('1\n'))
+        monkeypatch.setattr('sys.stdin', StringIO('0\n'))
         niftis, info, json_info = load_nifti(self.tmp_path, "magnitude")
         assert (len(info) == 2), "Wrong number of info data 2"
         assert (len(json_info) == 2), "Wrong number of JSON data 2"

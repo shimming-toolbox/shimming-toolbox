@@ -92,7 +92,7 @@ def load_nifti(path_data, modality = 'phase'):
 
             select_run = int(input_resp)
 
-            if select_run in range(len(acquisitions)):
+            if select_run in range(len(run_list.keys())):
                 break
             else:
                 logging.error(f"Input must be linked to a run number. {input_resp} is out of range")
