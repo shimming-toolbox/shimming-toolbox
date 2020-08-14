@@ -107,11 +107,11 @@ class NumericalModel:
         Defines the starting volume. Sets the background B0 field to zeros.
 
         Args:
-            field_type: Type of field to be generated. Available implementations 
-                are: 'linear'.
-            params: Parameters defining the field for the selected field type.
-                field_type = 'linear': [m b] where m (Hz/pixel) is the slope and b
-                    is the floor field (Hz).
+            field_type: Type of field to be generated. Available implementations are: ``'linear'``.
+            params: List of parameters defining the field for the selected
+                field type. If ``field_type = 'linear'``, then ``params`` are
+                ``[m b]`` where m (Hz/pixel) is the slope and b is the floor
+                field (Hz).
         """
 
         if field_type == "linear":
