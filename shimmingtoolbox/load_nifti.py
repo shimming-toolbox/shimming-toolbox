@@ -83,7 +83,7 @@ def load_nifti(path_data, modality = 'phase'):
     select_run = -1
     if len(list(run_list.keys())) > 1:
         for i in list(run_list.keys()):
-            logging.info(f"{i}\n")
+            print(f"{i}\n")
 
         while 1:
             input_resp = input("Enter the number for the appropriate run number, (type 'q' to quit) : ")

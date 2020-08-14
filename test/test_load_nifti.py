@@ -359,27 +359,19 @@ class TestCore(object):
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
-            json.dump(self._json_mag, json_file)
+            json.dump(self._json_phase, json_file)
         monkeypatch.setattr('sys.stdin', StringIO('0\n'))
         niftis, info, json_info = load_nifti(self.tmp_path)
-        assert (len(info) == 2), "Wrong number od info data 1"
-        assert (len(json_info) == 2), "Wrong number of JSON data 1"
-        self._json_phase['EchoNumber'] = 2
+        assert (len(info) == 1), "Wrong number od info data 1"
+        assert (len(json_info) == 1), "Wrong number of JSON data 1"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON1"
-        self._json_phase['EchoNumber'] = 1
-        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
-            "JSON file is not correctly loaded for second JSON 1"
-        assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 1"
 
         monkeypatch.setattr('sys.stdin', StringIO('0\n'))
         niftis, info, json_info = load_nifti(self.tmp_path, "magnitude")
-        assert (len(info) == 2), "Wrong number of info data 2"
-        assert (len(json_info) == 2), "Wrong number of JSON data 2"
-        self._json_phase['EchoNumber'] = 2
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
+        assert (len(info) == 1), "Wrong number of info data 2"
+        assert (len(json_info) == 1), "Wrong number of JSON data 2"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_mag, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON 2"
-        self._json_phase['EchoNumber'] = 1
-        assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
-            "JSON file is not correctly loaded for second JSON 2"
-        assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 2"
+        assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 2"
