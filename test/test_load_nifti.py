@@ -337,7 +337,7 @@ class TestCore(object):
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
-        monkeypatch.setattr('sys.stdin', StringIO('1\n'))
+        monkeypatch.setattr('sys.stdin', StringIO('2\n'))
         niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"

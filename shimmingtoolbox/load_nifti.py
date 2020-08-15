@@ -106,6 +106,7 @@ def load_nifti(path_data, modality = 'phase'):
         niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], echo_shape, 1], dtype=float)
         for i_echo in range(n_echos):
             tmp_nii = run_list[select_run][i_echo][0]
+            print(run_list[select_run][i_echo][1])
             if modality in run_list[select_run][i_echo][1]:
                 info.append(tmp_nii[0].header)
                 json_info.append(tmp_nii[1])
