@@ -11,7 +11,7 @@ import json
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti
+from load_nifti import load_nifti
 
 
 class TestCore(object):
@@ -329,7 +329,7 @@ class TestCore(object):
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
             self._json_phase['AcquisitionNumber'] = 2
             json.dump(self._json_phase, json_file)
-        self._json_phase['AcquisitionNumber'] = 1
+
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data"
@@ -339,6 +339,7 @@ class TestCore(object):
 
         monkeypatch.setattr('sys.stdin', StringIO('2\n'))
         niftis, info, json_info = load_nifti(self.data_path)
+        self._json_phase['AcquisitionNumber'] = 1
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
