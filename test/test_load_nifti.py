@@ -18,12 +18,6 @@ class TestCore(object):
     _data = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
                       [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                       [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
-    _data_volume = np.array([[[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                            [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                            [[19, 20, 21], [22, 23, 24], [25, 26, 27]]],
-                            [[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
-                            [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                            [[19, 20, 21], [22, 23, 24], [25, 26, 27]]]])
     _data_volume = np.array([[[[1, 1], [2, 2], [3, 3]], [[4, 4], [5, 5], [6, 6]], [[7, 7], [8, 8], [9, 9]]],
                             [[[10, 10], [11, 11], [12, 12]], [[13, 13], [14, 14], [15, 15]], [[16, 16], [17, 17], [18, 18]]],
                             [[[19, 19], [20, 20], [21, 21]], [[22, 22], [23, 23], [24, 24]], [[25, 25], [26, 26], [27, 27]]]])
@@ -327,6 +321,7 @@ class TestCore(object):
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
+            self._json_phase['AcquisitionNumber'] = 2
             json.dump(self._json_phase, json_file)
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
@@ -359,7 +354,7 @@ class TestCore(object):
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
-            json.dump(self._json_phase, json_file)
+            json.dump(self._json_mag, json_file)
         niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data 1"
         assert (len(json_info) == 1), "Wrong number of JSON data 1"
