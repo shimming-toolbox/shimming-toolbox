@@ -71,12 +71,10 @@ def load_nifti(path_data, modality = 'phase'):
 
     echo_list = []
     run_list = {}
-    n_echos = 0
     for file_info in info_init:
         if (file_info[1]['AcquisitionNumber'] not in run_list.keys()):
             run_list[file_info[1]['AcquisitionNumber']] = []
         if (file_info[1]['EchoNumber'] not in echo_list):
-            n_echos += 1
             echo_list.append(file_info[1]['EchoNumber'])
         run_list[file_info[1]['AcquisitionNumber']].append((file_info, file_info[1]['ImageComments']))
 
@@ -92,7 +90,7 @@ def load_nifti(path_data, modality = 'phase'):
 
             select_run = int(input_resp)
 
-            if select_run in range(len(run_list.keys())):
+            if select_run in list(run_list.keys()):
                 break
             else:
                 logging.error(f"Input must be linked to a run number. {input_resp} is out of range")
@@ -104,9 +102,8 @@ def load_nifti(path_data, modality = 'phase'):
     echo_shape = sum(1 for tmp_info in run_list[select_run] if modality in tmp_info[1])
     if info_init[0][0].ndim == 3:
         niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], echo_shape, 1], dtype=float)
-        for i_echo in range(n_echos):
+        for i_echo in range(len(run_list[select_run])):
             tmp_nii = run_list[select_run][i_echo][0]
-            print(run_list[select_run][i_echo][1])
             if modality in run_list[select_run][i_echo][1]:
                 info.append(tmp_nii[0].header)
                 json_info.append(tmp_nii[1])
@@ -116,7 +113,7 @@ def load_nifti(path_data, modality = 'phase'):
         niftis = np.empty([
             info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2],
             echo_shape, info_init[0][0].shape[3]], dtype=float)
-        for i_echo in range(n_echos):
+        for i_echo in range(len(run_list[select_run])):
             if modality in run_list[select_run][i_echo][1]:
                 tmp_nii = run_list[select_run][i_echo][0]
                 info.append(tmp_nii[0].header)
@@ -158,4 +155,4 @@ def read_nii(nii_path, auto_scale=True):
     return info, json_data, image
 
 if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1", "magnitude")
