@@ -11,7 +11,7 @@ import json
 
 from io import StringIO
 from pathlib import Path
-from load_nifti import load_nifti
+from shimmingtoolbox.load_nifti import load_nifti
 
 
 class TestCore(object):
@@ -327,7 +327,6 @@ class TestCore(object):
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
-            self._json_phase['AcquisitionNumber'] = 2
             json.dump(self._json_phase, json_file)
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
