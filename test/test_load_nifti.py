@@ -326,6 +326,7 @@ class TestCore(object):
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
         niftis, info, json_info = load_nifti(self.data_path)
+        self._json_phase['AcquisitionNumber'] = 1
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
@@ -333,12 +334,13 @@ class TestCore(object):
 
         monkeypatch.setattr('sys.stdin', StringIO('2\n'))
         niftis, info, json_info = load_nifti(self.data_path)
-        self._json_phase['AcquisitionNumber'] = 1
+        self._json_phase['AcquisitionNumber'] = 2
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
                                                                        sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
+        self._json_phase['AcquisitionNumber'] = 1
 
     def test_load_nifti_modality_check(self, monkeypatch):
         """
