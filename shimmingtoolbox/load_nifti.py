@@ -149,10 +149,10 @@ def read_nii(nii_path, auto_scale=True):
     image = np.asarray(info.dataobj)
     if auto_scale:
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and ("P" in json_data['ImageType']):
+                and ("phase" in json_data['ImageComments']):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
 
 if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1", "magnitude")
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
