@@ -16,11 +16,12 @@ def load_nifti(path_data, modality = 'phase'):
     """
     Load data from a NIFTI type file with dcm2bids.
     Args:
-        path_data (str): absolute or relative path to the directory the acquisition data
+        path_data (str): Absolute or relative path to the directory the acquisition data
+        modality (str): Modality to read nifti (can be phase or magnitude)
     Returns:
-        info (Nifti1Image.Header): List containing all information from every Nifti image
-        json_info (dict): List containing all information in JSON format from every Nifti image
-        niftis (ndarray): 5D array of all acquisition in time (x, y, z, echo, volume)
+        nibabel.Nifti1Image.Header: List containing all information from every Nifti image
+        dict: List containing all information in JSON format from every Nifti image
+        numpy.ndarray: 5D array of all acquisition in time (x, y, z, echo, volume)
 
     Note:
         If 'path' is a folder containing niftis, directly output niftis. It 'path' is a folder containing acquisitions,
@@ -161,3 +162,7 @@ def read_nii(nii_path, auto_scale=True):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
+
+
+if __name__ == "__main__":
+    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
