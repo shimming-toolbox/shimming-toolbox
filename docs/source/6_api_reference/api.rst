@@ -31,8 +31,8 @@ unwrap
 .. automodule:: shimmingtoolbox.unwrap.prelude
    :members:
 
-mask
-----
+masking
+-------
 
 .. automodule:: shimmingtoolbox.masking.shapes
     :members:
