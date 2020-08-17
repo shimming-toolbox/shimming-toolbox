@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
 
-def load_nifti(path_data, modality = 'phase'):
+def load_nifti(path_data, modality='phase'):
     """
-    Load data from a NIFTI type file with dcm2bids.
+    Load data from a NIFTI type file with nibabel.
     Args:
         path_data (str): Absolute or relative path to the directory the acquisition data
         modality (str): Modality to read nifti (can be phase or magnitude)
