@@ -22,6 +22,9 @@ The following section outlines the API of shimming-toolbox.
 .. automodule:: shimmingtoolbox.simulate.numerical_model
    :members:
 
+.. automodule:: shimmingtoolbox.load_nifti
+   :members:
+
 unwrap
 ------
 
