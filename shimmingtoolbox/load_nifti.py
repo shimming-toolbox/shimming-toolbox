@@ -29,10 +29,12 @@ def load_nifti(path_data, modality = 'phase'):
     if not os.path.exists(path_data):
         raise RuntimeError("Not an existing NIFTI path")
 
+    # Generate file_list
     file_list = []
     [file_list.append(os.path.join(path_data, f)) for f in os.listdir(path_data) if f not in file_list]
 
     nifti_path = ""
+    # Check for incompatible acquisition source path
     if all([os.path.isdir(f) for f in file_list]):
         acquisitions = [f for f in file_list if os.path.isdir(f)]
         logging.info("Multiple acquisition directories in path. Choosing only one.")
@@ -42,6 +44,7 @@ def load_nifti(path_data, modality = 'phase'):
     else:
         raise RuntimeError("Directories and files in input path")
 
+    # Choose an acquisition between all folders
     if not nifti_path:
         for i in range(len(acquisitions)):
             print(f"{i}:{os.path.basename(file_list[i])}\n")
@@ -61,9 +64,11 @@ def load_nifti(path_data, modality = 'phase'):
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
+    # Get a list of nii files
     nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
 
-    info_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
+    # Read all images and headers available and store them
+    nifti_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
 
     info = []
     json_info = []
@@ -71,13 +76,15 @@ def load_nifti(path_data, modality = 'phase'):
 
     echo_list = []
     run_list = {}
-    for file_info in info_init:
-        if (file_info[1]['AcquisitionNumber'] not in run_list.keys()):
+    # Parse and separate each file by run sequence with modality check
+    for file_info in nifti_init:
+        if file_info[1]['AcquisitionNumber'] not in run_list.keys():
             run_list[file_info[1]['AcquisitionNumber']] = []
-        if (file_info[1]['EchoNumber'] not in echo_list):
+        if file_info[1]['EchoNumber'] not in echo_list:
             echo_list.append(file_info[1]['EchoNumber'])
         run_list[file_info[1]['AcquisitionNumber']].append((file_info, file_info[1]['ImageComments']))
 
+    # If more than one run, select one
     select_run = -1
     if len(list(run_list.keys())) > 1:
         for i in list(run_list.keys()):
@@ -98,10 +105,11 @@ def load_nifti(path_data, modality = 'phase'):
         select_run = list(run_list.keys())[0]
         logging.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
 
+    # Create output array and headers
     nifti_pos = 0
     echo_shape = sum(1 for tmp_info in run_list[select_run] if modality in tmp_info[1])
-    if info_init[0][0].ndim == 3:
-        niftis = np.empty([info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2], echo_shape, 1], dtype=float)
+    if nifti_init[0][0].ndim == 3:
+        niftis = np.empty([nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2], echo_shape, 1], dtype=float)
         for i_echo in range(len(run_list[select_run])):
             tmp_nii = run_list[select_run][i_echo][0]
             if modality in run_list[select_run][i_echo][1]:
@@ -111,14 +119,14 @@ def load_nifti(path_data, modality = 'phase'):
                 nifti_pos += 1
     else:
         niftis = np.empty([
-            info_init[0][0].shape[0], info_init[0][0].shape[1], info_init[0][0].shape[2],
-            echo_shape, info_init[0][0].shape[3]], dtype=float)
+            nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2],
+            echo_shape, nifti_init[0][0].shape[3]], dtype=float)
         for i_echo in range(len(run_list[select_run])):
             if modality in run_list[select_run][i_echo][1]:
                 tmp_nii = run_list[select_run][i_echo][0]
                 info.append(tmp_nii[0].header)
                 json_info.append(tmp_nii[1])
-                for i_volume in range(info_init[0][0].shape[3]):
+                for i_volume in range(nifti_init[0][0].shape[3]):
                     niftis[:, :, :, nifti_pos, i_volume] = tmp_nii[2][:, :, :, i_volume]
                 nifti_pos += 1
 
@@ -153,6 +161,3 @@ def read_nii(nii_path, auto_scale=True):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
-
-if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
