@@ -37,16 +37,16 @@ def download_data(urls):
     exceptions = []
     for url in urls:
         try:
-            logger.info("Trying URL: %s" % url)
+            logger.info('Trying URL: %s' % url)
             retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 503, 504])
             session = requests.Session()
-            session.mount("https://", HTTPAdapter(max_retries=retry))
+            session.mount('https://', HTTPAdapter(max_retries=retry))
             response = session.get(url, stream=True)
             response.raise_for_status()
 
             filename = os.path.basename(urllib.parse.urlparse(url).path)
             if "Content-Disposition" in response.headers:
-                _, content = cgi.parse_header(response.headers["Content-Disposition"])
+                _, content = cgi.parse_header(response.headers['Content-Disposition'])
                 filename = content["filename"]
 
             # protect against directory traversal
@@ -54,24 +54,15 @@ def download_data(urls):
             if not filename:
                 # this handles cases where you're loading something like an index page
                 # instead of a specific file. e.g. https://osf.io/ugscu/?action=view.
-                raise ValueError(
-                    "Unable to determine target filename for URL: %s" % (url,)
-                )
+                raise ValueError("Unable to determine target filename for URL: %s" % (url,))
 
             tmp_path = os.path.join(tempfile.mkdtemp(), filename)
 
-            logger.info("Downloading: %s" % filename)
+            logger.info('Downloading: %s' % filename)
 
-            with open(tmp_path, "wb") as tmp_file:
-                total = int(response.headers.get("content-length", 1))
-                progress_bar = st_progress_bar(
-                    total=total,
-                    unit="B",
-                    unit_scale=True,
-                    desc="Status",
-                    ascii=False,
-                    position=0,
-                )
+            with open(tmp_path, 'wb') as tmp_file:
+                total = int(response.headers.get('content-length', 1))
+                progress_bar = st_progress_bar(total=total, unit='B', unit_scale=True, desc="Status", ascii=False, position=0)
 
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -83,12 +74,10 @@ def download_data(urls):
             return tmp_path
 
         except Exception as e:
-            logger.warning(
-                "Link download error, trying next mirror (error was: %s)" % e
-            )
+            logger.warning("Link download error, trying next mirror (error was: %s)" % e)
             exceptions.append(e)
     else:
-        raise Exception("Download error", exceptions)
+        raise Exception('Download error', exceptions)
 
 
 def unzip(compressed, dest_folder):
@@ -100,21 +89,23 @@ def unzip(compressed, dest_folder):
         compressed: the compressed ``.zip`` or ``.tar.gz`` file
         dest_folder: the destination dir that expanded files are written to
     """
-    logger.info("Unzip data to: %s" % dest_folder)
+    logger.info('Unzip data to: %s' % dest_folder)
 
-    formats = {".zip": zipfile.ZipFile, ".tar.gz": tarfile.open, ".tgz": tarfile.open}
+    formats = {'.zip': zipfile.ZipFile,
+               '.tar.gz': tarfile.open,
+               '.tgz': tarfile.open}
     for format, open in formats.items():
         if compressed.lower().endswith(format):
             break
     else:
-        logger.info("File extension is not included in {}".format(formats.keys()))
+        logger.info('File extension is not included in {}'.format(formats.keys()))
         shutil.copy(compressed, dest_folder)
         return
 
     try:
         open(compressed).extractall(dest_folder)
     except:
-        logger.error("ZIP package corrupted. Please try downloading again.")
+        logger.error('ZIP package corrupted. Please try downloading again.')
         raise
 
 
@@ -156,7 +147,7 @@ def install_data(url, dest_folder, keep=False):
 
     tmp_file = download_data(url)
 
-    extraction_folder = tempfile.mkdtemp(prefix="st_download_")
+    extraction_folder = tempfile.mkdtemp(prefix='st_download_')
 
     unzip(tmp_file, extraction_folder)
 
@@ -186,7 +177,7 @@ def install_data(url, dest_folder, keep=False):
     for cwd, ds, fs in os.walk(bundle_folder):
         ds.sort()
         fs.sort()
-        ds[:] = [d for d in ds if d not in ("__MACOSX",)]
+        ds[:] = [ d for d in ds if d not in ("__MACOSX",) ]
         for d in ds:
             srcpath = os.path.join(cwd, d)
             relpath = os.path.relpath(srcpath, bundle_folder)
