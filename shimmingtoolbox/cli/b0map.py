@@ -6,7 +6,6 @@ import click
 
 from .. import b0map
 
-
 @click.command()
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
 @click.option("--coilshims", help="Output hardware-shim calibration.")
@@ -19,11 +18,10 @@ def main(verbose, coilshims, pulseseq, input, output):
     """
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
-    logging.info(f"{coilshims}, {pulseseq}, {input}, {output}")
-    fieldmap, coilshims, pulseseq = b0map(input, coilshims=coilshims, pulseseq=pulseseq)
-    with open(output, "w") as out:
-        out.write(str(fieldmap))  # definitely not the right file format
+    logging.info(f'{coilshims}, {pulseseq}, {input}, {output}')
+    map, coilshims, pulseseq = b0map(input, coilshims=coilshims, pulseseq=pulseseq)
+    with open(output, 'w') as out:
+        out.write(str(map)) # definitely not the right file format
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
