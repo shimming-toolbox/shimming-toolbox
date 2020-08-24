@@ -57,9 +57,13 @@ def number_of_coef(orders):
 
 
 def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
-    # returns harmonic field for the required solid harmonic addressed by n, m based on the  iterative Legendre
-    # polynomial calculation. Positive m values correspond to the cosine component, negative to the sine. Returned
-    # fields will eventually follow RRI 's convention pos_...can be both value and vector / matrix
+    """
+    Returns harmonic field for the required solid harmonic addressed by n, m based on the Legendre
+    polynomial calculation. Positive m values correspond to the cosine component, negative to the sine. Returned
+    fields will eventually follow RRI 's convention pos_... can be both value and vector/matrix
+    """
+
+
 
     r2 = pos_x ** 2 + pos_y ** 2 + pos_z ** 2
     r = np.sqrt(r2)
