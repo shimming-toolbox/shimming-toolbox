@@ -84,17 +84,54 @@ def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
 
 
 def spherical_harmonics(orders, x, y, z):
+    """Return orthonormal spherical harmonic basis set
 
+    Returns an array of spherical harmonic basis fields with the order/degree index along the 4th dimension.
+
+    Args:
+        orders (numpy.ndarray):  Degrees of the desired terms in the series expansion, specified as a vector of
+                                 non-negative integers (`[0:1:n]` yields harmonics up to n-th order)
+        x (numpy.ndarray): 3-D arrays of grid coordinates
+        y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x)
+        z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x)
+
+    Returns:
+        numpy.ndarray: 4d basis set of spherical harmonics with order/degree ordered along 4th dimension
+
+    Examples:
+        Initialize grid positions
+        >>> [x, y, z] = np.meshgrid(np.array(range(-10, 11)), np.array(range(-10, 11)), np.array(range(-10, 11)),
+                        indexing='ij')
+        0th-to-2nd order terms inclusive
+        >>> orders = np.array(range(0, 3))
+        >>> basis = spherical_harmonics(orders, x, y, z)
+
+    Note:
+        - basis[:,:,:,1] corresponds to the 0th-order constant term (globally=unity)
+
+        - basis[:,:,:,2:4] to 1st-order linear terms
+            - 2: *y*
+            - 3: *z*
+            - 4: *x*
+        - basis[:,:,:,5:9] to 2nd-order terms
+            - 5: *xy*
+            - 6: *zy*
+            - 7: *z2*
+            - 8: *zx*
+            - 9: *x2y2*
+
+        Based on
+            - spherical_harmonics.m by topfer@ualberta.ca
+            - calc_spherical_harmonics_arb_points_cz.m by jaystock@nmr.mgh.harvard.edu
+    """
     # Check inputs
     if not (x.ndim == y.ndim == z.ndim):
         raise RuntimeError('Input arrays X, Y, and Z must be identically sized')
 
-    if x.ndim == 2:
-        grid_size = [x.shape, 1]
-    elif x.ndim == 3:
+    if x.ndim == 3:
         grid_size = x.shape
     else:
-        raise RuntimeError('Input arrays X, Y, and Z must have 2 or 3 dimensions')
+        raise RuntimeError('Input arrays X, Y, and Z must have 3 dimensions')
 
     # Initialize variables
     n_voxels = x.size
