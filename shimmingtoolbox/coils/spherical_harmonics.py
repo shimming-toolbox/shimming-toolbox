@@ -92,7 +92,8 @@ def spherical_harmonics(orders, x, y, z):
 
     Args:
         orders (numpy.ndarray):  Degrees of the desired terms in the series expansion, specified as a vector of
-                                 non-negative integers (`[0:1:n]` yields harmonics up to n-th order)
+                                 non-negative integers (`np.array(range(0, 3))` yields harmonics up to (n-1)-th order).
+                                 Must be non negative.
         x (numpy.ndarray): 3-D arrays of grid coordinates
         y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x)
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x)
@@ -134,6 +135,9 @@ def spherical_harmonics(orders, x, y, z):
         grid_size = x.shape
     else:
         raise RuntimeError('Input arrays X, Y, and Z must have 3 dimensions')
+
+    if not np.all(orders >= 0):
+        raise RuntimeError('Orders must be positive')
 
     # Initialize variables
     n_voxels = x.size
