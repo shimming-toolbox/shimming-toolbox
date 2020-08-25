@@ -75,14 +75,11 @@ def load_nifti(path_data, modality='phase'):
     json_info = []
     niftis = np.empty([1, 1], dtype=float)
 
-    echo_list = []
     run_list = {}
     # Parse and separate each file by run sequence with modality check
     for file_info in nifti_init:
         if file_info[1]['AcquisitionNumber'] not in run_list.keys():
             run_list[file_info[1]['AcquisitionNumber']] = []
-        if file_info[1]['EchoNumber'] not in echo_list:
-            echo_list.append(file_info[1]['EchoNumber'])
         run_list[file_info[1]['AcquisitionNumber']].append((file_info, file_info[1]['ImageComments']))
 
     # If more than one run, select one
@@ -95,7 +92,6 @@ def load_nifti(path_data, modality='phase'):
             input_resp = input("Enter the number for the appropriate run number, (type 'q' to quit) : ")
             if input_resp == 'q':
                 return 0
-
             select_run = int(input_resp)
 
             if select_run in list(run_list.keys()):
