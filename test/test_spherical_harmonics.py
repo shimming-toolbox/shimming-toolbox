@@ -1,14 +1,18 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
-
 import numpy as np
+import pytest
 
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
+dummy_data = [
+    np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)), indexing='ij'),
+]
 
-def test_normal_use():
-    [x, y, z] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)), indexing='ij')
+
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_normal_use(x, y, z):
     orders = np.array(range(0, 2, 1))
     basis = spherical_harmonics(orders, x, y, z)
 
@@ -16,8 +20,8 @@ def test_normal_use():
     assert(basis[:, :, :, 0].shape == x.shape)
 
 
-def test_wrong_input_dimension():
-    [x, y, z] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)), indexing='ij')
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_wrong_input_dimension(x, y, z):
     orders = np.array(range(0, 2, 1))
 
     # Call spherical harmonics with wrong dimension
@@ -32,8 +36,8 @@ def test_wrong_input_dimension():
     assert False
 
 
-def test_negative_order():
-    [x, y, z] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)), indexing='ij')
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_negative_order(x, y, z):
     orders = np.array(range(-1, 2, 1))
 
     # Call spherical harmonics with negative order
