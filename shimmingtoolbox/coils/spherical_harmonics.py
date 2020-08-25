@@ -63,8 +63,6 @@ def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
     fields will eventually follow RRI 's convention pos_... can be both value and vector/matrix
     """
 
-
-
     r2 = pos_x ** 2 + pos_y ** 2 + pos_z ** 2
     r = np.sqrt(r2)
     phi = np.arctan2(pos_y, pos_x)
