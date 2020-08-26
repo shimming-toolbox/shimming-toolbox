@@ -19,7 +19,7 @@ def load_nifti(path_data, modality='phase'):
         path_data (str): Path to the directory containing the file(s) to load
         modality (str): Modality to read nifti (can be phase or magnitude)
     Returns:
-        nibabel.Nifti1Image.Header: List containing all information from every Nifti image
+        nibabel.Nifti1Image.Header: List containing headers for every Nifti file
         dict: List containing all information in JSON format from every Nifti image
         numpy.ndarray: 5D array of all acquisition in time (x, y, z, echo, volume)
 
