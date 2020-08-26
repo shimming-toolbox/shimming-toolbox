@@ -16,7 +16,7 @@ def load_nifti(path_data, modality='phase'):
     """
     Load data from a NIFTI type file with nibabel.
     Args:
-        path_data (str): Absolute or relative path to the directory the acquisition data
+        path_data (str): Path to the directory containing the file(s) to load
         modality (str): Modality to read nifti (can be phase or magnitude)
     Returns:
         nibabel.Nifti1Image.Header: List containing all information from every Nifti image
