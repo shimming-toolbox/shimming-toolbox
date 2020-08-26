@@ -4,24 +4,26 @@
 This module is for numerically simulating multi-echo B0 field mapping data. It
 considers features like: background B0 field, flip angle, echo time, and noise.
 
-  Typical usage example:
+Typical usage example:
 
-  from shimmingtoolbox.simulate import *
+::
 
-  b0_sim = NumericalModel(model="shepp-logan")
-  
-  # Generate a background B0
-  b0_field = 13 # (Hz)
-  b0_sim.generate_deltaB0("linear", [0.0, b0_field])
+    from shimmingtoolbox.simulate import *
 
-  # Simulate the signal data
-  FA = 15 # (degrees)
-  TE = [0.003, 0.015] # (seconds)
-  SNR = 50
-  b0_sim.simulate_measurement(FA, TE, SNR)
+    b0_sim = NumericalModel(model="shepp-logan")
 
-  # Save simulation as NIfTI file (JSON sidecar also exported with parameters)
-  b0_sim.save('Phase', 'b0_mapping_data.nii', format='nifti')
+    # Generate a background B0
+    b0_field = 13 # (Hz)
+    b0_sim.generate_deltaB0("linear", [0.0, b0_field])
+
+    # Simulate the signal data
+    FA = 15 # (degrees)
+    TE = [0.003, 0.015] # (seconds)
+    SNR = 50
+    b0_sim.simulate_measurement(FA, TE, SNR)
+
+    # Save simulation as NIfTI file (JSON sidecar also exported with parameters)
+    b0_sim.save('Phase', 'b0_mapping_data.nii', format='nifti')
 """
 
 import os, json
@@ -42,13 +44,12 @@ class NumericalModel:
 
     Simulate multi-echo B0 field mapping data in the presence of a B0 field. 
     Can simulate data under ideal conditions or with noise. Export simulations 
-    in a NIfTI or .mat file formats.
+    in a NIfTI or ``.mat`` file formats.
 
     Attributes:
-        gamma: Gyromagnetic ratio in rad*Hz/Tesla.
-        field_strength: Static field strength in Tesla.
-        handedness: Orientation of the cross-product for the Larmor equation.
-            The value of this attribute is MRI vendor-dependent.
+        gamma (float): Gyromagnetic ratio in rad * Hz / Tesla.
+        field_strength (float): Static field strength in Tesla.
+        handedness: Orientation of the cross-product for the Larmor equation. The value of this attribute is MRI vendor-dependent.
         measurement: Simulated measurement data array.
         proton_density: Default assumed brain proton density in %.
         T2_star: Default assumed brain T2* values in seconds at 3T.
@@ -106,11 +107,11 @@ class NumericalModel:
         Defines the starting volume. Sets the background B0 field to zeros.
 
         Args:
-            field_type: Type of field to be generated. Available implementations 
-                are: 'linear'.
-            params: Parameters defining the field for the selected field type.
-                field_type = 'linear': [m b] where m (Hz/pixel) is the slope and b
-                    is the floor field (Hz).
+            field_type: Type of field to be generated. Available implementations are: ``'linear'``.
+            params: List of parameters defining the field for the selected
+                field type. If ``field_type = 'linear'``, then ``params`` are
+                ``[m b]`` where m (Hz/pixel) is the slope and b is the floor
+                field (Hz).
         """
 
         if field_type == "linear":

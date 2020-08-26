@@ -19,6 +19,9 @@ The following section outlines the API of shimming-toolbox.
 .. automodule:: shimmingtoolbox.cli.referencemaps
    :members:
 
+numerical_model
+---------------
+
 .. automodule:: shimmingtoolbox.simulate.numerical_model
    :members:
 
@@ -31,8 +34,8 @@ unwrap
 .. automodule:: shimmingtoolbox.unwrap.prelude
    :members:
 
-mask
-----
+masking
+-------
 
-.. automodule:: shimmingtoolbox.masking.shape
+.. automodule:: shimmingtoolbox.masking.shapes
     :members:

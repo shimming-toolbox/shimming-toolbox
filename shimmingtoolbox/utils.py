@@ -10,7 +10,8 @@ import logging
 
 def run_subprocess(cmd):
     """
-    Wrapper for subprocess.run() that enables to input cmd as a full string (easier for debugging).
+    Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+
     Args:
         cmd (string): full command to be run on the command line
     """
@@ -23,15 +24,15 @@ def add_suffix(fname, suffix):
     Add suffix between end of file name and extension.
 
     Args:
-        fname: absolute or relative file name. Example: t2.nii
-        suffix: suffix. Example: _mean
+        fname: absolute or relative file name. Example: ``t2.nii``
+        suffix: suffix. Example: ``_mean``
 
-    :Return: file name with suffix. Example: t2_mean.nii
+    :Return: file name string with suffix. Example: ``t2_mean.nii``
 
     Examples:
 
-    - add_suffix(t2.nii, _mean) -> t2_mean.nii
-    - add_suffix(t2.nii.gz, a) -> t2a.nii.gz
+    - ``add_suffix(t2.nii, _mean)`` -> ``t2_mean.nii``
+    - ``add_suffix(t2.nii.gz, a)`` -> ``t2a.nii.gz``
     """
 
     def _splitext(fname):

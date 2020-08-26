@@ -22,6 +22,11 @@ dict_url = {
 def main(verbose, output, data):
     """
     Download data from the internet.
+
+    Args:
+        verbose: If true, increases output verbosity.
+        output: Output folder.
+        data: The data to be downloaded.
     """
     # TODO: logging does not seem to output on the terminal
     if verbose:

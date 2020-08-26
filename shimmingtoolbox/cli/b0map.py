@@ -14,7 +14,7 @@ from .. import b0map
 @click.argument("output", type=click.Path(exists=False))
 def main(verbose, coilshims, pulseseq, input, output):
     """
-    Compute b0 fieldmap OUTPUT from a folder of dicom files INPUT.
+    Compute b0 fieldmap ``OUTPUT`` from a folder of dicom files ``INPUT/``.
     """
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
