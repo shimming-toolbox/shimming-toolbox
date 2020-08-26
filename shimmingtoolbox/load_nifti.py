@@ -14,7 +14,7 @@ PHASE_SCALING_SIEMENS = 4096
 
 def load_nifti(path_data, modality='phase'):
     """
-    Load data from a NIFTI type file with nibabel.
+    Load data from a directory containing NIFTI type file with nibabel.
     Args:
         path_data (str): Path to the directory containing the file(s) to load
         modality (str): Modality to read nifti (can be phase or magnitude)
@@ -105,27 +105,21 @@ def load_nifti(path_data, modality='phase'):
     # Create output array and headers
     nifti_pos = 0
     echo_shape = sum(1 for tmp_info in run_list[select_run] if modality in tmp_info[1])
-    if nifti_init[0][0].ndim == 3:
-        niftis = np.empty([nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2], echo_shape, 1], dtype=float)
-        for i_echo in range(len(run_list[select_run])):
-            tmp_nii = run_list[select_run][i_echo][0]
-            if modality in run_list[select_run][i_echo][1]:
-                info.append(tmp_nii[0].header)
-                json_info.append(tmp_nii[1])
+
+    niftis = np.empty([nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2], echo_shape,
+                       (1 if nifti_init[0][0].ndim == 3 else nifti_init[0][0].shape[3])], dtype=float)
+
+    for i_echo in range(len(run_list[select_run])):
+        tmp_nii = run_list[select_run][i_echo][0]
+        if modality in run_list[select_run][i_echo][1]:
+            info.append(tmp_nii[0].header)
+            json_info.append(tmp_nii[1])
+            if niftis.shape[4] == 1:
                 niftis[:, :, :, nifti_pos, 0] = tmp_nii[2]
-                nifti_pos += 1
-    else:
-        niftis = np.empty([
-            nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2],
-            echo_shape, nifti_init[0][0].shape[3]], dtype=float)
-        for i_echo in range(len(run_list[select_run])):
-            if modality in run_list[select_run][i_echo][1]:
-                tmp_nii = run_list[select_run][i_echo][0]
-                info.append(tmp_nii[0].header)
-                json_info.append(tmp_nii[1])
+            else:
                 for i_volume in range(nifti_init[0][0].shape[3]):
                     niftis[:, :, :, nifti_pos, i_volume] = tmp_nii[2][:, :, :, i_volume]
-                nifti_pos += 1
+            nifti_pos += 1
 
     return niftis, info, json_info
 
@@ -154,11 +148,7 @@ def read_nii(nii_path, auto_scale=True):
     image = np.asarray(info.dataobj)
     if auto_scale:
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and ("phase" in json_data['ImageComments']):
+                and (("*phase*" in json_data['ImageComments']) or ("P" in json_data["ImageType"])):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
-
-
-if __name__ == "__main__":
-    load_nifti("C:\\Users\\Gabriel\\Documents\\share\\008_a_gre_DYNshim1")
