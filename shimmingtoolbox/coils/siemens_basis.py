@@ -88,8 +88,7 @@ def siemens_basis(x, y, z):
 
         NOTE: The method has been worked out empirically and has only been tested for 2 Siemens Prisma systems.
         E.g.re: Y, Z, ZX, and XY terms, their polarity had to be flipped relative to the form given by
-        shimmingtoolbox.coils.spherical_harmonics. To adapt the code to other systems, arbitrary(?) changes along these
-        lines will likely be needed.
+        shimmingtoolbox.coils.spherical_harmonics.
         """
 
         [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
