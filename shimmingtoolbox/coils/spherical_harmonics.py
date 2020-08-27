@@ -18,44 +18,6 @@ def number_of_coef(orders):
     return out
 
 
-# Removed as it seems to be the same as scipy's lpmv function
-# def leg_rec(n, m, u):
-#     # compute legendre polynomial values for dat using recursive relations
-#
-#     if m > 0:
-#         p_mm = (-1) ** m * factorial2(2 * m - 1) * (1 - u ** 2) ** (m / 2)
-#     else:
-#         p_mm = 1
-#
-#     if n == m:
-#         out = p_mm
-#     else:
-#         p_mm1 = (2 * m + 1) * u * p_mm
-#
-#         if n == m + 1:
-#             out = p_mm1
-#         else:
-#             # recursive calculation needed
-#             a = m + 2
-#             p_ma_2 = p_mm
-#             p_ma_1 = p_mm1
-#
-#             while True:
-#                 p_ma = ((2 * a - 1) * u * p_ma_1 - (a + m - 1) * p_ma_2) / (a - m)
-#
-#                 if a == n:
-#                     break
-#
-#                 # prepare next iteration
-#                 p_ma_2 = p_ma_1
-#                 p_ma_1 = p_ma
-#                 a = a + 1
-#
-#             out = p_ma
-#
-#     return out
-
-
 def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
     """
     Returns harmonic field for the required solid harmonic addressed by n, m based on the Legendre
@@ -172,21 +134,3 @@ def spherical_harmonics(orders, x, y, z):
         basis[:, :, :, i_basis] = np.reshape(harm_all[:, i_basis], grid_size)
 
     return basis
-
-
-[x, y, z] = np.meshgrid(np.array(range(-10, 11)), np.array(range(-10, 11)), np.array(range(-10, 11)),
-                        indexing='ij')
-orders = np.array(range(0, 3))
-basis = spherical_harmonics(orders, x, y, z)
-
-# Plot results
-fig = Figure(figsize=(10, 10))
-
-for iBasis in range(0, number_of_coef(orders)):
-    ax = fig.add_subplot(3, 3, iBasis + 1)
-    im = ax.imshow(basis[:, :, 11, iBasis])
-    fig.colorbar(im)
-    ax.set_title(f'basis {iBasis + 1}')
-
-fname_figure = os.path.join(os.path.curdir, 'basis_plot.png')
-fig.savefig(fname_figure)
