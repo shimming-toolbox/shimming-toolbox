@@ -125,7 +125,8 @@ def siemens_basis(x, y, z):
 
         for i_ch in range(0, n_channels):
             field = sh[:, :, :, i_ch]
-            scaling_factors[i_ch] = 42.576 * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
+            gyro_ratio = 42.576
+            scaling_factors[i_ch] = gyro_ratio * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
 
         return scaling_factors
 
