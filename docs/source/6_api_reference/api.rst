@@ -19,9 +19,13 @@ masking
 coils
 -----
 
+siemens_basis
+_____________
 .. automodule:: shimmingtoolbox.coils.siemens_basis
     :members:
 
+spherical_harmonics
+___________________
 .. automodule:: shimmingtoolbox.coils.spherical_harmonics
     :members:
 
