@@ -17,7 +17,7 @@ masking
     :members:
 
 coils
-_____
+-----
 
 .. automodule:: shimmingtoolbox.coils.siemens_basis
     :members:
@@ -32,7 +32,7 @@ numerical_model
    :members:
 
 misc
-____
+----
 
 .. automodule:: shimmingtoolbox.download
    :members:
