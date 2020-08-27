@@ -32,7 +32,7 @@ def test_wrong_input_dimension(x, y, z):
         return 0
 
     # If there isn't an error, then there is a problem
-    print('\nWrong dimensions for input x does not throw an error')
+    print("\nWrong dimensions for input x does not throw an error")
     assert False
 
 
@@ -48,5 +48,5 @@ def test_negative_order(x, y, z):
         return 0
 
     # If there isn't an error, then there is a problem
-    print('\nNegative order does not throw an error')
+    print("\nNegative order does not throw an error")
     assert False

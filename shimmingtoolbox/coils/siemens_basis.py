@@ -7,8 +7,8 @@ from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
 def siemens_basis(x, y, z):
     """
-    The function first wraps `shimmingtoolbox.coils.spherical_harmonics` to generate 1st and 2nd order spherical
-    harmonic `basis` fields at the grid positions given by arrays `X,Y,Z`. *Following Siemens convention*, `basis` is
+    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
+    harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*, ``basis`` is
     then:
 
         - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
@@ -19,11 +19,11 @@ def siemens_basis(x, y, z):
             - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
 
-    The returned `basis` is thereby in the form of ideal "shim reference maps", ready for optimization.
+    The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
     Args:
-        orders (numpy.ndarray): *not yet implemented* Degrees of the desired terms in the series expansion, specified
-                                as a vector of non-negative integers (`[0:1:n]` yields harmonics up to n-th order)
+        orders (numpy.ndarray): **not yet implemented** Degrees of the desired terms in the series expansion, specified
+                                as a vector of non-negative integers (``[0:1:n]`` yields harmonics up to n-th order)
         x (numpy.ndarray): 3-D arrays of grid coordinates, "Right->Left" grid coordinates in the patient coordinate
                            system (i.e. DICOM reference, units of mm)
         y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Anterior->Posterior" grid coordinates in
@@ -36,18 +36,18 @@ def siemens_basis(x, y, z):
         numpy.ndarray: 4-D array of spherical harmonic basis fields
 
     NOTES:
-        For now, `orders` is, in fact, ignored: fixed as [1:2]—which is suitable for the Prisma (presumably other
+        For now, ``orders`` is, in fact, ignored: fixed as [1:2]—which is suitable for the Prisma (presumably other
         Siemens systems as well) however, the 3rd-order shims of the Terra should ultimately be accommodated too.
         (Requires checking the Adjustments/Shim card to see what the corresponding terms and values actually are). So,
-        for now, `basis` will always be returned with 8 terms along the 4th dim.
+        for now, ``basis`` will always be returned with 8 terms along the 4th dim.
     """
 
     # Local functions
     def reorder_to_siemens(spher_harm):
         """
         Reorder 1st - 2nd order basis terms along 4th dim. From
-        1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2(output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
-        2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY( in line with Siemens shims)
+        1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
+        2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Siemens shims)
         """
 
         assert spher_harm.shape[3] == 8
@@ -65,7 +65,7 @@ def siemens_basis(x, y, z):
 
     def get_scaling_factors():
         """
-        Returns a vector of `scaling_factors` to apply to the(Siemens-reordered) 1st + 2nd order spherical harmonic fields
+        Returns a vector of ``scaling_factors`` to apply to the(Siemens-reordered) 1st + 2nd order spherical harmonic fields
         for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
 
         Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
@@ -76,7 +76,7 @@ def siemens_basis(x, y, z):
         at which we know what the field *should* be, and use that to calculate the appropriate scaling factor.
 
         NOTE: The method has been worked out empirically and has only been tested for 2 Siemens Prisma systems.
-        E.g.re: Y, Z, ZX, and XY terms, it was noted that their polarity had to be flipped relative to the form given by
+        E.g.re: Y, Z, ZX, and XY terms, their polarity had to be flipped relative to the form given by
         shimmingtoolbox.coils.spherical_harmonics. To adapt the code to other systems, arbitrary(?) changes along these
         lines will likely be needed.
         """
@@ -120,10 +120,10 @@ def siemens_basis(x, y, z):
 
     # Check inputs
     if not (x.ndim == y.ndim == z.ndim == 3):
-        raise RuntimeError('Input arrays X, Y, and Z must be 3d')
+        raise RuntimeError("Input arrays X, Y, and Z must be 3d")
 
     if not (x.shape == y.shape == z.shape):
-        raise RuntimeError('Input arrays X, Y, and Z must be identically sized')
+        raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
     # Create spherical harmonics from first to second order
     orders = np.array(range(1, 3))

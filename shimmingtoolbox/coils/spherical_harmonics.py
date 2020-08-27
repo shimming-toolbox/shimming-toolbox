@@ -13,7 +13,7 @@ def spherical_harmonics(orders, x, y, z):
 
     Args:
         orders (numpy.ndarray):  Degrees of the desired terms in the series expansion, specified as a vector of
-                                 non-negative integers (`np.array(range(0, 3))` yields harmonics up to (n-1)-th order).
+                                 non-negative integers (``np.array(range(0, 3))`` yields harmonics up to (n-1)-th order).
                                  Must be non negative.
         x (numpy.ndarray): 3-D arrays of grid coordinates
         y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x)
@@ -54,12 +54,12 @@ def spherical_harmonics(orders, x, y, z):
     """
 
     def number_of_coef(orders):
-        out = 0
+        n_coef = 0
         for n in orders:
             m = 2 * n + 1
-            out += m
+            n_coef += m
 
-        return out
+        return n_coef
 
     def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
         """
@@ -85,9 +85,9 @@ def spherical_harmonics(orders, x, y, z):
 
         rri_norm = math.factorial(n + m + 1) / math.factorial(n - m) / factorial2(2 * m)
 
-        out = (n + m + 1) * (r ** n) * (np.cos(m * phi) * c + np.sin(m * phi) * (1 - c)) * y_mn / rri_norm
+        harmonic_field = (n + m + 1) * (r ** n) * (np.cos(m * phi) * c + np.sin(m * phi) * (1 - c)) * y_mn / rri_norm
 
-        return out
+        return harmonic_field
 
     # Check inputs
     if not (x.shape == y.shape == z.shape):
