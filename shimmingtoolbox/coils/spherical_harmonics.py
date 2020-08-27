@@ -72,7 +72,6 @@ def spherical_harmonics(orders, x, y, z):
         r = np.sqrt(r2)
         phi = np.arctan2(pos_y, pos_x)
         cos_theta = np.cos(np.arctan2(np.sqrt(pos_x ** 2 + pos_y ** 2), pos_z))
-        # cos_theta = pos_z / r
 
         if m >= 0:
             c = 1
@@ -80,7 +79,6 @@ def spherical_harmonics(orders, x, y, z):
             c = 0
             m = -m
 
-        # y_mn = leg_rec(n, m, cos_theta)  # Does the same as lpmv function (Will remove after more tests)
         y_mn = lpmv(m, n, cos_theta)
 
         rri_norm = math.factorial(n + m + 1) / math.factorial(n - m) / factorial2(2 * m)
