@@ -48,6 +48,13 @@ def siemens_basis(x, y, z):
         Reorder 1st - 2nd order basis terms along 4th dim. From
         1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
         2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Siemens shims)
+
+        Args:
+            spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
+                                        dimension. ``spher_harm.shape[3]` must equal 8.
+
+        Returns:
+            numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
         """
 
         assert spher_harm.shape[3] == 8
@@ -65,15 +72,19 @@ def siemens_basis(x, y, z):
 
     def get_scaling_factors():
         """
-        Returns a vector of ``scaling_factors`` to apply to the(Siemens-reordered) 1st + 2nd order spherical harmonic fields
-        for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
+        Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
+        fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
 
         Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
 
         2nd order terms should yield 1 micro-T of field shift per metre-squared: equivalently, 0.000042576 Hz/mm^2
 
-        Gist: given the stated nominal values, we can pick several arbitrary reference positions around the origin/isocenter
-        at which we know what the field *should* be, and use that to calculate the appropriate scaling factor.
+        Gist: given the stated nominal values, we can pick several arbitrary reference positions around the
+        origin/isocenter at which we know what the field *should* be, and use that to calculate the appropriate scaling
+        factor.
+
+        Returns:
+             numpy.ndarray:  1D vector of ``scaling_factors``
 
         NOTE: The method has been worked out empirically and has only been tested for 2 Siemens Prisma systems.
         E.g.re: Y, Z, ZX, and XY terms, their polarity had to be flipped relative to the form given by
