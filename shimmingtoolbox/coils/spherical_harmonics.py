@@ -128,7 +128,7 @@ def spherical_harmonics(orders, x, y, z):
             - calc_spherical_harmonics_arb_points_cz.m by jaystock@nmr.mgh.harvard.edu
     """
     # Check inputs
-    if not (x.ndim == y.ndim == z.ndim):
+    if not (x.shape == y.shape == z.shape):
         raise RuntimeError('Input arrays X, Y, and Z must be identically sized')
 
     if x.ndim == 3:
