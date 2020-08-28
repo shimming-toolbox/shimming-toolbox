@@ -89,15 +89,15 @@ def spherical_harmonics(orders, x, y, z):
 
     # Check inputs
     if not (x.shape == y.shape == z.shape):
-        raise RuntimeError('Input arrays X, Y, and Z must be identically sized')
+        raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
     if x.ndim == 3:
         grid_size = x.shape
     else:
-        raise RuntimeError('Input arrays X, Y, and Z must have 3 dimensions')
+        raise RuntimeError("Input arrays X, Y, and Z must have 3 dimensions")
 
     if not np.all(orders >= 0):
-        raise RuntimeError('Orders must be positive')
+        raise RuntimeError("Orders must be positive")
 
     # Initialize variables
     n_voxels = x.size
