@@ -17,10 +17,10 @@ class Optimizer(object):
 
         # Load coil profiles (N, X, Y, Z) if given
         if coil_profiles is None:
-            self.N = 0
             self.X = 0
             self.Y = 0
             self.Z = 0
+            self.N = 0
             self.coils = None
         else:
             self.load_coil_profiles(coil_profiles)
@@ -28,8 +28,8 @@ class Optimizer(object):
     # Load coil profiles and check dimensions
     def load_coil_profiles(self, coil_profiles):
         self._error_if(len(coil_profiles.shape) != 4,
-                       f"Coil profile has {len(coil_profiles.shape)} dimensions, expected 4 (N, X, Y, Z)")
-        self.N, self.X, self.Y, self.Z = coil_profiles.shape
+                       f"Coil profile has {len(coil_profiles.shape)} dimensions, expected 4 (X, Y, Z, N)")
+        self.X, self.Y, self.Z, self.N = coil_profiles.shape
         self.coils = coil_profiles
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
@@ -50,7 +50,7 @@ class Optimizer(object):
 
         return output
 
-    # For crashing and logging errors
+    # For crashing and logging errors -- needs refactoring to raise instead of assert
     def _error_if(self, err_condition, message):
         if err_condition: self.logger.error(message)
         assert not err_condition, message
