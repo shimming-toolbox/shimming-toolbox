@@ -25,6 +25,9 @@ numerical_model
 .. automodule:: shimmingtoolbox.simulate.numerical_model
    :members:
 
+.. automodule:: shimmingtoolbox.load_nifti
+   :members:
+
 unwrap
 ------
 
