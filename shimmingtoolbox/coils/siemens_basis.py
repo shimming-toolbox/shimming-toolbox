@@ -64,7 +64,7 @@ def siemens_basis(x, y, z):
             numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
         """
 
-        if not (spher_harm.shape[3] != 8):
+        if spher_harm.shape[3] != 8:
             raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
         reordered = np.zeros(spher_harm.shape)
