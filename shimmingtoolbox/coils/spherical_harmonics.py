@@ -53,14 +53,6 @@ def spherical_harmonics(orders, x, y, z):
             - calc_spherical_harmonics_arb_points_cz.m by jaystock@nmr.mgh.harvard.edu
     """
 
-    def number_of_coef(orders):
-        n_coef = 0
-        for n in orders:
-            m = 2 * n + 1
-            n_coef += m
-
-        return n_coef
-
     def leg_rec_harmonic_cz(n, m, pos_x, pos_y, pos_z):
         """
         Returns harmonic field for the required solid harmonic addressed by n, m based on the Legendre
@@ -102,7 +94,7 @@ def spherical_harmonics(orders, x, y, z):
     # Initialize variables
     n_voxels = x.size
     n_orders = orders.size
-    n_basis = number_of_coef(orders)
+    n_basis = sum(2*orders+1)
     harm_all = np.zeros([n_voxels, n_basis])
 
     ii = 0

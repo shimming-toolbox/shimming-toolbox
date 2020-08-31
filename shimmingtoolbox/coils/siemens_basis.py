@@ -5,6 +5,13 @@ import numpy as np
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
 
+Y = 1
+Z = 2
+ZX = 4
+XY = 7
+GYROMAGNETIC_RATIO = 42.576
+
+
 def siemens_basis(x, y, z):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
@@ -57,16 +64,11 @@ def siemens_basis(x, y, z):
             numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
         """
 
-        assert spher_harm.shape[3] == 8
+        if not (spher_harm.shape[3] != 8):
+            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+
         reordered = np.zeros(spher_harm.shape)
-        reordered[:, :, :, 0] = spher_harm[:, :, :, 2]
-        reordered[:, :, :, 1] = spher_harm[:, :, :, 0]
-        reordered[:, :, :, 2] = spher_harm[:, :, :, 1]
-        reordered[:, :, :, 3] = spher_harm[:, :, :, 5]
-        reordered[:, :, :, 4] = spher_harm[:, :, :, 6]
-        reordered[:, :, :, 5] = spher_harm[:, :, :, 4]
-        reordered[:, :, :, 6] = spher_harm[:, :, :, 7]
-        reordered[:, :, :, 7] = spher_harm[:, :, :, 3]
+        reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
 
         return reordered
 
@@ -116,16 +118,14 @@ def siemens_basis(x, y, z):
         r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
 
         # invert polarity
-        # Y, Z, ZX, and XY terms only(determined empirically)
-        sh[:, :, :, [1, 2, 4, 7]] = -sh[:, :, :, [1, 2, 4, 7]]
+        sh[:, :, :, [Y, Z, ZX, 7]] = -sh[:, :, :, [Y, Z, ZX, XY]]
 
         # scaling:
         orders = [1, 1, 1, 2, 2, 2, 2, 2]
 
         for i_ch in range(0, n_channels):
             field = sh[:, :, :, i_ch]
-            gyro_ratio = 42.576
-            scaling_factors[i_ch] = gyro_ratio * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
+            scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
 
         return scaling_factors
 
