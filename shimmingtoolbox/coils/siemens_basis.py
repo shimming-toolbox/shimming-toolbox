@@ -67,7 +67,6 @@ def siemens_basis(x, y, z):
         if spher_harm.shape[3] != 8:
             raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
-        reordered = np.zeros(spher_harm.shape)
         reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
 
         return reordered
