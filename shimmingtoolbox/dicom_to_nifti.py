@@ -25,7 +25,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     # TODO: remove temp tmp_dcm2bids (if user wants to)
 
     # Create the folder where the nifti files will be stored
-    if not os.exists(path_nifti):
+    if not os.path.exists(path_dicom):
+        raise(FileNotFoundError, "No dicom path found")
+    if not os.path.exists(path_config_dcm2bids):
+        raise(FileNotFoundError, "No dcm2bids config file found")
+    if not os.path.exists(path_nifti):
         os.makedirs(path_nifti)
     # Create bids structure for data
     # TODO; use dcm2bids as python package (no system call)
