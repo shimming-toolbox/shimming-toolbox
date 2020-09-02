@@ -14,7 +14,7 @@ from shimmingtoolbox import __dir_config_dcm2bids__
 # TODO: check in unit test if dcm2bids_scaffold is installed, and also check for the required version.
 
 
-def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__):
+def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
     """ Converts dicom files into nifti files by calling dcm2bids
 
     Args:
@@ -22,13 +22,12 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         path_nifti (str): path to the output nifti folder
 
     """
-    # TODO: remove temp tmp_dcm2bids (if user wants to)
 
     # Create the folder where the nifti files will be stored
     if not os.path.exists(path_dicom):
-        raise(FileNotFoundError, "No dicom path found")
+        raise FileNotFoundError("No dicom path found")
     if not os.path.exists(path_config_dcm2bids):
-        raise(FileNotFoundError, "No dcm2bids config file found")
+        raise FileNotFoundError("No dcm2bids config file found")
     if not os.path.exists(path_nifti):
         os.makedirs(path_nifti)
     # Create bids structure for data
@@ -41,16 +40,16 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     # # Call the dcm2bids_helper
     subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
     #
-    # # Check if the helper folder has been created
-    # helper_path = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    # if not os.path.isdir(helper_path):
-    #     raise ValueError('dcm2bids_helper could not create directory helper')
-    #
-    # # Make sure there is data in nifti_path / tmp_dcm2bids / helper
-    # helper_file_list = os.listdir(helper_path)
-    # if not helper_file_list:
-    #     raise ValueError('No data to process')
-    #
+    # Check if the helper folder has been created
+    helper_path = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
+    if not os.path.isdir(helper_path):
+        raise ValueError('dcm2bids_helper could not create directory helper')
+
+    # Make sure there is data in nifti_path / tmp_dcm2bids / helper
+    helper_file_list = os.listdir(helper_path)
+    if not helper_file_list:
+        raise ValueError('No data to process')
+
     # # Create list of acquisitions
     # acquisition_names = []
     # acquisition_numbers = []
@@ -84,3 +83,6 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     # output_dir = os.path.join(path_nifti, 'code')
     #
     subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids], check=True)
+
+    if remove_tmp:
+        os.removedirs(os.path.join(path_dicom, 'tmp_dcm2bids'))
