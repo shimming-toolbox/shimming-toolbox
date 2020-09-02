@@ -24,12 +24,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     """
     # TODO: remove temp tmp_dcm2bids (if user wants to)
 
-    # # Create the folder where the nifti files will be stored
-    # # TODO: might crash if folder already exists
-    # os.makedirs(path_nifti)
-    #
-    # # Create bids structure for data
-    # # TODO; use dcm2bids as python package (no system call)
+    # Create the folder where the nifti files will be stored
+    if not os.exists(path_nifti):
+        os.makedirs(path_nifti)
+    # Create bids structure for data
+    # TODO; use dcm2bids as python package (no system call)
     subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True)
     #
     # # Copy original dicom files into nifti_path/sourcedata
@@ -80,52 +79,4 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     # # Folder where the different nifti acquisitions will be stored
     # output_dir = os.path.join(path_nifti, 'code')
     #
-    # for iAcq in range(len(acquisition_names_short)):
-    #     # Create a config.json file, place it in nifti_path / code
-    #     config_file_path = create_config(output_dir, acquisition_numbers[iAcq], acquisition_names_short[iAcq], modality_short[iAcq])
-    #
-    #     # Call dcm2bids
-    #     participant = ''
     subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids], check=True)
-
-
-# def create_config(output_dir, acquisition_number, acquisition_name, modality):
-#     """ Creates a config.json file used by dcm2bids to sort the nifti files of a same acquisition into a same folder
-#
-#     Args:
-#         output_dir (str): path to the folder where dcm2bids will store the acquisitions as a folder
-#         acquisition_number (int): number of the acquisition
-#         acquisition_name (str): name of the acquisition
-#         modality (str): name of the modality used during the acquisition
-#
-#     Returns:
-#         file_path: path to the folder where the nifti and json files corresponding to the acquisition have been stored
-#
-#     """
-#     # Define the config file name
-#     name = str(acquisition_number) + '_' + acquisition_name
-#     file_path = os.path.join(output_dir, name + '.json')
-#
-#     # Create a dictionary that will be used to write a config.json file
-#     config = {
-#         "searchMethod": "fnmatch",
-#         "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
-#         "descriptions": [{
-#             "dataType": name,
-#             "SeriesDescription": name,
-#             "modalityLabel": modality,
-#             "criteria": {
-#                 "SeriesDescription": acquisition_name,
-#                 "SeriesNumber": str(acquisition_number)
-#             },
-#         }],
-#     }
-#
-#     # Create a config.json file that will be used by dcm2bids to separate the nifti files
-#     with open(file_path, 'w') as config_file:
-#         json.dump(config, config_file)
-#
-#     # Close file
-#     config_file.close()
-#
-#     return file_path
