@@ -12,6 +12,86 @@ XY = 7
 GYROMAGNETIC_RATIO = 42.576
 
 
+def reorder_to_siemens(spher_harm):
+    """
+    Reorder 1st - 2nd order basis terms along 4th dim. From
+    1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
+    2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Siemens shims)
+
+    Args:
+        spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
+                                    dimension. ``spher_harm.shape[3]` must equal 8.
+
+    Returns:
+        numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
+    """
+
+    if spher_harm.shape[3] != 8:
+        raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+
+    reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
+
+    return reordered
+
+
+def get_scaling_factors():
+    """
+    Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
+    fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
+
+    Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
+
+    2nd order terms should yield 1 micro-T of field shift per metre-squared: equivalently, 0.000042576 Hz/mm^2
+
+    Gist: given the stated nominal values, we can pick several arbitrary reference positions around the
+    origin/isocenter at which we know what the field *should* be, and use that to calculate the appropriate scaling
+    factor.
+
+    Returns:
+         numpy.ndarray:  1D vector of ``scaling_factors``
+
+    NOTE: The method has been worked out empirically and has only been tested for 2 Siemens Prisma systems.
+    E.g.re: Y, Z, ZX, and XY terms, their polarity had to be flipped relative to the form given by
+    ``shimmingtoolbox.coils.spherical_harmonics``.
+    """
+
+    [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
+                                        indexing='xy')
+    orders = np.array(range(1, 3))
+    sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
+    sh = reorder_to_siemens(sh)
+
+    n_channels = sh.shape[3]
+    scaling_factors = np.zeros(n_channels)
+
+    # indices of reference positions for normalization:
+    i_x1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 0))
+    i_y1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 0))
+    i_z1 = np.nonzero((x_iso == 0) & (y_iso == 0) & (z_iso == 1))
+
+    i_x1z1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 1))
+    i_y1z1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 1))
+    i_x1y1 = np.nonzero((x_iso == 1) & (y_iso == 1) & (z_iso == 0))
+
+    # order the reference indices like the sh field terms
+    i_ref = [i_x1, i_y1, i_z1, i_z1, i_x1z1, i_y1z1, i_x1, i_x1y1]
+
+    # distance from iso/origin to adopted reference point[units: mm]
+    r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
+
+    # invert polarity
+    sh[:, :, :, [Y, Z, ZX, 7]] = -sh[:, :, :, [Y, Z, ZX, XY]]
+
+    # scaling:
+    orders = [1, 1, 1, 2, 2, 2, 2, 2]
+
+    for i_ch in range(0, n_channels):
+        field = sh[:, :, :, i_ch]
+        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
+
+    return scaling_factors
+
+
 def siemens_basis(x, y, z):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
@@ -48,85 +128,6 @@ def siemens_basis(x, y, z):
         (Requires checking the Adjustments/Shim card to see what the corresponding terms and values actually are). So,
         for now, ``basis`` will always be returned with 8 terms along the 4th dim.
     """
-
-    # Local functions
-    def reorder_to_siemens(spher_harm):
-        """
-        Reorder 1st - 2nd order basis terms along 4th dim. From
-        1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
-        2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Siemens shims)
-
-        Args:
-            spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
-                                        dimension. ``spher_harm.shape[3]` must equal 8.
-
-        Returns:
-            numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
-        """
-
-        if spher_harm.shape[3] != 8:
-            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
-
-        reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
-
-        return reordered
-
-    def get_scaling_factors():
-        """
-        Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
-        fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
-
-        Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
-
-        2nd order terms should yield 1 micro-T of field shift per metre-squared: equivalently, 0.000042576 Hz/mm^2
-
-        Gist: given the stated nominal values, we can pick several arbitrary reference positions around the
-        origin/isocenter at which we know what the field *should* be, and use that to calculate the appropriate scaling
-        factor.
-
-        Returns:
-             numpy.ndarray:  1D vector of ``scaling_factors``
-
-        NOTE: The method has been worked out empirically and has only been tested for 2 Siemens Prisma systems.
-        E.g.re: Y, Z, ZX, and XY terms, their polarity had to be flipped relative to the form given by
-        ``shimmingtoolbox.coils.spherical_harmonics``.
-        """
-
-        [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
-                                            indexing='xy')
-        orders = np.array(range(1, 3))
-        sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
-        sh = reorder_to_siemens(sh)
-
-        n_channels = sh.shape[3]
-        scaling_factors = np.zeros(n_channels)
-
-        # indices of reference positions for normalization:
-        i_x1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 0))
-        i_y1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 0))
-        i_z1 = np.nonzero((x_iso == 0) & (y_iso == 0) & (z_iso == 1))
-
-        i_x1z1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 1))
-        i_y1z1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 1))
-        i_x1y1 = np.nonzero((x_iso == 1) & (y_iso == 1) & (z_iso == 0))
-
-        # order the reference indices like the sh field terms
-        i_ref = [i_x1, i_y1, i_z1, i_z1, i_x1z1, i_y1z1, i_x1, i_x1y1]
-
-        # distance from iso/origin to adopted reference point[units: mm]
-        r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
-
-        # invert polarity
-        sh[:, :, :, [Y, Z, ZX, 7]] = -sh[:, :, :, [Y, Z, ZX, XY]]
-
-        # scaling:
-        orders = [1, 1, 1, 2, 2, 2, 2, 2]
-
-        for i_ch in range(0, n_channels):
-            field = sh[:, :, :, i_ch]
-            scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
-
-        return scaling_factors
 
     # Check inputs
     if not (x.ndim == y.ndim == z.ndim == 3):
