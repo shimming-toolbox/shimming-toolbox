@@ -1,3 +1,4 @@
+
 API Reference
 =============
 
@@ -39,6 +40,9 @@ misc
 ----
 
 .. automodule:: shimmingtoolbox.download
+   :members:
+
+.. automodule:: shimmingtoolbox.load_nifti
    :members:
 
 .. automodule:: shimmingtoolbox.utils
