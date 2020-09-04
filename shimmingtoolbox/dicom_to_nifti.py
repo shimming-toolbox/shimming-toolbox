@@ -10,7 +10,7 @@ import os
 import sys
 import subprocess
 import dcm2bids
-from dcm2bids.scaffold import scaffold
+# from dcm2bids.scaffold import scaffold
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 
