@@ -20,7 +20,7 @@ def reorder_to_siemens(spher_harm):
 
     Args:
         spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
-                                    dimension. ``spher_harm.shape[3]` must equal 8.
+                                    dimension. ``spher_harm.shape[3]`` must equal 8.
 
     Returns:
         numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
