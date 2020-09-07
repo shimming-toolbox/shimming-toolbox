@@ -46,12 +46,12 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
     #
     # Check if the helper folder has been created
-    helper_path = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    if not os.path.isdir(helper_path):
+    path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
+    if not os.path.isdir(path_helper):
         raise ValueError('dcm2bids_helper could not create directory helper')
 
     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
-    helper_file_list = os.listdir(helper_path)
+    helper_file_list = os.listdir(path_helper)
     if not helper_file_list:
         raise ValueError('No data to process')
 
@@ -71,12 +71,12 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     #     subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
     #     #
     #     # Check if the helper folder has been created
-    #     helper_path = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(helper_path):
+    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
+    #     if not os.path.isdir(path_helper):
     #         raise ValueError('dcm2bids_helper could not create directory helper')
     #
     #     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
-    #     helper_file_list = os.listdir(helper_path)
+    #     helper_file_list = os.listdir(path_helper)
     #     if not helper_file_list:
     #         raise ValueError('No data to process')
     #
@@ -85,10 +85,10 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     #     bids_info = dcm2bids.Dcm2bids([path_dicom], subject_id, path_config_dcm2bids, path_nifti)
     #     scaffold()
     #
-    #     helper_path = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(helper_path):
+    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
+    #     if not os.path.isdir(path_helper):
     #         raise ValueError('dcm2bids_helper could not create directory helper')
-    #     helper_file_list = os.listdir(helper_path)
+    #     helper_file_list = os.listdir(path_helper)
     #     if not helper_file_list:
     #         raise ValueError('No data to process')
     #
