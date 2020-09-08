@@ -2,31 +2,15 @@
 
 import numpy as np
 import logging
+from optimizer_skeleton import Optimizer
+import scipy.optimize as opt
 
-class Optimizer(object):
+class least_squares(Optimizer):
 
-    def __init__(self, coil_profiles=None):
-
-        # Logging
-        self.logger = logging.getLogger()
-        logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
-
-        # Load coil profiles (X, Y, Z, N) if given
-        if coil_profiles is None:
-            self.X = 0
-            self.Y = 0
-            self.Z = 0
-            self.N = 0
-            self.coils = None
-        else:
-            self.load_coil_profiles(coil_profiles)
-
-    # Load coil profiles and check dimensions
-    def load_coil_profiles(self, coil_profiles):
-        self._error_if(len(coil_profiles.shape) != 4,
-                       f"Coil profile has {len(coil_profiles.shape)} dimensions, expected 4 (X, Y, Z, N)")
-        self.X, self.Y, self.Z, self.N = coil_profiles.shape
-        self.coils = np.moveaxis(coil_profiles, 4, 0)
+    def _objective(self, currents, masked_unshimmed, masked_coils):
+        shim = masked_coils * currents
+        shimmed = masked_unshimmed + shim
+        return np.sum(shimmed ** 2)
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
 
@@ -41,10 +25,19 @@ class Optimizer(object):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
                            f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: {(self.X, self.Y, self.Z)}")
 
+        # Set up mask
+        full_mask = np.zeros((self.X, self.Y, self.Z))
+        full_mask[mask_origin[0]:, mask_origin[1]:, mask_origin[2]:] = mask
+        full_mask = np.where(full_mask != 0, 1, 0)
+        masked_unshimmed = unshimmed * full_mask
+        masked_coils = self.coils * full_mask
+        
         # Set up output currents and optimize
-        output = np.zeros(self.N)
+        currents = np.zeros(self.N)
 
-        return output
+        opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils))
+
+        return currents
 
     # For crashing and logging errors -- needs refactoring to raise instead of assert
     def _error_if(self, err_condition, message):
