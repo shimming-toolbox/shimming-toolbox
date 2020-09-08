@@ -12,7 +12,7 @@ XY = 7
 GYROMAGNETIC_RATIO = 42.576
 
 
-def reorder_to_siemens(spher_harm):
+def _reorder_to_siemens(spher_harm):
     """
     Reorder 1st - 2nd order basis terms along 4th dim. From
     1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
@@ -20,7 +20,7 @@ def reorder_to_siemens(spher_harm):
 
     Args:
         spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
-                                    dimension. ``spher_harm.shape[3]`` must equal 8.
+                                    dimension. ``spher_harm.shape[3]`` must qual 8.
 
     Returns:
         numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
@@ -34,7 +34,7 @@ def reorder_to_siemens(spher_harm):
     return reordered
 
 
-def get_scaling_factors():
+def _get_scaling_factors():
     """
     Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
     fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
@@ -59,7 +59,7 @@ def get_scaling_factors():
                                         indexing='xy')
     orders = np.array(range(1, 3))
     sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
-    sh = reorder_to_siemens(sh)
+    sh = _reorder_to_siemens(sh)
 
     n_channels = sh.shape[3]
     scaling_factors = np.zeros(n_channels)
@@ -141,12 +141,12 @@ def siemens_basis(x, y, z):
     spher_harm = spherical_harmonics(orders, x, y, z)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
-    reordered_spher = reorder_to_siemens(spher_harm)
+    reordered_spher = _reorder_to_siemens(spher_harm)
 
     # scale according to
     # - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
     # - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
-    scaling_factors = get_scaling_factors()
+    scaling_factors = _get_scaling_factors()
     scaled = np.zeros_like(reordered_spher)
     for i_channel in range(0, spher_harm.shape[3]):
         scaled[:, :, :, i_channel] = scaling_factors[i_channel] * reordered_spher[:, :, :, i_channel]
