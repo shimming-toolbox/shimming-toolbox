@@ -8,18 +8,17 @@ import scipy.optimize as opt
 
 class LeastSquares(Optimizer):
 
-    def _objective(self, currents, masked_unshimmed, masked_coils):
-        shim = masked_coils * currents
-        shimmed = masked_unshimmed + shim
-        return np.sum(shimmed ** 2)
+    def _residuals(self, currents, masked_unshimmed, masked_coils):
+        shimmed = masked_unshimmed + masked_coils * currents
+        return shimmed - np.average(shimmed)
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
 
         # Check for sizing errors
         self._error_if(self.coils is None, "No loaded coil profiles!")
-        self._error_if(len(unshimmed.shape) != 3,
-                       f"Unshimmed profile has {len(unshimmed.shape)} dimensions, expected 3 (X, Y, Z)")
-        self._error_if(len(mask.shape) != 3, f"Mask has {len(mask.shape)} dimensions, expected 3 (X, Y, Z)")
+        self._error_if(unshimmed.ndim != 3,
+                       f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (X, Y, Z)")
+        self._error_if(mask.ndim != 3, f"Mask has {mask.ndim} dimensions, expected 3 (X, Y, Z)")
         self._error_if(unshimmed.shape != (self.X, self.Y, self.Z),
                        f"XYZ mismatch -- Coils: {self.coils.shape}, Unshimmed: {unshimmed.shape}")
         for i in range(3):
@@ -36,7 +35,7 @@ class LeastSquares(Optimizer):
         # Set up output currents and optimize
         currents = np.zeros(self.N)
 
-        opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils))
+        opt.minimize(self._residuals, currents, args=(masked_unshimmed, masked_coils))
 
         return currents
 
