@@ -12,6 +12,7 @@ testing_data
 # Pycharm stuff
 *.pyc
 .idea
+venv
 
 # Sphinx stuff
 docs/build/
