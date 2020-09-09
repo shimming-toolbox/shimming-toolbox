@@ -13,5 +13,7 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices):
         z = z_slices[i]
         currents[i] = optimizer.optimize(unshimmed, full_mask[:, :, z:z+1], mask_origin=(0, 0, z))
     return currents
+
+print("test")
     
 
