@@ -3,6 +3,7 @@
 import numpy as np
 import logging
 
+
 class Optimizer(object):
 
     def __init__(self, coil_profiles=None):

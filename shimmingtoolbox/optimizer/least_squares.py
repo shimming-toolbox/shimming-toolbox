@@ -2,10 +2,11 @@
 
 import numpy as np
 import logging
-from optimizer_skeleton import Optimizer
+from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 import scipy.optimize as opt
 
-class least_squares(Optimizer):
+
+class LeastSquares(Optimizer):
 
     def _objective(self, currents, masked_unshimmed, masked_coils):
         shim = masked_coils * currents
