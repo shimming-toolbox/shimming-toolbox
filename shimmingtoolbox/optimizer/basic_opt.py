@@ -6,11 +6,12 @@ from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 import scipy.optimize as opt
 
 
-class LeastSquares(Optimizer):
+class BasicOptimizer(Optimizer):
 
-    def _residuals(self, currents, masked_unshimmed, masked_coils):
-        shimmed = masked_unshimmed + masked_coils * currents
-        return shimmed - np.average(shimmed)
+    def _objective(self, currents, masked_unshimmed, masked_coils):
+        shimmed = masked_unshimmed + np.sum(masked_coils * currents, axis=3, keepdims=False)
+        objective = np.std(shimmed) + np.sum(currents)/100000
+        return objective
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
 
@@ -27,18 +28,18 @@ class LeastSquares(Optimizer):
 
         # Set up mask
         full_mask = np.zeros((self.X, self.Y, self.Z))
-        full_mask[mask_origin[0]:, mask_origin[1]:, mask_origin[2]:] = mask
+        full_mask[mask_origin[0]:mask_origin[0] + mask.shape[0], mask_origin[1]:mask_origin[1] + mask.shape[1], mask_origin[2]:mask_origin[2] + mask.shape[2]] = mask
         full_mask = np.where(full_mask != 0, 1, 0)
-        masked_unshimmed = unshimmed * full_mask
-        # TODO: explicit elementwise multiplication (self.coils is 4d while full_mask is 3d)
-        masked_coils = self.coils * full_mask
         
+        masked_unshimmed = unshimmed * full_mask
+        masked_coils = self.coils * full_mask.reshape(full_mask.shape + (1,))
+
         # Set up output currents and optimize
         currents = np.zeros(self.N)
 
-        # TODO: fix: ValueError: operands could not be broadcast together with shapes (8,100,100,3) (8,)
-        opt.minimize(self._residuals, currents, args=(masked_unshimmed, masked_coils))
+        currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils)).x
 
+        print(currents)
         return currents
 
     # For crashing and logging errors -- needs refactoring to raise instead of assert

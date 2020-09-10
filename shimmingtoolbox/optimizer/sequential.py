@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from shimmingtoolbox.optimizer.least_squares import LeastSquares
+import logging
+from shimmingtoolbox.optimizer.basic_opt import BasicOptimizer
 
 
 def sequential_zslice(unshimmed, coils, full_mask, z_slices):
@@ -17,14 +18,14 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices):
         numpy.ndarray: Coefficients to enter in the Syngo console (this might change in the future)
 
     """
-    z_slices.reshape((z_slices.size, 1))
-    currents = np.zeros([z_slices.size, coils.shape[3]])
-    optimizer = LeastSquares(coils)
-    # TODO: simplify iterator
+    z_slices.reshape(z_slices.size)
+    currents = np.zeros((z_slices.size, coils.shape[3]))
+    optimizer = BasicOptimizer(coils)
     for i in range(z_slices.size):
         z = z_slices[i]
-        # TODO: comment from julien: why not restricting unshimmed with [:, :, z:z+1] as for the mask?
-        currents[i] = optimizer.optimize(unshimmed, full_mask[:, :, z:z+1], mask_origin=(0, 0, z))
+        mask = full_mask[:, :, z:z+1]
+        currents[i, :] = optimizer.optimize(unshimmed, mask, mask_origin=(0, 0, z))
+
     return currents
 
 

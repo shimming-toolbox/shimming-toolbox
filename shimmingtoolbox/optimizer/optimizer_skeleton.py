@@ -25,11 +25,10 @@ class Optimizer(object):
 
     # Load coil profiles and check dimensions
     def load_coil_profiles(self, coil_profiles):
-        self._error_if(len(coil_profiles.shape) != 4,
-                       f"Coil profile has {len(coil_profiles.shape)} dimensions, expected 4 (X, Y, Z, N)")
+        self._error_if(coil_profiles.ndim != 4,
+                       f"Coil profile has {coil_profiles.ndim} dimensions, expected 4 (X, Y, Z, N)")
         self.X, self.Y, self.Z, self.N = coil_profiles.shape
-        # TODO: document the need for the moveaxis
-        self.coils = np.moveaxis(coil_profiles, 3, 0)
+        self.coils = coil_profiles
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
 
