@@ -8,7 +8,7 @@ from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.masking.shapes import shapes
 
 
-def test_normal_zslice():
+def test_zslice():
 
     # Set up unshimmed fieldmap
     num_vox = 100
