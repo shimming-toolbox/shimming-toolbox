@@ -18,19 +18,19 @@ def test_zslice():
     te = [0.004, 0.008]  # in s
     model_obj.simulate_measurement(tr, te)
     phase_meas1 = model_obj.get_phase()
-    phase_e1 = phase_meas1[:, :, 1, 0]
-    phase_e2 = phase_meas1[:, :, 1, 1]
+    phase_e1 = phase_meas1[:, :, 0, 0]
+    phase_e2 = phase_meas1[:, :, 0, 1]
     b0_map = (phase_e2 - phase_e1)/(te[1] - te[0])
     unshimmed = np.zeros([num_vox, num_vox, 3])
 
     # Probably a better way
-    for x in unshimmed.shape[2]:
+    for x in range(unshimmed.shape[2]):
         unshimmed[:, :, x] = b0_map
 
     # Set up coil profile
     x, y, z = np.meshgrid(
-        np.array(range(int(num_vox/2), int(num_vox/2 + 1))),
-        np.array(range(int(-num_vox/2), int(num_vox/2 + 1))),
+        np.array(range(int(-num_vox/2), int(num_vox/2))),
+        np.array(range(int(-num_vox/2), int(num_vox/2))),
         np.array(range(-1, 2)),
         indexing='ij')
     coils = siemens_basis(x, y, z)

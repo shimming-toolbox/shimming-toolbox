@@ -12,7 +12,7 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices):
         coils (numpy.ndarray): Coil sensitivity profile as defined in coils.siemens_basis.siemens_basis()
         full_mask: (numpy.ndarray): Mask used for the optimizer (only consider voxels with non-zero values).
         z_slices: TODO
-    
+
     Returns:
         numpy.ndarray: Coefficients to enter in the Syngo console (this might change in the future)
 
