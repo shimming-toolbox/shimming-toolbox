@@ -30,11 +30,13 @@ class LeastSquares(Optimizer):
         full_mask[mask_origin[0]:, mask_origin[1]:, mask_origin[2]:] = mask
         full_mask = np.where(full_mask != 0, 1, 0)
         masked_unshimmed = unshimmed * full_mask
+        # TODO: explicit elementwise multiplication (self.coils is 4d while full_mask is 3d)
         masked_coils = self.coils * full_mask
         
         # Set up output currents and optimize
         currents = np.zeros(self.N)
 
+        # TODO: fix: ValueError: operands could not be broadcast together with shapes (8,100,100,3) (8,)
         opt.minimize(self._residuals, currents, args=(masked_unshimmed, masked_coils))
 
         return currents

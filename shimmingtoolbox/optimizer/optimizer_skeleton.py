@@ -28,7 +28,8 @@ class Optimizer(object):
         self._error_if(len(coil_profiles.shape) != 4,
                        f"Coil profile has {len(coil_profiles.shape)} dimensions, expected 4 (X, Y, Z, N)")
         self.X, self.Y, self.Z, self.N = coil_profiles.shape
-        self.coils = np.moveaxis(coil_profiles, 4, 0)
+        # TODO: document the need for the moveaxis
+        self.coils = np.moveaxis(coil_profiles, 3, 0)
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
 
