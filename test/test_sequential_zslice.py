@@ -21,7 +21,8 @@ def test_zslice():
     phase_e1 = phase_meas1[:, :, 0, 0]
     phase_e2 = phase_meas1[:, :, 0, 1]
     b0_map = (phase_e2 - phase_e1)/(te[1] - te[0])
-    unshimmed = np.zeros([num_vox, num_vox, 3])
+    nz = 3
+    unshimmed = np.zeros([num_vox, num_vox, nz])
 
     # Probably a better way
     for x in range(unshimmed.shape[2]):
@@ -31,11 +32,11 @@ def test_zslice():
     x, y, z = np.meshgrid(
         np.array(range(int(-num_vox/2), int(num_vox/2))),
         np.array(range(int(-num_vox/2), int(num_vox/2))),
-        np.array(range(-1, 2)),
+        np.array(range(nz)),
         indexing='ij')
     coils = siemens_basis(x, y, z)
 
     # Set up mask
-    full_mask = shapes(unshimmed, 'cube', len_dim1=20, len_dim2=20, len_dim3=3)
+    full_mask = shapes(unshimmed, 'cube', len_dim1=20, len_dim2=20, len_dim3=nz)
 
-    currents = sequential_zslice(unshimmed, coils, full_mask, z_slices)
+    currents = sequential_zslice(unshimmed, coils, full_mask, np.array(range(nz)))
