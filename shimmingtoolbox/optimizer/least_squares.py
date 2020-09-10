@@ -1,7 +1,7 @@
-# coding: utf-8
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
 
 import numpy as np
-import logging
 from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 import scipy.optimize as opt
 

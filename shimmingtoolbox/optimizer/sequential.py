@@ -1,9 +1,9 @@
-from pathlib import Path
-import shutil
-import os
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
 import numpy as np
-import logging
 from shimmingtoolbox.optimizer.least_squares import LeastSquares
+
 
 def sequential_zslice(unshimmed, coils, full_mask, z_slices):
     z_slices.reshape((z_slices.size, 1))
@@ -14,6 +14,5 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices):
         currents[i] = optimizer.optimize(unshimmed, full_mask[:, :, z:z+1], mask_origin=(0, 0, z))
     return currents
 
-print("test")
-    
 
+print("test")
