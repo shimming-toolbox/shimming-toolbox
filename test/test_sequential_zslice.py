@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import os
+from matplotlib.figure import Figure
+
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
@@ -39,4 +42,25 @@ def test_zslice():
     # Set up mask
     full_mask = shapes(unshimmed, 'cube', len_dim1=20, len_dim2=20, len_dim3=nz)
 
+    # Optimize
     currents = sequential_zslice(unshimmed, coils, full_mask, np.array(range(nz)))
+
+    # Calculate theoretical shimmed map
+    shimmed = unshimmed + np.sum(currents * coils, axis=3, keepdims=False)
+
+    # Plot results
+    fig = Figure(figsize=(10, 10))
+    # FigureCanvas(fig)
+    for z in range(3):
+        ax = fig.add_subplot(3, 2, 2 * z + 1)
+        im = ax.imshow(unshimmed[:, :, z])
+        fig.colorbar(im)
+        ax.set_title(f"Unshimmed {z}")
+        ax = fig.add_subplot(3, 2, 2 * z + 2)
+        im = ax.imshow(shimmed[:, :, z])
+        fig.colorbar(im)
+        ax.set_title(f"Shimmed {z}")
+
+    fname_figure = os.path.join(os.path.curdir, 'shimmed_plot.png')
+    fig.savefig(fname_figure)
+
