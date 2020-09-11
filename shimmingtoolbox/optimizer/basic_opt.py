@@ -36,8 +36,11 @@ class BasicOptimizer(Optimizer):
 
         # Set up output currents and optimize
         currents = np.zeros(self.N)
-
-        currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils)).x
+        max_coef = 1000
+        min_coef = -1000
+        bounds = [(min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef),
+                  (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef)]
+        currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x
 
         print(currents)
         return currents
