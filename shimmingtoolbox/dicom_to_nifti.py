@@ -1,8 +1,6 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-# TODO: check in unit test if dcm2bids_scaffold is installed, and also check for the required version.
-
 from distutils.dir_util import copy_tree
 import json
 import numpy as np
