@@ -36,6 +36,7 @@ setup(
         "scipy~=1.5.0",
         "tqdm",
         'matplotlib~=3.1.2',
+        "bids~=0.12.0",
     ],
     extras_require={
         'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"],
