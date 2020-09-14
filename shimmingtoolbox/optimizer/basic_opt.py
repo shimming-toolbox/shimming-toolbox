@@ -15,15 +15,14 @@ class BasicOptimizer(Optimizer):
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
         """
-
         Args:
             unshimmed (numpy.ndarray): 3D B0 map
-            mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
-            mask_origin: TODO: is this necessary?
+            mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+            mask_origin: Mask origin if mask volume does not cover unshimmed volume
 
         Returns:
             numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
-                           (coils.size x z_slices.size)
+                           (coils.size)
         """
 
         # Check for sizing errors
