@@ -2,10 +2,10 @@ import numpy as np
 
 # Code ported and refactored from Jason Stockmann and Fa-Hsuan Lin, "Magnetic field by Biot-Savart's Law" http://maki.bme.ntu.edu.tw/?page_id=333
 
-# TODO: test against matlab and analytics, confirm this works
 # TODO: docstrings
 
-mu0 = 1
+mu0 = 1.256637e-6 # [H/m]
+H_gyromagnetic_ratio = 4.258e+7 # [Hz/T]
 
 def _loop_segments(center, normal, radius, segment_num):
     segments = unit_circle = np.zeros((2, 3, segment_num))
@@ -14,7 +14,7 @@ def _loop_segments(center, normal, radius, segment_num):
     unit_circle[0, :-1, :] = np.concatenate((np.cos(theta[:, :-1]), np.sin(theta[:, :-1])), axis=0) # Start points
     unit_circle[1, :-1, :] = np.concatenate((np.cos(theta[:, 1:]), np.sin(theta[:, 1:])), axis=0) # End points
 
-    segments[:, :, :] = np.round(unit_circle * radius, decimals=5)
+    segments[:, :, :] = np.round(unit_circle * radius, decimals=9)
     segments = _rotate_z_to(normal) @ segments
     return segments + center.reshape((1, 3, 1))
 
@@ -26,18 +26,20 @@ def _rotate_z_to(normal):
     r_cross_mat = np.array([[0, -rhat[2], rhat[1]],
                      [rhat[2], 0, -rhat[0]],
                      [-rhat[1], rhat[0], 0]])
-    cos = np.dot((0, 0, 1), nhat)
-    sin = np.linalg.norm(rhat)
-    if cos == 0:
-        return np.identity(3) * sin
-    R = np.identity(3) + r_cross_mat + r_cross_mat @ r_cross_mat * (1 - cos)/sin**2
-    
-    return R
+    cs = np.dot((0, 0, 1), nhat) # cosine
+    sn = np.linalg.norm(rhat) # sine
+    if sn == 0:
+        return np.array([[1, 0, 0],
+                        [0, cs, 0],
+                        [0, 0, cs]]) # Rotation around x
+    else:
+        return np.identity(3) + r_cross_mat + r_cross_mat @ r_cross_mat * (1 - cs)/sn**2
 
-def _integral(l, dl, r):
+def _z_field(l, dl, r):
+    l, dl, r = l / 1000, dl / 1000, r / 1000 # Convert mm to m
     rp = r - l
-    B_per_I = mu0 / 4 * np.pi * np.cross(dl, rp) / np.linalg.norm(rp)**3
-    return B_per_I[2]
+    B_per_I = mu0 / (4 * np.pi) * np.cross(dl, rp) / np.linalg.norm(rp)**3
+    return B_per_I[2] # [T/A]
     
 def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_n):
     ranges = []
@@ -56,10 +58,6 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
             for i in range(x.size):
                 for j in range(y.size):
                     for k in range(z.size):
-                        profiles[i, j, k, ch] += _integral(l, dl, np.asarray([x[i, 0, 0], y[0, j, 0], z[0, 0, k]]))
+                        profiles[i, j, k, ch] += _z_field(l, dl, np.asarray([x[i, 0, 0], y[0, j, 0], z[0, 0, k]]))
+
     return profiles
-
-    
-
-
-print(biot_savart([(0, 0, 2)], [(1, 0, 0)], [2], [4], (0, 0, 0), (2, 2, 2), (3, 3, 3)))
