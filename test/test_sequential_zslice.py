@@ -27,9 +27,14 @@ def test_zslice():
     nz = 3
     unshimmed = np.zeros([num_vox, num_vox, nz])
 
-    # Probably a better way
-    for x in range(unshimmed.shape[2]):
-        unshimmed[:, :, x] = b0_map
+    # Slice 1 is linear
+    unshimmed[:, :, 0] = b0_map
+
+    # Slice 2 is average(slice 1 rotated + slice 1)
+    unshimmed[:, :, 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
+
+    # Slice 3 is slice 1 squared
+    unshimmed[:, :, 2] = unshimmed[:, :, 0] ** 2
 
     # Set up coil profile
     x, y, z = np.meshgrid(
@@ -40,7 +45,7 @@ def test_zslice():
     coils = siemens_basis(x, y, z)
 
     # Set up mask
-    full_mask = shapes(unshimmed, 'cube', len_dim1=20, len_dim2=20, len_dim3=nz)
+    full_mask = shapes(unshimmed, 'cube', len_dim1=40, len_dim2=40, len_dim3=nz)
 
     # Optimize
     currents = sequential_zslice(unshimmed, coils, full_mask, np.array(range(nz)))
@@ -53,14 +58,15 @@ def test_zslice():
     # FigureCanvas(fig)
     for z in range(3):
         ax = fig.add_subplot(3, 2, 2 * z + 1)
-        im = ax.imshow(unshimmed[:, :, z])
+        im = ax.imshow(full_mask[:, :, z] * unshimmed[:, :, z])
         fig.colorbar(im)
         ax.set_title(f"Unshimmed {z}")
         ax = fig.add_subplot(3, 2, 2 * z + 2)
-        im = ax.imshow(shimmed[:, :, z])
+        im = ax.imshow(full_mask[:, :, z] * shimmed[:, :, z])
         fig.colorbar(im)
         ax.set_title(f"Shimmed {z}")
 
     fname_figure = os.path.join(os.path.curdir, 'shimmed_plot.png')
     fig.savefig(fname_figure)
 
+    # TODO: assert
