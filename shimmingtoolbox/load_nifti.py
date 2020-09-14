@@ -8,11 +8,15 @@ import nibabel as nib
 import json
 import math
 
+from bids import BIDSLayout
+
+from shimmingtoolbox import __dir_config_pybids__
+
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
 
-def load_nifti(path_data, modality='phase'):
+def load_nifti(path_data, modality='phase', bids_config = __dir_config_pybids__):
     """
     Load data from a directory containing NIFTI type file with nibabel.
     Args:
@@ -29,89 +33,94 @@ def load_nifti(path_data, modality='phase'):
     """
     if not os.path.exists(path_data):
         raise RuntimeError("Not an existing NIFTI path")
+    if not os.path.exists(bids_config):
+        bids_config = None
 
-    # Generate file_list
-    file_list = []
-    [file_list.append(os.path.join(path_data, f)) for f in os.listdir(path_data) if f not in file_list]
+    bids_layout = BIDSLayout(root=path_data, validate=False, config=bids_config)
 
-    nifti_path = ""
-    # Check for incompatible acquisition source path
-    if all([os.path.isdir(f) for f in file_list]):
-        acquisitions = [f for f in file_list if os.path.isdir(f)]
-        logging.info("Multiple acquisition directories in path. Choosing only one.")
-    elif all([os.path.isfile(f) for f in file_list]):
-        logging.info("Acquisition directory given. Using acquisitions.")
-        nifti_path = path_data
-    else:
-        raise RuntimeError("Directories and files in input path")
-
-    # Choose an acquisition between all folders
-    if not nifti_path:
-        for i in range(len(acquisitions)):
-            print(f"{i}:{os.path.basename(file_list[i])}\n")
-
-        select_acquisition = -1
+    sub_list = bids_layout.get(return_type='id', target='subject')
+    select_sub = 0
+    if sub_list:
+        for i in range(len(sub_list)):
+            print(f"{i}:{sub_list[i]}\n")
         while 1:
-            input_resp = input("Enter the number for the appropriate acquisition folder, (type 'q' to quit) : ")
+            input_resp = input("Enter the number for the appropriate subject folder, (type 'q' to quit) : ")
             if input_resp == 'q':
                 return 0
 
-            select_acquisition = int(input_resp)
+            select_sub = int(input_resp)
 
-            if select_acquisition in range(len(acquisitions)):
+            if select_sub in range(len(sub_list)):
                 break
             else:
-                logging.error(f"Input must be linked to an acquisition folder. {input_resp} is out of range")
+                logging.error(f"Input must be linked to a subject folder. {input_resp} is out of range")
 
-        nifti_path = os.path.abspath(file_list[select_acquisition])
+    ses_list = bids_layout.get(return_type='id', target='session', subject=sub_list[select_sub])
+    select_ses = 0
+    if ses_list:
+        for i in range(len(ses_list)):
+            print(f"{i}:{ses_list[i]}\n")
+        while 1:
+            input_resp = input("Enter the number for the appropriate subject folder, (type 'q' to quit) : ")
+            if input_resp == 'q':
+                return 0
 
-    # Get a list of nii files
-    nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
+            select_ses = int(input_resp)
 
-    # Read all images and headers available and store them
-    nifti_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
+            if select_ses in range(len(ses_list)):
+                break
+            else:
+                logging.error(f"Input must be linked to a subject folder. {input_resp} is out of range")
+
+    datatype_list = bids_layout.get(return_type='id', target='session', subject=sub_list[select_sub],
+                                    session=ses_list[select_ses])
+    select_datatype = 0
+    if datatype_list:
+        for i in range(len(datatype_list)):
+            print(f"{i}:{datatype_list[i]}\n")
+        while 1:
+            input_resp = input("Enter the number for the appropriate subject folder, (type 'q' to quit) : ")
+            if input_resp == 'q':
+                return 0
+
+            select_datatype = int(input_resp)
+
+            if select_datatype in range(len(datatype_list)):
+                break
+            else:
+                logging.error(f"Input must be linked to a subject folder. {input_resp} is out of range")
+
+    acq_list = bids_layout.get(return_type='id', target='session', subject=sub_list[select_sub],
+                                    session=ses_list[select_ses], datatype=datatype_list[select_datatype])
+    select_acq = 0
+    if acq_list:
+        for i in range(len(acq_list)):
+            print(f"{i}:{acq_list[i]}\n")
+        while 1:
+            input_resp = input("Enter the number for the appropriate subject folder, (type 'q' to quit) : ")
+            if input_resp == 'q':
+                return 0
+
+            select_acq = int(input_resp)
+
+            if select_acq in range(len(acq_list)):
+                break
+            else:
+                logging.error(f"Input must be linked to a subject folder. {input_resp} is out of range")
+
+    image_file_list = bids_layout.get(subject=sub_list[select_sub], session=ses_list[select_ses], acquisition=acq_list[select_acq],
+                                      datatype=datatype_list[select_datatype], return_type='filename', extension=['nii.gz', 'nii'])
 
     info = []
     json_info = []
-    niftis = np.empty([1, 1], dtype=float)
-
-    run_list = {}
-    # Parse and separate each file by run sequence with modality check
-    for file_info in nifti_init:
-        if file_info[1]['AcquisitionNumber'] not in run_list.keys():
-            run_list[file_info[1]['AcquisitionNumber']] = []
-        run_list[file_info[1]['AcquisitionNumber']].append((file_info, file_info[1]['ImageComments']))
-
-    # If more than one run, select one
-    select_run = -1
-    if len(list(run_list.keys())) > 1:
-        for i in list(run_list.keys()):
-            print(f"{i}\n")
-
-        while 1:
-            input_resp = input("Enter the number for the appropriate run number, (type 'q' to quit) : ")
-            if input_resp == 'q':
-                return 0
-            select_run = int(input_resp)
-
-            if select_run in list(run_list.keys()):
-                break
-            else:
-                logging.error(f"Input must be linked to a run number. {input_resp} is out of range")
-    else:
-        select_run = list(run_list.keys())[0]
-        logging.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
-
-    # Create output array and headers
-    nifti_pos = 0
-    echo_shape = sum(1 for tmp_info in run_list[select_run] if modality in tmp_info[1])
-
+    nifti_init = [read_nii(image_file_list[i]) for i in range(len(image_file_list))]
+    echo_shape = sum(1 for tmp_info in nifti_init if modality in tmp_info[1]['ImageComments'])
     niftis = np.empty([nifti_init[0][0].shape[0], nifti_init[0][0].shape[1], nifti_init[0][0].shape[2], echo_shape,
                        (1 if nifti_init[0][0].ndim == 3 else nifti_init[0][0].shape[3])], dtype=float)
-
-    for i_echo in range(len(run_list[select_run])):
-        tmp_nii = run_list[select_run][i_echo][0]
-        if modality in run_list[select_run][i_echo][1]:
+    nifti_pos = 0
+    for file_path in image_file_list:
+        tmp_nii = read_nii(file_path)
+        if modality in tmp_nii[1]['ImageComments']:
             info.append(tmp_nii[0].header)
             json_info.append(tmp_nii[1])
             if niftis.shape[4] == 1:
