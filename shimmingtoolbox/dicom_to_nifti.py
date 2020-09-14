@@ -14,9 +14,6 @@ import dcm2bids
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 
-# TODO: check in unit test if dcm2bids_scaffold is installed, and also check for the required version.
-
-
 def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
     """ Converts dicom files into nifti files by calling dcm2bids
 
