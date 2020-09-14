@@ -1,7 +1,6 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 # Code ported and refactored from Jason Stockmann and Fa-Hsuan Lin, "Magnetic field by Biot-Savart's Law" http://maki.bme.ntu.edu.tw/?page_id=333
-
-# TODO: docstrings
 
 import numpy as np
 
