@@ -36,6 +36,7 @@ class BasicOptimizer(Optimizer):
 
         # Set up output currents and optimize
         currents = np.zeros(self.N)
+        # TODO: min and max coef are currently arbitrary, put as inputs?
         max_coef = 1000
         min_coef = -1000
         bounds = [(min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef),
