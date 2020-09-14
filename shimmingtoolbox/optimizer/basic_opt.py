@@ -14,6 +14,17 @@ class BasicOptimizer(Optimizer):
         return objective
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
+        """
+
+        Args:
+            unshimmed (numpy.ndarray): 3D B0 map
+            mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
+            mask_origin: TODO: is this necessary?
+
+        Returns:
+            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
+                           (coils.size x z_slices.size)
+        """
 
         # Check for sizing errors
         self._error_if(self.coils is None, "No loaded coil profiles!")
@@ -39,11 +50,12 @@ class BasicOptimizer(Optimizer):
         # TODO: min and max coef are currently arbitrary, put as inputs?
         max_coef = 5000
         min_coef = -5000
-        bounds = [(min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef),
-                  (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef), (min_coef, max_coef)]
+        bounds = []
+        for i_coils in range(self.N):
+            bounds.append((min_coef, max_coef))
+
         currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x
 
-        print(currents)
         return currents
 
     # For crashing and logging errors -- needs refactoring to raise instead of assert
