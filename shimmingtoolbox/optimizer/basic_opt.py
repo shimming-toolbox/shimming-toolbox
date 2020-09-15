@@ -9,19 +9,20 @@ from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 
 class BasicOptimizer(Optimizer):
 
-    def _objective(self, currents, masked_unshimmed, masked_coils):
+    def _objective(self, coef, masked_unshimmed, masked_coils):
         """
-        TODO:
+        Objective function to minimize
         Args:
-            currents:
-            masked_unshimmed:
-            masked_coils:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            masked_unshimmed (numpy.ndarray): 3D array of the masked unshimmed map
+            masked_coils (numpy.ndarray): 4D array (X, Y, Z, channel) of masked coils
 
         Returns:
+            float: Result that shows the performance on the coef inputs
 
         """
-        shimmed = masked_unshimmed + np.sum(masked_coils * currents, axis=3, keepdims=False)
-        objective = np.std(shimmed) + np.sum(currents)/100000
+        shimmed = masked_unshimmed + np.sum(masked_coils * coef, axis=3, keepdims=False)
+        objective = np.std(shimmed) + np.sum(coef)/100000
         return objective
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
