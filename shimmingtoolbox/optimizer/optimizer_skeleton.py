@@ -70,14 +70,14 @@ class Optimizer(object):
                        f"XYZ mismatch -- Coils: {self.coils.shape}, Unshimmed: {unshimmed.shape}")
         for i in range(3):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
-                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: {(self.X, self.Y, self.Z)}")
+                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: "
+                           f"{(self.X, self.Y, self.Z)}")
 
         # Set up output currents and optimize
         output = np.zeros(self.N)
 
         return output
 
-    # TODO: refactor to raise errors instead of assert
     def _error_if(self, err_condition, message):
         """
         Helper function throwing errors
@@ -86,5 +86,6 @@ class Optimizer(object):
             err_condition (bool): Condition to throw error on
             message (string): Message to log and throw
         """
-        if err_condition: self.logger.error(message)
-        assert not err_condition, message
+        if err_condition:
+            self.logger.error(message)
+            raise RuntimeError(message)

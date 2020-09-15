@@ -10,12 +10,24 @@ from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 class BasicOptimizer(Optimizer):
 
     def _objective(self, currents, masked_unshimmed, masked_coils):
+        """
+        TODO:
+        Args:
+            currents:
+            masked_unshimmed:
+            masked_coils:
+
+        Returns:
+
+        """
         shimmed = masked_unshimmed + np.sum(masked_coils * currents, axis=3, keepdims=False)
         objective = np.std(shimmed) + np.sum(currents)/100000
         return objective
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
         """
+        Optimize unshimmed volume by varying current to each channel
+
         Args:
             unshimmed (numpy.ndarray): 3D B0 map
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
@@ -58,7 +70,14 @@ class BasicOptimizer(Optimizer):
 
         return currents
 
-    # For crashing and logging errors -- needs refactoring to raise instead of assert
     def _error_if(self, err_condition, message):
-        if err_condition: self.logger.error(message)
-        assert not err_condition, message
+        """
+        Helper function throwing errors
+
+        Args:
+            err_condition (bool): Condition to throw error on
+            message (string): Message to log and throw
+        """
+        if err_condition:
+            self.logger.error(message)
+            raise RuntimeError(message)
