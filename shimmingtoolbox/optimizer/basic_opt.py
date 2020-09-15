@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 import scipy.optimize as opt
+
+from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
 
 
 class BasicOptimizer(Optimizer):
@@ -18,7 +19,7 @@ class BasicOptimizer(Optimizer):
         Args:
             unshimmed (numpy.ndarray): 3D B0 map
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
-            mask_origin: Mask origin if mask volume does not cover unshimmed volume
+            mask_origin (tuple): Mask origin if mask volume does not cover unshimmed volume
 
         Returns:
             numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function

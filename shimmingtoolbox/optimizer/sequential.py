@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import logging
+
 from shimmingtoolbox.optimizer.basic_opt import BasicOptimizer
 
 

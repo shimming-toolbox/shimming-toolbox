@@ -8,13 +8,22 @@ import logging
 class Optimizer(object):
     """
     Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask
+
+    Attributes:
+        X (int): Amount of pixels in the X direction
+        Y (int): Amount of pixels in the Y direction
+        Z (int): Amount of pixels in the Z direction
+        N (int): Amount of channels in the coil profile
+        coils (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
     """
+
     def __init__(self, coil_profiles=None):
         """
-        Args:
-            coil_profiles (np.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
-        """
+        Initializes X, Y, Z, N and coils according to input coil_profiles
 
+        Args:
+            coil_profiles (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
+        """
         # Logging
         self.logger = logging.getLogger()
         logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
@@ -35,7 +44,7 @@ class Optimizer(object):
         Load new coil profiles into Optimizer
 
         Args:
-            coil_profiles (np.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
+            coil_profiles (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
         """
         self._error_if(coil_profiles.ndim != 4,
                        f"Coil profile has {coil_profiles.ndim} dimensions, expected 4 (X, Y, Z, N)")
@@ -47,9 +56,9 @@ class Optimizer(object):
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (np.ndarray): (X, Y, Z) 3d array of unshimmed volume
-            mask (np.ndarray of ints): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
-            mask_origin (3-tuple): Origin of mask if mask volume does not cover unshimmed volume
+            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
+            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
+            mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
         """
 
         # Check for sizing errors
