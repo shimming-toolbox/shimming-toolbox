@@ -25,15 +25,11 @@ def test_zslice():
     phase_e2 = phase_meas1[:, :, 0, 1]
     b0_map = (phase_e2 - phase_e1)/(te[1] - te[0])
     nz = 3
+
+    # Construct synthetic field map based on a manipulation of model_obj across slices
     unshimmed = np.zeros([num_vox, num_vox, nz])
-
-    # Slice 1 is linear
     unshimmed[:, :, 0] = b0_map
-
-    # Slice 2 is average(slice 1 rotated + slice 1)
     unshimmed[:, :, 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
-
-    # Slice 3 is slice 1 squared
     unshimmed[:, :, 2] = unshimmed[:, :, 0] ** 2
 
     # Set up coil profile
