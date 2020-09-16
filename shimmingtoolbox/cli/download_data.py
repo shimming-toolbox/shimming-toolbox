@@ -28,7 +28,6 @@ def main(verbose, output, data):
         output: Output folder.
         data: The data to be downloaded.
     """
-    # TODO: logging does not seem to output on the terminal
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
