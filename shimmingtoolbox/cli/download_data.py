@@ -39,7 +39,7 @@ def main(verbose, output, data):
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
-    url = URL_DICT[data]
+    url = URL_DICT[data][0]
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output, keep=True)
