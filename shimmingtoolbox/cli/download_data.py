@@ -15,7 +15,7 @@ from shimmingtoolbox.download import install_data
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
     "testing_data": (["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"], "Light-weighted dataset for testing purpose."),
-    "prelude": (["https://github.com/shimming-toolbox/binaries/raw/master/prelude"], "Binary for prelude software") # TODO: What does prelude do? is it another dataset?
+    "prelude": (["https://github.com/shimming-toolbox/binaries/raw/master/prelude"], "Binary for prelude software")
 }
 
 dataset_list_str: str = ""
