@@ -52,8 +52,8 @@ class BasicLSQ(Optimizer):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
                            f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds "
                            f"(coil shape: {(self.X, self.Y, self.Z)}")
-        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of params "
-                                                                      f"as channels")
+        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of (min, max)"
+                                                                     f" tuples as coil channels")
 
         # Set up mask
         full_mask = np.zeros((self.X, self.Y, self.Z))
