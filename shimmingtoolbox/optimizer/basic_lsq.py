@@ -25,7 +25,7 @@ class BasicLSQ(Optimizer):
         objective = np.std(shimmed) + np.sum(coef)/100000
         return objective
 
-    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
+    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
         """
         Optimize unshimmed volume by varying current to each channel
 
@@ -33,6 +33,8 @@ class BasicLSQ(Optimizer):
             unshimmed (numpy.ndarray): 3D B0 map
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
             mask_origin (tuple): Mask origin if mask volume does not cover unshimmed volume
+            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
+               is used to specify no bound.
 
         Returns:
             numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
@@ -48,7 +50,10 @@ class BasicLSQ(Optimizer):
                        f"XYZ mismatch -- Coils: {self.coils.shape}, Unshimmed: {unshimmed.shape}")
         for i in range(3):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
-                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: {(self.X, self.Y, self.Z)}")
+                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds "
+                           f"(coil shape: {(self.X, self.Y, self.Z)}")
+        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of params "
+                                                                      f"as channels")
 
         # Set up mask
         full_mask = np.zeros((self.X, self.Y, self.Z))
@@ -60,12 +65,6 @@ class BasicLSQ(Optimizer):
 
         # Set up output currents and optimize
         currents = np.zeros(self.N)
-        # TODO: min and max coef are currently arbitrary, put as inputs?
-        max_coef = 5000
-        min_coef = -5000
-        bounds = []
-        for _ in range(self.N):
-            bounds.append((min_coef, max_coef))
 
         currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x
 

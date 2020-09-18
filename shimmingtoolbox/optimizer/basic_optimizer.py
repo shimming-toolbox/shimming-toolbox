@@ -52,7 +52,7 @@ class Optimizer(object):
         self.X, self.Y, self.Z, self.N = coil_profiles.shape
         self.coils = coil_profiles
 
-    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0)):
+    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
         """
         Optimize unshimmed volume by varying current to each channel
 
@@ -60,6 +60,8 @@ class Optimizer(object):
             unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
             mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
             mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
+            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
+               is used to specify no bound.
         """
 
         # Check for sizing errors
@@ -73,6 +75,8 @@ class Optimizer(object):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
                            f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: "
                            f"{(self.X, self.Y, self.Z)}")
+        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of params "
+                                                                     f"as channels")
 
         # Set up output currents and optimize
         output = np.zeros(self.N)

@@ -40,11 +40,18 @@ def test_zslice():
         indexing='ij')
     coils = siemens_basis(x, y, z)
 
+    # Set up bounds for output currents
+    max_coef = 5000
+    min_coef = -5000
+    bounds = []
+    for _ in range(coils.shape[3]):
+        bounds.append((min_coef, max_coef))
+
     # Set up mask
     full_mask = shapes(unshimmed, 'cube', len_dim1=40, len_dim2=40, len_dim3=nz)
 
     # Optimize
-    currents = sequential_zslice(unshimmed, coils, full_mask, np.array(range(nz)))
+    currents = sequential_zslice(unshimmed, coils, full_mask, np.array(range(nz)), bounds=bounds)
 
     # Calculate theoretical shimmed map
     shimmed = unshimmed + np.sum(currents * coils, axis=3, keepdims=False)
