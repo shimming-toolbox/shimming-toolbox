@@ -4,10 +4,10 @@
 import numpy as np
 import scipy.optimize as opt
 
-from shimmingtoolbox.optimizer.optimizer_skeleton import Optimizer
+from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
 
-class BasicOptimizer(Optimizer):
+class BasicLSQ(Optimizer):
 
     def _objective(self, coef, masked_unshimmed, masked_coils):
         """
@@ -64,7 +64,7 @@ class BasicOptimizer(Optimizer):
         max_coef = 5000
         min_coef = -5000
         bounds = []
-        for i_coils in range(self.N):
+        for _ in range(self.N):
             bounds.append((min_coef, max_coef))
 
         currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x

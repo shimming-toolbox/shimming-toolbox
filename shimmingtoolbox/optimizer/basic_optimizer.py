@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import scipy.linalg
 import logging
 
 
@@ -75,6 +76,12 @@ class Optimizer(object):
 
         # Set up output currents and optimize
         output = np.zeros(self.N)
+
+        # Simple pseudo-inverse optimization
+        profile_mat = np.reshape(np.transpose(self.coils, axes=(3, 0, 1, 2)), (self.N, -1)).T # V x N
+        unshimmed_vec = np.reshape(unshimmed, (self.N,)) # V
+
+        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x V @ V
 
         return output
 

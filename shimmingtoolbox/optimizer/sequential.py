@@ -3,12 +3,12 @@
 
 import numpy as np
 
-from shimmingtoolbox.optimizer.basic_opt import BasicOptimizer
+from shimmingtoolbox.optimizer.basic_lsq import BasicLSQ
 
 
 def sequential_zslice(unshimmed, coils, full_mask, z_slices):
     """
-    Performs shimming slice by slice using shimmingtoolbox.optimizer.basic_opt.BasicOptimizer
+    Performs shimming slice by slice using shimmingtoolbox.optimizer.basic_opt.BasicLSQ
 
     Args:
         unshimmed (numpy.ndarray): 3D B0 map
@@ -23,7 +23,7 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices):
     """
     z_slices.reshape(z_slices.size)
     currents = np.zeros((z_slices.size, coils.shape[3]))
-    optimizer = BasicOptimizer(coils)
+    optimizer = BasicLSQ(coils)
     for i in range(z_slices.size):
         z = z_slices[i]
         mask = full_mask[:, :, z:z+1]
