@@ -8,7 +8,7 @@ import logging
 
 class Optimizer(object):
     """
-    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask
+    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. Use optimize(args) to optimize a given mask.
 
     Attributes:
         X (int): Amount of pixels in the X direction
@@ -65,6 +65,30 @@ class Optimizer(object):
         """
 
         # Check for sizing errors
+        self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
+
+        # Set up output currents and optimize
+        output = np.zeros(self.N)
+
+        # Simple pseudo-inverse optimization
+        profile_mat = np.reshape(np.transpose(self.coils, axes=(3, 0, 1, 2)), (self.N, -1)).T # V x N
+        unshimmed_vec = np.reshape(unshimmed, (self.X * self.Y * self.Z,)) # V
+
+        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x V @ V
+
+        return output
+
+    def _check_sizing(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
+        """
+        Helper function to check array sizing
+
+        Args:
+            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
+            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
+            mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
+            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
+               is used to specify no bound.
+        """
         self._error_if(self.coils is None, "No loaded coil profiles!")
         self._error_if(unshimmed.ndim != 3,
                        f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (X, Y, Z)")
@@ -75,19 +99,9 @@ class Optimizer(object):
             self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
                            f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: "
                            f"{(self.X, self.Y, self.Z)}")
-        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of (min, max)"
+        if bounds is not None:
+            self._error_if(len(bounds) != self.N, f"Bounds should have the same number of (min, max)"
                                                                      f" tuples as coil as channels")
-
-        # Set up output currents and optimize
-        output = np.zeros(self.N)
-
-        # Simple pseudo-inverse optimization
-        profile_mat = np.reshape(np.transpose(self.coils, axes=(3, 0, 1, 2)), (self.N, -1)).T # V x N
-        unshimmed_vec = np.reshape(unshimmed, (self.N,)) # V
-
-        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x V @ V
-
-        return output
 
     def _error_if(self, err_condition, message):
         """

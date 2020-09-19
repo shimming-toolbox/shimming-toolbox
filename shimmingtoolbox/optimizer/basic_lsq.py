@@ -42,18 +42,7 @@ class BasicLSQ(Optimizer):
         """
 
         # Check for sizing errors
-        self._error_if(self.coils is None, "No loaded coil profiles!")
-        self._error_if(unshimmed.ndim != 3,
-                       f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (X, Y, Z)")
-        self._error_if(mask.ndim != 3, f"Mask has {mask.ndim} dimensions, expected 3 (X, Y, Z)")
-        self._error_if(unshimmed.shape != (self.X, self.Y, self.Z),
-                       f"XYZ mismatch -- Coils: {self.coils.shape}, Unshimmed: {unshimmed.shape}")
-        for i in range(3):
-            self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
-                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds "
-                           f"(coil shape: {(self.X, self.Y, self.Z)}")
-        self._error_if(len(bounds) != self.N and bounds is not None, f"Bounds should have the same number of (min, max)"
-                                                                     f" tuples as coil channels")
+        self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
         # Set up mask
         full_mask = np.zeros((self.X, self.Y, self.Z))
@@ -69,15 +58,3 @@ class BasicLSQ(Optimizer):
         currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x
 
         return currents
-
-    def _error_if(self, err_condition, message):
-        """
-        Helper function throwing errors
-
-        Args:
-            err_condition (bool): Condition to throw error on
-            message (string): Message to log and throw
-        """
-        if err_condition:
-            self.logger.error(message)
-            raise RuntimeError(message)
