@@ -56,5 +56,5 @@ def test_zslice():
     shimmed = unshimmed + np.sum(currents * coils, axis=3, keepdims=False)
 
     for i_slice in z_slices:
-        assert(np.sum(np.abs(full_mask[:, :, z] * shimmed[:, :, i_slice])) <
-               np.sum(np.abs(full_mask[:, :, z] * unshimmed[:, :, i_slice])))
+        assert(np.sum(np.abs(full_mask[:, :, i_slice] * shimmed[:, :, i_slice])) <
+               np.sum(np.abs(full_mask[:, :, i_slice] * unshimmed[:, :, i_slice])))
