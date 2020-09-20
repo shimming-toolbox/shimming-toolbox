@@ -14,8 +14,14 @@ from shimmingtoolbox.download import install_data
 #     1. String description of the item
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
-    "testing_data": (["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"], "Light-weighted dataset for testing purpose."),
-    "prelude": (["https://github.com/shimming-toolbox/binaries/raw/master/prelude"], "Binary for prelude software")
+    "testing_data": (
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"],
+        "Light-weighted dataset for testing purpose.",
+    ),
+    "prelude": (
+        ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"],
+        "Binary for prelude software",
+    ),
 }
 
 dataset_list_str: str = ""
@@ -23,7 +29,10 @@ dataset_list_str: str = ""
 for item in URL_DICT.items():
     dataset_list_str += f"\n\n - {item[0]}: {item[1][1]}"
 
-@click.command(help=f"Download data from the internet. The available datasets are:{dataset_list_str}")
+
+@click.command(
+    help=f"Download data from the internet. The available datasets are:{dataset_list_str}"
+)
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
 @click.option("--output", help="Output folder.")
 @click.argument("data")
