@@ -38,8 +38,9 @@ setup(
         "matplotlib~=3.1.2",
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
+        "sphinx>=1.6",
+        "sphinx_rtd_theme>=0.2.4",
     ],
     extras_require={
-        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
     },
 )
