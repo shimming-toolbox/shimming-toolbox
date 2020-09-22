@@ -9,7 +9,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="shimmingtoolbox",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     version="0.1.0",
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
