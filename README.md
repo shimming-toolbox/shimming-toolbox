@@ -25,7 +25,7 @@ or write it with `install --user` (for a user-local install) in order to be allo
 
 ## Development
 
-Please see the documentation for instructions on building and testing a [development version](docs/2_getting_started/1_installation.md) of shimming-toolbox-py.
+Please see the documentation for instructions on building and testing a [development version](https://shimming-toolbox.org/en/latest/2_getting_started/1_installation.html) of shimming-toolbox-py.
 
 ## Contributing
 
