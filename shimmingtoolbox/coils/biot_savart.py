@@ -18,9 +18,9 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
         normals (list of (3,) array-like 3D floats): List of 3D normal vectors for each loop in mm
         radii (list of floats): List of radii for each loop in mm
         segment_numbers (list of ints): List of the number of segments for each loop approximation
-        fov_min ((3,) array-like of floats): Low corner of coil profile field of view (x, y, z)
-        fov_max ((3,) array-like of floats): Inclusive high corner of coil profile field of view (x, y, z)
-        fov_n ((3,) array-like of ints): Number of points for each dimension (x, y, z)
+        fov_min ((3,) array-like of floats): Low corner of coil profile field of view (x, y, z) in mm
+        fov_max ((3,) array-like of floats): Inclusive high corner of coil profile field of view (x, y, z) in mm
+        fov_n ((3,) array-like of ints): Number of points for each dimension (x, y, z) in mm
 
     Returns:
         numpy.ndarray: (|X|, |Y|, |Z|, |centers|) coil profiles of magnetic field z-component -- (X, Y, Z, Channel)
@@ -35,11 +35,9 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
     profiles = np.zeros((x.size, y.size, z.size, channels))
     for ch in range(channels):
         segments = _loop_segments(np.asarray(centers[ch]), np.asarray(normals[ch]), radii[ch], segment_numbers[ch])
-        print(f"Channel {ch}")
         n = 0
         for segment in np.split(segments, segment_numbers[ch], axis=2):
             n += 1
-            print(f"Segment {n}")
             l = np.average(segment, axis=0).reshape(3)
             dl = (segment[1] - segment[0]).reshape(3)
             for i in range(x.size):
