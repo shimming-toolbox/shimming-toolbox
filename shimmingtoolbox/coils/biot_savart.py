@@ -14,13 +14,13 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
     Creates coil profiles for arbitrary loops, for use in multichannel shim examples that do not match spherical
     harmonics
     Args:
-        centers (list of (3,) array-like floats): List of center points for each loop in mm
-        normals (list of (3,) array-like 3D floats): List of 3D normal vectors for each loop in mm
-        radii (list of floats): List of radii for each loop in mm
-        segment_numbers (list of ints): List of the number of segments for each loop approximation
-        fov_min ((3,) array-like of floats): Low corner of coil profile field of view (x, y, z) in mm
-        fov_max ((3,) array-like of floats): Inclusive high corner of coil profile field of view (x, y, z) in mm
-        fov_n ((3,) array-like of ints): Number of points for each dimension (x, y, z) in mm
+        centers (list): List of 3D float center points for each loop in mm
+        normals (list): List of 3D float normal vectors for each loop in mm
+        radii (list): List of float radii for each loop in mm
+        segment_numbers (list): List of integer number of segments for each loop approximation
+        fov_min (tuple): Low 3D float corner of coil profile field of view (x, y, z) in mm
+        fov_max (tuple): Inclusive high 3D float corner of coil profile field of view (x, y, z) in mm
+        fov_n (tuple): Integer number of points for each dimension (x, y, z) in mm
 
     Returns:
         numpy.ndarray: (|X|, |Y|, |Z|, |centers|) coil profiles of magnetic field z-component -- (X, Y, Z, Channel)
@@ -55,8 +55,8 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
 def _loop_segments(center, normal, radius, segment_num):
     """Creates loop segments for loop approximation, given loop details
     Args:
-        center ((3,) numpy.ndarray): 3D center points loop in arbitrary units
-        normal ((3,) numpy.ndarray): Normal vector to loop in arbitrary units
+        center (numpy.ndarray): 3D center point of loop in arbitrary units
+        normal (numpy.ndarray): 3D normal vector to loop in arbitrary units
         radius (float): Loop radius in arbitrary units
         segment_num (int): Number of segments for loop approximation 
 
@@ -77,7 +77,7 @@ def _loop_segments(center, normal, radius, segment_num):
 def _rotate_z_to(target):
     """Creates 3D rotation matrix that sends (0, 0, 1) to target vector
     Args:
-        target ((3,) numpy.ndarray): Target vector to rotate (0, 0, 1) to
+        target (numpy.ndarray): 3D float target vector to rotate (0, 0, 1) to
 
     Returns:
         numpy.ndarray: (3, 3) 3D rotation matrix sending (0, 0, 1) to target vector
@@ -104,9 +104,9 @@ def _rotate_z_to(target):
 def _z_field(l, dl, r):
     """Calculate z-field at point r from line segment centered at l with length dl
     Args:
-        l ((3,) numpy.ndarray): Line segment center in m
-        dl ((3,) numpy.ndarray): Line segment vector in m
-        r ((3,) numpy.ndarray): Target point in m
+        l (numpy.ndarray): Line segment center in m
+        dl (numpy.ndarray): Line segment vector in m
+        r (numpy.ndarray): Target point in m
 
     Returns:
         float: z-component of magnetic field at r in T/A
