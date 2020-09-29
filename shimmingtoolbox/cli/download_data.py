@@ -36,7 +36,7 @@ for item in URL_DICT.items():
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
 @click.option("--output", help="Output folder.")
 @click.argument("data")
-def main(verbose, output, data):
+def download_data(verbose, output, data):
     """
     Download data from the internet.
 
@@ -45,6 +45,7 @@ def main(verbose, output, data):
         output: Output folder.
         data: The data to be downloaded.
     """
+    click.echo("test")
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
@@ -53,6 +54,3 @@ def main(verbose, output, data):
         output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output, keep=True)
 
-
-if __name__ == '__main__':
-    main()
