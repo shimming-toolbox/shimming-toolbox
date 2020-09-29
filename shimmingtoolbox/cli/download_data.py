@@ -24,6 +24,8 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
     ),
 }
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
 dataset_list_str: str = ""
 
 for item in URL_DICT.items():
@@ -31,6 +33,7 @@ for item in URL_DICT.items():
 
 
 @click.command(
+    context_settings=CONTEXT_SETTINGS,
     help=f"Download data from the internet. The available datasets are:{dataset_list_str}"
 )
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
