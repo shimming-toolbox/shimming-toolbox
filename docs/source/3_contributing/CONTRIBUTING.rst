@@ -14,14 +14,14 @@ Introduction
 First off, thanks for taking the time to contribute to our project! 🎉
 
 When contributing to this repository, please first discuss the change you wish
-to make by opening a new `GitHub issue <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_.
+to make by opening a new `GitHub issue <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_ with one of the templates.
 
 Contributions relating to content of the Github repository can be
 submitted through `GitHub pull requests <https://github.com/shimming-toolbox/shimming-toolbox-py/pulls>`_ (PR).
 
 PR for bug fixes or new features should be based on the `master <https://github.com/shimming-toolbox/shimming-toolbox-py/tree/master>`_ branch.
 
-The following Github documentation may be useful:
+The following GitHub documentation may be useful:
 
 -   See `Using Pull Requests <https://help.github.com/articles/using-pull-requests>`_ for more information about Pull Requests.
 -   See `Forking a repository <http://help.github.com/forking/>`_ for an introduction to forking a repository.
@@ -39,7 +39,7 @@ have the rights, contact the team leader.
 Opening an issue
 ----------------
 
-Issues (bugs, feature requests, or others) can be submitted `on our project's issue page <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_.
+Issues (bugs, enhancement requests, or feature requests) can be submitted `on our project's issue page <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_. Please select the appropriate template when creating a new issue.
 
 
 Before Submitting a New Issue
@@ -47,49 +47,13 @@ Before Submitting a New Issue
 
 Please take a few seconds to search the issue database in case the issue has already been raised.
 
-When reporting an issue, make sure your installation has not been tempered with (and if you can, update to the latest release, maybe the problem was fixed).
+When reporting an issue, make sure your installation has not been tampered with (and if you can, update to the latest release in case the problem has already been fixed).
 
 
 Submitting an Issue
 ~~~~~~~~~~~~~~~~~~~
 
-Issue Title
-^^^^^^^^^^^
-
-Try to have a self-descriptive, meaningful issue title, summarizing the problem you see. Do not add the function name, because this will be taken care of by the 'Issue Labels'. 
-
-Examples:
-
-- *Installation failure: problem creating launchers*
-- *Implement optimization algorithms for shimming*
-- *Document the use of config/dcm2bids.json*
-
-
-Issue Body
-^^^^^^^^^^
-
-**Describe** the issue and mention the shimming-toolbox version and OS that you are using.
-
-If you experience an error, copy/paste the Terminal output (include your syntax) and please follow these guidelines for clarity:
-
-- If there is less than 10 lines of text, embed it directly in your comment in github. Use "~~~" to format as code.
-
-- If there is 10+ lines, either use an external website such as `pastebin <https://pastebin.com/>`_ (copy/paste your text and include the URL in your comment), or use `collapsable Github markdown capabilities <https://gist.github.com/ericclemmons/b146fe5da72ca1f706b2ef72a20ac39d#using-details-in-github>`_.
-
-Provide steps to **reproduce** the issue. Try to reproduce your issue using the available `testing_data <https://github.com/shimming-toolbox/data-testing>`_
-as inputs, and to provide a sequence of commands that can reproduce it. If this is not possible, try to isolate a minimal input on which the issue
-happens (eg. one file among a dataset), and provide this file publicly, or if not possible, privately (coordinate with @jcohenadad).
-
-Add useful information such as screenshots, etc...
-
-If you submit a feature request, provide a *usage scenario*, imagining how the feature would be used (ideally inputs, a sequence of commands,
-and a desired outcome). Also provide references to any theoretical work to help the reader better understand the feature.
-
-
-Issue Labels
-^^^^^^^^^^^^
-
-To help assigning reviewers and organizing the Changelog, add labels that best describe the category and type of issue.
+Go through the checklist of the issue template to ensure you've met all our issue formatting requirements. This will help us to quickly address the issue ticket.
 
 
 Issue Examples
@@ -200,25 +164,7 @@ on the subject.
 Submitting a Pull Request
 -------------------------
 
-PR Title
-~~~~~~~~
-
-For each new release, so please follow the following rules:
-
--  Provide a concise and self-descriptive title (see 'Issue Title').
--  Do not include the applicable issue number in the title, do it in the PR body (see 'PR Body' section).
--  If the PR is not ready for review, convert it to a draft.
-
-PR Body
-~~~~~~~
-
-Describe what the PR is about, explain the approach and possible
-drawbacks. Don't hesitate to repeat some of the text from the related
-issue (easier to read than having to click on the link).
-
-If the PR fixes issue(s), indicate it after your introduction:
-``Fixes #XXXX, Fixes #YYYY``. Note: it is important to respect the
-syntax above so that the issue(s) will be closed upon merging the PR.
+Please go through the checklist in the PR template to ensure you've met all our PR formatting requirements. This will help us to easily review your PR so it can be quickly merged when ready.
 
 PR Labels
 ~~~~~~~~~
@@ -232,20 +178,20 @@ You **must** add labels to your PRs, as these are used to automatically generate
 
 
 
-Work in progress 
+Work in progress
 ~~~~~~~~~~~~~~~~
 
 If your PR is not ready for review yet, you can convert it to a "Draft", so the team is informed.
 
 A draft pull request is styled differently to clearly indicate that it’s in a draft state. 
-Merging is blocked in draft pull requests. Change the status to “Ready for review” near the 
+Merging is blocked in draft pull requests. Change the status to "Ready for review" near the 
 bottom of your pull request to remove the draft state and allow merging according to your 
 project’s settings. 
 
 Continuous Integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The PR can't be merged if `Github Actions "Run
+The PR can't be merged if `GitHub Actions "Run
 tests" <https://travis-ci.com/github/shimming-toolbox/shimming-toolbox-py>`__
 hasn't succeeded. If you are familiar with it, consult the test results
 to fix the problem.
@@ -260,9 +206,14 @@ through a
 Only request a review when you deem the PR as "good to go". If the PR is
 not ready for review, convert it to a "Draft".
 
-Github may suggest you to add particular reviewers to your PR. If that's
+GitHub may suggest you to add particular reviewers to your PR. If that's
 the case and you don't know better, add all of these suggestions. The
 reviewers will be notified when you add them.
+
+Merging your PR
+~~~~~~~~~~~~~~~
+
+When your PR has been approved by the reviewers you requested, you can merge it yourself using the rebase method.
 
 Versioning
 ----------
