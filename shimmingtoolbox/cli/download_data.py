@@ -48,7 +48,6 @@ def download_data(verbose, output, data):
         output: Output folder.
         data: The data to be downloaded.
     """
-    click.echo("test")
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
