@@ -150,11 +150,11 @@ your system):
 
 .. code:: bash
 
-   git clone https://github.com/shimming-toolbox/shimming-toolbox-py.git
+   git clone https://github.com/shimming-toolbox/shimming-toolbox.git
 
 If you don’t have Git installed, download and extract
 shimming-toolbox from this
-`link <https://github.com/shimming-toolbox/shimming-toolbox-py/archive/master.zip>`__.
+`link <https://github.com/shimming-toolbox/shimming-toolbox/archive/master.zip>`__.
 
 Then, in your Terminal, go to the shimming-toolbox folder and install
 the shimming-toolbox package. The following ``cd`` command assumes
