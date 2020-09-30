@@ -9,7 +9,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="shimmingtoolbox",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     version="0.1.0",
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
@@ -21,7 +21,7 @@ setup(
         'console_scripts': [
             "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
-            "st_download_data=shimmingtoolbox.cli.download_data:main",
+            "st_download_data=shimmingtoolbox.cli.download_data:download_data",
         ]
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
@@ -35,10 +35,11 @@ setup(
         "requests",
         "scipy~=1.5.0",
         "tqdm",
-        'matplotlib~=3.1.2',
+        "matplotlib~=3.1.2",
+        "pytest~=4.6.3",
+        "pytest-cov~=2.5.1",
     ],
     extras_require={
-        'testing': ["pytest~=4.6.3", "pytest-cov~=2.5.1"],
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
     },
 )
