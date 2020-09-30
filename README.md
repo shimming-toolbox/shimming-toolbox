@@ -1,5 +1,6 @@
-# shimming-toolbox-py
-[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox-py) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox-py/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest)
+# shimming-toolbox
+
+[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest)
 
 
 Code for performing real-time shimming using external MRI shim coils
@@ -17,7 +18,7 @@ Unfortunately, the version [currently in Debian/Ubuntu](https://packages.ubuntu.
 Once you have `dcm2niix`, install this package and the rest of its dependencies with:
 
 ```
-$ pip install shimmingtoolbox@git+https://github.com/shimming-toolbox/shimming-toolbox-py
+$ pip install shimmingtoolbox@git+https://github.com/shimming-toolbox/shimming-toolbox
 ```
 
 Depending on your system, you may need to prefix this command with `sudo` (for a global install),
@@ -25,7 +26,7 @@ or write it with `install --user` (for a user-local install) in order to be allo
 
 ## Development
 
-Please see the documentation for instructions on building and testing a [development version](https://shimming-toolbox.org/en/latest/2_getting_started/1_installation.html) of shimming-toolbox-py.
+Please see the documentation for instructions on building and testing a [development version](https://shimming-toolbox.org/en/latest/2_getting_started/1_installation.html) of shimming-toolbox.
 
 ## Contributing
 
