@@ -3,23 +3,43 @@
 import os
 import logging
 import click
+from typing import Dict, Tuple, List
 
 from shimmingtoolbox.download import install_data
 
-dict_url = {
-    "testing_data": ["https://github.com/shimming-toolbox/data-testing/archive/r20200713.zip"],
-    "prelude": ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"]
+# URL dictionary is in the format:
+# - key: name of item to download
+# - value: tuple containing:
+#     0. List containing the item's URL string
+#     1. String description of the item
+
+URL_DICT: Dict[str, Tuple[List[str], str]] = {
+    "testing_data": (
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20200806.zip"],
+        "Light-weighted dataset for testing purpose.",
+    ),
+    "prelude": (
+        ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"],
+        "Binary for prelude software",
+    ),
 }
 
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-# TODO: display automatically the list of data available from the dict above
-# TODO: wrap the help properly
-@click.command(help="Download data from the internet. The available datasets are:"
-                    "- testing_data: Light-weighted dataset for testing purpose.")
+dataset_list_str: str = ""
+
+for item in URL_DICT.items():
+    dataset_list_str += f"\n\n - {item[0]}: {item[1][1]}"
+
+
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+    help=f"Download data from the internet. The available datasets are:{dataset_list_str}"
+)
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
 @click.option("--output", help="Output folder.")
 @click.argument("data")
-def main(verbose, output, data):
+def download_data(verbose, output, data):
     """
     Download data from the internet.
 
@@ -28,15 +48,11 @@ def main(verbose, output, data):
         output: Output folder.
         data: The data to be downloaded.
     """
-    # TODO: logging does not seem to output on the terminal
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
-    url = dict_url[data]
+    url = URL_DICT[data][0]
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output, keep=True)
 
-
-if __name__ == '__main__':
-    main()

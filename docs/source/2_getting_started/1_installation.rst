@@ -22,7 +22,7 @@ if it is installed), run the following command:
    conda search python
 
 If a list of available Python versions are displayed and versions
->=3.6.0 are available, you may skip to the next section (Git).
+>=3.7.0 are available, you may skip to the next section (Git).
 
 Linux
 -----
@@ -112,13 +112,17 @@ but the one we recommend and will use in our installation guide is
 Miniconda. We strongly recommend you create a virtual environment before
 you continue with your installation.
 
-To create a Python 3.6 virtual environment named "shim_venv", in a
+Although the shimming-toolbox package on PyPI supports Python versions 3.7
+and greater, we recommend you only use shimming-toolbox with Python 3.7, as
+our tests only cover that version for now.
+
+To create a Python 3.7 virtual environment named "shim_venv", in a
 terminal window (macOS or Linux) or Anaconda Prompt (Windows) run the
 following command and answer "y" to the installation instructions:
 
 .. code:: bash
 
-   conda create -n shim_venv python=3.6
+   conda create -n shim_venv python=3.7
 
 Then, activate your virtual environment:
 
@@ -159,7 +163,7 @@ that you followed the ``git clone`` instruction above:
 .. code:: bash
 
    cd shimming-toolbox
-   pip install -e ".[testing,docs]"
+   pip install -e ".[docs]"
 
 .. NOTE ::
    If you downloaded shimming-toolbox using the link above
@@ -178,7 +182,7 @@ version of the project from GitHub and reinstall the application:
 
    cd shimming-toolbox
    git pull
-   pip install -e ".[testing,docs]"
+   pip install -e ".[docs]"
 
 Testing the installation
 ------------------------
