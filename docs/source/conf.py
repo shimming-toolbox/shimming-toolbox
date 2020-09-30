@@ -23,7 +23,7 @@ from examples import *
 
 # -- Project information -----------------------------------------------------
 
-project = "shimming-toolbox-py"
+project = "shimming-toolbox"
 copyright = "2020, NeuroPoly Lab, Polytechnique Montreal"
 author = "NeuroPoly Lab, Polytechnique Montreal"
 
@@ -74,7 +74,7 @@ html_theme = "sphinx_rtd_theme"
 # html_theme_options = {}
 html_theme_options = {
     "github_user": "neuropoly",
-    "github_repo": "shimming-toolbox-py",
+    "github_repo": "shimming-toolbox",
     "github_button": True,
     "github_banner": True,
 }
@@ -109,7 +109,7 @@ html_sidebars = {
 # -- Options for HTMLHelp output ------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "shimming-toolbox-pydoc"
+htmlhelp_basename = "shimming-toolboxdoc"
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -135,8 +135,8 @@ latex_elements = {
 latex_documents = [
     (
         master_doc,
-        "shimming-toolbox-py.tex",
-        "shimming-toolbox-py Documentation",
+        "shimming-toolbox.tex",
+        "shimming-toolbox Documentation",
         "NeuroPoly",
         "manual",
     ),
@@ -148,7 +148,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, "axondeepseg", "shimming-toolbox-py Documentation", [author], 1)
+    (master_doc, "axondeepseg", "shimming-toolbox Documentation", [author], 1)
 ]
 
 
@@ -160,10 +160,10 @@ man_pages = [
 texinfo_documents = [
     (
         master_doc,
-        "shimming-toolbox-py",
-        "shimming-toolbox-py Documentation",
+        "shimming-toolbox",
+        "shimming-toolbox Documentation",
         author,
-        "shimming-toolbox-py",
+        "shimming-toolbox",
         "One line description of project.",
         "Miscellaneous",
     ),
