@@ -7,7 +7,7 @@ Examples
 --------
 
 Example scripts are located under
-`examples <https://github.com/shimming-toolbox/shimming-toolbox-py/tree/master/examples>`__.
+`examples <https://github.com/shimming-toolbox/shimming-toolbox/tree/master/examples>`__.
 
 general_demo
 ^^^^^^^^^^^^
