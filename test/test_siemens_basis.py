@@ -41,13 +41,16 @@ def test_siemens_basis_resample():
     affine = nib.affine
     nx, ny, nz = nib.get_fdata().shape
     coord_vox = np.meshgrid(np.array(range(nx)), np.array(range(ny)), np.array(range(nz)), indexing='ij')
-    coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[0])]
+    coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[1]), np.zeros_like(coord_vox[2])]
     for ix in range(nx):
         for iy in range(ny):
             for iz in range(nz):
                 coord_phys_list = np.dot([coord_vox[i][ix, iy, iz] for i in range(3)], affine[0:3, 0:3]) + affine[0:3, 3]
-                for i in range(2):
+                for i in range(3):
                     coord_phys[i][ix, iy, iz] = coord_phys_list[i]
+
+    # coord_phys was checked and has the correct scanner coordinates
+    # TODO: Better code ^
 
     basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
     # TODO: further testing: check a few points compared to ground truth (hard-coded)
