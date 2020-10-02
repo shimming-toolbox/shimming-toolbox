@@ -11,11 +11,12 @@ st_download_data testing_data
 # Go inside folder
 cd testing_data/realtime_zshimming_data
 
+# dcm2bids -d . -o nifti -p sub-example -c ../../config/dcm2bids.json
 st_dicom_to_nifti -i . -o nifti -sub sub-example
 cd nifti/sub-example/fmap
 
 # Calling FSL directly
-f_prepare_fieldmap SIEMENS sub-example_phasediff.nii.gz sub-example_magnitude1.nii.gz sub-example_phasediff_unwrapped.nii.gz 2.46 --nocheck
+fsl_prepare_fieldmap SIEMENS sub-example_phasediff.nii.gz sub-example_magnitude1.nii.gz sub-example_phasediff_unwrapped.nii.gz 2.46 --nocheck
 fslmaths sub-example_phasediff_unwrapped.nii.gz -div 0.00246 sub-example_fieldmap.nii.gz
 
 # Not implemented:
