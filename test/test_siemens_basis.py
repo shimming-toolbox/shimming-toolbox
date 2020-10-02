@@ -53,5 +53,9 @@ def test_siemens_basis_resample():
     # TODO: Better code ^
 
     basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
-    # TODO: further testing: check a few points compared to ground truth (hard-coded)
 
+    expected = np.array([5.21405621e-18, -8.51520000e-02,  1.02182400e+00,  2.44386240e-02,
+                         2.50274698e-19, -4.08729600e-03, -1.70304000e-04, -2.08562248e-20])
+    assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))
+
+    # nibabel.save(nibabel.Nifti1Image(basis, affine), 'foo.nii.gz')
