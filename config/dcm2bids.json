@@ -50,7 +50,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude1",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "1"
             }
@@ -59,7 +59,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude2",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "2"
             }
@@ -68,7 +68,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude3",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "3"
             }
@@ -77,7 +77,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude4",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "4"
             }
@@ -86,7 +86,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude5",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "5"
             }
@@ -95,7 +95,7 @@
             "dataType": "fmap",
             "modalityLabel": "magnitude6",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "6"
             }
@@ -104,7 +104,7 @@
             "dataType": "fmap",
             "modalityLabel": "phase1",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "1"
             }
@@ -113,7 +113,7 @@
             "dataType": "fmap",
             "modalityLabel": "phase2",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "2"
             }
@@ -122,7 +122,7 @@
             "dataType": "fmap",
             "modalityLabel": "phase3",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "3"
             }
@@ -131,7 +131,7 @@
             "dataType": "fmap",
             "modalityLabel": "phase4",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "4"
             }
@@ -140,7 +140,7 @@
             "dataType": "fmap",
             "modalityLabel": "phase5",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "5"
             }
@@ -149,9 +149,33 @@
             "dataType": "fmap",
             "modalityLabel": "phase6",
             "criteria": {
-                "SeriesDescription": "a_gre_*",
+                "SeriesDescription": "*gre_field_map*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e1",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e2",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e3",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "3"
             }
         }
     ]
