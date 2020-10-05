@@ -1,6 +1,5 @@
 {
     "searchMethod": "fnmatch",
-    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
     "descriptions": [
         {
             "dataType": "anat",
@@ -176,6 +175,13 @@
             "criteria": {
                 "SeriesDescription": "*gre*UNSHIMMED*",
                 "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "criteria": {
+                "SeriesDescription": "*bold*"
             }
         }
     ]
