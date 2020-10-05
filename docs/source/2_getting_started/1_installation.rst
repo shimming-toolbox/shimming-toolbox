@@ -144,6 +144,8 @@ Development version
 
 Ensure that you have ``dcm2niix`` installed on your system.
 
+You will also need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ using Python 2.
+
 To install the development version of shimming-toolbox, clone
 shimming-toolbox's repository (you will need to have Git installed on
 your system):
