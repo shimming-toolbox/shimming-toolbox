@@ -34,18 +34,24 @@ def test_dicom_to_nifti_realtime_zshim():
         # Check that all the files (.nii.gz and .json) are created with the expected names. The test data has 6
         # magnitude and phase data.
 
-        for sequence_type in ['anat', 'fmap', 'func']:
-            if sequence_type == 'fmap':
-                pass
-            if sequence_type == 'anat':
-                pass
-            else:  # sequence_type == func
-                pass
-
-        assert True
-
-        for i in range(1, 7):
+        sequence_type = 'fmap'
+        for i in range(2):
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
-                    assert os.path.exists(os.path.join(path_nifti, subject_id, 'fmap', subject_id + '_{}{}.{}'.format(
-                        modality, i, ext)))
+                    if modality == 'phase':
+                        assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
+                                                           subject_id + f'_{modality}{2}.{ext}'))
+                    else:
+                        assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
+                                                           subject_id + f'_{modality}{i+1}.{ext}'))
+
+        sequence_type = 'anat'
+        for i in range(3):
+            for ext in ['nii.gz', 'json']:
+                assert os.path.exists(
+                    os.path.join(path_nifti, subject_id, sequence_type, subject_id + f'_unshimmed_e{i+1}.{ext}'))
+
+        sequence_type = 'func'
+        for ext in ['nii.gz', 'json']:
+            assert os.path.exists(
+                os.path.join(path_nifti, subject_id, sequence_type, subject_id + f'_bold.{ext}'))
