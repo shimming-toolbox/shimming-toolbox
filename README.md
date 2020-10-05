@@ -15,7 +15,9 @@ It is also [in the AUR](https://aur.archlinux.org/packages/dcm2niix/) (`pikaur -
 and [`conda`](https://anaconda.org/conda-forge/dcm2niix) (`conda install -c conda-forge/label/cf202003 dcm2niix`).
 Unfortunately, the version [currently in Debian/Ubuntu](https://packages.ubuntu.com/eoan/dcm2niix) (`apt install dcm2niix`) is too old to work reliably.
 
-Once you have `dcm2niix`, install this package and the rest of its dependencies with:
+You will also need to install [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation) using Python 2.
+
+Once you have `dcm2niix` and FSL, install this package and the rest of its dependencies with:
 
 ```
 $ pip install shimmingtoolbox@git+https://github.com/shimming-toolbox/shimming-toolbox
