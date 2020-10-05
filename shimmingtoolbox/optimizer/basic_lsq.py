@@ -9,21 +9,19 @@ from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
 class BasicLSQ(Optimizer):
 
-    def _objective(self, coef, masked_unshimmed, masked_coils):
+    def _residuals(self, coef, unshimmed_vec, coil_mat):
         """
         Objective function to minimize
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
-            masked_unshimmed (numpy.ndarray): 3D array of the masked unshimmed map
-            masked_coils (numpy.ndarray): 4D array (X, Y, Z, channel) of masked coils
+            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
+            masked_coils (numpy.ndarray): 2D flattened array (point, channel) of masked coils (axis 0 must align with unshimemd_vec)
 
         Returns:
-            float: Result that shows the performance on the coef inputs
+            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
 
         """
-        shimmed = masked_unshimmed + np.sum(masked_coils * coef, axis=3, keepdims=False)
-        objective = np.std(shimmed) + np.sum(coef)/100000
-        return objective
+        return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
         """
@@ -46,14 +44,17 @@ class BasicLSQ(Optimizer):
 
         mx, my, mz = mask_origin
         mX, mY, mZ = mask.shape
+        mV = mX * mY * mZ
+        mask_vec = mask.reshape((mV,))
 
-        # Set up masked submatrices
-        masked_unshimmed = np.where(mask != 0, unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], 0)
-        masked_coils = np.where(mask.reshape(mask.shape + (1,)) != 0, self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ, :], 0)
+        # Set up optimization vectors
+        coil_mat = np.reshape(np.transpose(self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ], axes=(3, 0, 1, 2)), (self.N, mV)).T[mask_vec != 0, :] # mV' x N
+        unshimmed_vec = np.reshape(unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], (mV,))[mask_vec != 0] # mV'
 
         # Set up output currents and optimize
-        currents = np.zeros(self.N)
+        currents_0 = np.zeros(self.N)
+        currents_sp = opt.least_squares(self._residuals, currents_0, args=(unshimmed_vec, coil_mat), bounds=np.array(bounds).T)
 
-        currents = opt.minimize(self._objective, currents, args=(masked_unshimmed, masked_coils), bounds=bounds).x
+        currents = currents_sp.x
 
         return currents
