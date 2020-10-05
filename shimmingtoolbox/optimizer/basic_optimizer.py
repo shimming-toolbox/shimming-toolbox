@@ -63,18 +63,20 @@ class Optimizer(object):
             bounds (list): List of ``(min, max)`` pairs for each coil channels. None
                is used to specify no bound.
         """
-
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
         # Set up output currents and optimize
         output = np.zeros(self.N)
 
-        # Simple pseudo-inverse optimization
-        profile_mat = np.reshape(np.transpose(self.coils, axes=(3, 0, 1, 2)), (self.N, -1)).T # V x N
-        unshimmed_vec = np.reshape(unshimmed, (self.X * self.Y * self.Z,)) # V
+        mx, my, mz = mask_origin
+        mX, mY, mZ = mask.shape
 
-        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x V @ V
+        # Simple pseudo-inverse optimization
+        profile_mat = np.reshape(np.transpose(self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ], axes=(3, 0, 1, 2)), (self.N, -1)).T # mV x N
+        unshimmed_vec = np.reshape(unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], (mX * mY * mZ,)) # mV
+
+        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x mV @ mV
 
         return output
 
@@ -101,7 +103,7 @@ class Optimizer(object):
                            f"{(self.X, self.Y, self.Z)}")
         if bounds is not None:
             self._error_if(len(bounds) != self.N, f"Bounds should have the same number of (min, max)"
-                                                                     f" tuples as coil as channels")
+                                                                     f" tuples as coil channels")
 
     def _error_if(self, err_condition, message):
         """
