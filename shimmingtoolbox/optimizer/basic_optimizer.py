@@ -9,6 +9,7 @@ import logging
 class Optimizer(object):
     """
     Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. Use optimize(args) to optimize a given mask.
+    For basic optimizer, uses unbounded pseudo-inverse. 
 
     Attributes:
         X (int): Amount of pixels in the X direction
@@ -60,8 +61,7 @@ class Optimizer(object):
             unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
             mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
             mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
-            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
-               is used to specify no bound.
+            bounds (list): List of ``(min, max)`` pairs for each coil channels. UNUSED in pseudo-inverse
         """
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)

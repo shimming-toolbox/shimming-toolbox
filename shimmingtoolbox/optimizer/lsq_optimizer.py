@@ -7,7 +7,7 @@ import scipy.optimize as opt
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
 
-class BasicLSQ(Optimizer):
+class LSQ_Optimizer(Optimizer):
 
     def _residuals(self, coef, unshimmed_vec, coil_mat):
         """
@@ -42,14 +42,14 @@ class BasicLSQ(Optimizer):
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
-        mx, my, mz = mask_origin
-        mX, mY, mZ = mask.shape
-        mV = mX * mY * mZ
-        mask_vec = mask.reshape((mV,))
+        m_x, m_y, m_z = mask_origin
+        m_X, m_Y, m_Z = mask.shape
+        m_V = m_X * m_Y * m_Z
+        mask_vec = mask.reshape((m_V,))
 
         # Set up optimization vectors
-        coil_mat = np.reshape(np.transpose(self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ], axes=(3, 0, 1, 2)), (self.N, mV)).T[mask_vec != 0, :] # mV' x N
-        unshimmed_vec = np.reshape(unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], (mV,))[mask_vec != 0] # mV'
+        coil_mat = np.reshape(np.transpose(self.coils[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], axes=(3, 0, 1, 2)), (self.N, m_V)).T[mask_vec != 0, :] # m_V' x N
+        unshimmed_vec = np.reshape(unshimmed[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], (m_V,))[mask_vec != 0] # m_V'
 
         # Set up output currents and optimize
         currents_0 = np.zeros(self.N)
