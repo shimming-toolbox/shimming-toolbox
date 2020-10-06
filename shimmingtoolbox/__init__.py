@@ -10,7 +10,7 @@ __version__ = metadata.version(__name__)
 del metadata
 
 __dir_shimmingtoolbox__ = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-__dir_testing__ = 'testing_data'
+__dir_testing__ = os.path.join(__dir_shimmingtoolbox__, 'testing_data')
 __dir_config_dcm2bids__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'dcm2bids.json')
 
 from .dicom_to_nifti import dicom_to_nifti
