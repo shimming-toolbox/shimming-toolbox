@@ -9,6 +9,7 @@ import sys
 import subprocess
 import dcm2bids
 # from dcm2bids.scaffold import scaffold
+import shutil
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 
@@ -90,4 +91,4 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     #     bids_info.run()
 
     if remove_tmp:
-        os.removedirs(os.path.join(path_dicom, 'tmp_dcm2bids'))
+        shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))
