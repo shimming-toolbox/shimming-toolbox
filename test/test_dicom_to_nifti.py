@@ -31,4 +31,5 @@ def test_dicom_to_nifti_remove_tmp():
         dicom_to_nifti(__dir_testing__, path_nifti, subject_id=subject_id, remove_tmp=True)
         # Check that all the files (.nii.gz and .json) are created with the expected names. The test data has 6
         # magnitude and phase data.
+        assert os.path.exists(path_nifti)
         assert not os.path.exists(os.path.join(path_nifti, 'tmp_dcm2bids'))
