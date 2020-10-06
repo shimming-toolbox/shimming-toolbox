@@ -45,8 +45,8 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     logging.basicConfig(level='INFO')
 
     # Download example data
-    path_testing_data = os.path.join(path_output, __dir_testing__)
-    run_subprocess(f'st_download_data {__dir_testing__} --output {path_testing_data}')
+    path_testing_data = os.path.join(path_output, 'testing_data')
+    run_subprocess(f'st_download_data testing_data --output {path_testing_data}')
 
     # Transfer from dicom to nifti
     path_dicom_unsorted = os.path.join(path_testing_data, 'dicom_unsorted')
