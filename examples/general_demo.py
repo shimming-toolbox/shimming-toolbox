@@ -29,7 +29,6 @@ import nibabel as nib
 
 from shimmingtoolbox.unwrap import prelude
 from shimmingtoolbox.utils import run_subprocess
-from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import dicom_to_nifti
 
 
