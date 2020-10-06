@@ -15,12 +15,13 @@ class LSQ_Optimizer(Optimizer):
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
             unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            masked_coils (numpy.ndarray): 2D flattened array (point, channel) of masked coils (axis 0 must align with unshimemd_vec)
+            coils_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils (axis 0 must align with unshimemd_vec)
 
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
 
         """
+        self._error_if(unshimmed_vec.shape[0] != coil_mat.shape[0], f'Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape}) arrays do not align on axis 0')
         return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
 
     def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
