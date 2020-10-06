@@ -9,7 +9,6 @@ from shimmingtoolbox import __dir_testing__
 
 
 def test_dicom_to_nifti():
-    # TODO: put as decorator
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
