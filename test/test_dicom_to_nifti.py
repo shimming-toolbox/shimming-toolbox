@@ -25,7 +25,7 @@ def test_dicom_to_nifti():
 
 
 def test_dicom_to_nifti_realtime_zshim():
-    # TODO: put as decorator
+    """Test dicom_to_nifti outputs the correct files for realtime_zshimming_data"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
