@@ -36,18 +36,11 @@ def test_siemens_basis_resample():
     :return:
     """
     fname = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
-    # fname = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap', 'sub-example_fieldmap.nii.gz')
     nib = nibabel.load(fname)
     # affine = np.linalg.inv(nib.affine)
     affine = nib.affine
 
-    # Temporary testing (eventually will only be a test for 3 or 4d)
-    if nib.get_fdata().ndim == 3:
-        nx, ny, nz = nib.get_fdata().shape
-    elif nib.get_fdata().ndim == 4:
-        nx, ny, nz, nt = nib.get_fdata().shape
-    else:
-        assert False
+    nx, ny, nz = nib.get_fdata().shape
 
     coord_vox = np.meshgrid(np.array(range(nx)), np.array(range(ny)), np.array(range(nz)), indexing='ij')
     coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[1]), np.zeros_like(coord_vox[2])]
@@ -66,5 +59,3 @@ def test_siemens_basis_resample():
     expected = np.array([5.21405621e-18, -8.51520000e-02,  1.02182400e+00,  2.44386240e-02,
                          2.50274698e-19, -4.08729600e-03, -1.70304000e-04, -2.08562248e-20])
     assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))
-
-    # nibabel.save(nibabel.Nifti1Image(basis, affine), 'foo.nii.gz')
