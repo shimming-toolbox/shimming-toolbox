@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import click
 import numpy as np
 import os
-import nibabel
+import nibabel as nib
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
@@ -13,32 +14,27 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
 
-def realtime_zshim():
-    fname = os.path.join(__dir_shimmingtoolbox__, __dir_testing__, 'nifti', 'sub-example', 'fmap', 'sub-example_fieldmap.nii.gz')
-    nii = nibabel.load(fname)
-    fieldmaps = nii.get_fdata()
-    affine = nii.affine
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-    nx, ny, nz, nt = fieldmaps.shape
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+    help=f"Perform realtime z-shimming."
+)
+@click.option("-coil", help="Coil basis to use for shimming. Enter multiple files if you wish to use more than one set "
+                            "of shim coils (eg: Siemens gradient/shim coils and external custom coils).")
+@click.option("-fmap", help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
+@click.option("-mask", help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
+@click.option("-verbose", is_flag=True, help="Be more verbose.")
+def realtime_zshim(coil, fmap, mask, verbose):
 
-    # Set up coils
-    coord_vox = np.meshgrid(np.array(range(nx)), np.array(range(ny)), np.array(range(nz)), indexing='ij')
-    coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[1]), np.zeros_like(coord_vox[2])]
-    for ix in range(nx):
-        for iy in range(ny):
-            for iz in range(nz):
-                coord_phys_list = np.dot([coord_vox[i][ix, iy, iz] for i in range(3)], affine[0:3, 0:3]) + affine[0:3,
-                                                                                                           3]
-                for i in range(3):
-                    coord_phys[i][ix, iy, iz] = coord_phys_list[i]
+    nii_coil = nib.load(coil)
+    nii_fmap = nib.load(fmap)
+    # TODO: check good practice below
+    if mask is not None:
+        nii_mask = nib.load(mask)
+    else:
+        nii_mask = None
 
-    # coord_phys was checked and has the correct scanner coordinates
-    # TODO: Better code ^ and add as a function
-
-    basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
-
-    # Set up mask
-    full_mask = shapes(fieldmaps[:, :, :, 0], 'cube', center_dim1=round(nx/2)-5, len_dim1=40, len_dim2=40, len_dim3=nz)
 
     currents = np.zeros([8, nt])
     shimmed = np.zeros_like(fieldmaps)
