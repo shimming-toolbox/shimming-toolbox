@@ -4,7 +4,7 @@
 # You can set these variables from the command line.
 SPHINXOPTS    =
 SPHINXBUILD   = python -msphinx
-SPHINXPROJ    = shimming-toolbox-py
+SPHINXPROJ    = shimming-toolbox
 SOURCEDIR     = source
 BUILDDIR      = build
 

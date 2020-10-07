@@ -13,7 +13,7 @@ setup(
     version="0.1.0",
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
-    url="https://github.com/shimming-toolbox/shimming-toolbox-py",
+    url="https://github.com/shimming-toolbox/shimming-toolbox",
     author="NeuroPoly Lab, Polytechnique Montreal",
     author_email="neuropoly@googlegroups.com",
     keywords="",

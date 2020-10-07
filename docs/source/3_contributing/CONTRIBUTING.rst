@@ -14,12 +14,12 @@ Introduction
 First off, thanks for taking the time to contribute to our project! 🎉
 
 When contributing to this repository, please first discuss the change you wish
-to make by opening a new `GitHub issue <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_ with one of the templates.
+to make by opening a new `GitHub issue <https://github.com/shimming-toolbox/shimming-toolbox/issues>`_ with one of the templates.
 
 Contributions relating to content of the Github repository can be
-submitted through `GitHub pull requests <https://github.com/shimming-toolbox/shimming-toolbox-py/pulls>`_ (PR).
+submitted through `GitHub pull requests <https://github.com/shimming-toolbox/shimming-toolbox/pulls>`_ (PR).
 
-PR for bug fixes or new features should be based on the `master <https://github.com/shimming-toolbox/shimming-toolbox-py/tree/master>`_ branch.
+PR for bug fixes or new features should be based on the `master <https://github.com/shimming-toolbox/shimming-toolbox/tree/master>`_ branch.
 
 The following GitHub documentation may be useful:
 
@@ -39,7 +39,7 @@ have the rights, contact the team leader.
 Opening an issue
 ----------------
 
-Issues (bugs, enhancement requests, or feature requests) can be submitted `on our project's issue page <https://github.com/shimming-toolbox/shimming-toolbox-py/issues>`_. Please select the appropriate template when creating a new issue.
+Issues (bugs, enhancement requests, or feature requests) can be submitted `on our project's issue page <https://github.com/shimming-toolbox/shimming-toolbox/issues>`_. Please select the appropriate template when creating a new issue.
 
 
 Before Submitting a New Issue
@@ -120,7 +120,7 @@ Licensing
 ~~~~~~~~~
 
 Ensure that you are the original author of your changes, and if that is not the case, ensure that the borrowed/adapted code is compatible with
-the `project's license <https://github.com/shimming-toolbox/shimming-toolbox-py/blob/master/LICENSE>`_. 
+the `project's license <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/LICENSE>`_. 
 
 
 Committing
@@ -171,7 +171,7 @@ PR Labels
 
 You **must** add labels to your PRs, as these are used to automatically generate Changelog:
 
-- **Category:** Choose **one** label that describes the `category <https://github.com/shimming-toolbox/shimming-toolbox-py/labels?q=bug+documentation+feature+enhancement+testing+installation>`_.
+- **Category:** Choose **one** label that describes the `category <https://github.com/shimming-toolbox/shimming-toolbox/labels?q=bug+documentation+feature+enhancement+testing+installation>`_.
 
 
 - **Cross-compatibility:** If your PR breaks cross-compatibility with a previous stable release of SCT, you should add the label ``compatibility`` (orange label).
@@ -192,7 +192,7 @@ Continuous Integration
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The PR can't be merged if `GitHub Actions "Run
-tests" <https://travis-ci.com/github/shimming-toolbox/shimming-toolbox-py>`__
+tests" <https://travis-ci.com/github/shimming-toolbox/shimming-toolbox>`__
 hasn't succeeded. If you are familiar with it, consult the test results
 to fix the problem.
 

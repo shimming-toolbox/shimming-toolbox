@@ -2,4 +2,4 @@ Contributors
 ============
 
 `List of
-contributors. <https://github.com/shimming-toolbox/shimming-toolbox-py/graphs/contributors>`__
+contributors. <https://github.com/shimming-toolbox/shimming-toolbox/graphs/contributors>`__

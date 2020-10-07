@@ -2,7 +2,7 @@ License and warranty
 ====================
 
 This software is distributed under the following
-`license <https://github.com/shimming-toolbox/shimming-toolbox-py/blob/master/LICENSE>`__.
+`license <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/LICENSE>`__.
 THIS SOFTWARE MAY NOT BE USED FOR MEDICAL DIAGNOSIS AS IT IS NOT
 SANCTIONED BY AUTHORITIES SUCH AS HEALTH CANADA AND THE FOOD AND DRUG
 ADMINISTRATION.
