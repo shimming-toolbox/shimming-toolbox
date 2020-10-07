@@ -17,7 +17,8 @@ cd nifti/sub-example/fmap
 
 # Calling FSL directly
 fsl_prepare_fieldmap SIEMENS sub-example_phasediff.nii.gz sub-example_magnitude1.nii.gz sub-example_phasediff_unwrapped.nii.gz 2.46 --nocheck
-fslmaths sub-example_phasediff_unwrapped.nii.gz -div 0.00246 sub-example_fieldmap.nii.gz
+# The output of fsl_prepare_fieldmap is in rad/s so below we convert to Hz/s
+fslmaths sub-example_phasediff_unwrapped.nii.gz -div 6.28 sub-example_fieldmap.nii.gz
 
 # Not implemented:
 # <<
