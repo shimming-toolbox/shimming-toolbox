@@ -69,17 +69,17 @@ class Optimizer(object):
         # Set up output currents and optimize
         output = np.zeros(self.N)
 
-        mx, my, mz = mask_origin
-        mX, mY, mZ = mask.shape
-        mV = mX * mY * mZ
-        mask_vec = mask.reshape((mV,))
+        m_x, m_y, m_z = mask_origin
+        m_X, m_Y, m_Z = mask.shape
+        m_V = m_X * m_Y * m_Z
+        mask_vec = mask.reshape((m_V,))
 
         # Simple pseudo-inverse optimization
-        # Reshape coil profile: X, Y, Z, N --> mX, mY, mZ, N --> N, mX, mY, mZ --> N, mV --> mV, N --> mV', N
-        profile_mat = np.reshape(np.transpose(self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ], axes=(3, 0, 1, 2)), (self.N, mV)).T[mask_vec != 0, :] # mV' x N
-        unshimmed_vec = np.reshape(unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], (mV,))[mask_vec != 0] # mV'
+        # Reshape coil profile: X, Y, Z, N --> m_X, m_Y, m_Z, N --> N, m_X, m_Y, m_Z --> N, m_V --> m_V, N --> m_V', N
+        profile_mat = np.reshape(np.transpose(self.coils[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], axes=(3, 0, 1, 2)), (self.N, m_V)).T[mask_vec != 0, :] # m_V' x N
+        unshimmed_vec = np.reshape(unshimmed[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], (m_V,))[mask_vec != 0] # m_V'
 
-        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x mV' @ mV'
+        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x m_V' @ m_V'
 
         return output
 
