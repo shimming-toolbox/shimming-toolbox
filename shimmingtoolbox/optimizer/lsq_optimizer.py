@@ -43,14 +43,13 @@ class LSQ_Optimizer(Optimizer):
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
-        m_x, m_y, m_z = mask_origin
-        m_X, m_Y, m_Z = mask.shape
-        m_V = m_X * m_Y * m_Z
-        mask_vec = mask.reshape((m_V,))
+        mask_range = tuple([slice(mask_origin[i], mask_origin[i] + mask.shape[i]) for i in range(3)])
+        mask_vec = mask.reshape((-1,))
 
-        # Set up optimization vectors
-        coil_mat = np.reshape(np.transpose(self.coils[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], axes=(3, 0, 1, 2)), (self.N, m_V)).T[mask_vec != 0, :] # m_V' x N
-        unshimmed_vec = np.reshape(unshimmed[m_x:m_x+m_X, m_y:m_y+m_Y, m_z:m_z+m_Z], (m_V,))[mask_vec != 0] # m_V'
+        # Simple pseudo-inverse optimization
+        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
+        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)), (self.N, -1)).T[mask_vec != 0, :] # masked points x N
+        unshimmed_vec = np.reshape(unshimmed[mask_range], (-1,))[mask_vec != 0] # mV'
 
         # Set up output currents and optimize
         currents_0 = np.zeros(self.N)
