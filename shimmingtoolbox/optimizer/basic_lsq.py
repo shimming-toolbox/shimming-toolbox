@@ -44,13 +44,12 @@ class BasicLSQ(Optimizer):
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
-        # Set up mask
-        full_mask = np.zeros((self.X, self.Y, self.Z))
-        full_mask[mask_origin[0]:mask_origin[0] + mask.shape[0], mask_origin[1]:mask_origin[1] + mask.shape[1], mask_origin[2]:mask_origin[2] + mask.shape[2]] = mask
-        full_mask = np.where(full_mask != 0, 1, 0)
-        
-        masked_unshimmed = unshimmed * full_mask
-        masked_coils = self.coils * full_mask.reshape(full_mask.shape + (1,))
+        mx, my, mz = mask_origin
+        mX, mY, mZ = mask.shape
+
+        # Set up masked submatrices
+        masked_unshimmed = np.where(mask != 0, unshimmed[mx:mx+mX, my:my+mY, mz:mz+mZ], 0)
+        masked_coils = np.where(mask.reshape(mask.shape + (1,)) != 0, self.coils[mx:mx+mX, my:my+mY, mz:mz+mZ, :], 0)
 
         # Set up output currents and optimize
         currents = np.zeros(self.N)
