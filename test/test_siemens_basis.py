@@ -9,6 +9,7 @@ import math
 import nibabel
 
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox import __dir_testing__
 
 dummy_data = [
@@ -39,24 +40,15 @@ def test_siemens_basis_resample():
     # affine = np.linalg.inv(nib.affine)
     affine = nii.affine
 
-    nx, ny, nz = nii.get_fdata().shape
+    # generate meshgrid with physical coordinates associated with the fieldmap
+    coord_phys = generate_meshgrid(nii.shape, affine)
 
-    # Create meshgrid with voxel and associated physical coordinates, in the discrete space of the fieldmap
-    coord_vox = np.meshgrid(np.array(range(nx)), np.array(range(ny)), np.array(range(nz)), indexing='ij')
-    coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[1]), np.zeros_like(coord_vox[2])]
-
-    # TODO: Better code
-    for ix in range(nx):
-        for iy in range(ny):
-            for iz in range(nz):
-                coord_phys_list = \
-                    np.dot([coord_vox[i][ix, iy, iz] for i in range(3)], affine[0:3, 0:3]) + affine[0:3, 3]
-                for i in range(3):
-                    coord_phys[i][ix, iy, iz] = coord_phys_list[i]
-
+    # create SH basis in the voxel coordinate
     basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
 
     # Hard-coded values corresponding to the mid-point of the FOV.
     expected = np.array([5.21405621e-18, -8.51520000e-02,  1.02182400e+00,  2.44386240e-02,
                          2.50274698e-19, -4.08729600e-03, -1.70304000e-04, -2.08562248e-20])
+
+    nx, ny, nz = nii.get_fdata().shape
     assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))
