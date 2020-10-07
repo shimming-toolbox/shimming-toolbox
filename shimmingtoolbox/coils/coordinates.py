@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
 
+# TODO: create a test for this API
 
 import numpy as np
 
