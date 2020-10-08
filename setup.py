@@ -22,6 +22,7 @@ setup(
             "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
+            "st_realtime_zshim=shimmingtoolbox.cli.realtime_zshim:realtime_zshim",
         ]
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
