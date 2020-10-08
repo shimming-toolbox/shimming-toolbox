@@ -10,7 +10,7 @@ from shimmingtoolbox.cli.dicom_to_nifti import dicom_to_nifti_cli
 from shimmingtoolbox import __dir_testing__
 
 
-def test_dicom_to_nifti_cli():
+def test_cli_dicom_to_nifti():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
