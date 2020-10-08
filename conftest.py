@@ -10,6 +10,7 @@ import pytest
 from typing import Mapping
 from hashlib import md5
 
+from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.cli.download_data import download_data
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ def test_data_path():
     test_path = Path(__file__).resolve().parent
 
     # create tmp folder
-    tmp_path = test_path / 'testing_data'
+    tmp_path = test_path / __dir_testing__
     if not tmp_path.exists():
         tmp_path.mkdir()
     return tmp_path
