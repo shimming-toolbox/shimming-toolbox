@@ -16,7 +16,22 @@ st_dicom_to_nifti -i . -o nifti -sub sub-example
 cd nifti/sub-example/fmap
 
 # Calling FSL directly
-fsl_prepare_fieldmap SIEMENS sub-example_phasediff.nii.gz sub-example_magnitude1.nii.gz sub-example_phasediff_unwrapped.nii.gz 2.46 --nocheck
+fslsplit sub-example_phasediff.nii.gz sub-example_phasediff_ -t
+fslsplit sub-example_magnitude1.nii.gz sub-example_magnitude1_ -t
+
+# TODO: 9 represents the number of timepoints. This should be changed to a variable that is fetched by looking at the files.
+for i_t in {0..9..1}
+do
+  fsl_prepare_fieldmap SIEMENS "sub-example_phasediff_000${i_t}.nii.gz" "sub-example_magnitude1_000${i_t}.nii.gz" "sub-example_phasediff_unwrapped_000${i_t}.nii.gz" 2.46 --nocheck
+done
+
+fslmerge -t sub-example_phasediff_unwrapped.nii.gz sub-example_phasediff_unwrapped_0000.nii.gz sub-example_phasediff_unwrapped_0001.nii.gz
+for i_t in {2..9..1}
+do
+  fslmerge -t sub-example_phasediff_unwrapped.nii.gz sub-example_phasediff_unwrapped.nii.gz sub-example_phasediff_unwrapped_000${i_t}.nii.gz
+done
+#TODO: remove intermediate files
+
 # The output of fsl_prepare_fieldmap is in rad/s so below we convert to Hz/s
 fslmaths sub-example_phasediff_unwrapped.nii.gz -div 6.28 sub-example_fieldmap.nii.gz
 
