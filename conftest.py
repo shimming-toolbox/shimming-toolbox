@@ -56,7 +56,7 @@ def pytest_sessionstart():
     try:
         download_data(
             [
-                # '--verbose',
+                '--verbose',
                 '--output',
                 test_data_location,
                 'testing_data',
@@ -65,6 +65,7 @@ def pytest_sessionstart():
     # click sends a SystemExit upon command completion that needs to be caught.
     except SystemExit:
         return
+    logger.info("Test data download complete. Beginning testing session...")
 
 
 @pytest.fixture(scope="session", autouse=True)
