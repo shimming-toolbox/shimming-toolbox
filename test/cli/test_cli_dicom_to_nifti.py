@@ -12,7 +12,7 @@ from shimmingtoolbox import __dir_testing__
 
 
 @pytest.mark.dcm2niix
-def test_cli_dicom_to_nifti():
+def test_cli_dicom_to_nifti(test_dcm2niix_installation):
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 

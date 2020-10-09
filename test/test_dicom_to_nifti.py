@@ -10,7 +10,7 @@ import pytest
 
 
 @pytest.mark.dcm2niix
-def test_dicom_to_nifti():
+def test_dicom_to_nifti(test_dcm2niix_installation):
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
@@ -35,7 +35,7 @@ def test_dicom_to_nifti():
 
 
 @pytest.mark.dcm2niix
-def test_dicom_to_nifti_realtime_zshim():
+def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
     """Test dicom_to_nifti outputs the correct files for realtime_zshimming_data"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
@@ -93,7 +93,7 @@ def test_dicom_to_nifti_realtime_zshim():
 
 
 @pytest.mark.dcm2niix
-def test_dicom_to_nifti_remove_tmp():
+def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
     """Test the remove_tmp folder"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')

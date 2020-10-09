@@ -5,6 +5,7 @@ import sys
 import os
 import logging
 from pathlib import Path
+import subprocess
 
 import pytest
 from typing import Mapping
@@ -30,6 +31,22 @@ def test_data_path():
 @pytest.fixture
 def test_data_path_fixture():
     return test_data_path()
+
+
+@pytest.fixture(params=[pytest.param(0, marks=pytest.mark.prelude)])
+def test_prelude_installation():
+    # note that subprocess.check_call() returns 0 on success, so it must be
+    # negated for the assertion.
+    assert not subprocess.check_call(['which', 'prelude'])
+    return
+
+
+@pytest.fixture(params=[pytest.param(0, marks=pytest.mark.dcm2niix)])
+def test_dcm2niix_installation():
+    # note that subprocess.check_call() returns 0 on success, so it must be
+    # negated for the assertion.
+    assert not subprocess.check_call(['which', 'dcm2niix'])
+    return
 
 
 def pytest_sessionstart():
