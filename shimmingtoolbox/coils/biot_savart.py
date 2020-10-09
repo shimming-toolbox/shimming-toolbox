@@ -23,7 +23,7 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
         fov_n (tuple): Integer number of points for each dimension (x, y, z) in mm
 
     Returns:
-        numpy.ndarray: (|X|, |Y|, |Z|, |centers|) coil profiles of magnetic field z-component -- (X, Y, Z, Channel)
+        numpy.ndarray: (|X|, |Y|, |Z|, |centers|) coil profiles of magnetic field z-component in Hz/A -- (X, Y, Z, Channel)
 
     """
     ranges = []
@@ -49,7 +49,7 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
                         if not np.isnan(profiles[i, j, k, ch]):
                             profiles[i, j, k, ch] += bz
 
-    return profiles
+    return profiles * H_GYROMAGNETIC_RATIO # Hz/A
 
 
 def _loop_segments(center, normal, radius, segment_num):
