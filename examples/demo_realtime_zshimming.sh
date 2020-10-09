@@ -12,8 +12,9 @@ st_download_data testing_data
 cd testing_data/realtime_zshimming_data
 
 # dcm2bids -d . -o nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti -input . -output nifti -subject sub-example
-cd nifti/sub-example/fmap
+st_dicom_to_nifti -input . -output ../nifti -subject sub-example
+cd ../nifti/sub-example/fmap
+# TODO: Name of phase2 should be phasediff
 
 # Calling FSL directly
 fslsplit sub-example_phasediff.nii.gz sub-example_phasediff_ -t
