@@ -6,7 +6,7 @@
 import numpy as np
 
 MU0 = 1.256637e-6  # [H/m]
-H_GYROMAGNETIC_RATIO = 4.258e+7  # [Hz/T]
+H_GYROMAGNETIC_RATIO = 42.577478518e+6  # [Hz/T]
 
 
 def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_n):
@@ -49,7 +49,7 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
                         if not np.isnan(profiles[i, j, k, ch]):
                             profiles[i, j, k, ch] += bz
 
-    return profiles * H_GYROMAGNETIC_RATIO # Hz/A
+    return profiles * H_GYROMAGNETIC_RATIO  # [Hz/A]
 
 
 def _loop_segments(center, normal, radius, segment_num):
