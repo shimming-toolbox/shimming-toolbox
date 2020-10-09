@@ -15,7 +15,7 @@ class LSQ_Optimizer(Optimizer):
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
             unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coils_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
                 (axis 0 must align with unshimmed_vec)
 
         Returns:
