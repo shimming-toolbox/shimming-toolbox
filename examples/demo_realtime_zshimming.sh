@@ -12,7 +12,7 @@ st_download_data testing_data
 cd testing_data/realtime_zshimming_data
 
 # dcm2bids -d . -o nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti -i . -o nifti -sub sub-example
+st_dicom_to_nifti -input . -output nifti -subject sub-example
 cd nifti/sub-example/fmap
 
 # Calling FSL directly
