@@ -1,5 +1,5 @@
 ###############################################################################
-#      Configure tests so that pytest downloads testing data every time.      #
+#                           configure testing suite                           #
 ###############################################################################
 import sys
 import os
