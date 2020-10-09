@@ -7,12 +7,13 @@ import glob
 import nibabel as nib
 import numpy as np
 import logging
+import pytest
 
 from shimmingtoolbox.unwrap import prelude
 
 
+@pytest.mark.prelude
 class TestCore(object):
-
     def setup(self):
         # Get the directory where this current file is saved
         self.full_path = Path(__file__).resolve().parent
@@ -41,7 +42,9 @@ class TestCore(object):
         path_data = glob.glob(os.path.join(self.toolbox_path, 'testing_data*'))[0]
 
         # Open phase data
-        fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
+        fname_phases = glob.glob(
+            os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz')
+        )
         if len(fname_phases) > 2:
             raise IndexError('Phase data parsing is wrongly parsed')
 
@@ -53,7 +56,9 @@ class TestCore(object):
         phase_e2 = np.interp(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
 
         # Open mag data
-        fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
+        fname_mags = glob.glob(
+            os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz')
+        )
 
         if len(fname_mags) > 2:
             raise IndexError('Mag data parsing is wrongly parsed')
@@ -75,7 +80,7 @@ class TestCore(object):
         # default prelude call
         unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
 
-        assert (unwrapped_phase_e1.shape == self.phase_e1.shape)
+        assert unwrapped_phase_e1.shape == self.phase_e1.shape
 
     def test_non_default_mask(self):
         """
@@ -85,10 +90,16 @@ class TestCore(object):
         mask = np.ones(self.phase_e1.shape)
 
         # Call prelude with mask (is_unwrapping_in_2d is also used because it is significantly faster)
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask, is_unwrapping_in_2d=True)
+        unwrapped_phase_e1 = prelude(
+            self.phase_e1,
+            self.mag_e1,
+            self.affine_phase_e1,
+            mask,
+            is_unwrapping_in_2d=True,
+        )
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
-        assert(unwrapped_phase_e1[5, 5, 5] != 0)
+        assert unwrapped_phase_e1[5, 5, 5] != 0
 
     def test_wrong_size_mask(self):
         # Create mask with wrong dimensions
@@ -157,11 +168,13 @@ class TestCore(object):
         mag_e1_2d = self.mag_e1[:, :, 0]
         unwrapped_phase_e1 = prelude(phase_e1_2d, mag_e1_2d, self.affine_phase_e1)
 
-        assert(unwrapped_phase_e1.shape == phase_e1_2d.shape)
+        assert unwrapped_phase_e1.shape == phase_e1_2d.shape
 
     def test_threshold(self):
         """
         Call prelude with a threshold for masking
         """
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200)
-        assert(unwrapped_phase_e1.shape == self.phase_e1.shape)
+        unwrapped_phase_e1 = prelude(
+            self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200
+        )
+        assert unwrapped_phase_e1.shape == self.phase_e1.shape
