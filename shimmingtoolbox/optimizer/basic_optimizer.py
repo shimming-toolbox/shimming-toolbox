@@ -8,7 +8,8 @@ import logging
 
 class Optimizer(object):
     """
-    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. Use optimize(args) to optimize a given mask.
+    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. 
+    Use optimize(args) to optimize a given mask.
     For basic optimizer, uses unbounded pseudo-inverse. 
 
     Attributes:
@@ -73,11 +74,13 @@ class Optimizer(object):
         mask_vec = mask.reshape((-1,))
 
         # Simple pseudo-inverse optimization
-        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)), (self.N, -1)).T[mask_vec != 0, :] # masked points x N
+        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
+        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
+        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)), 
+                                (self.N, -1)).T[mask_vec != 0, :]  # masked points x N
         unshimmed_vec = np.reshape(unshimmed[mask_range], (-1,))[mask_vec != 0] # mV'
 
-        output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec # N x mV' @ mV'
+        output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
 
         return output
 
