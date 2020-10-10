@@ -7,6 +7,7 @@ import glob
 import nibabel as nib
 import numpy as np
 import logging
+import pytest
 
 from shimmingtoolbox.unwrap import prelude
 
