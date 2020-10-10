@@ -19,13 +19,13 @@ logger = logging.getLogger(__name__)
 
 def test_data_path():
     # Get the directory where this current file is saved
-    test_path = Path(__file__).resolve().parent
+    repo_path = Path(__file__).resolve().parent
 
-    # create tmp folder
-    tmp_path = test_path / __dir_testing__
-    if not tmp_path.exists():
-        tmp_path.mkdir()
-    return tmp_path
+    # create ./testing_data folder
+    test_path = repo_path / __dir_testing__
+    if not test_path.exists():
+        test_path.mkdir()
+    return test_path
 
 
 @pytest.fixture
