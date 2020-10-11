@@ -21,7 +21,7 @@ install:
   - unzip -o dcm2niix_lnx.zip
   - sudo install dcm2nii* /usr/bin/
   -
-  - pip install -e .[testing]
+  - pip install .
   - pip install python-coveralls
 # command to run tests
 script:
