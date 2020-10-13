@@ -1,6 +1,6 @@
 # shimming-toolbox
 
-[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest) [![Coverage Status](https://coveralls.io/repos/github/shimming-toolbox/shimming-toolbox/badge.svg?branch=master)](https://coveralls.io/github/shimming-toolbox/shimming-toolbox?branch=master)
 
 
 Code for performing real-time shimming using external MRI shim coils
