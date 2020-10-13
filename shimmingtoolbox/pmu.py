@@ -45,15 +45,17 @@ class PmuResp(object):
         in the form of milliseconds past midnight.
 
         Args:
-            fname_pmu: srt or file object
-                       a file name to open or an already opened file-like object
+            fname_pmu: Filename of the Siemens .resp file
+
         Returns:
-            tuple:
-                data_trimmed
-                start_time_mdh
-                stop_time_mdh
-                start_time_mpcu
-                stop_time_mpcu
+            dict: A dict containing the ``fname_pmu`` infos. Contains the following keys:
+                {
+                  ``data_trimmed``
+                  ``start_time_mdh``
+                  ``stop_time_mdh``
+                  ``start_time_mpcu``
+                  ``stop_time_mpcu``
+                }
         """
         f = None
         try:
