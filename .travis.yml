@@ -22,7 +22,7 @@ install:
   - sudo install dcm2nii* /usr/bin/
   -
   - pip install .
-  - pip install python-coveralls
+  - pip install coveralls
 # command to run tests
 script:
   - echo "Download prelude"
