@@ -28,3 +28,23 @@ def test_read_resp():
         expected_stop_time_mpcu == pmu.stop_time_mpcu
     ])
 
+
+from matplotlib.figure import Figure
+from shimmingtoolbox import __dir_shimmingtoolbox__
+
+
+def test_interp_resp_trace():
+    fname = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname)
+
+    # Create time series to interpolate the PMU to
+    num_points = 20
+    acq_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, num_points)
+
+    acq_pressure = pmu.interp_resp_trace(acq_times)
+
+    index_pmu_data = np.linspace(0, len(pmu.data) - 1, int(num_points)).astype(int)
+    index_pmu_interp = np.linspace(0, num_points - 1, int(num_points)).astype(int)
+
+    assert(np.all(np.isclose(acq_pressure[index_pmu_interp], pmu.data[index_pmu_data], atol=1, rtol=0.08)))
+
