@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 #
-# Low level read of Siemens Physiological Log files
+# Read Siemens Physiological Log files
 # Adapted from https://gist.github.com/rtrhd/6172344
 #
 
@@ -50,7 +50,8 @@ class PmuResp(object):
         Returns:
             dict: A dict containing the ``fname_pmu`` infos. Contains the following keys:
                 {
-                  ``data_trimmed``
+                  ``fname``
+                  ``data``
                   ``start_time_mdh``
                   ``stop_time_mdh``
                   ``start_time_mpcu``

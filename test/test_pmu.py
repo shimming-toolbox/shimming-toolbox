@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*
 
 import os
+import numpy as np
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
-import numpy as np
 
 
 def test_read_resp():
@@ -27,10 +27,6 @@ def test_read_resp():
         expected_start_time_mpcu == pmu.start_time_mpcu,
         expected_stop_time_mpcu == pmu.stop_time_mpcu
     ])
-
-
-from matplotlib.figure import Figure
-from shimmingtoolbox import __dir_shimmingtoolbox__
 
 
 def test_interp_resp_trace():
