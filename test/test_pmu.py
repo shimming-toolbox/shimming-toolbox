@@ -44,3 +44,18 @@ def test_interp_resp_trace():
 
     assert(np.all(np.isclose(acq_pressure[index_pmu_interp], pmu.data[index_pmu_data], atol=1, rtol=0.08)))
 
+
+def test_timing_images():
+    """Check the matching of timing between MR images and PMU timestamps"""
+    a=1
+    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_pmu)
+    fname_data = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap', '')
+
+    # These timestamps were generated as explained here: https://github.com/UNFmontreal/Dcm2Bids/issues/90
+    # in microseconds
+    data_timestamps = [121821.960000, 121822.745000, 121816.452500, 121817.240000, 121818.025000, 121821.172500,
+                       121820.385000, 121818.812500, 121819.600000, 121823.532500]
+    # TODO: convert to ms
+    1000 * (12 * 3600 + 18 * 60 + 21) + 960
+    acquisition_times = []
