@@ -47,19 +47,12 @@ def test_interp_resp_trace():
 
 from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_shimmingtoolbox__
+import nibabel as nib
+import json
 
 
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
-
-    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname_pmu)
-    fname_data = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap', '')
-
-    # These timestamps were generated as explained here: https://github.com/UNFmontreal/Dcm2Bids/issues/90
-    # in microseconds
-    data_timestamps = ['121821.960000', '121822.745000', '121816.452500', '121817.240000', '121818.025000',
-                       '121821.172500', '121820.385000', '121818.812500', '121819.600000', '121823.532500']
 
     # Convert to ms
     def dicom_times_to_ms(dicom_times):
@@ -67,7 +60,8 @@ def test_timing_images():
         Convert dicom acquisition times to ms
 
         Args:
-            dicom_times (numpy.ndarray): 1D array of time strings from dicoms. Format: "HHMMSS.mmmmmm"
+            dicom_times (numpy.ndarray): 1D array of time strings from dicoms.
+                                         Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm
 
         Returns:
             numpy.ndarray: 1D array of times in milliseconds
@@ -76,23 +70,52 @@ def test_timing_images():
         ms_times = []
 
         for a_time in dicom_times:
-            if len(a_time) != 13 or a_time[6] != '.' or not isinstance(a_time, str):
+            if len(a_time) == 13 and a_time[6] == '.' and isinstance(a_time, str):
+                hours = int(a_time[0:2])
+                minutes = int(a_time[2:4])
+                seconds = int(a_time[4:6])
+                micros = int(a_time[7:13])
+            elif len(a_time) == 15 and a_time[2] + a_time[5] + a_time[8] == ['::.'] or isinstance(a_time, str):
+                hours = int(a_time[0:2])
+                minutes = int(a_time[3:5])
+                seconds = int(a_time[6:8])
+                micros = int(a_time[9:15])
+            else:
                 raise RuntimeError("Input format does not follow 'HHMMSS.mmmmmm'")
-            hours = int(a_time[0:2])
-            minutes = int(a_time[2:4])
-            seconds = int(a_time[4:6])
-            micros = int(a_time[7:13])
 
             ms_times.append(1000 * (hours * 3600 + minutes * 60 + seconds) + micros / 1000)  # ms
 
-        return ms_times
+        return np.array(ms_times)
 
-    acquisition_times = dicom_times_to_ms(data_timestamps)
+    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_pmu)
 
-    acquisition_times = sorted(acquisition_times)
-    acquisition_times = np.array(acquisition_times)
+    # TODO: Update testing data with the updated niftis processed by the new version of dcm2niix
+    #  (Note: the appropriate version is currently the dev version as of oct 16 2020)
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                              'sub-example_fieldmap.nii.gz')
+    fname_json_phase_diff = os.path.join(__dir_testing__, 'nifti', 'sub-example', 'fmap',
+                              'sub-example_phasediff.json')
 
-    acquisition_pressures = pmu.interp_resp_trace(acquisition_times)
+    # get time between volumes and acquisition start time
+    json_data = json.load(open(fname_json_phase_diff))
+    # TODO: TimeBetweenVolumes will most likely be changed to repetitionTime eventually according to
+    #  https://github.com/UNFmontreal/Dcm2Bids/issues/90
+    delta_t = json_data['TimeBetweenVolumes'] * 1000  # [ms]
+    acq_start_time = json_data['AcquisitionTime']  # ISO format
+    acq_start_time = dicom_times_to_ms(np.array([acq_start_time]))[0]  # [ms]
+
+    # Get the number of volumes
+    nii_fieldmap = nib.load(fname_fieldmap)
+    n_volumes = nii_fieldmap.header['dim'][4]
+    fieldmap_timestamps = np.linspace(acq_start_time, ((n_volumes - 1) * delta_t) + acq_start_time, n_volumes)
+
+    # These timestamps were generated as explained here: https://github.com/UNFmontreal/Dcm2Bids/issues/90
+    # in microseconds
+    # data_timestamps = ['121821.960000', '121822.745000', '121816.452500', '121817.240000', '121818.025000',
+    #                    '121821.172500', '121820.385000', '121818.812500', '121819.600000', '121823.532500']
+
+    acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
     # Sanity check -->
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
@@ -101,7 +124,7 @@ def test_timing_images():
     fig = Figure(figsize=(10, 10))
     # FigureCanvas(fig)
     ax = fig.add_subplot(111)
-    ax.plot(acquisition_times, acquisition_pressures)
+    ax.plot(fieldmap_timestamps, acquisition_pressures)
     ax.plot(pmu_times, pmu.data)
     ax.set_title("test")
 
