@@ -38,6 +38,6 @@ script:
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
   # Fail if any .sh files have warnings
   - echo "Check Bash scripts"
-  - shellcheck examples/*.sh
+  - if [[ -e examples/*.sh ]]; then shellcheck examples/*.sh; fi
 after_success:
   - coveralls
