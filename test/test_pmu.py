@@ -137,19 +137,23 @@ def test_timing_images():
 
     # Sanity check -->
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
+    pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
+    pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
+    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
+    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
 
     # Plot results
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(211)
-    ax.plot(fieldmap_timestamps, acquisition_pressures, label='Interpolated pressures')
+    ax.plot(fieldmap_timestamps / 1000, acquisition_pressures, label='Interpolated pressures')
     # ax.plot(pmu_times, pmu.data, label='Raw pressures')
+    ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
     ax.legend()
-    ax.set_title("Pressure vs time (-2048-2047)")
-
+    ax.set_title("Pressure [-2048, 2047] vs time (s) ")
     ax = fig.add_subplot(212)
-    ax.plot(fieldmap_timestamps, fieldmap_mean, label='Mean B0')
+    ax.plot(fieldmap_timestamps / 1000, fieldmap_mean, label='Mean B0')
     ax.legend()
-    ax.set_title("Fieldmap average over unmasked region vs time (hz)")
+    ax.set_title("Fieldmap average over unmasked region (hz) vs time (s)")
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
     fig.savefig(fname_figure)
