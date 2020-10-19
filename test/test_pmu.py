@@ -49,6 +49,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_shimmingtoolbox__
 import nibabel as nib
 import json
+from shimmingtoolbox.masking.shapes import shapes
 
 
 def test_timing_images():
@@ -117,17 +118,53 @@ def test_timing_images():
 
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
+    # Get B0 data
+    fieldmap = nii_fieldmap.get_fdata()
+    mask_len1 = 15
+    mask_len2 = 5
+    mask_len3 = fieldmap.shape[2]
+    mask = shapes(fieldmap[:, :, :, 0], shape='cube',
+                  center_dim1=int(fieldmap.shape[0] / 2 - 8),
+                  center_dim2=int(fieldmap.shape[1] / 2 - 20),
+                  len_dim1=mask_len1, len_dim2=mask_len2, len_dim3=mask_len3)
+
+    fieldmap_masked = np.zeros_like(fieldmap)
+    fieldmap_mean = np.zeros([fieldmap.shape[3]])
+    for i_time in range(fieldmap.shape[3]):
+        fieldmap_masked[:, :, :, i_time] = fieldmap[:, :, :, i_time] * mask
+        masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
+        fieldmap_mean[i_time] = np.ma.average(masked_array)
+
     # Sanity check -->
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
 
     # Plot results
     fig = Figure(figsize=(10, 10))
-    # FigureCanvas(fig)
-    ax = fig.add_subplot(111)
-    ax.plot(fieldmap_timestamps, acquisition_pressures)
-    ax.plot(pmu_times, pmu.data)
-    ax.set_title("test")
+    ax = fig.add_subplot(211)
+    ax.plot(fieldmap_timestamps, acquisition_pressures, label='Interpolated pressures')
+    # ax.plot(pmu_times, pmu.data, label='Raw pressures')
+    ax.legend()
+    ax.set_title("Pressure vs time (-2048-2047)")
+
+    ax = fig.add_subplot(212)
+    ax.plot(fieldmap_timestamps, fieldmap_mean, label='Mean B0')
+    ax.legend()
+    ax.set_title("Fieldmap average over unmasked region vs time (hz)")
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
     fig.savefig(fname_figure)
 
+    # Plot mask
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(211)
+    im = ax.imshow(fieldmap_masked[:, :, 0, 0])
+    fig.colorbar(im)
+    ax.set_title("Mask (hz)")
+
+    ax = fig.add_subplot(212)
+    im = ax.imshow(fieldmap[:, :, 0, 0])
+    fig.colorbar(im)
+    ax.set_title("Fieldmap (hz)")
+
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
+    fig.savefig(fname_figure)
