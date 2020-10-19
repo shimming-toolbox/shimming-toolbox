@@ -36,5 +36,8 @@ script:
   - export FSLOUTPUTTYPE
   - echo "Launch general integrity test"
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
+  # Fail if any .sh files have warnings
+  - echo "Check Bash scripts"
+  - if [[ -e examples/*.sh ]]; then shellcheck examples/*.sh; fi
 after_success:
   - coveralls
