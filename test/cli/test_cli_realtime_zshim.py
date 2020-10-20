@@ -26,8 +26,10 @@ def test_cli_realtime_zshim():
 
         # Set up mask
         nx, ny, nz, nt = fmap.shape
-        mask = shapes(fmap[:, :, :, 0], 'cube', center_dim1=round(nx / 2) - 5, len_dim1=40, len_dim2=40,
-                      len_dim3=nz)
+        mask = shapes(fmap[:, :, :, 0], 'cube',
+                      center_dim1=int(fmap.shape[0] / 2 - 8),
+                      center_dim2=int(fmap.shape[1] / 2 - 20),
+                      len_dim1=15, len_dim2=5, len_dim3=nz)
 
         nii_mask = nib.Nifti1Image(mask.astype(int), affine)
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
