@@ -78,4 +78,14 @@ def realtime_zshim(coil, fmap, mask, verbose):
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_plot.png')
     fig.savefig(fname_figure)
+
+    fig = Figure(figsize=(10, 10))
+    for i_t in range(nt):
+        ax = fig.add_subplot(nt, 1, i_t + 1)
+        ax.plot(np.arange(8), currents[:, i_t])
+        ax.set_title(f"Time {i_t}")
+
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_currents.png')
+    fig.savefig(fname_figure)
+
     return fname_figure
