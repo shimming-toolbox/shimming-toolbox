@@ -43,6 +43,7 @@ def test_cli_realtime_zshim():
         fname_coil = os.path.join(tmp, 'coil_profile.nii.gz')
         nib.save(nii_coil, fname_coil)
 
-        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-coil', fname_coil, '-mask', fname_mask])
+        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-coil', fname_coil, '-mask', fname_mask],
+                               catch_exceptions=False)
 
         assert result.exit_code == 0
