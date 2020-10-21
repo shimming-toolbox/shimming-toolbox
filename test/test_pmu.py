@@ -91,31 +91,23 @@ def test_timing_images():
     fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname_pmu)
 
-    # TODO: Update testing data with the updated niftis processed by the new version of dcm2niix
-    #  (Note: the appropriate version is currently the dev version as of oct 16 2020)
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                              'sub-example_fieldmap.nii.gz')
+                                  'sub-example_fieldmap.nii.gz')
     fname_json_phase_diff = os.path.join(__dir_testing__, 'nifti', 'sub-example', 'fmap',
-                              'sub-example_phasediff.json')
+                                         'sub-example_phasediff.json')
 
     # get time between volumes and acquisition start time
     json_data = json.load(open(fname_json_phase_diff))
-    # TODO: TimeBetweenVolumes will most likely be changed to repetitionTime eventually according to
-    #  https://github.com/UNFmontreal/Dcm2Bids/issues/90
-    delta_t = json_data['TimeBetweenVolumes'] * 1000  # [ms]
+    delta_t = json_data['RepetitionTime'] * 1000  # [ms]
     acq_start_time = json_data['AcquisitionTime']  # ISO format
     acq_start_time = dicom_times_to_ms(np.array([acq_start_time]))[0]  # [ms]
 
     # Get the number of volumes
     nii_fieldmap = nib.load(fname_fieldmap)
     n_volumes = nii_fieldmap.header['dim'][4]
+
+    # Get the pressure values at the iterpolated timestamps
     fieldmap_timestamps = np.linspace(acq_start_time, ((n_volumes - 1) * delta_t) + acq_start_time, n_volumes)
-
-    # These timestamps were generated as explained here: https://github.com/UNFmontreal/Dcm2Bids/issues/90
-    # in microseconds
-    # data_timestamps = ['121821.960000', '121822.745000', '121816.452500', '121817.240000', '121818.025000',
-    #                    '121821.172500', '121820.385000', '121818.812500', '121819.600000', '121823.532500']
-
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
     # Get B0 data
