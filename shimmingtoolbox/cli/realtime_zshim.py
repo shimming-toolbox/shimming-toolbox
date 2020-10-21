@@ -17,18 +17,19 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     context_settings=CONTEXT_SETTINGS,
     help=f"Perform realtime z-shimming."
 )
-@click.option("-coil", required=True, type=click.Path(), help="Coil basis to use for shimming. Enter multiple files if "
-                                                              "you wish to use more than one set of shim coils (eg: "
-                                                              "Siemens gradient/shim coils and external custom coils).")
-@click.option("-fmap", required=True, type=click.Path(), help="B0 fieldmap. For realtime shimming, this should be a 4d "
-                                                              "file (4th dimension being time")
-@click.option("-mask", type=click.Path(), help="3D nifti file with voxels between 0 and 1 used to weight the spatial "
-                                               "region to shim.")
+@click.option('-coil', 'fname_coil', required=True, type=click.Path(),
+              help="Coil basis to use for shimming. Enter multiple files if "
+                   "you wish to use more than one set of shim coils (eg: "
+                   "Siemens gradient/shim coils and external custom coils).")
+@click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
+              help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
+@click.option('-mask', 'fname_mask', type=click.Path(),
+              help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim(coil, fmap, mask, verbose):
+def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose):
 
-    coil = nib.load(coil).get_fdata()
-    nii_fmap = nib.load(fmap)
+    coil = nib.load(fname_coil).get_fdata()
+    nii_fmap = nib.load(fname_fmap)
     fieldmap = nii_fmap.get_fdata()
 
     # TODO: Error handling might move to API
@@ -36,8 +37,8 @@ def realtime_zshim(coil, fmap, mask, verbose):
         raise RuntimeError('fmap must be 4d (x, y, z, t)')
 
     # TODO: check good practice below
-    if mask is not None:
-        mask = nib.load(mask).get_fdata()
+    if fname_mask is not None:
+        mask = nib.load(fname_mask).get_fdata()
     else:
         mask = np.ones_like(fieldmap)
 
