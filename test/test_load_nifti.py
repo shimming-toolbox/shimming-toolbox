@@ -263,10 +263,10 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 2), "Wrong number od info data 1"
         assert (len(json_info) == 2), "Wrong number of JSON data 1"
-        self._json_phase['EchoNumber'] = 2
+        self._json_phase['EchoNumber'] = 1
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON1"
-        self._json_phase['EchoNumber'] = 1
+        self._json_phase['EchoNumber'] = 2
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for second JSON 1"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
@@ -275,10 +275,10 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 2), "Wrong number of info data 2"
         assert (len(json_info) == 2), "Wrong number of JSON data 2"
-        self._json_phase['EchoNumber'] = 2
+        self._json_phase['EchoNumber'] = 1
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON 2"
-        self._json_phase['EchoNumber'] = 1
+        self._json_phase['EchoNumber'] = 2
         assert (json.dumps(json_info[1], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for second JSON 2"
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 2"
