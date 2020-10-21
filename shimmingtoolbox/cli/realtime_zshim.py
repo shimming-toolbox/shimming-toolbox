@@ -105,8 +105,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     fig.savefig(fname_figure)
 
     # TODO: fetch PMU timing
-    get_acquisition_time()
-
+    #  get_pmu_data(fname_pmu, fname_fieldmap)
 
     # TODO:
     #  fit PMU and fieldmap values
