@@ -7,10 +7,13 @@ import glob
 import nibabel as nib
 import numpy as np
 import logging
+import pytest
 
 from shimmingtoolbox.unwrap import prelude
 
 
+@pytest.mark.prelude
+@pytest.mark.usefixtures("test_prelude_installation")
 class TestCore(object):
 
     def setup(self):

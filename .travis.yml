@@ -21,12 +21,10 @@ install:
   - unzip -o dcm2niix_lnx.zip
   - sudo install dcm2nii* /usr/bin/
   -
-  - pip install -e .[testing]
-  - pip install python-coveralls
+  - pip install .
+  - pip install coveralls
 # command to run tests
 script:
-  - echo "Download testing data"
-  - st_download_data testing_data
   - echo "Download prelude"
   - st_download_data prelude
   - echo "Set up prelude"
@@ -38,5 +36,8 @@ script:
   - export FSLOUTPUTTYPE
   - echo "Launch general integrity test"
   - py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
+  # Fail if any .sh files have warnings
+  - echo "Check Bash scripts"
+  - if [[ -e examples/*.sh ]]; then shellcheck examples/*.sh; fi
 after_success:
   - coveralls
