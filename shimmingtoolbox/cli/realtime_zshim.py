@@ -40,7 +40,12 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     Returns:
 
     """
+    # When using only z channnel TODO:Remove
+    # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 2], -1)
+
+    # When using all channels TODO: Keep
     coil = nib.load(fname_coil).get_fdata()
+
     nii_fmap = nib.load(fname_fmap)
     fieldmap = nii_fmap.get_fdata()
 
