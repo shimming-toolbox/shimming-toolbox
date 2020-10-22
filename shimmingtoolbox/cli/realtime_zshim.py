@@ -5,8 +5,9 @@ import click
 import numpy as np
 import os
 import nibabel as nib
-# TODO: remove matplotlib import
+# TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
+from shimmingtoolbox import __dir_testing__
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox import __dir_shimmingtoolbox__
@@ -63,7 +64,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     masked_shimmed = np.zeros_like(shimmed)
     for i_t in range(nt):
         currents[:, i_t] = sequential_zslice(fieldmap[..., i_t], coil, mask, z_slices=np.array(range(nz)),
-                                             bounds=[(-np.inf, np.inf)]*8)
+                                             bounds=[(-np.inf, np.inf)]*n_coils)
         shimmed[..., i_t] = fieldmap[..., i_t] + np.sum(currents[:, i_t] * coil, axis=3, keepdims=False)
         masked_fieldmaps[..., i_t] = mask * fieldmap[..., i_t]
         masked_shimmed[..., i_t] = mask * shimmed[..., i_t]
@@ -95,11 +96,10 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     fig.savefig(fname_figure)
 
     fig = Figure(figsize=(10, 10))
-    # TODO: display time as X -- add label for Y
-    for i_t in range(nt):
-        ax = fig.add_subplot(nt, 1, i_t + 1)
-        ax.plot(np.arange(8), currents[:, i_t])
-        ax.set_title(f"Time {i_t}")
+    for i_coil in range(n_coils):
+        ax = fig.add_subplot(n_coils, 1, i_coil + 1)
+        ax.plot(np.arange(nt), currents[i_coil, :])
+        ax.set_title(f"Channel {i_coil}")
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_currents.png')
     fig.savefig(fname_figure)
@@ -115,8 +115,10 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     return fname_figure
 
 
-if __name__ == '__main__':
-    fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
-    fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
-    fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
-    realtime_zshim(fname_coil, fname_fmap, fname_mask)
+fname_coil = os.path.join(__dir_testing__, 'test_realtime_zshim', 'coil_profile.nii.gz')
+fname_fmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
+fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'mask.nii.gz')
+# fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
+# fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
+# fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
+realtime_zshim(fname_coil, fname_fmap, fname_mask)
