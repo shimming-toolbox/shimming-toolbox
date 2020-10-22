@@ -22,9 +22,7 @@ setup(
             "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
-            "st_mask_cube=shimmingtoolbox.cli.mask_cube:mask_cube",
-            "st_mask_square=shimmingtoolbox.cli.mask_square:mask_square",
-            "st_mask_threshold=shimmingtoolbox.cli.mask_threshold:mask_threshold",
+            "st_mask_shimmingtoolbox=shimmingtoolbox.cli.mask_shimmingtoolbox:main",
         ]
     },
     packages=find_packages(exclude=["contrib", "docs", "tests"]),
@@ -41,7 +39,6 @@ setup(
         "matplotlib~=3.1.2",
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
-        "SCT~=4.3",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
