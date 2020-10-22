@@ -28,7 +28,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 # @click.option('-mask', 'fname_mask', type=click.Path(),
 #               help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
 # @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
+def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, verbose=True):
     """
 
     Args:
@@ -110,7 +110,11 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
     fig.savefig(fname_figure)
 
     # TODO: fetch PMU timing
-    #  get_pmu_data(fname_pmu, fname_fieldmap)
+    #  get_pmu_data(fname_pmu, fname_fieldmap)  # Currently needs another Json file
+    #   acq_times = get_acquisition_times(fname_fieldmap)  # Currently needs another Json file
+    #   pmu = PmuResp(fname_resp)
+    #   acq_pressures = pmu.interp_resp_trace(acq_times)
+    #   return acq_pressures, acq_times
 
     # TODO:
     #  fit PMU and fieldmap values
@@ -123,7 +127,8 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, verbose=True):
 fname_coil = os.path.join(__dir_testing__, 'test_realtime_zshim', 'coil_profile.nii.gz')
 fname_fmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
 fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'mask.nii.gz')
+fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
 # fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
 # fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
 # fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
-realtime_zshim(fname_coil, fname_fmap, fname_mask)
+realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp)
