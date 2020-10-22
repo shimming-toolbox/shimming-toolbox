@@ -23,9 +23,10 @@ setup(
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
             "st_mask_shimmingtoolbox=shimmingtoolbox.cli.mask_shimmingtoolbox:main",
+            "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
         ]
     },
-    packages=find_packages(exclude=["contrib", "docs", "tests"]),
+    packages=find_packages(exclude=["docs"]),
     install_requires=[
         "click",
         "dcm2bids==2.1.4",

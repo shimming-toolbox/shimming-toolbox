@@ -1,6 +1,6 @@
 # shimming-toolbox
 
-[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest)
+[![Build Status](https://travis-ci.com/shimming-toolbox/shimming-toolbox.svg?branch=master)](https://travis-ci.com/shimming-toolbox/shimming-toolbox) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox/badge/?version=latest)](https://www.shimming-toolbox.org/en/latest/?badge=latest) [![Coverage Status](https://coveralls.io/repos/github/shimming-toolbox/shimming-toolbox/badge.svg?branch=master)](https://coveralls.io/github/shimming-toolbox/shimming-toolbox?branch=master)
 
 
 Code for performing real-time shimming using external MRI shim coils
@@ -15,7 +15,9 @@ It is also [in the AUR](https://aur.archlinux.org/packages/dcm2niix/) (`pikaur -
 and [`conda`](https://anaconda.org/conda-forge/dcm2niix) (`conda install -c conda-forge/label/cf202003 dcm2niix`).
 Unfortunately, the version [currently in Debian/Ubuntu](https://packages.ubuntu.com/eoan/dcm2niix) (`apt install dcm2niix`) is too old to work reliably.
 
-Once you have `dcm2niix`, install this package and the rest of its dependencies with:
+You will also need to install [FSL](https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation) using Python 2.
+
+Once you have `dcm2niix` and FSL, install this package and the rest of its dependencies with:
 
 ```
 $ pip install shimmingtoolbox@git+https://github.com/shimming-toolbox/shimming-toolbox

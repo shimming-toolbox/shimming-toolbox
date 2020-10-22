@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from shimmingtoolbox.optimizer.basic_lsq import BasicLSQ
+from shimmingtoolbox.optimizer.lsq_optimizer import LSQ_Optimizer
 
 
 def sequential_zslice(unshimmed, coils, full_mask, z_slices, bounds=None):
@@ -24,7 +24,7 @@ def sequential_zslice(unshimmed, coils, full_mask, z_slices, bounds=None):
     """
     z_slices.reshape(z_slices.size)
     currents = np.zeros((z_slices.size, coils.shape[3]))
-    optimizer = BasicLSQ(coils)
+    optimizer = LSQ_Optimizer(coils)
     for i in range(z_slices.size):
         z = z_slices[i]
         mask = full_mask[:, :, z:z+1]

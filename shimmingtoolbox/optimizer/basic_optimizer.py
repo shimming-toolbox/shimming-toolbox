@@ -8,7 +8,9 @@ import logging
 
 class Optimizer(object):
     """
-    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. Use optimize(args) to optimize a given mask.
+    Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask. 
+    Use optimize(args) to optimize a given mask.
+    For basic optimizer, uses unbounded pseudo-inverse. 
 
     Attributes:
         X (int): Amount of pixels in the X direction
@@ -60,21 +62,25 @@ class Optimizer(object):
             unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
             mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
             mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
-            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
-               is used to specify no bound.
+            bounds (list): List of ``(min, max)`` pairs for each coil channels. UNUSED in pseudo-inverse
         """
-
         # Check for sizing errors
         self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
 
         # Set up output currents and optimize
         output = np.zeros(self.N)
 
-        # Simple pseudo-inverse optimization
-        profile_mat = np.reshape(np.transpose(self.coils, axes=(3, 0, 1, 2)), (self.N, -1)).T # V x N
-        unshimmed_vec = np.reshape(unshimmed, (self.X * self.Y * self.Z,)) # V
+        mask_range = tuple([slice(mask_origin[i], mask_origin[i] + mask.shape[i]) for i in range(3)])
+        mask_vec = mask.reshape((-1,))
 
-        output = -1 * scipy.linalg.pinv(profile_mat) @ unshimmed_vec # N x V @ V
+        # Simple pseudo-inverse optimization
+        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
+        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
+        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)), 
+                                (self.N, -1)).T[mask_vec != 0, :]  # masked points x N
+        unshimmed_vec = np.reshape(unshimmed[mask_range], (-1,))[mask_vec != 0] # mV'
+
+        output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
 
         return output
 
@@ -101,7 +107,7 @@ class Optimizer(object):
                            f"{(self.X, self.Y, self.Z)}")
         if bounds is not None:
             self._error_if(len(bounds) != self.N, f"Bounds should have the same number of (min, max)"
-                                                                     f" tuples as coil as channels")
+                                                                     f" tuples as coil channels")
 
     def _error_if(self, err_condition, message):
         """

@@ -21,12 +21,10 @@ install:
   - unzip -o dcm2niix_lnx.zip
   - sudo install dcm2nii* /usr/bin/
   -
-  - pip install -e .[testing]
-  - pip install python-coveralls
+  - pip install .
+  - pip install coveralls
 # command to run tests
 script:
-  - echo "Download testing data"
-  - st_download_data testing_data
   - echo "Download prelude"
   - st_download_data prelude
   - echo "Set up prelude"

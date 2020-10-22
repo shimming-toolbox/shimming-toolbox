@@ -1,6 +1,5 @@
 {
     "searchMethod": "fnmatch",
-    "defaceTpl": "pydeface --outfile {dstFile} {srcFile}",
     "descriptions": [
         {
             "dataType": "anat",
@@ -152,6 +151,73 @@
                 "SeriesDescription": "a_gre_*",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "SeriesDescription": "*gre_field_map*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "criteria": {
+                "SeriesDescription": "*gre_field_map*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SeriesDescription": "*gre_field_map*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SeriesDescription": "*gre_field_map*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e1",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e2",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_e3",
+            "criteria": {
+                "SeriesDescription": "*gre*UNSHIMMED*",
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "criteria": {
+                "SeriesDescription": "*bold*"
             }
         }
     ]
