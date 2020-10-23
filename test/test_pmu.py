@@ -90,9 +90,11 @@ def test_timing_images():
         return np.array(ms_times)
 
     # TODO: Move to appropriate place
+    # TODO: possibly input dict (obtained from the json)
     def get_acquisition_times(fname_acquisition):
         """
-        Return the acquisition timestamps from a nifti file with corresponding json bids sidecar
+        Return the acquisition timestamps from a nifti file with corresponding json sidecar. This assumes BIDS
+        convention
 
         Args:
             fname_acquisition (str): Filename corresponding to a nifti file. The file must have a json sidecar with the
@@ -128,14 +130,16 @@ def test_timing_images():
 
         return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
-    # Get the pressure values at the interpolated timestamps
+    # Get the pressure values
     fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname_pmu)
 
-    # Get acquisition timestamps and pressures
+    # Get acquisition timestamps
     fname_phase_diff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                          'sub-example_phasediff.nii.gz')
     fieldmap_timestamps = get_acquisition_times(fname_phase_diff)
+
+    # Interpolate PMU values onto MRI acquisition timestamp
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
     # Get B0 data
@@ -177,7 +181,7 @@ def test_timing_images():
     ax = fig.add_subplot(212)
     ax.plot(fieldmap_timestamps / 1000, fieldmap_mean, label='Mean B0')
     ax.legend()
-    ax.set_title("Fieldmap average over unmasked region (hz) vs time (s)")
+    ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
     fig.savefig(fname_figure)
@@ -187,12 +191,12 @@ def test_timing_images():
     ax = fig.add_subplot(211)
     im = ax.imshow(fieldmap_masked[:, :, 0, 0])
     fig.colorbar(im)
-    ax.set_title("Mask (hz)")
+    ax.set_title("Mask (Hz)")
 
     ax = fig.add_subplot(212)
     im = ax.imshow(fieldmap[:, :, 0, 0])
     fig.colorbar(im)
-    ax.set_title("Fieldmap (hz)")
+    ax.set_title("Fieldmap (Hz)")
 
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
     fig.savefig(fname_figure)
