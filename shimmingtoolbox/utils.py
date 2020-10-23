@@ -56,7 +56,7 @@ def add_suffix(fname, suffix):
     return os.path.join(stem + suffix + ext)
 
 
-def dicom_times_to_ms(dicom_times):
+def iso_times_to_ms(dicom_times):
     """
     Convert dicom acquisition times to ms
 

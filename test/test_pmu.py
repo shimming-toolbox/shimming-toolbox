@@ -6,7 +6,7 @@ import numpy as np
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.utils import dicom_times_to_ms
+from shimmingtoolbox.utils import iso_times_to_ms
 
 
 def test_read_resp():
@@ -93,7 +93,7 @@ def test_timing_images():
         json_data = json.load(open(fname_acquisition_json))
         delta_t = json_data['RepetitionTime'] * 1000  # [ms]
         acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
-        acq_start_time_ms = dicom_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+        acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
 
         return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
