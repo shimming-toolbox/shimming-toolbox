@@ -56,13 +56,13 @@ def add_suffix(fname, suffix):
     return os.path.join(stem + suffix + ext)
 
 
-def iso_times_to_ms(dicom_times):
+def iso_times_to_ms(iso_times):
     """
     Convert dicom acquisition times to ms
 
     Args:
-        dicom_times (numpy.ndarray): 1D array of time strings from dicoms.
-                                     Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm"
+        iso_times (numpy.ndarray): 1D array of time strings from dicoms.
+                                   Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm"
 
     Returns:
         numpy.ndarray: 1D array of times in milliseconds
@@ -70,7 +70,7 @@ def iso_times_to_ms(dicom_times):
 
     ms_times = []
 
-    for a_time in dicom_times:
+    for a_time in iso_times:
         if len(a_time) == 13 and a_time[6] == '.' and isinstance(a_time, str):
             hours = int(a_time[0:2])
             minutes = int(a_time[2:4])
