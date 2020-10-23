@@ -15,40 +15,21 @@ logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
 
-# TODO: possibly input dict (obtained from the json)
-def get_acquisition_times(fname_acquisition):
+def get_acquisition_times(nii_data, json_data):
     """
-    Return the acquisition timestamps from a nifti file with corresponding json sidecar. This assumes BIDS
-    convention
+    Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
-        fname_acquisition (str): Filename corresponding to a nifti file. The file must have a json sidecar with the
-                                 same name in the same folder. (nifti.nii nifti.json)
-                                 Supported extensions : ".nii", ".nii.gz".
+        nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
+        json_data (dict): Json dict corresponding to a nifti sidecar.
 
     Returns:
-        numpy.ndarray: Acquisition timestamps in ms
+        numpy.ndarray: Acquisition timestamps in ms.
 
     """
     # Get number of volumes
-    nii_fieldmap = nib.load(fname_acquisition)
-    n_volumes = nii_fieldmap.header['dim'][4]
+    n_volumes = nii_data.header['dim'][4]
 
-    # get time between volumes and acquisition start time
-    fname, ext = os.path.splitext(fname_acquisition)
-    if ext == '.nii':
-        fname_acquisition_json = fname + '.json'
-    elif ext == '.gz':
-        # Disregard gz and test for nii
-        fname, ext = os.path.splitext(fname)
-        if ext == '.nii':
-            fname_acquisition_json = fname + '.json'
-        else:
-            raise RuntimeError('Input file is not a .nii.gz file')
-    else:
-        raise RuntimeError('Input file is not a .nii or .XX.gz file')
-
-    json_data = json.load(open(fname_acquisition_json))
     delta_t = json_data['RepetitionTime'] * 1000  # [ms]
     acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
     acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]

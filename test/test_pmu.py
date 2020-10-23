@@ -7,6 +7,7 @@ import numpy as np
 # TODO remove matplotlib import once finalized
 from matplotlib.figure import Figure
 import nibabel as nib
+import json
 
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_shimmingtoolbox__
@@ -55,22 +56,25 @@ def test_interp_resp_trace():
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
 
+    # Get B0 data
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    nii_fieldmap = nib.load(fname_fieldmap)
+    fieldmap = nii_fieldmap.get_fdata()
+
     # Get the pressure values
     fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname_pmu)
 
     # Get acquisition timestamps
-    fname_phase_diff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                         'sub-example_phasediff.nii.gz')
-    fieldmap_timestamps = get_acquisition_times(fname_phase_diff)
+    fname_phase_diff_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                         'sub-example_phasediff.json')
+    with open(fname_phase_diff_json) as json_file:
+        json_data = json.load(json_file)
+    fieldmap_timestamps = get_acquisition_times(nii_fieldmap, json_data)
 
     # Interpolate PMU values onto MRI acquisition timestamp
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
-
-    # Get B0 data
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    fieldmap = nib.load(fname_fieldmap).get_fdata()
 
     # Set up mask
     mask_len1 = 15
