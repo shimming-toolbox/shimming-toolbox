@@ -84,11 +84,11 @@ def test_timing_images():
 
     # Apply mask and compute the average for each timepoint
     fieldmap_masked = np.zeros_like(fieldmap)
-    fieldmap_mean = np.zeros([fieldmap.shape[3]])
+    fieldmap_avg = np.zeros([fieldmap.shape[3]])
     for i_time in range(fieldmap.shape[3]):
         fieldmap_masked[:, :, :, i_time] = fieldmap[:, :, :, i_time] * mask
         masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
-        fieldmap_mean[i_time] = np.ma.average(masked_array)
+        fieldmap_avg[i_time] = np.ma.average(masked_array)
 
     # Reshape pmu datapoints to fit those of the acquisition
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
@@ -98,10 +98,10 @@ def test_timing_images():
     pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
 
     # Compute correlation
-    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, acquisition_pressures.shape[0])
-    pearson = np.corrcoef(acquisition_pressures, pmu_data_within_range_ds)
+    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, fieldmap_avg.shape[0])
+    pearson = np.corrcoef(fieldmap_avg, pmu_data_within_range_ds)
 
-    assert(pearson[0, 1] == 0.784021686600437)
+    assert(pearson[0, 1] == 0.6031485150782748)
 
     # # Plot results
     # fig = Figure(figsize=(10, 10))
@@ -112,7 +112,7 @@ def test_timing_images():
     # ax.legend()
     # ax.set_title("Pressure [-2048, 2047] vs time (s) ")
     # ax = fig.add_subplot(212)
-    # ax.plot(fieldmap_timestamps / 1000, fieldmap_mean, label='Mean B0')
+    # ax.plot(fieldmap_timestamps / 1000, fieldmap_avg, label='Mean B0')
     # ax.legend()
     # ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
     #
