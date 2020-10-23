@@ -90,6 +90,7 @@ def test_timing_images():
 
     # Sanity check -->
     # TODO: use assert
+    # TODO: downsample the PMU trace and use np.corrcoeff with assert
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
     pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
     pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
