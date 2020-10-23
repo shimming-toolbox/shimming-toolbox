@@ -4,14 +4,11 @@
 import os
 import numpy as np
 
-# TODO remove matplotlib import once finalized
-from matplotlib.figure import Figure
 import nibabel as nib
 import json
 import scipy.signal
 
 from shimmingtoolbox.masking.shapes import shapes
-from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -57,7 +54,7 @@ def test_interp_resp_trace():
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
 
-    # Get B0 data
+    # Get fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
@@ -107,34 +104,33 @@ def test_timing_images():
 
     assert(pearson[0, 1] == 0.784021686600437)
 
-    # TODO: remove plot once code finalized
-    # Plot results
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(211)
-    ax.plot(fieldmap_timestamps / 1000, acquisition_pressures, label='Interpolated pressures')
-    # ax.plot(pmu_times, pmu.data, label='Raw pressures')
-    ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
-    ax.legend()
-    ax.set_title("Pressure [-2048, 2047] vs time (s) ")
-    ax = fig.add_subplot(212)
-    ax.plot(fieldmap_timestamps / 1000, fieldmap_mean, label='Mean B0')
-    ax.legend()
-    ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
-    fig.savefig(fname_figure)
-
-    # Plot mask
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(211)
-    im = ax.imshow(fieldmap_masked[:, :, 0, 0])
-    fig.colorbar(im)
-    ax.set_title("Mask (Hz)")
-
-    ax = fig.add_subplot(212)
-    im = ax.imshow(fieldmap[:, :, 0, 0])
-    fig.colorbar(im)
-    ax.set_title("Fieldmap (Hz)")
-
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
-    fig.savefig(fname_figure)
+    # # Plot results
+    # fig = Figure(figsize=(10, 10))
+    # ax = fig.add_subplot(211)
+    # ax.plot(fieldmap_timestamps / 1000, acquisition_pressures, label='Interpolated pressures')
+    # # ax.plot(pmu_times, pmu.data, label='Raw pressures')
+    # ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
+    # ax.legend()
+    # ax.set_title("Pressure [-2048, 2047] vs time (s) ")
+    # ax = fig.add_subplot(212)
+    # ax.plot(fieldmap_timestamps / 1000, fieldmap_mean, label='Mean B0')
+    # ax.legend()
+    # ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
+    #
+    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
+    # fig.savefig(fname_figure)
+    #
+    # # Plot mask
+    # fig = Figure(figsize=(10, 10))
+    # ax = fig.add_subplot(211)
+    # im = ax.imshow(fieldmap_masked[:, :, 0, 0])
+    # fig.colorbar(im)
+    # ax.set_title("Mask (Hz)")
+    #
+    # ax = fig.add_subplot(212)
+    # im = ax.imshow(fieldmap[:, :, 0, 0])
+    # fig.colorbar(im)
+    # ax.set_title("Fieldmap (Hz)")
+    #
+    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
+    # fig.savefig(fname_figure)
