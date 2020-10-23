@@ -8,6 +8,7 @@ import numpy as np
 from matplotlib.figure import Figure
 import nibabel as nib
 import json
+import scipy.signal
 
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_shimmingtoolbox__
@@ -85,6 +86,7 @@ def test_timing_images():
                   center_dim2=int(fieldmap.shape[1] / 2 - 20),
                   len_dim1=mask_len1, len_dim2=mask_len2, len_dim3=mask_len3)
 
+    # Apply mask and compute the average for each timepoint
     fieldmap_masked = np.zeros_like(fieldmap)
     fieldmap_mean = np.zeros([fieldmap.shape[3]])
     for i_time in range(fieldmap.shape[3]):
@@ -92,14 +94,18 @@ def test_timing_images():
         masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
         fieldmap_mean[i_time] = np.ma.average(masked_array)
 
-    # Sanity check -->
-    # TODO: use assert
-    # TODO: downsample the PMU trace and use np.corrcoeff with assert
+    # Reshape pmu datapoints to fit those of the acquisition
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
     pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
     pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
     pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
     pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
+
+    # Compute correlation
+    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, acquisition_pressures.shape[0])
+    pearson = np.corrcoef(acquisition_pressures, pmu_data_within_range_ds)
+
+    assert(pearson[0, 1] == 0.784021686600437)
 
     # TODO: remove plot once code finalized
     # Plot results
