@@ -55,6 +55,7 @@ from shimmingtoolbox.masking.shapes import shapes
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
 
+    # TODO: Move to appropriate place
     # Convert to ms
     def dicom_times_to_ms(dicom_times):
         """
@@ -62,7 +63,7 @@ def test_timing_images():
 
         Args:
             dicom_times (numpy.ndarray): 1D array of time strings from dicoms.
-                                         Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm
+                                         Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm"
 
         Returns:
             numpy.ndarray: 1D array of times in milliseconds
@@ -88,28 +89,61 @@ def test_timing_images():
 
         return np.array(ms_times)
 
-    # get time between volumes and acquisition start time
-    fname_json_phase_diff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                         'sub-example_phasediff.json')
-    json_data = json.load(open(fname_json_phase_diff))
-    delta_t = json_data['RepetitionTime'] * 1000  # [ms]
-    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
-    acq_start_time_ms = dicom_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+    # TODO: Move to appropriate place
+    def get_acquisition_times(fname_acquisition):
+        """
+        Return the acquisition timestamps from a nifti file with corresponding json bids sidecar
 
-    # Get the number of volumes
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    nii_fieldmap = nib.load(fname_fieldmap)
-    n_volumes = nii_fieldmap.header['dim'][4]
+        Args:
+            fname_acquisition (str): Filename corresponding to a nifti file. The file must have a json sidecar with the
+                                     same name in the same folder. (nifti.nii nifti.json)
+                                     Supported extensions : ".nii", ".nii.gz".
+
+        Returns:
+            numpy.ndarray: Acquisition timestamps in ms
+
+        """
+        # Get number of volumes
+        nii_fieldmap = nib.load(fname_acquisition)
+        n_volumes = nii_fieldmap.header['dim'][4]
+
+        # get time between volumes and acquisition start time
+        fname, ext = os.path.splitext(fname_acquisition)
+        if ext == '.nii':
+            fname_acquisition_json = fname + '.json'
+        elif ext == '.gz':
+            # Disregard gz and test for nii
+            fname, ext = os.path.splitext(fname)
+            if ext == '.nii':
+                fname_acquisition_json = fname + '.json'
+            else:
+                raise RuntimeError('Input file is not a .nii.gz file')
+        else:
+            raise RuntimeError('Input file is not a .nii or .XX.gz file')
+
+        json_data = json.load(open(fname_acquisition_json))
+        delta_t = json_data['RepetitionTime'] * 1000  # [ms]
+        acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+        acq_start_time_ms = dicom_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+
+        return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
     # Get the pressure values at the interpolated timestamps
     fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname_pmu)
-    fieldmap_timestamps = np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)
+
+    # Get acquisition timestamps and pressures
+    fname_phase_diff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                         'sub-example_phasediff.nii.gz')
+    fieldmap_timestamps = get_acquisition_times(fname_phase_diff)
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
     # Get B0 data
-    fieldmap = nii_fieldmap.get_fdata()
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    fieldmap = nib.load(fname_fieldmap).get_fdata()
+
+    # Set up mask
     mask_len1 = 15
     mask_len2 = 5
     mask_len3 = fieldmap.shape[2]
