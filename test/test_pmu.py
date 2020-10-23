@@ -6,6 +6,7 @@ import numpy as np
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.utils import dicom_times_to_ms
 
 
 def test_read_resp():
@@ -54,40 +55,6 @@ from shimmingtoolbox.masking.shapes import shapes
 
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
-
-    # TODO: Move to appropriate place
-    # Convert to ms
-    def dicom_times_to_ms(dicom_times):
-        """
-        Convert dicom acquisition times to ms
-
-        Args:
-            dicom_times (numpy.ndarray): 1D array of time strings from dicoms.
-                                         Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm"
-
-        Returns:
-            numpy.ndarray: 1D array of times in milliseconds
-        """
-
-        ms_times = []
-
-        for a_time in dicom_times:
-            if len(a_time) == 13 and a_time[6] == '.' and isinstance(a_time, str):
-                hours = int(a_time[0:2])
-                minutes = int(a_time[2:4])
-                seconds = int(a_time[4:6])
-                micros = int(a_time[7:13])
-            elif len(a_time) == 15 and a_time[2] + a_time[5] + a_time[8] == ['::.'] or isinstance(a_time, str):
-                hours = int(a_time[0:2])
-                minutes = int(a_time[3:5])
-                seconds = int(a_time[6:8])
-                micros = int(a_time[9:15])
-            else:
-                raise RuntimeError("Input format does not follow 'HHMMSS.mmmmmm'")
-
-            ms_times.append(1000 * (hours * 3600 + minutes * 60 + seconds) + micros / 1000)  # ms
-
-        return np.array(ms_times)
 
     # TODO: Move to appropriate place
     # TODO: possibly input dict (obtained from the json)
