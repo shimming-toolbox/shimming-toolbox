@@ -3,7 +3,6 @@
 
 import os
 import numpy as np
-
 import nibabel as nib
 import json
 import scipy.signal
