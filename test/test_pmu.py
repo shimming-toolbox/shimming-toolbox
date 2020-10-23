@@ -101,7 +101,7 @@ def test_timing_images():
     pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, fieldmap_avg.shape[0])
     pearson = np.corrcoef(fieldmap_avg, pmu_data_within_range_ds)
 
-    assert(pearson[0, 1] == 0.6031485150782748)
+    assert(np.isclose(pearson[0, 1], 0.6031485150782748))
 
     # # Plot results
     # fig = Figure(figsize=(10, 10))
