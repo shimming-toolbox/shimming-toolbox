@@ -88,26 +88,24 @@ def test_timing_images():
 
         return np.array(ms_times)
 
-    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname_pmu)
-
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    fname_json_phase_diff = os.path.join(__dir_testing__, 'nifti', 'sub-example', 'fmap',
-                                         'sub-example_phasediff.json')
-
     # get time between volumes and acquisition start time
+    fname_json_phase_diff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                         'sub-example_phasediff.json')
     json_data = json.load(open(fname_json_phase_diff))
     delta_t = json_data['RepetitionTime'] * 1000  # [ms]
-    acq_start_time = json_data['AcquisitionTime']  # ISO format
-    acq_start_time = dicom_times_to_ms(np.array([acq_start_time]))[0]  # [ms]
+    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+    acq_start_time_ms = dicom_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
 
     # Get the number of volumes
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
     n_volumes = nii_fieldmap.header['dim'][4]
 
-    # Get the pressure values at the iterpolated timestamps
-    fieldmap_timestamps = np.linspace(acq_start_time, ((n_volumes - 1) * delta_t) + acq_start_time, n_volumes)
+    # Get the pressure values at the interpolated timestamps
+    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_pmu)
+    fieldmap_timestamps = np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
 
     # Get B0 data
