@@ -4,9 +4,15 @@
 import os
 import numpy as np
 
+# TODO remove matplotlib import once finalized
+from matplotlib.figure import Figure
+import nibabel as nib
+
+from shimmingtoolbox.masking.shapes import shapes
+from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.utils import iso_times_to_ms
+from shimmingtoolbox.load_nifti import get_acquisition_times
 
 
 def test_read_resp():
@@ -46,56 +52,8 @@ def test_interp_resp_trace():
     assert(np.all(np.isclose(acq_pressure[index_pmu_interp], pmu.data[index_pmu_data], atol=1, rtol=0.08)))
 
 
-from matplotlib.figure import Figure
-from shimmingtoolbox import __dir_shimmingtoolbox__
-import nibabel as nib
-import json
-from shimmingtoolbox.masking.shapes import shapes
-
-
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
-
-    # TODO: Move to appropriate place
-    # TODO: possibly input dict (obtained from the json)
-    def get_acquisition_times(fname_acquisition):
-        """
-        Return the acquisition timestamps from a nifti file with corresponding json sidecar. This assumes BIDS
-        convention
-
-        Args:
-            fname_acquisition (str): Filename corresponding to a nifti file. The file must have a json sidecar with the
-                                     same name in the same folder. (nifti.nii nifti.json)
-                                     Supported extensions : ".nii", ".nii.gz".
-
-        Returns:
-            numpy.ndarray: Acquisition timestamps in ms
-
-        """
-        # Get number of volumes
-        nii_fieldmap = nib.load(fname_acquisition)
-        n_volumes = nii_fieldmap.header['dim'][4]
-
-        # get time between volumes and acquisition start time
-        fname, ext = os.path.splitext(fname_acquisition)
-        if ext == '.nii':
-            fname_acquisition_json = fname + '.json'
-        elif ext == '.gz':
-            # Disregard gz and test for nii
-            fname, ext = os.path.splitext(fname)
-            if ext == '.nii':
-                fname_acquisition_json = fname + '.json'
-            else:
-                raise RuntimeError('Input file is not a .nii.gz file')
-        else:
-            raise RuntimeError('Input file is not a .nii or .XX.gz file')
-
-        json_data = json.load(open(fname_acquisition_json))
-        delta_t = json_data['RepetitionTime'] * 1000  # [ms]
-        acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
-        acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
-
-        return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
     # Get the pressure values
     fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -131,12 +89,14 @@ def test_timing_images():
         fieldmap_mean[i_time] = np.ma.average(masked_array)
 
     # Sanity check -->
+    # TODO: use assert
     pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
     pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
     pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
     pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
     pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
 
+    # TODO: remove plot once code finalized
     # Plot results
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(211)
