@@ -48,11 +48,5 @@ misc
 .. automodule:: shimmingtoolbox.utils
    :members:
 
-.. automodule:: shimmingtoolbox.cli.b0map
-   :members:
-
 .. automodule:: shimmingtoolbox.cli.download_data
-   :members:
-
-.. automodule:: shimmingtoolbox.cli.referencemaps
    :members:

@@ -8,8 +8,33 @@ import nibabel as nib
 import json
 import math
 
+from shimmingtoolbox.utils import iso_times_to_ms
+
+
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
+
+
+def get_acquisition_times(nii_data, json_data):
+    """
+    Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+
+    Args:
+        nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        numpy.ndarray: Acquisition timestamps in ms.
+
+    """
+    # Get number of volumes
+    n_volumes = nii_data.header['dim'][4]
+
+    delta_t = json_data['RepetitionTime'] * 1000  # [ms]
+    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+
+    return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
 
 def load_nifti(path_data, modality='phase'):

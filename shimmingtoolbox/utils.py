@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 # Misc functions
 
+import numpy as np
 import os
 import tqdm
 import subprocess
@@ -53,6 +54,39 @@ def add_suffix(fname, suffix):
 
     stem, ext = _splitext(fname)
     return os.path.join(stem + suffix + ext)
+
+
+def iso_times_to_ms(iso_times):
+    """
+    Convert dicom acquisition times to ms
+
+    Args:
+        iso_times (numpy.ndarray): 1D array of time strings from dicoms.
+                                   Suported formats: "HHMMSS.mmmmmm" or "HH:MM:SS.mmmmmm"
+
+    Returns:
+        numpy.ndarray: 1D array of times in milliseconds
+    """
+
+    ms_times = []
+
+    for a_time in iso_times:
+        if len(a_time) == 13 and a_time[6] == '.' and isinstance(a_time, str):
+            hours = int(a_time[0:2])
+            minutes = int(a_time[2:4])
+            seconds = int(a_time[4:6])
+            micros = int(a_time[7:13])
+        elif len(a_time) == 15 and a_time[2] + a_time[5] + a_time[8] == ['::.'] or isinstance(a_time, str):
+            hours = int(a_time[0:2])
+            minutes = int(a_time[3:5])
+            seconds = int(a_time[6:8])
+            micros = int(a_time[9:15])
+        else:
+            raise RuntimeError("Input format does not follow 'HHMMSS.mmmmmm'")
+
+        ms_times.append(1000 * (hours * 3600 + minutes * 60 + seconds) + micros / 1000)  # ms
+
+    return np.array(ms_times)
 
 
 def st_progress_bar(*args, **kwargs):
