@@ -18,19 +18,24 @@ from shimmingtoolbox import __dir_shimmingtoolbox__
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-# @click.command(
-#     context_settings=CONTEXT_SETTINGS,
-#     help=f"Perform realtime z-shimming."
-# )
-# @click.option('-coil', 'fname_coil', required=True, type=click.Path(),
-#               help="Coil basis to use for shimming. Enter multiple files if "
-#                    "you wish to use more than one set of shim coils (eg: "
-#                    "Siemens gradient/shim coils and external custom coils).")
-# @click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
-#               help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
-# @click.option('-mask', 'fname_mask', type=click.Path(),
-#               help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
-# @click.option("-verbose", is_flag=True, help="Be more verbose.")
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+    help=f"Perform realtime z-shimming."
+)
+@click.option('-coil', 'fname_coil', required=True, type=click.Path(),
+              help="Coil basis to use for shimming. Enter multiple files if "
+                   "you wish to use more than one set of shim coils (eg: "
+                   "Siemens gradient/shim coils and external custom coils).")
+@click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
+              help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
+@click.option('-mask', 'fname_mask', type=click.Path(),
+              help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
+@click.option('-resp', 'fname_resp', type=click.Path(),
+              help="Siemens respiratory file containing pressure data.")
+# TODO: Remove json file as input
+@click.option('-json', 'fname_json', type=click.Path(),
+              help="Filename of json corresponding BIDS sidecar.")
+@click.option("-verbose", is_flag=True, help="Be more verbose.")
 def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, verbose=True):
     """
 
@@ -38,6 +43,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
         fname_coil: Pointing to coil profile. 4-dimensional: x, y, z, coil.
         fname_fmap:
         fname_mask:
+        fname_resp:
         verbose:
 
     Returns:
@@ -127,13 +133,13 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     return fname_figure
 
-
-fname_coil = os.path.join(__dir_testing__, 'test_realtime_zshim', 'coil_profile.nii.gz')
-fname_fmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
-fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'mask.nii.gz')
-fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-fname_json = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_magnitude1.json')
-# fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
-# fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
-# fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
-realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json)
+# Debug
+# fname_coil = os.path.join(__dir_testing__, 'test_realtime_zshim', 'coil_profile.nii.gz')
+# fname_fmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
+# fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'mask.nii.gz')
+# fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+# fname_json = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_magnitude1.json')
+# # fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
+# # fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
+# # fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
+# realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json)
