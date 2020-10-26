@@ -5,11 +5,14 @@ import click
 import numpy as np
 import os
 import nibabel as nib
+import json
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_testing__
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
+from shimmingtoolbox.load_nifti import get_acquisition_times
+from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -28,7 +31,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 # @click.option('-mask', 'fname_mask', type=click.Path(),
 #               help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
 # @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, verbose=True):
+def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, verbose=True):
     """
 
     Args:
@@ -109,12 +112,13 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, verbose=True)
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_currents.png')
     fig.savefig(fname_figure)
 
-    # TODO: fetch PMU timing
-    #  get_pmu_data(fname_pmu, fname_fieldmap)  # Currently needs another Json file
-    #   acq_times = get_acquisition_times(fname_fieldmap)  # Currently needs another Json file
-    #   pmu = PmuResp(fname_resp)
-    #   acq_pressures = pmu.interp_resp_trace(acq_times)
-    #   return acq_pressures, acq_times
+    # Fetch PMU timing
+    # TODO: Add json to fieldmap instead of asking for another json file
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+    acq_timestamps = get_acquisition_times(nii_fmap, json_data)
+    pmu = PmuResp(fname_resp)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # TODO:
     #  fit PMU and fieldmap values
@@ -128,7 +132,8 @@ fname_coil = os.path.join(__dir_testing__, 'test_realtime_zshim', 'coil_profile.
 fname_fmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
 fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'mask.nii.gz')
 fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+fname_json = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_magnitude1.json')
 # fname_coil='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/coil_profile.nii.gz'
 # fname_fmap='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/sub-example_fieldmap.nii.gz'
 # fname_mask='/Users/julien/code/shimming-toolbox/shimming-toolbox/test_realtime_zshim/mask.nii.gz'
-realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp)
+realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json)
