@@ -49,7 +49,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     Returns:
 
     """
-    # When using only z channnel TODO:Remove
+    # When using only z channnel (corresponding to the 2nd index) TODO:Remove
     # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 2], -1)
 
     # When using all channels TODO: Keep
@@ -124,13 +124,25 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
         json_data = json.load(json_file)
     acq_timestamps = get_acquisition_times(nii_fmap, json_data)
     pmu = PmuResp(fname_resp)
+    # TODO: deal with saturation
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # TODO:
     #  fit PMU and fieldmap values
     #  do regression to separate static componant and RIRO component
     #  output coefficient with proper scaling
+    #  field(i_vox) = a(i_vox) * acq_pressures + b(i_vox)
+    #    could use: https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
+    #  Note: strong spatial autocorrelation on the a and b coefficients. Ie: two adjacent voxels are submitted to similar
+    #  static B0 field and RIRO component. --> we need to find a way to account for that
+    #   solution 1: post-fitting regularization.
+    #     pros: easy to implement
+    #     cons: fit is less robust to noise
+    #   solution 2: accounting for regularization during fitting
+    #     pros: fitting more robust to noise
+    #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
 
+    #
     return fname_figure
 
 # Debug
