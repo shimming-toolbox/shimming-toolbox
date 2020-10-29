@@ -6,6 +6,7 @@ import numpy as np
 import os
 import nibabel as nib
 import json
+from sklearn.linear_model import LinearRegression
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_testing__
@@ -50,6 +51,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     """
     # When using only z channnel (corresponding to the 2nd index) TODO:Remove
+    # TODO: Z index seems to be 0 (maybe because rotation of niftis
     # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 2], -1)
 
     # When using all channels TODO: Keep
@@ -142,7 +144,32 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     #     pros: fitting more robust to noise
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
 
-    #
+    riro = np.zeros_like(fieldmap[:, :, :, 0])
+    static = np.zeros_like(fieldmap[:, :, :, 0])
+    # TODO: This is ugly
+    for i_x in range(fieldmap.shape[0]):
+        for i_y in range(fieldmap.shape[1]):
+            for i_z in range(fieldmap.shape[2]):
+                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), masked_fieldmaps[i_x, i_y, i_z, :])
+                riro[i_x, i_y, i_z] = reg.coef_
+                static[i_x, i_y, i_z] = reg.intercept_
+
+    # Plot results
+    fig = Figure(figsize=(10, 10))
+    # FigureCanvas(fig)
+    ax = fig.add_subplot(2, 1, 1)
+    im = ax.imshow(riro[:-1, :-1, 0])
+    fig.colorbar(im)
+    ax.set_title("RIRO")
+    ax = fig.add_subplot(2, 1, 2)
+    im = ax.imshow(static[:-1, :-1, 0])
+    fig.colorbar(im)
+    ax.set_title("Static")
+
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_Riro_Static.png')
+    fig.savefig(fname_figure)
+
+
     return fname_figure
 
 # Debug
