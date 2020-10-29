@@ -77,48 +77,11 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     shimmed = np.zeros_like(fieldmap)
     masked_fieldmaps = np.zeros_like(fieldmap)
-    masked_shimmed = np.zeros_like(shimmed)
     for i_t in range(nt):
         currents[:, i_t] = sequential_zslice(fieldmap[..., i_t], coil, mask, z_slices=np.array(range(nz)),
-                                             bounds=[(-np.inf, np.inf)]*n_coils)
+                                             bounds=[(-np.inf, np.inf)] * n_coils)
         shimmed[..., i_t] = fieldmap[..., i_t] + np.sum(currents[:, i_t] * coil, axis=3, keepdims=False)
         masked_fieldmaps[..., i_t] = mask * fieldmap[..., i_t]
-        masked_shimmed[..., i_t] = mask * shimmed[..., i_t]
-
-    i_t = 0
-    # Plot results
-    fig = Figure(figsize=(10, 10))
-    # FigureCanvas(fig)
-    ax = fig.add_subplot(2, 2, 1)
-    im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("Masked unshimmed")
-    ax = fig.add_subplot(2, 2, 2)
-    im = ax.imshow(masked_shimmed[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("Masked shimmed")
-    ax = fig.add_subplot(2, 2, 3)
-    im = ax.imshow(fieldmap[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("Unshimmed")
-    ax = fig.add_subplot(2, 2, 4)
-    im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("Shimmed")
-
-    click.echo(f"\nThe associated current coefficients are : {currents[:, i_t]}")
-
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_plot.png')
-    fig.savefig(fname_figure)
-
-    fig = Figure(figsize=(10, 10))
-    for i_coil in range(n_coils):
-        ax = fig.add_subplot(n_coils, 1, i_coil + 1)
-        ax.plot(np.arange(nt), currents[i_coil, :])
-        ax.set_title(f"Channel {i_coil}")
-
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_currents.png')
-    fig.savefig(fname_figure)
 
     # Fetch PMU timing
     # TODO: Add json to fieldmap instead of asking for another json file
@@ -146,17 +109,54 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
-    # TODO: This is ugly
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
-                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), masked_fieldmaps[i_x, i_y, i_z, :])
+                # TODO: Fit for -masked_field?
+                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
 
-    # Plot results
+    # ================ PLOTS ================
+
+    # Calculate masked shim for spherical harmonics plot
+    masked_shimmed = np.zeros_like(shimmed)
+    for i_t in range(nt):
+        masked_shimmed[..., i_t] = mask * shimmed[..., i_t]
+
+    # Plot unshimmed vs shimmed and their mask for spherical harmonics
+    i_t = 0
     fig = Figure(figsize=(10, 10))
-    # FigureCanvas(fig)
+    ax = fig.add_subplot(2, 2, 1)
+    im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("Masked unshimmed")
+    ax = fig.add_subplot(2, 2, 2)
+    im = ax.imshow(masked_shimmed[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("Masked shimmed")
+    ax = fig.add_subplot(2, 2, 3)
+    im = ax.imshow(fieldmap[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("Unshimmed")
+    ax = fig.add_subplot(2, 2, 4)
+    im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("Shimmed")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_sphharm_shimmed.png')
+    fig.savefig(fname_figure)
+
+    # Plot the coil coefs through time
+    fig = Figure(figsize=(10, 10))
+    for i_coil in range(n_coils):
+        ax = fig.add_subplot(n_coils, 1, i_coil + 1)
+        ax.plot(np.arange(nt), currents[i_coil, :])
+        ax.set_title(f"Channel {i_coil}")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_sphharm_currents.png')
+    fig.savefig(fname_figure)
+
+    # Plot Static and RIRO
+    fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(2, 1, 1)
     im = ax.imshow(riro[:-1, :-1, 0])
     fig.colorbar(im)
@@ -165,10 +165,57 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     im = ax.imshow(static[:-1, :-1, 0])
     fig.colorbar(im)
     ax.set_title("Static")
-
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_Riro_Static.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_riro_static.png')
     fig.savefig(fname_figure)
 
+    # Calculate fitted and shimmed for pressure fitted plot
+    fitted_fieldmap = riro * acq_pressures + static
+    shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
+
+    # Plot pressure fitted fieldmap
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(3, 1, 1)
+    im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("fieldmap")
+    ax = fig.add_subplot(3, 1, 2)
+    im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
+    fig.colorbar(im)
+    ax.set_title("Fit")
+    ax = fig.add_subplot(3, 1, 3)
+    im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
+    fig.colorbar(im)
+    ax.set_title("Shimmed (fit + fieldmap")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_pressure_fitted.png')
+    fig.savefig(fname_figure)
+
+    # Reshape pmu datapoints to fit those of the acquisition
+    pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
+    pmu_times_within_range = pmu_times[pmu_times > acq_timestamps[0]]
+    pmu_data_within_range = pmu.data[pmu_times > acq_timestamps[0]]
+    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
+    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
+
+    # Calc fieldmap average within mask
+    fieldmap_avg = np.zeros([fieldmap.shape[3]])
+    for i_time in range(nt):
+        masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
+        fieldmap_avg[i_time] = np.ma.average(masked_array)
+
+    # Plot pmu vs B0 in masked region
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(211)
+    ax.plot(acq_timestamps / 1000, acq_pressures, label='Interpolated pressures')
+    # ax.plot(pmu_times / 1000, pmu.data, label='Raw pressures')
+    ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
+    ax.legend()
+    ax.set_title("Pressure [-2048, 2047] vs time (s) ")
+    ax = fig.add_subplot(212)
+    ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
+    ax.legend()
+    ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_pmu_vs_B0.png')
+    fig.savefig(fname_figure)
 
     return fname_figure
 
