@@ -50,13 +50,14 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     Returns:
 
     """
+    # Load coil
     # When using only z channnel (corresponding to the 2nd index) TODO:Remove
     # TODO: Z index seems to be 0 (maybe because rotation of niftis
     # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 2], -1)
-
     # When using all channels TODO: Keep
     coil = nib.load(fname_coil).get_fdata()
 
+    # Load fieldmap
     nii_fmap = nib.load(fname_fmap)
     fieldmap = nii_fmap.get_fdata()
 
@@ -65,16 +66,16 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
         raise RuntimeError('fmap must be 4d (x, y, z, t)')
     nx, ny, nz, nt = fieldmap.shape
 
+    # Load mask
     # TODO: check good practice below
     if fname_mask is not None:
         mask = nib.load(fname_mask).get_fdata()
     else:
         mask = np.ones_like(fieldmap)
 
-    # Setup coil
+    # Shim using sequencer and optimizer
     n_coils = coil.shape[-1]
     currents = np.zeros([n_coils, nt])
-
     shimmed = np.zeros_like(fieldmap)
     masked_fieldmaps = np.zeros_like(fieldmap)
     for i_t in range(nt):
@@ -107,6 +108,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     #     pros: fitting more robust to noise
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
 
+    # Shim using PMU
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
     for i_x in range(fieldmap.shape[0]):
