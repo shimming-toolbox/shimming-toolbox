@@ -10,6 +10,7 @@ import numpy as np
 from click.testing import CliRunner
 from shimmingtoolbox.cli.realtime_zshim import realtime_zshim
 from shimmingtoolbox.masking.shapes import shapes
+from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox import __dir_testing__
@@ -26,13 +27,19 @@ def test_cli_realtime_zshim():
         affine = nii_fmap.affine
 
         # Set up mask
-        nx, ny, nz, nt = fmap.shape
-        mask = shapes(fmap[:, :, :, 0], 'cube',
-                      center_dim1=int(fmap.shape[0] / 2 - 8),
-                      center_dim2=int(fmap.shape[1] / 2 - 5),
-                      len_dim1=15, len_dim2=25, len_dim3=nz)
+        # Cube
+        # nx, ny, nz, nt = fmap.shape
+        # mask = shapes(fmap[:, :, :, 0], 'cube',
+        #               center_dim1=int(fmap.shape[0] / 2 - 8),
+        #               center_dim2=int(fmap.shape[1] / 2 - 5),
+        #               len_dim1=15, len_dim2=25, len_dim3=nz)
+        # Threshold
+        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                 'sub-example_magnitude1.nii.gz')
+        mag = nib.load(fname_mag).get_fdata()
+        mask = threshold(mag, thr=50)
 
-        nii_mask = nib.Nifti1Image(mask.astype(int), affine)
+        nii_mask = nib.Nifti1Image(mask.astype(int)[:, :, :, 0], affine)
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
         nib.save(nii_mask, fname_mask)
 
