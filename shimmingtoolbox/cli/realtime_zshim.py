@@ -92,6 +92,18 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
         shimmed[..., i_t] = fieldmap[..., i_t] + np.sum(currents[:, i_t] * coil, axis=3, keepdims=False)
         masked_fieldmaps[..., i_t] = mask * fieldmap[..., i_t]
 
+    # Calculate gz gradient
+    # Image is z, y, x
+    # Pixdim[3] is the space between pixels in the z direction in millimeters
+    # TODO: This is the gradient is the voxel reference frame meaning the axes could possibly not follow the scanner's
+    #  axes (therefore the z gradient), also investigate is axes should be 1 or 0
+    g = 1000 / 42.576e6  # [mT / Hz]
+    gz_gradient = np.zeros_like(masked_fieldmaps)
+    for it in range(nt):
+        gz_gradient[..., 0, it] = np.gradient(g * masked_fieldmaps[:, :, 0, it],
+                                              nii_fmap.header['pixdim'][3] / 1000,
+                                              axis=1)  # [mT / m]
+
     # Fetch PMU timing
     # TODO: Add json to fieldmap instead of asking for another json file
     with open(fname_json) as json_file:
@@ -248,14 +260,23 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     # Show anatomical image
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(2, 1, 1)
-    im = ax.imshow(anat[:-1, :-1, 10])
+    im = ax.imshow(anat[:, :, 10])
     fig.colorbar(im)
-    ax.set_title("Anatomical image [:-1, :-1, 10]")
+    ax.set_title("Anatomical image [:, :, 10]")
     ax = fig.add_subplot(2, 1, 2)
-    im = ax.imshow(nii_resampled_fmap.get_fdata()[0, :-1, :-1, 0])
+    im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
     fig.colorbar(im)
-    ax.set_title("Resampled fieldmap [:-1, :-1, 0, 0]")
+    ax.set_title("Resampled fieldmap [:, :, 10, 0]")
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_anat.png')
+    fig.savefig(fname_figure)
+
+    # Show Gradient
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(1, 1, 1)
+    im = ax.imshow(gz_gradient[:, :, 0, 0])
+    fig.colorbar(im)
+    ax.set_title("Gradient [:, :, 0, 0]")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_gradient.png')
     fig.savefig(fname_figure)
 
     return fname_figure
