@@ -7,7 +7,7 @@ import os
 import nibabel as nib
 import json
 from sklearn.linear_model import LinearRegression
-from nilearn.image import resample_img
+from nibabel.processing import resample_from_to
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_testing__
@@ -99,7 +99,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     acq_timestamps = get_acquisition_times(nii_fmap, json_data)
     pmu = PmuResp(fname_resp)
     # TODO: deal with saturation
-    acq_pressures = pmu.interp_resp_trace(acq_timestamps) + 2048  # [0, 4095]
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # TODO:
     #  fit PMU and fieldmap values
@@ -128,14 +128,18 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
                 static[i_x, i_y, i_z] = reg.intercept_
 
     # Resample masked_fieldmaps, riro and static to target anatomical image
-    nii_masked_fmap = nib.Nifti1Image(masked_fieldmaps, nii_fmap.affine)
+    # TODO: convert to a function
+    masked_fmap_4d = np.zeros(anat.shape + (nt,))
+    for it in range(nt):
+        nii_masked_fmap_3d = nib.Nifti1Image(masked_fieldmaps[..., it], nii_fmap.affine)
+        nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, mode='nearest')
+        masked_fmap_4d[..., it] = nii_resampled_fmap_3d.get_fdata()
+
+    nii_resampled_fmap = nib.Nifti1Image(masked_fmap_4d, nii_anat.affine)
     nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
     nii_static = nib.Nifti1Image(static, nii_fmap.affine)
-
-    target_affine = nii_anat.affine[:-1, :-1]
-    nii_resampled_fmap = resample_img(nii_masked_fmap, target_affine=target_affine, interpolation='nearest')
-    nii_resampled_riro = resample_img(nii_riro, target_affine=target_affine, interpolation='nearest')
-    nii_resampled_static = resample_img(nii_static, target_affine=target_affine, interpolation='nearest')
+    nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
+    nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
 
     nib.save(nii_resampled_fmap, os.path.join(__dir_shimmingtoolbox__, 'resampled_fmap.nii.gz'))
     nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
@@ -250,7 +254,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     ax = fig.add_subplot(2, 1, 2)
     im = ax.imshow(nii_resampled_fmap.get_fdata()[0, :-1, :-1, 0])
     fig.colorbar(im)
-    ax.set_title("Resampled fieldmap [0, :-1, :-1, 0]")
+    ax.set_title("Resampled fieldmap [:-1, :-1, 0, 0]")
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_anat.png')
     fig.savefig(fname_figure)
 
