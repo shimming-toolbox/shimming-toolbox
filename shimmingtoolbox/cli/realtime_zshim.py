@@ -7,6 +7,7 @@ import os
 import nibabel as nib
 import json
 from sklearn.linear_model import LinearRegression
+from nilearn.image import resample_img
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_testing__
@@ -33,11 +34,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim.")
 @click.option('-resp', 'fname_resp', type=click.Path(),
               help="Siemens respiratory file containing pressure data.")
+@click.option('-anat', 'fname_anat', type=click.Path(),
+              help="Filename of the anatomical image to apply the correction.")
 # TODO: Remove json file as input
 @click.option('-json', 'fname_json', type=click.Path(),
               help="Filename of json corresponding BIDS sidecar.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, verbose=True):
+def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, fname_anat, verbose=True):
     """
 
     Args:
@@ -62,7 +65,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     # TODO: Error handling might move to API
     if fieldmap.ndim != 4:
-        raise RuntimeError('fmap must be 4d (x, y, z, t)')
+        raise RuntimeError("fmap must be 4d (x, y, z, t)")
     nx, ny, nz, nt = fieldmap.shape
 
     # Load mask
@@ -71,6 +74,12 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
         mask = nib.load(fname_mask).get_fdata()
     else:
         mask = np.ones_like(fieldmap)
+
+    # Load anat
+    nii_anat = nib.load(fname_anat)
+    anat = nii_anat.get_fdata()
+    if anat.ndim != 3:
+        raise RuntimeError("Anatomical image must be in 3d")
 
     # Shim using sequencer and optimizer
     n_coils = coil.shape[-1]
@@ -117,6 +126,20 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
+
+    # Resample masked_fieldmaps, riro and static to target anatomical image
+    nii_masked_fmap = nib.Nifti1Image(masked_fieldmaps, nii_fmap.affine)
+    nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
+    nii_static = nib.Nifti1Image(static, nii_fmap.affine)
+
+    target_affine = nii_anat.affine[:-1, :-1]
+    nii_resampled_fmap = resample_img(nii_masked_fmap, target_affine=target_affine, interpolation='nearest')
+    nii_resampled_riro = resample_img(nii_riro, target_affine=target_affine, interpolation='nearest')
+    nii_resampled_static = resample_img(nii_static, target_affine=target_affine, interpolation='nearest')
+
+    nib.save(nii_resampled_fmap, os.path.join(__dir_shimmingtoolbox__, 'resampled_fmap.nii.gz'))
+    nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
+    nib.save(nii_resampled_static, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
 
     # ================ PLOTS ================
 
@@ -216,6 +239,19 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     ax.legend()
     ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_pmu_vs_B0.png')
+    fig.savefig(fname_figure)
+
+    # Show anatomical image
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(2, 1, 1)
+    im = ax.imshow(anat[:-1, :-1, 10])
+    fig.colorbar(im)
+    ax.set_title("Anatomical image [:-1, :-1, 10]")
+    ax = fig.add_subplot(2, 1, 2)
+    im = ax.imshow(nii_resampled_fmap.get_fdata()[0, :-1, :-1, 0])
+    fig.colorbar(im)
+    ax.set_title("Resampled fieldmap [0, :-1, :-1, 0]")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_anat.png')
     fig.savefig(fname_figure)
 
     return fname_figure

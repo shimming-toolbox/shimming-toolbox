@@ -58,8 +58,12 @@ def test_cli_realtime_zshim():
         fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_magnitude1.json')
 
+        # Path for mag anat image
+        fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                                  'sub-example_unshimmed_e1.nii.gz')
+
         result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-coil', fname_coil, '-mask', fname_mask,
-                                                '-resp', fname_resp, '-json', fname_json],
+                                                '-resp', fname_resp, '-json', fname_json, '-anat', fname_anat],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
