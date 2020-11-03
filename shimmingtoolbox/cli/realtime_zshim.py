@@ -51,9 +51,8 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
 
     """
     # Load coil
-    # When using only z channnel (corresponding to the 2nd index) TODO:Remove
-    # TODO: Z index seems to be 0 (maybe because rotation of niftis
-    # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 2], -1)
+    # When using only z channel (corresponding to index 0) TODO:Remove
+    # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 0], -1)
     # When using all channels TODO: Keep
     coil = nib.load(fname_coil).get_fdata()
 
@@ -91,7 +90,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, v
     acq_timestamps = get_acquisition_times(nii_fmap, json_data)
     pmu = PmuResp(fname_resp)
     # TODO: deal with saturation
-    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps) + 2048  # [0, 4095]
 
     # TODO:
     #  fit PMU and fieldmap values
