@@ -95,8 +95,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     # Calculate gz gradient
     # Image is z, y, x
     # Pixdim[3] is the space between pixels in the z direction in millimeters
-    # TODO: This is the gradient in the voxel reference frame meaning the axes could possibly not follow the scanner's
-    #  axes (therefore the z gradient), also investigate if axes should be 1 or 0
+    # TODO: Investigate if axes should be 1 or 0
     g = 1000 / 42.576e6  # [mT / Hz]
     gz_gradient = np.zeros_like(masked_fieldmaps)
     for it in range(nt):
@@ -117,7 +116,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     #  fit PMU and fieldmap values
     #  do regression to separate static componant and RIRO component
     #  output coefficient with proper scaling
-    #  field(i_vox) = a(i_vox) * acq_pressures + b(i_vox)
+    #  field(i_vox) = a(i_vox) * (acq_pressures - mean_p) + b(i_vox)
     #    could use: https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
     #  Note: strong spatial autocorrelation on the a and b coefficients. Ie: two adjacent voxels are submitted to similar
     #  static B0 field and RIRO component. --> we need to find a way to account for that
@@ -129,14 +128,15 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
 
     # Shim using PMU
+    mean_p = np.mean(acq_pressures)
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
                 # TODO: Fit for -masked_field?
-                # reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -gz_gradient[i_x, i_y, i_z, :])
-                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -masked_fieldmaps[i_x, i_y, i_z, :])
+                # reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -gz_gradient[i_x, i_y, i_z, :])
+                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
 
@@ -173,6 +173,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     for i_slice in range(n_slices):
         file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
         file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
+        file_gradients.write(f'Vector_Gz[2][{i_slice}]= {mean_p:.3f}\n')
         # Matlab includes the mean pressure
     file_gradients.close()
 
@@ -228,7 +229,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     fig.savefig(fname_figure)
 
     # Calculate fitted and shimmed for pressure fitted plot
-    fitted_fieldmap = riro * acq_pressures + static
+    fitted_fieldmap = riro * (acq_pressures -mean_p) + static
     shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
 
     # Plot pressure fitted fieldmap
