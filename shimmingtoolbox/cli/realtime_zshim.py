@@ -17,6 +17,7 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
+DEBUG = True
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
@@ -102,6 +103,9 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
         gz_gradient[..., 0, it] = np.gradient(g * masked_fieldmaps[:, :, 0, it],
                                               nii_fmap.header['pixdim'][3] / 1000,
                                               axis=1)  # [mT / m]
+    if DEBUG:
+        nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fmap.affine)
+        nib.save(nii_gz_gradient, os.path.join(__dir_shimmingtoolbox__, 'tmp.gz_gradient.nii.gz'))
 
     # Fetch PMU timing
     # TODO: Add json to fieldmap instead of asking for another json file
