@@ -167,12 +167,13 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
         riro_correction[i_slice] = np.mean(nii_resampled_riro.get_fdata()[..., i_slice])
 
     # Write to a text file
+    # TODO: Add as an option to output the file to a specified location
     fname_corrections = os.path.join(__dir_shimmingtoolbox__, 'zshim_gradients.txt')
     file_gradients = open(fname_corrections, 'w')
     for i_slice in range(n_slices):
         file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
         file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
-    # Matlab includes the mean pressure
+        # Matlab includes the mean pressure
     file_gradients.close()
 
     # ================ PLOTS ================
@@ -267,7 +268,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     # ax.plot(pmu_times / 1000, pmu.data, label='Raw pressures')
     ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
     ax.legend()
-    ax.set_title("Pressure [-2048, 2047] vs time (s) ")
+    ax.set_title("Pressure [0, 4095] vs time (s) ")
     ax = fig.add_subplot(212)
     ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
     ax.legend()
