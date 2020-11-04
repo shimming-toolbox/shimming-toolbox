@@ -20,26 +20,28 @@ def test_cli_realtime_zshim():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
+        # Local
         fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                       'sub-example_fieldmap.nii.gz')
+        # fname_fieldmap = os.path.join(__dir_testing__, 'test_realtime_zshim', 'sub-example_fieldmap.nii.gz')
         nii_fmap = nib.load(fname_fieldmap)
         fmap = nii_fmap.get_fdata()
         affine = nii_fmap.affine
 
         # Set up mask
         # Cube
-        # nx, ny, nz, nt = fmap.shape
-        # mask = shapes(fmap[:, :, :, 0], 'cube',
-        #               center_dim1=int(fmap.shape[0] / 2 - 8),
-        #               center_dim2=int(fmap.shape[1] / 2 - 5),
-        #               len_dim1=15, len_dim2=25, len_dim3=nz)
+        nx, ny, nz, nt = fmap.shape
+        mask = shapes(fmap[:, :, :, 0], 'cube',
+                      center_dim1=int(fmap.shape[0] / 2 - 8),
+                      center_dim2=int(fmap.shape[1] / 2 - 5),
+                      len_dim1=15, len_dim2=40, len_dim3=nz)
         # Threshold
-        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                 'sub-example_magnitude1.nii.gz')
-        mag = nib.load(fname_mag).get_fdata()
-        mask = threshold(mag, thr=50)
+        # fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+        #                          'sub-example_magnitude1.nii.gz')
+        # mag = nib.load(fname_mag).get_fdata()[..., 0]
+        # mask = threshold(mag, thr=50)
 
-        nii_mask = nib.Nifti1Image(mask.astype(int)[:, :, :, 0], affine)
+        nii_mask = nib.Nifti1Image(mask.astype(int), affine)
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
         nib.save(nii_mask, fname_mask)
 
