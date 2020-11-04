@@ -12,16 +12,15 @@ from shimmingtoolbox.masking.shapes import shape_cube
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.group()
-def main():
+@click.group(context_settings=CONTEXT_SETTINGS, help=f"Creates a cube, square or threshold mask.")
+def mask():
     pass
 
 
-@main.command(context_settings=CONTEXT_SETTINGS,
-              help=f"Apply a cube mask to the input file. Returns data with cube mask.")
-@click.option("-fname_data", required=True, help="Full file path and name of the data to mask")
-# @click.option("-fname_data", required=True, type=click.Path(exists=True, file_okay=False), help="Input path of nifti "
-#  "file to mask")
+@mask.command(context_settings=CONTEXT_SETTINGS,
+              help=f"Creates a cube mask from the input file. Returns an output nifti file with cube mask.")
+@click.option('-input', type=click.Path(), required=True, help="Complete input path of the nifti file to mask")
+@click.option('-output', type=click.Path(), default=os.curdir, help="Output path for mask in nifti file")
 @click.option("-len_dim1", required=True, type=int, help="Length of the side of the cube along first dimension (in "
                                                          "pixels)")
 @click.option("-len_dim2", required=True, type=int, help="Length of the side of the cube along second dimension (in "
@@ -37,12 +36,13 @@ def main():
 @click.option("-center_dim3", type=int, default=None, help="Center of the cube along third dimension (in "
                                                            "pixels). If no center is provided, the middle is "
                                                            "used.")
-def cube(fname_data, len_dim1, len_dim2, len_dim3, center_dim1, center_dim2, center_dim3):
+def cube(input, output, len_dim1, len_dim2, len_dim3, center_dim1, center_dim2, center_dim3):
     """
-        Apply a cube mask to the input file. Returns data with cube mask.
+        Creates a cube mask from the input file. Returns an output nifti file with cube mask.
 
         Args:
-            fname_data (str): Path of data to mask.
+            input (str): Complete input path of the nifti file to mask.
+            output (str): Output nifti file for cube mask.
             len_dim1 (int): Length of the side of the cube along first dimension (in pixels).
             len_dim2 (int): Length of the side of the cube along second dimension (in pixels).
             len_dim3 (int): Length of the side of the cube along third dimension (in pixels).
@@ -54,24 +54,36 @@ def cube(fname_data, len_dim1, len_dim2, len_dim3, center_dim1, center_dim2, cen
                             provided, the middle is used.
 
         Return:
-            (numpy.ndarray): Data with cube mask applied.
+            output (str): Output nifti file with cube mask.
         """
-    path = os.path.join(fname_data)
+    # Create the folder where the nifti file will be stored
+    if not os.path.exists(input):
+        raise FileNotFoundError("No nifti path found")
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+    path = os.path.join(input)
     nii = nib.load(path)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
     if len(data.shape) == 3:
         mask_cb = shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1, center_dim2, center_dim3)  # creation
         # of the cube mask
-        return data * mask_cb  # application of the mask on the data
+        mask_cb = mask_cb.astype(int)
+        nii_img = nib.Nifti1Image(mask_cb, nii.affine)
+        nib.save(nii_img, os.path.join(output, 'mask.nii.gz'))
+        click.echo('The path to the output nifti file (mask.nii.gz) that contains the mask is: %s'
+                   % os.path.abspath(output))
+        return output
 
     else:
-        return None
+        raise ValueError("The nifti file does not have 3 dimensions.")
 
 
-@main.command(context_settings=CONTEXT_SETTINGS,
-              help=f"Apply a square mask to the input file. Returns data with square mask.")
-@click.option("-fname_data", required=True, help="Full file path and name of the data to mask")
+@mask.command(context_settings=CONTEXT_SETTINGS,
+              help=f"Creates a square mask from the input file. Returns an output nifti file with square mask.")
+@click.option('-input', type=click.Path(), required=True, help="Complete input path of the nifti file to mask")
+@click.option('-output', type=click.Path(), default=os.curdir, help="Output path for mask in nifti file")
 @click.option("-len_dim1", required=True, type=int, help="Length of the side of the square along first dimension (in "
                                                          "pixels)")
 @click.option("-len_dim2", required=True, type=int, help="Length of the side of the square along second dimension (in "
@@ -82,12 +94,13 @@ def cube(fname_data, len_dim1, len_dim2, len_dim3, center_dim1, center_dim2, cen
 @click.option("-center_dim2", type=int, default=None, help="Center of the square along second dimension (in "
                                                            "pixels). If no center is provided, the middle is "
                                                            "used.")
-def square(fname_data, len_dim1, len_dim2, center_dim1, center_dim2):
+def square(input, output, len_dim1, len_dim2, center_dim1, center_dim2):
     """
-            Apply a square mask to the input file. Returns data with square mask.
+            Creates a square mask from the input file. Returns an output nifti file with square mask.
 
             Args:
-                fname_data (str): Data to mask.
+                input (str): Complete input path of the nifti file to mask.
+                output (str): Output nifti file for square mask.
                 len_dim1 (int): Length of the side of the square along first dimension (in pixels).
                 len_dim2 (int): Length of the side of the square along second dimension (in pixels).
                 center_dim1 (int): Center of the square along first dimension (in pixels). If no center is
@@ -96,54 +109,78 @@ def square(fname_data, len_dim1, len_dim2, center_dim1, center_dim2):
                                 provided, the middle is used.
 
             Return:
-                (numpy.ndarray): Data with cube mask applied.
+                output (str): Output nifti file with square mask.
             """
-    path = os.path.join(fname_data)
+    # Create the folder where the nifti file will be stored
+    if not os.path.exists(input):
+        raise FileNotFoundError("No nifti path found")
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+    path = os.path.join(input)
     nii = nib.load(path)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
     if len(data.shape) == 2:
-        mask_sqr = shape_square(data, len_dim1, len_dim2, center_dim1, center_dim2)  # creation of the mask
-        return data * mask_sqr  # application of the mask on the data
+        mask_sqr = shape_square(data, len_dim1, len_dim2, center_dim1, center_dim2)  # creation of the square mask
+        mask_sqr = mask_sqr.astype(int)
+        nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
+        nib.save(nii_img, os.path.join(output, 'mask.nii.gz'))
+        click.echo('The path to the output nifti file (mask.nii.gz) that contains the mask is: %s'
+                   % os.path.abspath(output))
+        return output
 
     elif len(data.shape) == 3:
         for z in range(data.shape[2]):
             mask_sqr = np.zeros_like(data)  # initialization of 3D array of zeros
             img_2d = data[:, :, z]  # extraction of a MRI slice (2D)
-            mask = shape_square(img_2d, len_dim1, len_dim2, center_dim1, center_dim2)  # creation of the mask on each
-            # slice (2D)
-            mask_sqr[:, :, z] = mask  # addition of each masked slice to form a 3D array
-            return data * mask_sqr  # application of the mask on the data
+            mask_slice = shape_square(img_2d, len_dim1, len_dim2, center_dim1, center_dim2)  # creation of the mask
+            # on each slice (2D)
+            mask_sqr[:, :, z] = mask_slice  # addition of each masked slice to form a 3D array
+            mask_sqr = mask_sqr.astype(int)
+            nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
+            nib.save(nii_img, os.path.join(output, 'mask.nii.gz'))
+            click.echo('The path to the output nifti file (mask.nii.gz) that contains the mask is: %s'
+                       % os.path.abspath(output))
+            return output
 
     else:
-        return None
+        raise ValueError("The nifti file does not have 2 or 3 dimensions.")
 
 
-@main.command(context_settings=CONTEXT_SETTINGS,
-              help=f"Apply a threshold mask to the input file. Returns data with threshold mask.")
-@click.option("-fname_data", required=True, help="Full file path and name of the data to mask")
+@mask.command(context_settings=CONTEXT_SETTINGS,
+              help=f"Creates a threshold mask from the input file. Returns an output nifti file with threshold mask.")
+@click.option('-input', type=click.Path(), required=True, help="Complete input path of the nifti file to mask")
+@click.option('-output', type=click.Path(), default=os.curdir, help="Output path for mask in nifti file")
 @click.option("-thr", default=30, help="Value to threshold the data: voxels will be set to zero if their value is "
                                        "equal or less than this threshold")
-def mask_threshold(fname_data, thr):
+def mask_threshold(input, output, thr):
     """
-        Apply a threshold mask to the input file. Returns data with threshold mask.
+        Creates a threshold mask from the input file. Returns an output nifti file with threshold mask.
 
         Args:
-            fname_data (str): Data to be masked
+            input (str): Complete input path of the nifti file to mask.
+            output (str): Output nifti file for square mask.
             thr: Value to threshold the data: voxels will be set to zero if their
                 value is equal or less than this threshold
 
         Returns:
-            (numpy.ndarray): Data with threshold mask applied.
+            output (str): Output nifti file with threshold mask.
         """
-    path = os.path.join(fname_data)
+    # Create the folder where the nifti file will be stored
+    if not os.path.exists(input):
+        raise FileNotFoundError("No nifti path found")
+    if not os.path.exists(output):
+        os.makedirs(output)
+
+    path = os.path.join(input)
     nii = nib.load(path)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
-    mask_thr = threshold(data, thr)  # creation of the mask
-
-    return data * mask_thr  # application of the mask on the data
-
-
-if __name__ == '__main__':
-    main()
+    mask_thr = threshold(data, thr)  # creation of the threshold mask
+    mask_thr = mask_thr.astype(int)
+    nii_img = nib.Nifti1Image(mask_thr, nii.affine)
+    nib.save(nii_img, os.path.join(output, 'mask.nii.gz'))
+    click.echo('The path to the output nifti file (mask.nii.gz) that contains the mask is: %s'
+               % os.path.abspath(output))
+    return output
