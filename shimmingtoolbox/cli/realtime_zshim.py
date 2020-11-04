@@ -10,13 +10,13 @@ from sklearn.linear_model import LinearRegression
 from nibabel.processing import resample_from_to
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
-from tqdm import tqdm
 from shimmingtoolbox import __dir_testing__
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox import __dir_shimmingtoolbox__
+from shimmingtoolbox.utils import st_progress_bar
 
 DEBUG = True
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -136,7 +136,8 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     mean_p = np.mean(acq_pressures)
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
-    # TODO add tqdm progress
+    # TODO fix progress bar not showing up
+    progress_bar = st_progress_bar(fieldmap[..., 0].size, desc="Fitting", ascii=False)
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
@@ -145,6 +146,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
                 # reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
+                progress_bar.update(1)
 
     # Resample masked_fieldmaps to target anatomical image
     # TODO: convert to a function
