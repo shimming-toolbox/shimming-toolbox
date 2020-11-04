@@ -131,6 +131,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     mean_p = np.mean(acq_pressures)
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
+    # TODO add tqdm progress
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
@@ -140,23 +141,25 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
 
-    # Resample masked_fieldmaps, riro and static to target anatomical image
+    # Resample masked_fieldmaps to target anatomical image
     # TODO: convert to a function
     masked_fmap_4d = np.zeros(anat.shape + (nt,))
     for it in range(nt):
         nii_masked_fmap_3d = nib.Nifti1Image(masked_fieldmaps[..., it], nii_fmap.affine)
-        nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, mode='nearest')
+        nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, order=2, mode='nearest')
         masked_fmap_4d[..., it] = nii_resampled_fmap_3d.get_fdata()
-
     nii_resampled_fmap = nib.Nifti1Image(masked_fmap_4d, nii_anat.affine)
-    nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
-    nii_static = nib.Nifti1Image(static, nii_fmap.affine)
-    nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
-    nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
-
     nib.save(nii_resampled_fmap, os.path.join(__dir_shimmingtoolbox__, 'resampled_fmap.nii.gz'))
-    nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
+
+    # Resample static to target anatomical image
+    nii_static = nib.Nifti1Image(static, nii_fmap.affine)
+    nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
     nib.save(nii_resampled_static, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
+
+    # Resample riro to target anatomical image
+    nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
+    nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
+    nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a perticular slice
     n_slices = nii_resampled_fmap.get_fdata().shape[2]
