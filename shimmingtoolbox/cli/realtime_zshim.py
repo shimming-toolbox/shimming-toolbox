@@ -95,8 +95,8 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     # Calculate gz gradient
     # Image is z, y, x
     # Pixdim[3] is the space between pixels in the z direction in millimeters
-    # TODO: This is the gradient is the voxel reference frame meaning the axes could possibly not follow the scanner's
-    #  axes (therefore the z gradient), also investigate is axes should be 1 or 0
+    # TODO: This is the gradient in the voxel reference frame meaning the axes could possibly not follow the scanner's
+    #  axes (therefore the z gradient), also investigate if axes should be 1 or 0
     g = 1000 / 42.576e6  # [mT / Hz]
     gz_gradient = np.zeros_like(masked_fieldmaps)
     for it in range(nt):
@@ -135,6 +135,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
                 # TODO: Fit for -masked_field?
+                # reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -gz_gradient[i_x, i_y, i_z, :])
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1), -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
@@ -164,6 +165,15 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     for i_slice in range(n_slices):
         static_correction[i_slice] = np.mean(nii_resampled_static.get_fdata()[..., i_slice])
         riro_correction[i_slice] = np.mean(nii_resampled_riro.get_fdata()[..., i_slice])
+
+    # Write to a text file
+    fname_corrections = os.path.join(__dir_shimmingtoolbox__, 'zshim_gradients.txt')
+    file_gradients = open(fname_corrections, 'w')
+    for i_slice in range(n_slices):
+        file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
+        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
+    # Matlab includes the mean pressure
+    file_gradients.close()
 
     # ================ PLOTS ================
 
