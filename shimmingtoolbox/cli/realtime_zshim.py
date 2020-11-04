@@ -157,6 +157,14 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
     nib.save(nii_resampled_static, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
 
+    # Calculate the mean for riro and static for a perticular slice
+    n_slices = nii_resampled_fmap.get_fdata().shape[2]
+    static_correction = np.zeros([n_slices])
+    riro_correction = np.zeros([n_slices])
+    for i_slice in range(n_slices):
+        static_correction[i_slice] = np.mean(nii_resampled_static.get_fdata()[..., i_slice])
+        riro_correction[i_slice] = np.mean(nii_resampled_riro.get_fdata()[..., i_slice])
+
     # ================ PLOTS ================
 
     # Calculate masked shim for spherical harmonics plot
