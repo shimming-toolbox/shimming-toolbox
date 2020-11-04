@@ -299,6 +299,17 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_gradient.png')
     fig.savefig(fname_figure)
 
+    # Show evolution of coefficients
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(2, 1, 1)
+    ax.plot(range(n_slices), static_correction, label='Static correction')
+    ax.set_title("Static correction evolution through slices")
+    ax = fig.add_subplot(2, 1, 2)
+    ax.plot(range(n_slices), riro_correction, label='Riro correction')
+    ax.set_title("Riro correction evolution through slices")
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_correction_slice.png')
+    fig.savefig(fname_figure)
+
     return fname_figure
 
 # Debug
