@@ -10,6 +10,7 @@ from sklearn.linear_model import LinearRegression
 from nibabel.processing import resample_from_to
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
+from tqdm import tqdm
 from shimmingtoolbox import __dir_testing__
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
@@ -210,7 +211,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
     fig.colorbar(im)
     ax.set_title("Shimmed")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_sphharm_shimmed.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_shimmed.png')
     fig.savefig(fname_figure)
 
     # Plot the coil coefs through time
@@ -219,7 +220,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
         ax = fig.add_subplot(n_coils, 1, i_coil + 1)
         ax.plot(np.arange(nt), currents[i_coil, :])
         ax.set_title(f"Channel {i_coil}")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_sphharm_currents.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_currents.png')
     fig.savefig(fname_figure)
 
     # Plot Static and RIRO
@@ -232,7 +233,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     im = ax.imshow(static[:-1, :-1, 0])
     fig.colorbar(im)
     ax.set_title("Static")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_riro_static.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_riro_static.png')
     fig.savefig(fname_figure)
 
     # Calculate fitted and shimmed for pressure fitted plot
@@ -253,7 +254,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
     fig.colorbar(im)
     ax.set_title("Shimmed (fit + fieldmap")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_pressure_fitted.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_pressure_fitted.png')
     fig.savefig(fname_figure)
 
     # Reshape pmu datapoints to fit those of the acquisition
@@ -281,7 +282,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
     ax.legend()
     ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'realtime_zshim_pmu_vs_B0.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_pmu_vs_B0.png')
     fig.savefig(fname_figure)
 
     # Show anatomical image
@@ -294,7 +295,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
     fig.colorbar(im)
     ax.set_title("Resampled fieldmap [:, :, 10, 0]")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_anat.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_reatime_zshim_anat.png')
     fig.savefig(fname_figure)
 
     # Show Gradient
@@ -303,7 +304,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     im = ax.imshow(gz_gradient[:, :, 0, 0])
     fig.colorbar(im)
     ax.set_title("Gradient [:, :, 0, 0]")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_gradient.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_gradient.png')
     fig.savefig(fname_figure)
 
     # Show evolution of coefficients
@@ -314,7 +315,7 @@ def realtime_zshim(fname_coil, fname_fmap, fname_mask, fname_resp, fname_json, f
     ax = fig.add_subplot(2, 1, 2)
     ax.plot(range(n_slices), riro_correction, label='Riro correction')
     ax.set_title("Riro correction evolution through slices")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'reatime_zshime_correction_slice.png')
+    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_correction_slice.png')
     fig.savefig(fname_figure)
 
     return fname_figure
