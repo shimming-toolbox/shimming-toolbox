@@ -10,12 +10,10 @@ from sklearn.linear_model import LinearRegression
 from nibabel.processing import resample_from_to
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
-from shimmingtoolbox import __dir_testing__
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox.utils import st_progress_bar
 
 DEBUG = True
@@ -159,9 +157,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
-                # TODO: Fit for -masked_field?
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -gz_gradient[i_x, i_y, i_z, :])
-                # reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -masked_fieldmaps[i_x, i_y, i_z, :])
                 riro[i_x, i_y, i_z] = reg.coef_
                 static[i_x, i_y, i_z] = reg.intercept_
                 progress_bar.update(1)
@@ -174,21 +170,25 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, order=2, mode='nearest')
         masked_fmap_4d[..., it] = nii_resampled_fmap_3d.get_fdata()
     nii_resampled_fmap = nib.Nifti1Image(masked_fmap_4d, nii_anat.affine)
-    nib.save(nii_resampled_fmap, os.path.join(fname_output, 'resampled_fmap.nii.gz'))
+
+    if DEBUG:
+        nib.save(nii_resampled_fmap, os.path.join(fname_output, 'resampled_fmap.nii.gz'))
 
     # Resample static to target anatomical image
     nii_static = nib.Nifti1Image(static, nii_fmap.affine)
     nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
     nii_resampled_static_masked = nib.Nifti1Image(nii_resampled_static.get_fdata() * nii_mask_anat.get_fdata(),
                                                   nii_resampled_static.affine)
-    nib.save(nii_resampled_static_masked, os.path.join(fname_output, 'resampled_static.nii.gz'))
+    if DEBUG:
+        nib.save(nii_resampled_static_masked, os.path.join(fname_output, 'resampled_static.nii.gz'))
 
     # Resample riro to target anatomical image
     nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
     nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
     nii_resampled_riro_masked = nib.Nifti1Image(nii_resampled_riro.get_fdata() * nii_mask_anat.get_fdata(),
                                                 nii_resampled_riro.affine)
-    nib.save(nii_resampled_riro_masked, os.path.join(fname_output, 'resampled_riro.nii.gz'))
+    if DEBUG:
+        nib.save(nii_resampled_riro_masked, os.path.join(fname_output, 'resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a perticular slice
     n_slices = nii_anat.get_fdata().shape[2]
@@ -203,7 +203,6 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
 
     # Write to a text file
-    # TODO: Add as an option to output the file to a specified location
     fname_corrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_corrections, 'w')
     for i_slice in range(n_slices):
@@ -214,135 +213,137 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
 
     # ================ PLOTS ================
 
-    # Calculate masked shim for spherical harmonics plot
-    # masked_shimmed = np.zeros_like(shimmed)
-    # for i_t in range(nt):
-    #     masked_shimmed[..., i_t] = mask_fmap * shimmed[..., i_t]
+    if DEBUG:
 
-    # Plot unshimmed vs shimmed and their mask for spherical harmonics
-    # i_t = 0
-    # fig = Figure(figsize=(10, 10))
-    # ax = fig.add_subplot(2, 2, 1)
-    # im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-    # fig.colorbar(im)
-    # ax.set_title("Masked unshimmed")
-    # ax = fig.add_subplot(2, 2, 2)
-    # im = ax.imshow(masked_shimmed[:-1, :-1, 0, i_t])
-    # fig.colorbar(im)
-    # ax.set_title("Masked shimmed")
-    # ax = fig.add_subplot(2, 2, 3)
-    # im = ax.imshow(fieldmap[:-1, :-1, 0, i_t])
-    # fig.colorbar(im)
-    # ax.set_title("Unshimmed")
-    # ax = fig.add_subplot(2, 2, 4)
-    # im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
-    # fig.colorbar(im)
-    # ax.set_title("Shimmed")
-    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_shimmed.png')
-    # fig.savefig(fname_figure)
+        # Calculate masked shim for spherical harmonics plot
+        # masked_shimmed = np.zeros_like(shimmed)
+        # for i_t in range(nt):
+        #     masked_shimmed[..., i_t] = mask_fmap * shimmed[..., i_t]
 
-    # Plot the coil coefs through time
-    # fig = Figure(figsize=(10, 10))
-    # for i_coil in range(n_coils):
-    #     ax = fig.add_subplot(n_coils, 1, i_coil + 1)
-    #     ax.plot(np.arange(nt), currents[i_coil, :])
-    #     ax.set_title(f"Channel {i_coil}")
-    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_currents.png')
-    # fig.savefig(fname_figure)
+        # Plot unshimmed vs shimmed and their mask for spherical harmonics
+        # i_t = 0
+        # fig = Figure(figsize=(10, 10))
+        # ax = fig.add_subplot(2, 2, 1)
+        # im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Masked unshimmed")
+        # ax = fig.add_subplot(2, 2, 2)
+        # im = ax.imshow(masked_shimmed[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Masked shimmed")
+        # ax = fig.add_subplot(2, 2, 3)
+        # im = ax.imshow(fieldmap[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Unshimmed")
+        # ax = fig.add_subplot(2, 2, 4)
+        # im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Shimmed")
+        # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_shimmed.png')
+        # fig.savefig(fname_figure)
 
-    # Plot Static and RIRO
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(2, 1, 1)
-    im = ax.imshow(riro[:-1, :-1, 0])
-    fig.colorbar(im)
-    ax.set_title("RIRO")
-    ax = fig.add_subplot(2, 1, 2)
-    im = ax.imshow(static[:-1, :-1, 0])
-    fig.colorbar(im)
-    ax.set_title("Static")
-    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_riro_static.png')
-    fig.savefig(fname_figure)
+        # Plot the coil coefs through time
+        # fig = Figure(figsize=(10, 10))
+        # for i_coil in range(n_coils):
+        #     ax = fig.add_subplot(n_coils, 1, i_coil + 1)
+        #     ax.plot(np.arange(nt), currents[i_coil, :])
+        #     ax.set_title(f"Channel {i_coil}")
+        # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_currents.png')
+        # fig.savefig(fname_figure)
 
-    # Calculate fitted and shimmed for pressure fitted plot
-    fitted_fieldmap = riro * (acq_pressures - mean_p) + static
-    shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
+        # Plot Static and RIRO
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(2, 1, 1)
+        im = ax.imshow(riro[:-1, :-1, 0])
+        fig.colorbar(im)
+        ax.set_title("RIRO")
+        ax = fig.add_subplot(2, 1, 2)
+        im = ax.imshow(static[:-1, :-1, 0])
+        fig.colorbar(im)
+        ax.set_title("Static")
+        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_riro_static.png')
+        fig.savefig(fname_figure)
 
-    # Plot pressure fitted fieldmap
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(3, 1, 1)
-    im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("fieldmap")
-    ax = fig.add_subplot(3, 1, 2)
-    im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
-    fig.colorbar(im)
-    ax.set_title("Fit")
-    ax = fig.add_subplot(3, 1, 3)
-    im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
-    fig.colorbar(im)
-    ax.set_title("Shimmed (fit + fieldmap")
-    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
-    fig.savefig(fname_figure)
+        # Calculate fitted and shimmed for pressure fitted plot
+        fitted_fieldmap = riro * (acq_pressures - mean_p) + static
+        shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
 
-    # Reshape pmu datapoints to fit those of the acquisition
-    pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
-    pmu_times_within_range = pmu_times[pmu_times > acq_timestamps[0]]
-    pmu_data_within_range = pmu.data[pmu_times > acq_timestamps[0]]
-    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
-    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
+        # Plot pressure fitted fieldmap
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(3, 1, 1)
+        im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
+        fig.colorbar(im)
+        ax.set_title("fieldmap")
+        ax = fig.add_subplot(3, 1, 2)
+        im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
+        fig.colorbar(im)
+        ax.set_title("Fit")
+        ax = fig.add_subplot(3, 1, 3)
+        im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
+        fig.colorbar(im)
+        ax.set_title("Shimmed (fit + fieldmap")
+        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
+        fig.savefig(fname_figure)
 
-    # Calc fieldmap average within mask
-    fieldmap_avg = np.zeros([fieldmap.shape[3]])
-    for i_time in range(nt):
-        masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask_fmap == False)
-        fieldmap_avg[i_time] = np.ma.average(masked_array)
+        # Reshape pmu datapoints to fit those of the acquisition
+        pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
+        pmu_times_within_range = pmu_times[pmu_times > acq_timestamps[0]]
+        pmu_data_within_range = pmu.data[pmu_times > acq_timestamps[0]]
+        pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
+        pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
 
-    # Plot pmu vs B0 in masked region
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(211)
-    ax.plot(acq_timestamps / 1000, acq_pressures, label='Interpolated pressures')
-    # ax.plot(pmu_times / 1000, pmu.data, label='Raw pressures')
-    ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
-    ax.legend()
-    ax.set_title("Pressure [0, 4095] vs time (s) ")
-    ax = fig.add_subplot(212)
-    ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
-    ax.legend()
-    ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pmu_vs_B0.png')
-    fig.savefig(fname_figure)
+        # Calc fieldmap average within mask
+        fieldmap_avg = np.zeros([fieldmap.shape[3]])
+        for i_time in range(nt):
+            masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask_fmap == False)
+            fieldmap_avg[i_time] = np.ma.average(masked_array)
 
-    # Show anatomical image
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(2, 1, 1)
-    im = ax.imshow(anat[:, :, 10])
-    fig.colorbar(im)
-    ax.set_title("Anatomical image [:, :, 10]")
-    ax = fig.add_subplot(2, 1, 2)
-    im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
-    fig.colorbar(im)
-    ax.set_title("Resampled fieldmap [:, :, 10, 0]")
-    fname_figure = os.path.join(fname_output, 'fig_reatime_zshim_anat.png')
-    fig.savefig(fname_figure)
+        # Plot pmu vs B0 in masked region
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(211)
+        ax.plot(acq_timestamps / 1000, acq_pressures, label='Interpolated pressures')
+        # ax.plot(pmu_times / 1000, pmu.data, label='Raw pressures')
+        ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
+        ax.legend()
+        ax.set_title("Pressure [0, 4095] vs time (s) ")
+        ax = fig.add_subplot(212)
+        ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
+        ax.legend()
+        ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
+        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pmu_vs_B0.png')
+        fig.savefig(fname_figure)
 
-    # Show Gradient
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(1, 1, 1)
-    im = ax.imshow(gz_gradient[:, :, 0, 0])
-    fig.colorbar(im)
-    ax.set_title("Gradient [:, :, 0, 0]")
-    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_gradient.png')
-    fig.savefig(fname_figure)
+        # Show anatomical image
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(2, 1, 1)
+        im = ax.imshow(anat[:, :, 10])
+        fig.colorbar(im)
+        ax.set_title("Anatomical image [:, :, 10]")
+        ax = fig.add_subplot(2, 1, 2)
+        im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
+        fig.colorbar(im)
+        ax.set_title("Resampled fieldmap [:, :, 10, 0]")
+        fname_figure = os.path.join(fname_output, 'fig_reatime_zshim_anat.png')
+        fig.savefig(fname_figure)
 
-    # Show evolution of coefficients
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(2, 1, 1)
-    ax.plot(range(n_slices), static_correction, label='Static correction')
-    ax.set_title("Static correction evolution through slices")
-    ax = fig.add_subplot(2, 1, 2)
-    ax.plot(range(n_slices), riro_correction, label='Riro correction')
-    ax.set_title("Riro correction evolution through slices")
-    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_correction_slice.png')
-    fig.savefig(fname_figure)
+        # Show Gradient
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(1, 1, 1)
+        im = ax.imshow(gz_gradient[:, :, 0, 0])
+        fig.colorbar(im)
+        ax.set_title("Gradient [:, :, 0, 0]")
+        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_gradient.png')
+        fig.savefig(fname_figure)
+
+        # Show evolution of coefficients
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(2, 1, 1)
+        ax.plot(range(n_slices), static_correction, label='Static correction')
+        ax.set_title("Static correction evolution through slices")
+        ax = fig.add_subplot(2, 1, 2)
+        ax.plot(range(n_slices), riro_correction, label='Riro correction')
+        ax.set_title("Riro correction evolution through slices")
+        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_correction_slice.png')
+        fig.savefig(fname_figure)
 
     return fname_corrections
