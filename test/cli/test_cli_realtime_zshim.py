@@ -47,12 +47,12 @@ def test_cli_realtime_zshim():
         nib.save(nii_mask, fname_mask)
 
         # Set up coils
-        coord_phys = generate_meshgrid(nii_fmap.get_fdata().shape[0:3], nii_fmap.affine)
-        coil_profile = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
-
-        nii_coil = nib.Nifti1Image(coil_profile, nii_fmap.affine)
-        fname_coil = os.path.join(tmp, 'coil_profile.nii.gz')
-        nib.save(nii_coil, fname_coil)
+        # coord_phys = generate_meshgrid(nii_fmap.get_fdata().shape[0:3], nii_fmap.affine)
+        # coil_profile = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
+        #
+        # nii_coil = nib.Nifti1Image(coil_profile, nii_fmap.affine)
+        # fname_coil = os.path.join(tmp, 'coil_profile.nii.gz')
+        # nib.save(nii_coil, fname_coil)
 
         # Path for resp data
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -61,7 +61,7 @@ def test_cli_realtime_zshim():
         fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_magnitude1.json')
 
-        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-coil', fname_coil, '-mask', fname_mask,
+        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-mask', fname_mask,
                                                 '-resp', fname_resp, '-json', fname_json, '-anat', fname_anat],
                                catch_exceptions=False)
 
