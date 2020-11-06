@@ -87,7 +87,8 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     # TODO: check good practice below
     if fname_mask_anat is not None:
         nii_mask_anat = nib.load(fname_mask_anat)
-        if not np.all(nii_anat.affine == nii_mask_anat.affine) or not np.all(nii_mask_anat.shape == nii_anat.shape):
+        if not np.all(np.isclose(nii_anat.affine, nii_mask_anat.affine)) or\
+                not np.all(nii_mask_anat.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fmap.affine)
         nii_mask_fmap = resample_from_to(nii_mask_anat, nii_fmap_3d_temp)
