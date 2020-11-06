@@ -265,25 +265,25 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         fig.savefig(fname_figure)
 
         # Calculate fitted and shimmed for pressure fitted plot
-        fitted_fieldmap = riro * (acq_pressures - mean_p) + static
-        shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
-
-        # Plot pressure fitted fieldmap
-        fig = Figure(figsize=(10, 10))
-        ax = fig.add_subplot(3, 1, 1)
-        im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-        fig.colorbar(im)
-        ax.set_title("fieldmap")
-        ax = fig.add_subplot(3, 1, 2)
-        im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
-        fig.colorbar(im)
-        ax.set_title("Fit")
-        ax = fig.add_subplot(3, 1, 3)
-        im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
-        fig.colorbar(im)
-        ax.set_title("Shimmed (fit + fieldmap")
-        fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
-        fig.savefig(fname_figure)
+        # fitted_fieldmap = riro * (acq_pressures - mean_p) + static
+        # shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
+        #
+        # # Plot pressure fitted fieldmap
+        # fig = Figure(figsize=(10, 10))
+        # ax = fig.add_subplot(3, 1, 1)
+        # im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("fieldmap")
+        # ax = fig.add_subplot(3, 1, 2)
+        # im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Fit")
+        # ax = fig.add_subplot(3, 1, 3)
+        # im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
+        # fig.colorbar(im)
+        # ax.set_title("Shimmed (fit + fieldmap")
+        # fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
+        # fig.savefig(fname_figure)
 
         # Reshape pmu datapoints to fit those of the acquisition
         pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
