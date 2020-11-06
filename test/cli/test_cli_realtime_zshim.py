@@ -14,6 +14,7 @@ from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox import __dir_shimmingtoolbox__
 
 
 def test_cli_realtime_zshim():
@@ -61,8 +62,16 @@ def test_cli_realtime_zshim():
         fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_magnitude1.json')
 
-        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap, '-mask', fname_mask,
-                                                '-resp', fname_resp, '-json', fname_json, '-anat', fname_anat],
+        # Specify output for text file and figures
+        fname_output = os.path.join(__dir_shimmingtoolbox__, 'test_realtime_zshim')
+
+        # Run the CLI
+        result = runner.invoke(realtime_zshim, ['-fmap', fname_fieldmap,
+                                                '-mask', fname_mask,
+                                                '-output', fname_output,
+                                                '-resp', fname_resp,
+                                                '-json', fname_json,
+                                                '-anat', fname_anat],
                                catch_exceptions=False)
 
         assert result.exit_code == 0

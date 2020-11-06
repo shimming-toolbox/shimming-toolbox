@@ -39,18 +39,22 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Siemens respiratory file containing pressure data.")
 @click.option('-anat', 'fname_anat', type=click.Path(),
               help="Filename of the anatomical image to apply the correction.")
+@click.option('-output', 'fname_output', type=click.Path(),
+              help="Directory to output gradient text file and figures")
 # TODO: Remove json file as input
 @click.option('-json', 'fname_json', type=click.Path(),
               help="Filename of json corresponding BIDS sidecar.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_anat, verbose=True):
+def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_anat, fname_output, verbose=True):
     """
 
     Args:
-        fname_coil: Pointing to coil profile. 4-dimensional: x, y, z, coil.
         fname_fmap:
         fname_mask_anat:
         fname_resp:
+        fname_json:
+        fname_anat:
+        fname_output
         verbose:
 
     Returns:
@@ -61,6 +65,10 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 0], -1)
     # When using all channels TODO: Keep
     # coil = nib.load(fname_coil).get_fdata()
+
+    # Look if output directory exists, if not, create it
+    if not os.path.exists(fname_output):
+        os.makedirs(fname_output)
 
     # Load fieldmap
     nii_fmap = nib.load(fname_fmap)
@@ -92,7 +100,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         nii_mask_anat = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
 
     if DEBUG:
-        nib.save(nii_mask_fmap, os.path.join(__dir_shimmingtoolbox__, 'tmp.mask_fmap_resample.nii.gz'))
+        nib.save(nii_mask_fmap, os.path.join(fname_output, 'tmp.mask_fmap_resample.nii.gz'))
 
     # Shim using sequencer and optimizer
     # n_coils = coil.shape[-1]
@@ -116,7 +124,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
                                               axis=1)  # [mT / m]
     if DEBUG:
         nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fmap.affine)
-        nib.save(nii_gz_gradient, os.path.join(__dir_shimmingtoolbox__, 'tmp.gz_gradient.nii.gz'))
+        nib.save(nii_gz_gradient, os.path.join(fname_output, 'tmp.gz_gradient.nii.gz'))
 
     # Fetch PMU timing
     # TODO: Add json to fieldmap instead of asking for another json file
@@ -166,21 +174,21 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, order=2, mode='nearest')
         masked_fmap_4d[..., it] = nii_resampled_fmap_3d.get_fdata()
     nii_resampled_fmap = nib.Nifti1Image(masked_fmap_4d, nii_anat.affine)
-    nib.save(nii_resampled_fmap, os.path.join(__dir_shimmingtoolbox__, 'resampled_fmap.nii.gz'))
+    nib.save(nii_resampled_fmap, os.path.join(fname_output, 'resampled_fmap.nii.gz'))
 
     # Resample static to target anatomical image
     nii_static = nib.Nifti1Image(static, nii_fmap.affine)
     nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
     nii_resampled_static_masked = nib.Nifti1Image(nii_resampled_static.get_fdata() * nii_mask_anat.get_fdata(),
                                                   nii_resampled_static.affine)
-    nib.save(nii_resampled_static_masked, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
+    nib.save(nii_resampled_static_masked, os.path.join(fname_output, 'resampled_static.nii.gz'))
 
     # Resample riro to target anatomical image
     nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
     nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
     nii_resampled_riro_masked = nib.Nifti1Image(nii_resampled_riro.get_fdata() * nii_mask_anat.get_fdata(),
                                                 nii_resampled_riro.affine)
-    nib.save(nii_resampled_riro_masked, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
+    nib.save(nii_resampled_riro_masked, os.path.join(fname_output, 'resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a perticular slice
     n_slices = nii_anat.get_fdata().shape[2]
@@ -196,13 +204,12 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
 
     # Write to a text file
     # TODO: Add as an option to output the file to a specified location
-    fname_corrections = os.path.join(__dir_shimmingtoolbox__, 'zshim_gradients.txt')
+    fname_corrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_corrections, 'w')
     for i_slice in range(n_slices):
         file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
         file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
         file_gradients.write(f'Vector_Gz[2][{i_slice}]= {mean_p:.3f}\n')
-        # Matlab includes the mean pressure
     file_gradients.close()
 
     # ================ PLOTS ================
@@ -253,7 +260,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     im = ax.imshow(static[:-1, :-1, 0])
     fig.colorbar(im)
     ax.set_title("Static")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_riro_static.png')
+    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_riro_static.png')
     fig.savefig(fname_figure)
 
     # Calculate fitted and shimmed for pressure fitted plot
@@ -274,7 +281,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
     fig.colorbar(im)
     ax.set_title("Shimmed (fit + fieldmap")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_pressure_fitted.png')
+    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
     fig.savefig(fname_figure)
 
     # Reshape pmu datapoints to fit those of the acquisition
@@ -302,7 +309,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
     ax.legend()
     ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_pmu_vs_B0.png')
+    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pmu_vs_B0.png')
     fig.savefig(fname_figure)
 
     # Show anatomical image
@@ -315,7 +322,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
     fig.colorbar(im)
     ax.set_title("Resampled fieldmap [:, :, 10, 0]")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_reatime_zshim_anat.png')
+    fname_figure = os.path.join(fname_output, 'fig_reatime_zshim_anat.png')
     fig.savefig(fname_figure)
 
     # Show Gradient
@@ -324,7 +331,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     im = ax.imshow(gz_gradient[:, :, 0, 0])
     fig.colorbar(im)
     ax.set_title("Gradient [:, :, 0, 0]")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_gradient.png')
+    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_gradient.png')
     fig.savefig(fname_figure)
 
     # Show evolution of coefficients
@@ -335,7 +342,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     ax = fig.add_subplot(2, 1, 2)
     ax.plot(range(n_slices), riro_correction, label='Riro correction')
     ax.set_title("Riro correction evolution through slices")
-    fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_correction_slice.png')
+    fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_correction_slice.png')
     fig.savefig(fname_figure)
 
-    return fname_figure
+    return fname_corrections
