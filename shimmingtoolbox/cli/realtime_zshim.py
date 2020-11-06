@@ -109,9 +109,9 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     # Image is z, y, x
     # Pixdim[3] is the space between pixels in the z direction in millimeters
     g = 1000 / 42.576e6  # [mT / Hz]
-    gz_gradient = np.zeros_like(masked_fieldmaps)
+    gz_gradient = np.zeros_like(fieldmap)
     for it in range(nt):
-        gz_gradient[..., 0, it] = np.gradient(g * masked_fieldmaps[:, :, 0, it],
+        gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it],
                                               nii_fmap.header['pixdim'][3] / 1000,
                                               axis=1)  # [mT / m]
     if DEBUG:
@@ -171,20 +171,28 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     # Resample static to target anatomical image
     nii_static = nib.Nifti1Image(static, nii_fmap.affine)
     nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
-    nib.save(nii_resampled_static, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
+    nii_resampled_static_masked = nib.Nifti1Image(nii_resampled_static.get_fdata() * nii_mask_anat.get_fdata(),
+                                                  nii_resampled_static.affine)
+    nib.save(nii_resampled_static_masked, os.path.join(__dir_shimmingtoolbox__, 'resampled_static.nii.gz'))
 
     # Resample riro to target anatomical image
     nii_riro = nib.Nifti1Image(riro, nii_fmap.affine)
     nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
-    nib.save(nii_resampled_riro, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
+    nii_resampled_riro_masked = nib.Nifti1Image(nii_resampled_riro.get_fdata() * nii_mask_anat.get_fdata(),
+                                                nii_resampled_riro.affine)
+    nib.save(nii_resampled_riro_masked, os.path.join(__dir_shimmingtoolbox__, 'resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a perticular slice
-    n_slices = nii_resampled_fmap.get_fdata().shape[2]
+    n_slices = nii_anat.get_fdata().shape[2]
     static_correction = np.zeros([n_slices])
     riro_correction = np.zeros([n_slices])
     for i_slice in range(n_slices):
-        static_correction[i_slice] = np.mean(nii_resampled_static.get_fdata()[..., i_slice])
-        riro_correction[i_slice] = np.mean(nii_resampled_riro.get_fdata()[..., i_slice])
+        ma_static_anat = np.ma.array(nii_resampled_static.get_fdata()[..., i_slice],
+                                     mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
+        static_correction[i_slice] = np.ma.mean(ma_static_anat)
+        ma_riro_anat = np.ma.array(nii_resampled_riro.get_fdata()[..., i_slice],
+                                   mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
+        riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
 
     # Write to a text file
     # TODO: Add as an option to output the file to a specified location
@@ -249,7 +257,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     fig.savefig(fname_figure)
 
     # Calculate fitted and shimmed for pressure fitted plot
-    fitted_fieldmap = riro * (acq_pressures -mean_p) + static
+    fitted_fieldmap = riro * (acq_pressures - mean_p) + static
     shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
 
     # Plot pressure fitted fieldmap
