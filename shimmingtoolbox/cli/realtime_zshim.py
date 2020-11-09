@@ -15,6 +15,7 @@ from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import st_progress_bar
+from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 DEBUG = True
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -114,12 +115,15 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
 
     # Calculate gz gradient
     # Image is z, y, x
-    # Pixdim[3] is the space between pixels in the z direction in millimeters
+    # Pixdim[2] is the space between pixels in the z direction in millimeters
     g = 1000 / 42.576e6  # [mT / Hz]
     gz_gradient = np.zeros_like(fieldmap)
+    coord = generate_meshgrid(mask_fmap.shape, nii_fmap.affine)
+
+
     for it in range(nt):
         gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it],
-                                              nii_fmap.header['pixdim'][3] / 1000,
+                                              -nii_fmap.header['pixdim'][2] / 1000,
                                               axis=1)  # [mT / m]
     if DEBUG:
         nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fmap.affine)

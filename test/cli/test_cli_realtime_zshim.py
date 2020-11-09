@@ -46,6 +46,8 @@ def test_cli_realtime_zshim():
         nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
         nib.save(nii_mask, fname_mask)
+        # fname_mask = os.path.join(__dir_testing__, 'test_realtime_zshim', 'gre_seg_30.nii')
+
 
         # Set up coils
         # coord_phys = generate_meshgrid(nii_fmap.get_fdata().shape[0:3], nii_fmap.affine)
