@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
 
-# TODO: create a test for this API
-
 import numpy as np
+from nibabel.affines import apply_affine
 
 
 def generate_meshgrid(dim, affine):
@@ -19,15 +18,16 @@ def generate_meshgrid(dim, affine):
     """
 
     nx, ny, nz = dim
-    coord_vox = np.meshgrid(np.array(range(nx)), np.array(range(ny)), np.array(range(nz)), indexing='ij')
-    coord_phys = [np.zeros_like(coord_vox[0]), np.zeros_like(coord_vox[1]), np.zeros_like(coord_vox[2])]
+    coord_vox = np.meshgrid(np.arange(nx), np.arange(ny), np.arange(nz), indexing='ij')
+    coord_phys = [np.zeros_like(coord_vox[0]).astype(float),
+                  np.zeros_like(coord_vox[1]).astype(float),
+                  np.zeros_like(coord_vox[2]).astype(float)]
 
     # TODO: Better code
     for ix in range(nx):
         for iy in range(ny):
             for iz in range(nz):
-                coord_phys_list = \
-                    np.dot([coord_vox[i][ix, iy, iz] for i in range(3)], affine[0:3, 0:3]) + affine[0:3, 3]
+                coord_phys_list = apply_affine(affine, [coord_vox[i][ix, iy, iz] for i in range(3)])
                 for i in range(3):
                     coord_phys[i][ix, iy, iz] = coord_phys_list[i]
     return coord_phys
