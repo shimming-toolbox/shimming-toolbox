@@ -8,6 +8,8 @@ import click
 import os
 import math
 
+from nibabel import load as load_nib
+
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.unwrap.prelude import prelude
 
@@ -63,7 +65,9 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, path_output):
         # Check mag is input
         # manage 3+ echoes (currently won't work because needs phasediff)
         # TODO: support threshold and mask
-        phasediff_unwrapped = prelude(phasediff, mag, affine, mask=None, threshold=None, is_unwrapping_in_2d=False)
+        nii_mag = load_nib(fname_mag)
+        phasediff_unwrapped = \
+            prelude(phasediff, nii_mag.get_fdata(), affine, mask=None, threshold=None, is_unwrapping_in_2d=False)
     else:
         raise ValueError(f"This option is not available: {unwrapper}")
 
