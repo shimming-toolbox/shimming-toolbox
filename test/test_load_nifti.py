@@ -8,10 +8,13 @@ import os
 import numpy as np
 import nibabel as nib
 import json
+import math
 
 from io import StringIO
 from pathlib import Path
 from shimmingtoolbox.load_nifti import load_nifti
+from shimmingtoolbox.load_nifti import read_nii
+from shimmingtoolbox import __dir_testing__
 
 
 class TestCore(object):
@@ -370,3 +373,12 @@ class TestCore(object):
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_mag, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON 2"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 2"
+
+    def test_read_nii_real_data(self):
+        fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_phasediff.nii.gz')
+        nii, json_info, phasediff = read_nii(fname_phasediff)
+
+        assert nii.shape == (64, 96, 1, 10)
+        assert ('P' in json_info['ImageType'])
+        assert (phasediff.max() <= 2 * math.pi) and (phasediff.min() >= 0)
