@@ -3,9 +3,10 @@
 
 import click
 import os
+import math
 
 from shimmingtoolbox.load_nifti import read_nii
-
+from shimmingtoolbox.unwrap.prelude import prelude
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -23,22 +24,30 @@ def prepare_fieldmap_cli(phase, fname_mag, path_output):
         phase: Input path of phase nifti file"
     """
 
-    # flag: -unwrapper DEFAULT prelude, -method DEFAULT phase diff, -mask DEFAULT threshold
+    # flag: -unwrapper DEFAULT prelude, -method DEFAULT, mask fname
     # Make sure we have a mag input, make sure we have a phase input
     # Look for method, compare to number of inputs (look in header to make sure #inputs work with given input)
     # for phase (phasediff or echoes)
 
+    # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
         # phase should be a phasediff
         fname_phasediff = phase[0]
-        # TODO: replace by read_nii once bug #170 is merged
-        # nii_phasediff, json_phasediff, phasediff = read_nii(fname_phasediff)
-        # echo_time_diff =
+        nii_phasediff, json_phasediff, phasediff = read_nii(fname_phasediff, auto_scale=True)
+
+        if (phasediff.max() >= 2 * math.pi) and (phasediff.min() <= 0):
+            raise RuntimeError("read_nii does not support input to convert to radians")
+
+        echo_time_diff = json_phasediff['EchoTime2'] - json_phasediff['EchoTime1']  # [s]
     elif len(phase) == 2:
         fname_phase0 = phase[0]
         fname_phase1 = phase[1]
+    #     TODO: 2 echoes
     else:
-        raise RuntimeError(" Number of phase filename not supported")
+        # TODO: More echoes
+        raise RuntimeError(" Number of phase filenames not supported")
+
+    # prelude(phasediff, )
 
     return path_output
 
