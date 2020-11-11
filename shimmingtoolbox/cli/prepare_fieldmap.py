@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=True, help="Input path of mag nifti file")
 @click.option('-output', 'path_output', type=click.Path(), default=os.curdir, help="Output path for the fieldmap")
 def prepare_fieldmap_cli(phase, fname_mag, path_output):
-    """Creates fieldmap from phase and magnitute images
+    """Creates fieldmap from phase and magnitude images
 
     Args:
         phase: Input path of phase nifti file"
@@ -34,7 +34,11 @@ def prepare_fieldmap_cli(phase, fname_mag, path_output):
         # phase should be a phasediff
         fname_phasediff = phase[0]
         nii_phasediff, json_phasediff, phasediff = read_nii(fname_phasediff, auto_scale=True)
-
+        # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the metadata
+        if not ('EchoTime1' in json_phasediff) or not ('EchoTime2' in json_phasediff):
+            raise RuntimeError("The JSON file of the input phase should include the fields EchoTime1 and EchoTime2 if"
+                               "it is a phase difference.")
+        # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
         if (phasediff.max() >= 2 * math.pi) and (phasediff.min() <= 0):
             raise RuntimeError("read_nii does not support input to convert to radians")
 
