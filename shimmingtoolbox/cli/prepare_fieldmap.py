@@ -7,6 +7,7 @@
 import click
 import os
 import math
+import numpy as np
 
 from nibabel import load as load_nib
 
@@ -65,10 +66,21 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, path_output):
         # Check mag is input
         # manage 3+ echoes (currently won't work because needs phasediff)
         # TODO: support threshold and mask
-        nii_mag = load_nib(fname_mag)
-        phasediff_unwrapped = \
-            prelude(phasediff, nii_mag.get_fdata(), affine, mask=None, threshold=None, is_unwrapping_in_2d=False)
+        mag = load_nib(fname_mag).get_fdata()
+        # If phasediff is 4d, split along 4th dimension (time), run prelude for each instance and merge back
+        if len(phasediff.shape) == 3:
+            phasediff4d = np.expand_dims(phasediff, -1)
+            mag4d = np.expand_dims(mag, -1)
+        else:
+            phasediff4d = phasediff
+            mag4d = mag
+        phasediff4d_unwrapped = np.zeros_like(phasediff4d)
+        for i_t in range(phasediff4d.shape[3]):
+            phasediff4d_unwrapped[..., i_t] = prelude(phasediff4d[..., i_t], mag4d[..., i_t], affine, mask=None,
+                                                      threshold=None, is_unwrapping_in_2d=False)
+        # TODO: squeeze if 4th dim is singleton
     else:
         raise ValueError(f"This option is not available: {unwrapper}")
 
+    # TODO: divide by echo time (for method echo 1 or 2)
     # TODO: save NIFTI
