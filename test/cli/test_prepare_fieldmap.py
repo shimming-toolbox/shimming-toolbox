@@ -23,7 +23,7 @@ def test_cli_prepare_fieldmap():
         # fname_phase2 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
         # fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, ['-phase', fname_phasediff, '-mag', fname_mag,
-                                                      '-output', tmp])
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', tmp],
+                               catch_exceptions=False)
 
     assert result.exit_code == 0
