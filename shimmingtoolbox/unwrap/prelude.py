@@ -10,6 +10,7 @@ import nibabel as nib
 import pathlib
 import tempfile
 import logging
+import numpy as np
 
 from shimmingtoolbox.utils import run_subprocess
 
@@ -80,4 +81,9 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
 
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
-    return nib.load(fname_phase_unwrapped).get_fdata()
+    phase_unwrapped = nib.load(fname_phase_unwrapped).get_fdata()
+
+    for _ in range(wrapped_phase.ndim - phase_unwrapped.ndim):
+        phase_unwrapped = np.expand_dims(phase_unwrapped, -1)
+
+    return phase_unwrapped
