@@ -30,7 +30,7 @@ def check_dependencies():
     dcm2niix_exit_code: int = check_dcm2niix_installation()
     # negating condition because 0 indicates dcm2niix is installed.
     if not dcm2niix_exit_code:
-        print("dcm2niix is installed.")
+        print(get_dcm2niix_version())
     else:
         print(f"Error {dcm2niix_exit_code}: dcm2niix is not installed or not in your PATH.")
 
@@ -60,3 +60,22 @@ def check_dcm2niix_installation() -> int:
         int: Exit code. 0 on success, nonzero on failure.
     """
     return subprocess.check_call(['which', 'dcm2niix'])
+
+def get_dcm2niix_version() -> str:
+    """Gets the ``dcm2niix`` installation version.
+
+    This function calls ``dcm2niix --version`` and captures the output to
+    obtain the installation version.
+
+    Returns:
+        str: Version of the ``dcm2niix`` installation.
+    """
+    # `dcm2niix --version` returns an error code and output is in stderr
+    dcm2niix_version: str = subprocess.run(["dcm2niix", "--version"], capture_output=True, encoding="utf-8")
+    # If the behaviour of dcm2niix changes to output help with a 0 exit code,
+    # this function must fail loudly so we can update its behaviour
+    # accordingly:
+    assert dcm2niix_version.returncode != 0
+    version_output: str = dcm2niix_version.stdout.rstrip()
+    return version_output
+
