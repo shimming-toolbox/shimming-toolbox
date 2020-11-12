@@ -15,12 +15,9 @@ def test_cli_mask_cube():
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         out = os.path.join(tmp, 'nifti1')
-        dim1 = 50
-        dim2 = 30
-        dim3 = 5
+        size = 5
 
-        result = runner.invoke(mask, ['cube', '-input', inp, '-output', out, '-len_dim1', dim1, '-len_dim2', dim2,
-                                      '-len_dim3', dim3])
+        result = runner.invoke(mask, ['cube', '-input', inp, '-output', out, '-size', size])
 
         assert result.exit_code == 0
         assert result is not None
@@ -33,10 +30,9 @@ def test_cli_mask_square():
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         out = os.path.join(tmp, 'nifti2')
-        dim1 = 50
-        dim2 = 30
+        size = 50
 
-        result = runner.invoke(mask, ['square', '-input', inp, '-output', out, '-len_dim1', dim1, '-len_dim2', dim2])
+        result = runner.invoke(mask, ['square', '-input', inp, '-output', out, '-size', size])
 
         assert result.exit_code == 0
         assert result is not None
