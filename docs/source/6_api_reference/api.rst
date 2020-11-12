@@ -56,3 +56,6 @@ misc
 
 .. automodule:: shimmingtoolbox.cli.referencemaps
    :members:
+
+.. automodule:: shimmingtoolbox.cli.mask
+   :members:
