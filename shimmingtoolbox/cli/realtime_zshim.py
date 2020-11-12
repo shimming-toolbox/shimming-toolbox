@@ -120,9 +120,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     z_coord = generate_meshgrid(mask_fmap.shape, nii_fmap.affine)[2] / 1000  # [m]
 
     for it in range(nt):
-        gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it],
-                                              z_coord[0, :, 0],
-                                              axis=1)  # [mT / m]
+        gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it], z_coord[0, :, 0], axis=1)  # [mT / m]
     if DEBUG:
         nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fmap.affine)
         nib.save(nii_gz_gradient, os.path.join(fname_output, 'tmp.gz_gradient.nii.gz'))
@@ -153,6 +151,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
 
     # Shim using PMU
     mean_p = np.mean(acq_pressures)
+    pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     riro = np.zeros_like(fieldmap[:, :, :, 0])
     static = np.zeros_like(fieldmap[:, :, :, 0])
     # TODO fix progress bar not showing up
@@ -161,7 +160,9 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -gz_gradient[i_x, i_y, i_z, :])
-                riro[i_x, i_y, i_z] = reg.coef_
+                # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+                # between scans. This allows to compare results between scans.
+                riro[i_x, i_y, i_z] = reg.coef_ * pressure_rms
                 static[i_x, i_y, i_z] = reg.intercept_
                 progress_bar.update(1)
 
@@ -210,7 +211,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     file_gradients = open(fname_corrections, 'w')
     for i_slice in range(n_slices):
         file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
-        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
+        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice] / pressure_rms:.12f}\n')
         file_gradients.write(f'Vector_Gz[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -257,7 +258,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         # Plot Static and RIRO
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
-        im = ax.imshow(riro[:-1, :-1, 0])
+        im = ax.imshow(riro[:-1, :-1, 0] / pressure_rms)
         fig.colorbar(im)
         ax.set_title("RIRO")
         ax = fig.add_subplot(2, 1, 2)
