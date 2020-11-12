@@ -114,16 +114,14 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         masked_fieldmaps[..., i_t] = mask_fmap * fieldmap[..., i_t]
 
     # Calculate gz gradient
-    # Image is z, y, x
-    # Pixdim[2] is the space between pixels in the z direction in millimeters
     g = 1000 / 42.576e6  # [mT / Hz]
     gz_gradient = np.zeros_like(fieldmap)
-    coord = generate_meshgrid(mask_fmap.shape, nii_fmap.affine)
-
+    # Get voxel coordinates. Z coordinates correspond to coord[2]
+    z_coord = generate_meshgrid(mask_fmap.shape, nii_fmap.affine)[2] / 1000  # [m]
 
     for it in range(nt):
         gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it],
-                                              -nii_fmap.header['pixdim'][2] / 1000,
+                                              z_coord[0, :, 0],
                                               axis=1)  # [mT / m]
     if DEBUG:
         nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fmap.affine)
