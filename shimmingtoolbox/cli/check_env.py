@@ -22,7 +22,7 @@ def check_dependencies():
     prelude_exit_code: int = check_prelude_installation()
     # negating condition because 0 indicates prelude is installed.
     if not prelude_exit_code:
-        print("prelude is installed.")
+        print(get_prelude_version())
     else:
         print(f"Error {prelude_exit_code}: prelude is not installed or not in your PATH.")
 
@@ -60,6 +60,29 @@ def check_dcm2niix_installation() -> int:
         int: Exit code. 0 on success, nonzero on failure.
     """
     return subprocess.check_call(['which', 'dcm2niix'])
+
+
+def get_prelude_version() -> str:
+    """Gets the ``prelude`` installation version.
+
+    This function calls ``prelude --help`` and parses the output to obtain the
+    installation version.
+
+    Returns:
+        str: Version of the ``prelude`` installation.
+    """
+    # `prelude --help` returns an error code and output is in stderr
+    prelude_help = subprocess.run(["prelude", "--help"], capture_output=True, encoding="utf-8")
+    # If the behaviour of FSL prelude changes to output help in stdout with a
+    # 0 exit code, this function must fail loudly so we can update its
+    # behaviour accordingly:
+    assert prelude_help.returncode != 0
+    # we're capturing stderr instead of stdout
+    help_output: str = prelude_help.stderr.rstrip()
+    # remove beginning newline and drop help info to keep version info
+    version: str = help_output.split("\n\n")[0].replace("\n","", 1)
+    return version
+
 
 def get_dcm2niix_version() -> str:
     """Gets the ``dcm2niix`` installation version.
