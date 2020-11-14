@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Check the installation of the dependencies
+# This file provides 2 CLI entrypoints and associated helper functions:
+#  - a tool to check dependency installation, availability in PATH, and version
+#  - a tool to dump details about the environment and shimmingtoolbox
+#    installation
 
 import click
 import subprocess
+import os
+import platform
+import psutil
+
 from typing import Dict, Tuple, List
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -102,3 +109,63 @@ def get_dcm2niix_version() -> str:
     version_output: str = dcm2niix_version.stdout.rstrip()
     return version_output
 
+
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+    help="Dumps environment and package details into stdout for debugging purposes."
+)
+def dump_env_info():
+    """Dumps environment and package details into stdout for debugging purposes
+    by calling helper functions to retrieve these details.
+    """
+    env_info = get_env_info()
+    pkg_version = get_pkg_info()
+
+    print(f"ENVIRONMENT INFO:\n{env_info}\n\nPACKAGE INFO:\n{pkg_version}")
+    return
+
+
+def get_env_info() -> str:
+    """Gets information about the environment.
+
+    This function gets information about the operating system, the host
+    machine hardware, Python version & implementation, and Python location.
+
+    Returns:
+        str: A multiline string containing environment info.
+    """
+
+    os_name = os.name
+    cpu_arch = platform.machine()
+    platform_release = platform.release()
+    platform_system = platform.system()
+    platform_version = platform.version()
+    python_full_version = platform.python_version()
+    python_implementation = platform.python_implementation()
+
+    cpu_usage = f"CPU cores: Available: {psutil.cpu_count()}, Used by ITK functions: {int(os.getenv('ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS', 0))}"
+    ram = psutil.virtual_memory()
+    factor_MB = 1024 * 1024
+    ram_usage = f'RAM: Total: {ram.total // factor_MB}MB, Used: {ram.used // factor_MB}MB, Available: {ram.available // factor_MB}MB'
+
+    env_info = (f"{os_name} {cpu_arch}\n" +
+                f"{platform_system} {platform_release}\n" +
+                f"{platform_version}\n" +
+                f"{python_implementation} {python_full_version}\n\n" +
+                f"{cpu_usage}\n" +
+                f"{ram_usage}"
+                )
+    return env_info
+
+
+def get_pkg_info() -> str:
+    """Gets package version.
+
+    This function gets the version of shimming-toolbox.
+
+    Returns:
+        str: The version number of the shimming-toolbox installation.
+    """
+    import shimmingtoolbox as st
+    pkg_version = st.__version__
+    return pkg_version
