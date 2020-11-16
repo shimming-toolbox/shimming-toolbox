@@ -8,6 +8,7 @@ import click
 import os
 import math
 import numpy as np
+import nibabel as nib
 
 from nibabel import load as load_nib
 
@@ -23,8 +24,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
 @click.option('-unwrapper', type=click.Choice(['prelude', 'bla']), default='prelude', help="Algorithm for unwrapping")
-@click.option('-output', 'path_output', type=click.Path(), default=os.curdir, help="Output path for the fieldmap")
-def prepare_fieldmap_cli(phase, fname_mag, unwrapper, path_output):
+@click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
+def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
     """Creates fieldmap from phase and magnitude images
 
     Args:
@@ -66,21 +67,53 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, path_output):
         # Check mag is input
         # manage 3+ echoes (currently won't work because needs phasediff)
         # TODO: support threshold and mask
-        mag = load_nib(fname_mag).get_fdata()
-        # If phasediff is 4d, split along 4th dimension (time), run prelude for each instance and merge back
-        if len(phasediff.shape) == 3:
+
+        # If mag is not as an input define it as an array of ones
+        if fname_mag is not None:
+            mag = load_nib(fname_mag).get_fdata()
+        else:
+            mag = np.ones_like(phasediff)
+
+        # read_nii returns the phase between 0 and 2pi, prelude requires it to be between -pi and pi so that there is
+        # no offset
+        phasediff -= math.pi
+
+        # Make sure phasediff is 4d
+        if len(phasediff.shape) == 2:
+            phasediff4d = np.expand_dims(np.expand_dims(phasediff, -1), -1)
+            mag4d = np.expand_dims(np.expand_dims(mag, -1), -1)
+        elif len(phasediff.shape) == 3:
             phasediff4d = np.expand_dims(phasediff, -1)
             mag4d = np.expand_dims(mag, -1)
-        else:
+        elif len(phasediff.shape) == 4:
             phasediff4d = phasediff
             mag4d = mag
+        else:
+            raise RuntimeError("Shape of input phase is not supported")
+
+        # Split along 4th dimension (time), run prelude for each instance and merge back
         phasediff4d_unwrapped = np.zeros_like(phasediff4d)
         for i_t in range(phasediff4d.shape[3]):
             phasediff4d_unwrapped[..., i_t] = prelude(phasediff4d[..., i_t], mag4d[..., i_t], affine, mask=None,
-                                                      threshold=None, is_unwrapping_in_2d=False)
-        # TODO: squeeze if 4th dim is singleton
+                                                      threshold=None, is_unwrapping_in_2d=True)
+
+        # Squeeze last dim if its shape is 1
+        if len(phasediff.shape) == 2:
+            phasediff_unwrapped = phasediff4d_unwrapped[..., 0, 0]
+        elif len(phasediff.shape) == 3:
+            phasediff_unwrapped = phasediff4d_unwrapped[..., 0]
+        else:
+            phasediff_unwrapped = phasediff4d_unwrapped
+
     else:
         raise ValueError(f"This option is not available: {unwrapper}")
 
-    # TODO: divide by echo time (for method echo 1 or 2)
-    # TODO: save NIFTI
+    # TODO: correct for potential wraps between time points
+
+    # Divide by echo time (for method echo 1 or 2)
+    fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
+    fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [hz]
+
+    # Save NIFTI
+    nii_fieldmap = nib.Nifti1Image(fieldmap_hz, nii_phasediff.affine)
+    nib.save(nii_fieldmap, fname_output)
