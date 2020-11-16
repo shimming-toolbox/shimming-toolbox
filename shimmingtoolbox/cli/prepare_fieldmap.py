@@ -23,7 +23,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 )
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
-@click.option('-unwrapper', type=click.Choice(['prelude', 'bla']), default='prelude', help="Algorithm for unwrapping")
+@click.option('-unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
     """Creates fieldmap from phase and magnitude images
@@ -52,12 +52,19 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
             raise RuntimeError("read_nii does not support input to convert to radians")
         echo_time_diff = json_phasediff['EchoTime2'] - json_phasediff['EchoTime1']  # [s]
 
+        # If mag is not as an input define it as an array of ones
+        if fname_mag is not None:
+            mag = load_nib(fname_mag).get_fdata()
+        else:
+            mag = np.ones_like(phasediff)
+
     elif len(phase) == 2:
-        fname_phase0 = phase[0]
-        fname_phase1 = phase[1]
         # TODO:
         #  - generate phasediff,
         #  - assign variable affine
+
+        nii_phasediff_0, json_phasediff_0, phasediff_0 = read_nii(phase[0], auto_scale=True)
+        nii_phasediff_1, json_phasediff_1, phasediff_1 = read_nii(phase[1], auto_scale=True)
 
     else:
         # TODO: More echoes
@@ -67,12 +74,6 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
         # Check mag is input
         # manage 3+ echoes (currently won't work because needs phasediff)
         # TODO: support threshold and mask
-
-        # If mag is not as an input define it as an array of ones
-        if fname_mag is not None:
-            mag = load_nib(fname_mag).get_fdata()
-        else:
-            mag = np.ones_like(phasediff)
 
         # read_nii returns the phase between 0 and 2pi, prelude requires it to be between -pi and pi so that there is
         # no offset
