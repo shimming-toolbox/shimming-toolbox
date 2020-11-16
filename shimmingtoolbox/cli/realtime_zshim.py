@@ -204,14 +204,14 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         static_correction[i_slice] = np.ma.mean(ma_static_anat)
         ma_riro_anat = np.ma.array(nii_resampled_riro.get_fdata()[..., i_slice],
                                    mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
-        riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
+        riro_correction[i_slice] = np.ma.mean(ma_riro_anat) / pressure_rms
 
     # Write to a text file
     fname_corrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_corrections, 'w')
     for i_slice in range(n_slices):
         file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_correction[i_slice]:.6f}\n')
-        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_correction[i_slice]:.12f}\n')
         file_gradients.write(f'Vector_Gz[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -324,9 +324,9 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         fig.colorbar(im)
         ax.set_title("Anatomical image [:, :, 10]")
         ax = fig.add_subplot(2, 1, 2)
-        im = ax.imshow(nii_resampled_fmap.get_fdata()[:, :, 10, 0])
+        im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 10])
         fig.colorbar(im)
-        ax.set_title("Resampled fieldmap [:, :, 10, 0]")
+        ax.set_title("Mask [:, :, 10]")
         fname_figure = os.path.join(fname_output, 'fig_reatime_zshim_anat.png')
         fig.savefig(fname_figure)
 
@@ -345,7 +345,7 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         ax.plot(range(n_slices), static_correction, label='Static correction')
         ax.set_title("Static correction evolution through slices")
         ax = fig.add_subplot(2, 1, 2)
-        ax.plot(range(n_slices), riro_correction, label='Riro correction')
+        ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * riro_correction, label='Riro correction')
         ax.set_title("Riro correction evolution through slices")
         fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_correction_slice.png')
         fig.savefig(fname_figure)
