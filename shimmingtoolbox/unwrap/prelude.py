@@ -10,6 +10,7 @@ import nibabel as nib
 import pathlib
 import tempfile
 import logging
+import numpy as np
 
 from shimmingtoolbox.utils import run_subprocess
 
@@ -80,4 +81,11 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
 
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
-    return nib.load(fname_phase_unwrapped).get_fdata()
+    # When loading fname_phase_unwrapped, if a singleton is on the last dimension in wrapped_phase, it will not appear
+    # in the last dimension in phase_unwrapped. To be consistent with the size of the input, the singletons are added
+    # back.
+    phase_unwrapped = nib.load(fname_phase_unwrapped).get_fdata()
+    for _ in range(wrapped_phase.ndim - phase_unwrapped.ndim):
+        phase_unwrapped = np.expand_dims(phase_unwrapped, -1)
+
+    return phase_unwrapped

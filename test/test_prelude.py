@@ -168,3 +168,42 @@ class TestCore(object):
         """
         unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200)
         assert(unwrapped_phase_e1.shape == self.phase_e1.shape)
+
+    def test_3rd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the z dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(self.phase_e1[..., 0], -1)
+        mag_singleton = np.expand_dims(self.mag_e1[..., 0], -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, mag_singleton, self.affine_phase_e1)
+
+        assert unwrapped_phase_singleton.ndim == 3
+
+    def test_2nd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the 2nd dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(self.phase_e1[:, 0, 0], -1)
+        mag_singleton = np.expand_dims(self.mag_e1[:, 0, 0], -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, mag_singleton, self.affine_phase_e1)
+
+        assert unwrapped_phase_singleton.ndim == 2
+
+    def test_2nd_and_3rd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the 2nd and 3rd dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(np.expand_dims(self.phase_e1[:, 0, 0], -1), -1)
+        mag_singleton = np.expand_dims(np.expand_dims(self.mag_e1[:, 0, 0], -1), -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, mag_singleton, self.affine_phase_e1)
+
+        assert unwrapped_phase_singleton.ndim == 3
