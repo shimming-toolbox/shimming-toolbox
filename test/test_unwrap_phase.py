@@ -47,3 +47,37 @@ class TestUnwrapPhase(object):
     def test_unwrap_phase_prelude_4d_mask(self):
         unwrapped = unwrap_phase(self.phase, self.mag, self.affine, unwrapper='prelude', mask=np.ones_like(self.phase))
         assert unwrapped.shape == self.phase.shape
+
+    def test_unwrap_phase_prelude_2d_mask(self):
+        phase = self.phase[..., 0, 0]
+        mag = self.mag[..., 0, 0]
+        unwrapped = unwrap_phase(phase, mag, self.affine, unwrapper='prelude', mask=np.ones_like(phase))
+        assert unwrapped.shape == phase.shape
+
+    def test_unwrap_phase_wrong_unwrapper(self):
+        """Input wrong unwrapper"""
+
+        # This should return an error
+        try:
+            unwrap_phase(self.phase, self.mag, self.affine, unwrapper='Not yet implemented')
+        except RuntimeError:
+            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nNot supported unwrapper but does not throw an error')
+        assert False
+
+    def test_unwrap_phase_wrong_shape(self):
+        """Input wrong unwrapper"""
+
+        # This should return an error
+        try:
+            unwrap_phase(np.expand_dims(self.phase, -1), self.mag, self.affine)
+        except RuntimeError:
+            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\nWrong dimensions but does not throw an error')
+        assert False
