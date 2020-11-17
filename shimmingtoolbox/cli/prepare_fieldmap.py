@@ -13,7 +13,7 @@ import nibabel as nib
 from nibabel import load as load_nib
 
 from shimmingtoolbox.load_nifti import read_nii
-from shimmingtoolbox.unwrap.prelude import prelude
+from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -25,7 +25,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
 @click.option('-unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
-def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
+@click.option('-mask', 'fname_mask', type=click.Path(), help="Input path for a mask. Used for PRELUDE")
+@click.option('-threshold', 'threshold', type=int, help="Threshold for masking. Used for: PRELUDE")
+def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
     """Creates fieldmap from phase and magnitude images
 
     Args:
@@ -91,44 +93,20 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
         # TODO: More echoes
         raise RuntimeError(" Number of phase filenames not supported")
 
-    if unwrapper == 'prelude':
-        # Check mag is input
-        # manage 3+ echoes (currently won't work because needs phasediff)
-        # TODO: support threshold and mask
-
-        # Make sure phasediff is 4d
-        if len(phasediff.shape) == 2:
-            phasediff4d = np.expand_dims(np.expand_dims(phasediff, -1), -1)
-            mag4d = np.expand_dims(np.expand_dims(mag, -1), -1)
-        elif len(phasediff.shape) == 3:
-            phasediff4d = np.expand_dims(phasediff, -1)
-            mag4d = np.expand_dims(mag, -1)
-        elif len(phasediff.shape) == 4:
-            phasediff4d = phasediff
-            mag4d = mag
-        else:
-            raise RuntimeError("Shape of input phase is not supported")
-
-        # Split along 4th dimension (time), run prelude for each instance and merge back
-        phasediff4d_unwrapped = np.zeros_like(phasediff4d)
-        for i_t in range(phasediff4d.shape[3]):
-            phasediff4d_unwrapped[..., i_t] = prelude(phasediff4d[..., i_t], mag4d[..., i_t], affine, mask=None,
-                                                      threshold=None, is_unwrapping_in_2d=True)
-
-        # Squeeze last dim if its shape is 1
-        if len(phasediff.shape) == 2:
-            phasediff_unwrapped = phasediff4d_unwrapped[..., 0, 0]
-        elif len(phasediff.shape) == 3:
-            phasediff_unwrapped = phasediff4d_unwrapped[..., 0]
-        else:
-            phasediff_unwrapped = phasediff4d_unwrapped
-
+    # Import mask
+    if fname_mask is not None:
+        mask = nib.load(fname_mask).get_fdata()
+        if mask.shape != phasediff.shape:
+            raise RuntimeError("Shape of mask and phase must match")
     else:
-        raise ValueError(f"This option is not available: {unwrapper}")
+        mask = None
+
+    # Run the unwrapper
+    phasediff_unwrapped = unwrap_phase(phasediff, mag, affine, unwrapper=unwrapper, mask=mask, threshold=threshold)
 
     # TODO: correct for potential wraps between time points
 
-    # Divide by echo time (for method echo 1 or 2)
+    # Divide by echo time
     fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
     fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [hz]
 
