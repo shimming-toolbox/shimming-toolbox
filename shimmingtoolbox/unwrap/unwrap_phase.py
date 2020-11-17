@@ -2,18 +2,19 @@
 # -*- coding: utf-8 -*-
 """ Wrapper to different unwrapping algorithms """
 
-
 import numpy as np
 from shimmingtoolbox.unwrap.prelude import prelude
 
 
 def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=None):
-    """ Calls different unwrapping algorithms according to the specified `unwrap_function` parameter. The function also
-    allows to call the different unwrappers with more flwxibility regarding input shape.
+    """ Calls different unwrapping algorithms according to the specified `unwrapper` parameter. The function also
+    allows to call the different unwrappers with more flexibility regarding input shape.
 
     Args:
-        phase (numpy.ndarray): 2D, 3D or 4D radian values [-pi to pi] to perform phase unwrapping
-        mag (numpy.ndarray): 2D, 3D or 4D magnitude data corresponding to phase data
+        phase (numpy.ndarray): 2D, 3D or 4D radian values [-pi to pi] to perform phase unwrapping.
+                               Supported shapes: [x, y], [x, y, z] or [x, y, z, t]
+        mag (numpy.ndarray): 2D, 3D or 4D magnitude data corresponding to phase data. Shape must be the same as
+                             ``phase``
         affine (numpy.ndarray): 2D array (4x4) containing the transformation coefficients. Can be acquired by :
             nii = nib.load("nii_path")
             affine = nii.affine
@@ -22,7 +23,7 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
         threshold (float): Prelude parameter, see prelude for more detail
 
     Returns:
-        numpy.ndarray: Unwrapped image phase.
+        numpy.ndarray: Unwrapped phase image
     """
 
     if unwrapper == 'prelude':
@@ -50,7 +51,7 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
         phase4d_unwrapped = np.zeros_like(phase4d)
         for i_t in range(phase4d.shape[3]):
             if mask is not None:
-                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask[..., i_t],
+                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask4d[..., i_t],
                                                       threshold=threshold)
             else:
                 phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask,
@@ -64,6 +65,6 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
             phase_unwrapped = phase4d_unwrapped
 
     else:
-        raise Exception(f'The unwrap function {unwrapper} is not implemented')
+        raise RuntimeError(f'The unwrap function {unwrapper} is not implemented')
 
     return phase_unwrapped

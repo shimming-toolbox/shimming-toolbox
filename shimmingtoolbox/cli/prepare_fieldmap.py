@@ -22,12 +22,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
 @click.option('-unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
-@click.option('-mask', 'fname_mask', type=click.Path(), help="Input path for a mask. Used for PRELUDE")
+@click.option('-mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
-    """Creates fieldmap from phase and magnitude images
+    """Creates fieldmap from phase and magnitude images, outputs fieldmap in Hz
 
-    phase: Input path of phase nifti file, ordered in ascending order i.e. echo1, echo2, etc...
+    phase: Input path of phase nifti files, ordered in ascending order i.e. echo1, echo2, etc...
     """
 
     # Import phase
@@ -35,9 +35,11 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     echo_times = []
     for i_echo in range(len(phase)):
         nii_phasediff, json_phasediff, phasediff = read_nii(phase[i_echo], auto_scale=True)
-        # read_nii returns phase between 0 and 2pi whereas prepare fieldmap accepts between -pi to pi
+        # Add pi since read_nii returns phase between 0 and 2pi whereas prepare_fieldmap accepts between -pi to pi
         phasediff -= math.pi
+
         array_phase.append(phasediff)
+        # Special case for echo_times if inout is a phasediff
         if len(phase) == 1:
             # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the
             # metadata
@@ -49,13 +51,14 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
         else:
             echo_times.append(json_phasediff['EchoTime'])
 
+    # Get affine from nii
     affine = nii_phasediff.affine
 
     # If mag is not as an input define it as an array of ones
     if fname_mag is not None:
         mag = load_nib(fname_mag).get_fdata()
     else:
-        mag = np.ones_like(phasediff)
+        mag = None
 
     # Import mask
     if fname_mask is not None:
