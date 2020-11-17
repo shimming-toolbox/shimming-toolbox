@@ -21,19 +21,11 @@ def test_cli_prepare_fieldmap_1_echo():
                                  'sub-example_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-output', fname_output],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
-
-        # Debug
-        import nibabel as nib
-        fieldmap_prelude = nib.load(fname_output).get_fdata()
-        fname_fsl = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                 'sub-example_fieldmap.nii.gz')
-        fieldmap_fsl = nib.load(fname_fsl).get_fdata()
-        a=1
 
 
 # Add pytest prelude dependency
@@ -52,11 +44,3 @@ def test_cli_prepare_fieldmap_2_echos():
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
-
-        # Debug
-        import nibabel as nib
-        fieldmap_prelude = nib.load(fname_output).get_fdata()
-        fname_fsl = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                 'sub-example_fieldmap.nii.gz')
-        fieldmap_fsl = nib.load(fname_fsl).get_fdata()
-        a=1
