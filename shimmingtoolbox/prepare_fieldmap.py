@@ -27,11 +27,12 @@ def prepare_fieldmap(phase, echo_times, affine, mag=None, unwrapper='prelude', m
     # Check inputs
     for i_echo in range(len(phase)):
         # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
-        if (phase[i_echo].max() >= math.pi) and (phase[i_echo].min() <= -math.pi):
+        if (phase[i_echo].max() > math.pi) or (phase[i_echo].min() < -math.pi):
             raise RuntimeError("read_nii must range from -pi to pi")
 
     # Check that the input phase is indeed a phasediff, by checking the existence of two echo times
-    if len(echo_times) != len(phase) and not (len(phase) == 1 and len(echo_times) == 2):
+    if (len(echo_times) != len(phase) and not (len(phase) == 1 and len(echo_times) == 2)) \
+            or (len(phase) == 1 and len(echo_times) == 1):
         raise RuntimeError("The number of echoes must match the number of echo times.")
 
     # If mag is not as an input define it as an array of ones
