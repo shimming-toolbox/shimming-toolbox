@@ -26,18 +26,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
 @click.option('-mask', 'fname_mask', type=click.Path(), help="Input path for a mask. Used for PRELUDE")
-@click.option('-threshold', 'threshold', type=int, help="Threshold for masking. Used for: PRELUDE")
+@click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
     """Creates fieldmap from phase and magnitude images
 
-    Args:
-        phase: Input path of phase nifti file, oredered in ascending order i.e. echo1, echo2, etc...
+    phase: Input path of phase nifti file, oredered in ascending order i.e. echo1, echo2, etc...
     """
-
-    # flag: -unwrapper DEFAULT prelude, -method DEFAULT, mask fname
-    # Make sure we have a mag input, make sure we have a phase input
-    # Look for method, compare to number of inputs (look in header to make sure #inputs work with given input)
-    # for phase (phasediff or echoes)
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
@@ -91,6 +85,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
 
     else:
         # TODO: More echoes
+        # TODO: Add method once multiple methods are implemented
         raise RuntimeError(" Number of phase filenames not supported")
 
     # Import mask

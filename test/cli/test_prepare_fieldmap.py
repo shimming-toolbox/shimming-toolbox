@@ -5,12 +5,13 @@ from click.testing import CliRunner
 import os
 import pathlib
 import tempfile
+import pytest
 
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
 from shimmingtoolbox import __dir_testing__
 
 
-# Add pytest prelude dependency
+@pytest.mark.prelude
 def test_cli_prepare_fieldmap_1_echo():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
@@ -28,7 +29,7 @@ def test_cli_prepare_fieldmap_1_echo():
         assert os.path.isfile(fname_output)
 
 
-# Add pytest prelude dependency
+@pytest.mark.prelude
 def test_cli_prepare_fieldmap_2_echos():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
