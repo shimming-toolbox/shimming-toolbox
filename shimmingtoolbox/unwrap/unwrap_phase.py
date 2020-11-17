@@ -8,7 +8,8 @@ from shimmingtoolbox.unwrap.prelude import prelude
 
 
 def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=None):
-    """ Calls different unwrapping algorithms according to the specified `unwrap_function` parameter
+    """ Calls different unwrapping algorithms according to the specified `unwrap_function` parameter. The function also
+    allows to call the different unwrappers with more flwxibility regarding input shape.
 
     Args:
         phase (numpy.ndarray): 2D, 3D or 4D radian values [-pi to pi] to perform phase unwrapping
@@ -18,7 +19,7 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
             affine = nii.affine
         unwrapper (str, optional): Unwrapper algorithm name. Possible values: ``prelude``
         mask (numpy.ndarray): numpy array of booleans with shape of ``phase`` to mask during phase unwrapping.
-        threshold (int): Prelude parameter, see prelude for more detail
+        threshold (float): Prelude parameter, see prelude for more detail
 
     Returns:
         numpy.ndarray: Unwrapped image phase.
@@ -30,21 +31,30 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
         if phase.ndim == 2:
             phase4d = np.expand_dims(np.expand_dims(phase, -1), -1)
             mag4d = np.expand_dims(np.expand_dims(mag, -1), -1)
+            if mask is not None:
+                mask4d = np.expand_dims(np.expand_dims(mask, -1), -1)
         elif phase.ndim == 3:
             phase4d = np.expand_dims(phase, -1)
             mag4d = np.expand_dims(mag, -1)
+            if mask is not None:
+                mask4d = np.expand_dims(mask, -1)
         elif phase.ndim == 4:
             phase4d = phase
             mag4d = mag
+            if mask is not None:
+                mask4d = mask
         else:
             raise RuntimeError("Shape of input phase is not supported")
 
         # Split along 4th dimension (time), run prelude for each instance and merge back
         phase4d_unwrapped = np.zeros_like(phase4d)
         for i_t in range(phase4d.shape[3]):
-            phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask,
-                                                  threshold=threshold)
-
+            if mask is not None:
+                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask[..., i_t],
+                                                      threshold=threshold)
+            else:
+                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask,
+                                                      threshold=threshold)
         # Squeeze last dim if its shape is 1
         if phase.ndim == 2:
             phase_unwrapped = phase4d_unwrapped[..., 0, 0]
