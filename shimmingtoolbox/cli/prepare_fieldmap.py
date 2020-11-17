@@ -29,7 +29,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
     """Creates fieldmap from phase and magnitude images
 
     Args:
-        phase: Input path of phase nifti file"
+        phase: Input path of phase nifti file, oredered in ascending order i.e. echo1, echo2, etc...
     """
 
     # flag: -unwrapper DEFAULT prelude, -method DEFAULT, mask fname
@@ -43,13 +43,18 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
         fname_phasediff = phase[0]
         nii_phasediff, json_phasediff, phasediff = read_nii(fname_phasediff, auto_scale=True)
         affine = nii_phasediff.affine
+
+        # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
+        if (phasediff.max() >= 2 * math.pi) and (phasediff.min() <= 0):
+            raise RuntimeError("read_nii does not support input to convert to radians")
+        # read_nii returns the phase between 0 and 2pi, prelude requires it to be between -pi and pi so that there is
+        # no offset
+        phasediff -= math.pi
+
         # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the metadata
         if not ('EchoTime1' in json_phasediff) or not ('EchoTime2' in json_phasediff):
             raise RuntimeError("The JSON file of the input phase should include the fields EchoTime1 and EchoTime2 if"
                                "it is a phase difference.")
-        # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
-        if (phasediff.max() >= 2 * math.pi) and (phasediff.min() <= 0):
-            raise RuntimeError("read_nii does not support input to convert to radians")
         echo_time_diff = json_phasediff['EchoTime2'] - json_phasediff['EchoTime1']  # [s]
 
         # If mag is not as an input define it as an array of ones
@@ -59,12 +64,28 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
             mag = np.ones_like(phasediff)
 
     elif len(phase) == 2:
-        # TODO:
-        #  - generate phasediff,
-        #  - assign variable affine
-
+        # Load niftis
         nii_phasediff_0, json_phasediff_0, phasediff_0 = read_nii(phase[0], auto_scale=True)
         nii_phasediff_1, json_phasediff_1, phasediff_1 = read_nii(phase[1], auto_scale=True)
+        affine = nii_phasediff_0.affine
+        # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
+        if ((phasediff_0.max() >= 2 * math.pi) and (phasediff_0.min() <= 0)) and \
+                ((phasediff_1.max() >= 2 * math.pi) and (phasediff_1.min() <= 0)):
+            raise RuntimeError("read_nii does not support input to convert to radians")
+
+        # Calculate phasediff using complex difference
+        comp_0 = np.ones_like(phasediff_0) * np.exp(-1j * phasediff_0)
+        comp_1 = np.ones_like(phasediff_1) * np.exp(1j * phasediff_1)
+        phasediff = np.angle(comp_0 * comp_1)
+
+        # Calculate the echo time difference
+        echo_time_diff = json_phasediff_1['EchoTime'] - json_phasediff_0['EchoTime']
+
+        # If mag is not as an input define it as an array of ones
+        if fname_mag is not None:
+            mag = load_nib(fname_mag).get_fdata()
+        else:
+            mag = np.ones_like(phasediff)
 
     else:
         # TODO: More echoes
@@ -74,10 +95,6 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
         # Check mag is input
         # manage 3+ echoes (currently won't work because needs phasediff)
         # TODO: support threshold and mask
-
-        # read_nii returns the phase between 0 and 2pi, prelude requires it to be between -pi and pi so that there is
-        # no offset
-        phasediff -= math.pi
 
         # Make sure phasediff is 4d
         if len(phasediff.shape) == 2:
@@ -116,5 +133,5 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output):
     fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [hz]
 
     # Save NIFTI
-    nii_fieldmap = nib.Nifti1Image(fieldmap_hz, nii_phasediff.affine)
+    nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
     nib.save(nii_fieldmap, fname_output)
