@@ -30,6 +30,9 @@ class TestPrepareFieldmap(object):
         fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine)
 
         assert fieldmap.shape == self.phase.shape
+        # If the behaviour of the called function is modified, this assertion below should capture it:
+        assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
+                                 np.array([18.51355514, 13.84794053,  9.48013154,  5.11232207,  0.64524454])))
 
     def test_prepare_fieldmap_with_mag(self):
         """Test mag works"""
@@ -82,6 +85,7 @@ class TestPrepareFieldmap(object):
         try:
             fieldmap = prepare_fieldmap([self.phase], echo_times, self.affine)
         except RuntimeError:
+            # TODO: message below is suspicious
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
 
