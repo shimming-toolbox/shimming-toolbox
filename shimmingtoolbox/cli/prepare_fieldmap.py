@@ -36,6 +36,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     array_phase = []
     echo_times = []
     for i_echo in range(len(phase)):
+        # TODO: change the "phasediff" variable name
         nii_phasediff, json_phasediff, phasediff = read_nii(phase[i_echo], auto_scale=True)
         # Add pi since read_nii returns phase between 0 and 2pi whereas prepare_fieldmap accepts between -pi to pi
         phasediff -= math.pi
