@@ -25,9 +25,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
-    """Creates fieldmap from phase and magnitude images, outputs fieldmap in Hz
+    """Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
+    difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
+    multiple field maps are acquired across time for the purpose of real-time shimming experiments.
 
-    phase: Input path of phase nifti files, ordered in ascending order i.e. echo1, echo2, etc...
+    phase: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
 
     # Import phase
