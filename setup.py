@@ -22,6 +22,7 @@ setup(
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
             "st_mask=shimmingtoolbox.cli.mask:mask",
+            "st_features=shimmingtoolbox.cli.sct_features:sct_features",
         ]
     },
     packages=find_packages(exclude=["docs"]),
