@@ -24,7 +24,7 @@ def mask():
 
 @mask.command(context_settings=CONTEXT_SETTINGS, help=f"Create a SCT (SpinalCordToolbox) mask from the input file. "
                                                       f"Return an output nifti file with SCT mask.")
-@click.option('-input', 'fname_input', type=click.File('r'), required=True,
+@click.option('-input', 'fname_input', type=click.Path(), required=True,
               help="Input path of the nifti file to mask.")
 @click.option('-output', type=click.Path(), default=os.curdir, help="Name of output mask, Example: data.nii.")
 @click.option('-process1', type=click.Choice(['coord', 'point', 'center', 'centerline']), default='center',
@@ -75,7 +75,11 @@ def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
         Returns:
             output (str): Output nifti file with SCT mask.
         """
-    subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1, process2, '-size', size, '-f', shape, 'o',
-                    output, '-r', remove, '-v', verbose], check=True)
+    # Create the folder where the nifti file will be stored
+    if not os.path.exists(output):
+        os.makedirs(output)
+    
+    subprocess.run(['bash', '-c','sct_create_mask', '-i', fname_input, '-p', process1, process2, '-size', size, '-f',
+                    shape, 'o', output, '-r', remove, '-v', verbose])
     click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
     return output
