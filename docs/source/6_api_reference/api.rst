@@ -57,6 +57,9 @@ misc
 .. automodule:: shimmingtoolbox.cli.referencemaps
    :members:
 
+cli
+---
+
 .. click:: shimmingtoolbox.cli.mask:mask_cli
    :prog: mask
    :nested: full
