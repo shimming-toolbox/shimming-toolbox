@@ -14,11 +14,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS, help=f"Create a mask based on a specified shape (cube, square, etc.) "
                                                      f"or based on the thresholding of an input image.")
-def mask():
+def mask_cli():
     pass
 
 
-@mask.command(context_settings=CONTEXT_SETTINGS,
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
               help=f"Create a cube mask from the input file. Return the filename for the output mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True, help="Input path of the nifti file to mask")
 @click.option('-output', type=click.Path(), default=os.curdir, help="Output folder for mask in nifti file")
@@ -62,7 +62,7 @@ def cube(fname_input, output, size, center):
         raise ValueError("The nifti file does not have 3 dimensions.")
 
 
-@mask.command(context_settings=CONTEXT_SETTINGS,
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
               help=f"Create a square mask from the input file. Return an output nifti file with square mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True, help="Input path of the nifti file to mask")
 @click.option('-output', type=click.Path(), default=os.curdir, help="Output folder for mask in nifti file")
@@ -118,7 +118,7 @@ def square(fname_input, output, size, center):
         raise ValueError("The nifti file does not have 2 or 3 dimensions.")
 
 
-@mask.command(context_settings=CONTEXT_SETTINGS,
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
               help=f"Create a threshold mask from the input file. Return an output nifti file with threshold mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True, help="Input path of the nifti file to mask")
 @click.option('-output', type=click.Path(), default=os.curdir, help="Output folder for mask in nifti file")
