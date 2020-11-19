@@ -22,7 +22,7 @@ setup(
             "st_referencemaps=shimmingtoolbox.cli.referencemaps:main",
             "st_b0maps=shimmingtoolbox.cli.b0map:main",
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
-            "st_mask=shimmingtoolbox.cli.mask:mask",
+            "st_mask=shimmingtoolbox.cli.mask:mask_cli",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
         ]
     },
@@ -42,6 +42,6 @@ setup(
         "pytest-cov~=2.5.1",
     ],
     extras_require={
-        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
+        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
     },
 )
