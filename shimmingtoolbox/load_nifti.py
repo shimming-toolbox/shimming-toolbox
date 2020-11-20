@@ -93,6 +93,7 @@ def load_nifti(path_data, modality='phase'):
 
     # Get a list of nii files
     nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
+    nifti_list = sorted(nifti_list)
 
     # Read all images and headers available and store them
     nifti_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
