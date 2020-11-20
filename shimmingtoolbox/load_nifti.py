@@ -58,6 +58,7 @@ def load_nifti(path_data, modality='phase'):
     # Generate file_list
     file_list = []
     [file_list.append(os.path.join(path_data, f)) for f in os.listdir(path_data) if f not in file_list]
+    file_list = sorted(file_list)
 
     nifti_path = ""
     # Check for incompatible acquisition source path
