@@ -33,29 +33,28 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     """
 
     # Import phase
-    array_phase = []
+    list_phase = []
     echo_times = []
     for i_echo in range(len(phase)):
-        # TODO: change the "phasediff" variable name
-        nii_phasediff, json_phasediff, phasediff = read_nii(phase[i_echo], auto_scale=True)
+        nii_phase, json_phase, phase_img = read_nii(phase[i_echo], auto_scale=True)
         # Add pi since read_nii returns phase between 0 and 2pi whereas prepare_fieldmap accepts between -pi to pi
-        phasediff -= math.pi
+        phase_img -= math.pi
 
-        array_phase.append(phasediff)
+        list_phase.append(phase_img)
         # Special case for echo_times if input is a phasediff
         if len(phase) == 1:
             # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the
             # metadata
-            if not ('EchoTime1' in json_phasediff) or not ('EchoTime2' in json_phasediff):
+            if not ('EchoTime1' in json_phase) or not ('EchoTime2' in json_phase):
                 raise RuntimeError(
                     "The JSON file of the input phase should include the fields EchoTime1 and EchoTime2 if"
                     "it is a phase difference.")
-            echo_times = [json_phasediff['EchoTime1'], json_phasediff['EchoTime2']]  # [s]
+            echo_times = [json_phase['EchoTime1'], json_phase['EchoTime2']]  # [s]
         else:
-            echo_times.append(json_phasediff['EchoTime'])
+            echo_times.append(json_phase['EchoTime'])
 
     # Get affine from nii
-    affine = nii_phasediff.affine
+    affine = nii_phase.affine
 
     # If fname_mag is not an input define mag as None
     if fname_mag is not None:
@@ -69,7 +68,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     else:
         mask = None
 
-    fieldmap_hz = prepare_fieldmap(array_phase, echo_times, affine, mag=mag, unwrapper=unwrapper, mask=mask,
+    fieldmap_hz = prepare_fieldmap(list_phase, echo_times, affine, mag=mag, unwrapper=unwrapper, mask=mask,
                                    threshold=threshold)
 
     # Save NIFTI
