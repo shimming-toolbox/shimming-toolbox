@@ -40,10 +40,10 @@ class TestPrepareFieldmap(object):
 
         assert fieldmap.shape == self.phase.shape
 
-    def test_prepare_fieldmap_2_echos(self):
-        """Test 2 echos works"""
+    def test_prepare_fieldmap_2_echoes(self):
+        """Test 2 echoes works"""
 
-        # Import 2 echos and rescale
+        # Import 2 echoes and rescale
         fname_phase1 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         nii_phase1 = nib.load(fname_phase1)
         phase1 = (nii_phase1.get_fdata() * 2 * math.pi / 4095) - math.pi
@@ -85,7 +85,6 @@ class TestPrepareFieldmap(object):
         try:
             fieldmap = prepare_fieldmap([self.phase], echo_times, self.affine)
         except RuntimeError:
-            # TODO: message below is suspicious
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -132,11 +131,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\necho_time hase the wrong shape but does not throw an error')
+        print('\necho_time has the wrong shape but does not throw an error')
         assert False
 
-    def test_prepare_fieldmap_3_echos(self):
-        """# echos are not implemented so the test should fail"""
+    def test_prepare_fieldmap_3_echoes(self):
+        """3 echoes are not implemented so the test should fail"""
 
         echo_times = [0.001, 0.002, 0.003]
 
@@ -148,5 +147,5 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\n3 echos are not implemented')
+        print('\n3 echoes are not implemented')
         assert False

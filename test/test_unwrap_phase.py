@@ -25,30 +25,36 @@ class TestUnwrapPhase(object):
         self.mag = nii_mag.get_fdata()
 
     def test_unwrap_phase_prelude_4d(self):
+        """Test prelude with 4d input data"""
         unwrapped = unwrap_phase(self.phase, self.mag, self.affine, unwrapper='prelude')
         assert unwrapped.shape == self.phase.shape
 
     def test_unwrap_phase_prelude_3d(self):
+        """Test prelude with 3d input data"""
         phase = self.phase[..., 0]
         mag = self.mag[..., 0]
         unwrapped = unwrap_phase(phase, mag, self.affine, unwrapper='prelude')
         assert unwrapped.shape == phase.shape
 
     def test_unwrap_phase_prelude_2d(self):
+        """Test prelude with 2d input data"""
         phase = self.phase[..., 0, 0]
         mag = self.mag[..., 0, 0]
         unwrapped = unwrap_phase(phase, mag, self.affine, unwrapper='prelude')
         assert unwrapped.shape == phase.shape
 
     def test_unwrap_phase_prelude_threshold(self):
+        """Test prelude with threshold parameter"""
         unwrapped = unwrap_phase(self.phase, self.mag, self.affine, unwrapper='prelude', threshold=0.1)
         assert unwrapped.shape == self.phase.shape
 
     def test_unwrap_phase_prelude_4d_mask(self):
+        """Test prelude with mask parameter"""
         unwrapped = unwrap_phase(self.phase, self.mag, self.affine, unwrapper='prelude', mask=np.ones_like(self.phase))
         assert unwrapped.shape == self.phase.shape
 
     def test_unwrap_phase_prelude_2d_mask(self):
+        """Test prelude with 2d mask parameter"""
         phase = self.phase[..., 0, 0]
         mag = self.mag[..., 0, 0]
         unwrapped = unwrap_phase(phase, mag, self.affine, unwrapper='prelude', mask=np.ones_like(phase))
@@ -61,7 +67,7 @@ class TestUnwrapPhase(object):
         try:
             unwrap_phase(self.phase, self.mag, self.affine, unwrapper='Not yet implemented')
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
@@ -69,13 +75,13 @@ class TestUnwrapPhase(object):
         assert False
 
     def test_unwrap_phase_wrong_shape(self):
-        """Input wrong unwrapper"""
+        """Input wrong shape"""
 
         # This should return an error
         try:
             unwrap_phase(np.expand_dims(self.phase, -1), self.mag, self.affine)
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem

@@ -8,13 +8,15 @@ from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 
 def prepare_fieldmap(phase, echo_times, affine, mag=None, unwrapper='prelude', mask=None, threshold=None):
-    """ Creates fieldmap from phase and magnitude images
+    """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
+    difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
+    multiple field maps are acquired across time for the purpose of real-time shimming experiments.
 
     Args:
         phase (list): List of phase values in a numpy.ndarray. The numpy array can be [x, y], [x, y, z] or [x, y, z, t].
-                      The values mustrange from [-pi to pi]
+                      The values must range from [-pi to pi]
         echo_times (list): List of echo times in seconds for each echo. The number of echotimes must match the number of
-                           echos. It inout is a phasediff, (1 phase), input 2 echotimes
+                           echoes. It input is a phasediff (1 phase), input 2 echotimes
         affine (numpy.ndarray): 4x4 affine matrix
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo]
         unwrapper (str): Unwrapper to use for phase unwrapping. Supported: prelude
@@ -30,11 +32,11 @@ def prepare_fieldmap(phase, echo_times, affine, mag=None, unwrapper='prelude', m
         if (phase[i_echo].max() > math.pi) or (phase[i_echo].min() < -math.pi):
             raise RuntimeError("read_nii must range from -pi to pi")
 
-    # Check that the input phase is indeed a phasediff, by checking the existence of two echo times
+    # Check that the input echotimes are the appropriate size by looking at phase
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
     if not is_phasediff:
         if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
-            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echotimes must match the"
+            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
                                " number of echo times.")
 
     # If mag is not as an input define it as an array of ones. This is required by 3rd party software such as Prelude.

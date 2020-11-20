@@ -42,7 +42,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
         phasediff -= math.pi
 
         array_phase.append(phasediff)
-        # Special case for echo_times if inout is a phasediff
+        # Special case for echo_times if input is a phasediff
         if len(phase) == 1:
             # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the
             # metadata
@@ -57,7 +57,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     # Get affine from nii
     affine = nii_phasediff.affine
 
-    # If mag is not as an input define it as an array of ones
+    # If fname_mag is not an input define mag as None
     if fname_mag is not None:
         mag = load_nib(fname_mag).get_fdata()
     else:
