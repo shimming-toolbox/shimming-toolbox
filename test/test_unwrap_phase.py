@@ -66,7 +66,7 @@ class TestUnwrapPhase(object):
         # This should return an error
         try:
             unwrap_phase(self.phase, self.mag, self.affine, unwrapper='Not yet implemented')
-        except RuntimeError:
+        except NotImplementedError:
             # If an exception occurs, this is the desired behaviour
             return 0
 

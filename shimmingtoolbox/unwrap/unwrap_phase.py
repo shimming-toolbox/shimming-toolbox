@@ -65,6 +65,6 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
             phase_unwrapped = phase4d_unwrapped
 
     else:
-        raise RuntimeError(f'The unwrap function {unwrapper} is not implemented')
+        raise NotImplementedError(f'The unwrap function {unwrapper} is not implemented')
 
     return phase_unwrapped
