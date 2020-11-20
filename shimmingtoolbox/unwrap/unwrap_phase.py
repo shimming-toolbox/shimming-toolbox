@@ -27,42 +27,44 @@ def unwrap_phase(phase, mag, affine, unwrapper='prelude', mask=None, threshold=N
     """
 
     if unwrapper == 'prelude':
-
-        # Make sure phase is 4d
+        mag4d = None
+        mask4d = None
         if phase.ndim == 2:
-            phase4d = np.expand_dims(np.expand_dims(phase, -1), -1)
-            mag4d = np.expand_dims(np.expand_dims(mag, -1), -1)
-            if mask is not None:
-                mask4d = np.expand_dims(np.expand_dims(mask, -1), -1)
-        elif phase.ndim == 3:
             phase4d = np.expand_dims(phase, -1)
-            mag4d = np.expand_dims(mag, -1)
+            if mag is not None:
+                mag4d = np.expand_dims(mag, -1)
             if mask is not None:
                 mask4d = np.expand_dims(mask, -1)
+
+            mag = mag4d
+            mask = mask4d
+
+            phase3d_unwrapped = prelude(phase4d, mag, affine, mask=mask, threshold=threshold)
+
+            phase_unwrapped = phase3d_unwrapped[..., 0]
+
+        elif phase.ndim == 3:
+            phase_unwrapped = prelude(phase, mag, affine, mask=mask, threshold=threshold)
+
         elif phase.ndim == 4:
-            phase4d = phase
-            mag4d = mag
-            if mask is not None:
-                mask4d = mask
+            phase_unwrapped = np.zeros_like(phase)
+            for i_t in range(phase.shape[3]):
+                mask3d = None
+                mag3d = None
+
+                phase3d = phase[..., i_t]
+                if mag is not None:
+                    mag3d = mag[..., i_t]
+                if mask is not None:
+                    mask3d = mask[..., i_t]
+
+                mask_input = mask3d
+                mag_input = mag3d
+
+                phase_unwrapped[..., i_t] = prelude(phase3d, mag_input, affine, mask=mask_input, threshold=threshold)
+
         else:
             raise RuntimeError("Shape of input phase is not supported")
-
-        # Split along 4th dimension (time), run prelude for each instance and merge back
-        phase4d_unwrapped = np.zeros_like(phase4d)
-        for i_t in range(phase4d.shape[3]):
-            if mask is not None:
-                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask4d[..., i_t],
-                                                      threshold=threshold)
-            else:
-                phase4d_unwrapped[..., i_t] = prelude(phase4d[..., i_t], mag4d[..., i_t], affine, mask=mask,
-                                                      threshold=threshold)
-        # Squeeze last dim if its shape is 1
-        if phase.ndim == 2:
-            phase_unwrapped = phase4d_unwrapped[..., 0, 0]
-        elif phase.ndim == 3:
-            phase_unwrapped = phase4d_unwrapped[..., 0]
-        else:
-            phase_unwrapped = phase4d_unwrapped
 
     else:
         raise NotImplementedError(f'The unwrap function {unwrapper} is not implemented')

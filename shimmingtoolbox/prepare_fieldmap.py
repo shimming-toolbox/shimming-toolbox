@@ -39,13 +39,10 @@ def prepare_fieldmap(phase, echo_times, affine, mag=None, unwrapper='prelude', m
             raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
                                " number of echo times.")
 
-    # If mag is not as an input define it as an array of ones. This is required by 3rd party software such as Prelude.
-    # TODO: move this in prelude wrapper
+    # Make sure mag is the reight shape
     if mag is not None:
         if mag.shape != phase[0].shape:
             raise RuntimeError("mag and phase must have the same dimensions")
-    else:
-        mag = np.ones_like(phase[0])
 
     # Make sure mask has the right shape
     if mask is not None:
