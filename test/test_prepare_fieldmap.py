@@ -61,7 +61,7 @@ class TestPrepareFieldmap(object):
 
         assert fieldmap.shape == phase1.shape
 
-    # Tests that sould throw errors
+    # Tests that should throw errors
     def test_prepare_fieldmap_wrong_range(self):
         """Test error when range is not between -pi and pi"""
 
@@ -69,7 +69,7 @@ class TestPrepareFieldmap(object):
         try:
             fieldmap = prepare_fieldmap([self.phase - math.pi], self.echo_times, self.affine)
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
@@ -86,7 +86,7 @@ class TestPrepareFieldmap(object):
             fieldmap = prepare_fieldmap([self.phase], echo_times, self.affine)
         except RuntimeError:
             # TODO: message below is suspicious
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
@@ -100,7 +100,7 @@ class TestPrepareFieldmap(object):
         try:
             fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mag=np.zeros_like([5, 5]))
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
@@ -114,23 +114,39 @@ class TestPrepareFieldmap(object):
         try:
             fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mask=np.zeros_like([5, 5]))
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
         print('\nMask has the wrong shape but does not throw an error')
         assert False
 
-    def test_prepare_fieldmap_phadiff_1_echotime(self):
+    def test_prepare_fieldmap_phasediff_1_echotime(self):
         """EchoTime of length one for phasediff should fail"""
 
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase], [self.echo_times[0]], self.affine)
         except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
+            # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
         print('\necho_time hase the wrong shape but does not throw an error')
+        assert False
+
+    def test_prepare_fieldmap_3_echos(self):
+        """# echos are not implemented so the test should fail"""
+
+        echo_times = [0.001, 0.002, 0.003]
+
+        # This should return an error
+        try:
+            fieldmap = prepare_fieldmap([self.phase, self.phase, self.phase], echo_times, self.affine)
+        except NotImplementedError:
+            # If an exception occurs, this is the desired behaviour
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print('\n3 echos are not implemented')
         assert False

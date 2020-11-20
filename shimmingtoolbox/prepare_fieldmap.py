@@ -31,11 +31,11 @@ def prepare_fieldmap(phase, echo_times, affine, mag=None, unwrapper='prelude', m
             raise RuntimeError("read_nii must range from -pi to pi")
 
     # Check that the input phase is indeed a phasediff, by checking the existence of two echo times
-    # TODO: maybe there is a more intuitive way to write this test: first check if phasediff, if not: simply assert
-    #  len(phase)==len(echo_times)
-    if (len(echo_times) != len(phase) and not (len(phase) == 1 and len(echo_times) == 2)) \
-            or (len(phase) == 1 and len(echo_times) == 1):
-        raise RuntimeError("The number of echoes must match the number of echo times.")
+    is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
+    if not is_phasediff:
+        if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
+            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echotimes must match the"
+                               " number of echo times.")
 
     # If mag is not as an input define it as an array of ones. This is required by 3rd party software such as Prelude.
     # TODO: move this in prelude wrapper
