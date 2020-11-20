@@ -15,7 +15,7 @@ import numpy as np
 from shimmingtoolbox.utils import run_subprocess
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping_in_2d=False):
+def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -39,8 +39,11 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
         raise RuntimeError("Wrapped_phase must be 2d or 3d")
-    if wrapped_phase.shape != mag.shape:
-        raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+    if mag is not None:
+        if wrapped_phase.shape != mag.shape:
+            raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+    else:
+        mag = np.zeros_like(wrapped_phase)
 
     tmp = tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem)
     path_tmp = tmp.name
