@@ -4,6 +4,7 @@
 
 import numpy as np
 from nibabel.affines import apply_affine
+import math
 
 
 def generate_meshgrid(dim, affine):
@@ -31,3 +32,47 @@ def generate_meshgrid(dim, affine):
                 for i in range(3):
                     coord_phys[i][ix, iy, iz] = coord_phys_list[i]
     return coord_phys
+
+
+def phys_gradient(data, affine):
+    """Calculate the gradient of ``data`` along physical coordinates defined by ``affine``
+
+    Args:
+        data (numpy.ndarray): 3d array containing data to apply gradient
+        affine (numpy.ndarray): 4x4 array containing affine transformation
+    """
+
+    x_vox = 0
+    y_vox = 1
+    z_vox = 2
+
+    x_vox_spacing = math.sqrt((affine[x_vox, 0] ** 2) + (affine[x_vox, 1] ** 2) + (affine[x_vox, 2] ** 2))
+    y_vox_spacing = math.sqrt((affine[y_vox, 0] ** 2) + (affine[y_vox, 1] ** 2) + (affine[y_vox, 2] ** 2))
+    z_vox_spacing = math.sqrt((affine[z_vox, 0] ** 2) + (affine[z_vox, 1] ** 2) + (affine[z_vox, 2] ** 2))
+
+    if data.shape[x_vox] != 1:
+        x_vox_gradient = np.gradient(data, x_vox_spacing, axis=x_vox)
+    else:
+        x_vox_gradient = np.zeros_like(data)
+
+    if data.shape[y_vox] != 1:
+        y_vox_gradient = np.gradient(data, y_vox_spacing, axis=y_vox)
+    else:
+        y_vox_gradient = np.zeros_like(data)
+
+    if data.shape[z_vox] != 1:
+        z_vox_gradient = np.gradient(data, z_vox_spacing, axis=z_vox)
+    else:
+        z_vox_gradient = np.zeros_like(data)
+
+    x_gradient = ((x_vox_gradient * (affine[x_vox, 0] / x_vox_spacing)) +
+                  (y_vox_gradient * (affine[x_vox, 1] / y_vox_spacing)) +
+                  (z_vox_gradient * (affine[x_vox, 2] / z_vox_spacing)))
+    y_gradient = ((x_vox_gradient * (affine[y_vox, 0] / x_vox_spacing)) +
+                  (y_vox_gradient * (affine[y_vox, 1] / y_vox_spacing)) +
+                  (z_vox_gradient * (affine[y_vox, 2] / z_vox_spacing)))
+    z_gradient = ((x_vox_gradient * (affine[z_vox, 2] / x_vox_spacing)) +
+                  (y_vox_gradient * (affine[z_vox, 1] / y_vox_spacing)) +
+                  (z_vox_gradient * (affine[z_vox, 2] / z_vox_spacing)))
+
+    return x_gradient, y_gradient, z_gradient
