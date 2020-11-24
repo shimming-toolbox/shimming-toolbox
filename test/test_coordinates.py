@@ -41,11 +41,11 @@ def test_generate_meshgrid():
 
 
 def test_phys_gradient_synt():
-    """Define a previously calculated matrix (matrix was defined at 45 deg for a gx=-6, gy=2)"""
+    """Define a previously calculated matrix (matrix was defined at 45 deg for gx=-6, gy=2)"""
     img_array = np.expand_dims(np.array([[6 * math.sqrt(2), 4 * math.sqrt(2), 2 * math.sqrt(2)],
                                          [2 * math.sqrt(2), 0, -2 * math.sqrt(2)],
                                          [-2 * math.sqrt(2), -4 * math.sqrt(2), -6 * math.sqrt(2)]]), -1)
-    # Define a scale matrix
+    # Define a scaling matrix
     scale = np.array([[1, 0, 0],
                       [0, 1, 0],
                       [0, 0, 1]])
@@ -69,11 +69,11 @@ def test_phys_gradient_synt():
 
 
 def test_phys_gradient_synt_scaled():
-    """Define a previously calculated matrix (matrix was defined at 45 deg for a gx=-3, gy=1)"""
+    """Define a previously calculated matrix (matrix was defined at 45 deg for gx=-3, gy=1)"""
     img_array = np.expand_dims(np.array([[6 * math.sqrt(2), 4 * math.sqrt(2), 2 * math.sqrt(2)],
                                          [2 * math.sqrt(2), 0, -2 * math.sqrt(2)],
                                          [-2 * math.sqrt(2), -4 * math.sqrt(2), -6 * math.sqrt(2)]]), -1)
-    # Define a scale matrix
+    # Define a scaling matrix
     scale = np.array([[2, 0, 0],
                       [0, 2, 0],
                       [0, 0, 2]])
@@ -112,12 +112,10 @@ def test_phys_gradient_reel():
 
     g_x, g_y, g_z = phys_gradient(fmap[..., 0], affine)
 
-    # Test against scaled but non rotated fieldmap, should get the same results as phys_gradient
+    # Test against scaled, non rotated sagittal fieldmap, this should get the same results as phys_gradient
     x_coord, y_coord, z_coord = generate_meshgrid(fmap[..., 0].shape, affine)
     gx_truth = np.zeros_like(fmap[..., 0])
     gy_truth = np.gradient(fmap[..., 0], y_coord[:, 0, 0], axis=0)
     gz_truth = np.gradient(fmap[..., 0], z_coord[0, :, 0], axis=1)
 
-    assert np.all(np.isclose(g_z, gz_truth)) and np.all(np.isclose(g_y, gy_truth)) and np.all(np.isclose(g_x, gx_truth))
-
-
+    assert np.all(np.isclose(g_x, gx_truth)) and np.all(np.isclose(g_y, gy_truth)) and np.all(np.isclose(g_z, gz_truth))
