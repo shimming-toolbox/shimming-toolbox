@@ -69,8 +69,8 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     nii_mag_e2 = nib.load(fname_mags[1])
 
     # Call prelude to unwrap the phase
-    unwrapped_phase_e1 = prelude(phase_e1, nii_mag_e1.get_fdata(), nii_phase_e1.affine)
-    unwrapped_phase_e2 = prelude(phase_e2, nii_mag_e2.get_fdata(), nii_phase_e2.affine, threshold=200)
+    unwrapped_phase_e1 = prelude(phase_e1, nii_phase_e1.affine, mag=nii_mag_e1.get_fdata())
+    unwrapped_phase_e2 = prelude(phase_e2, nii_phase_e2.affine, mag=nii_mag_e2.get_fdata(), threshold=200)
 
     # Plot results
     fig = Figure(figsize=(10, 10))
