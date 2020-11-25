@@ -8,6 +8,7 @@ import nibabel as nib
 
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.coils.coordinates import phys_gradient
+from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
 from shimmingtoolbox import __dir_testing__
 
 
@@ -119,3 +120,72 @@ def test_phys_gradient_reel():
     gz_truth = np.gradient(fmap[..., 0], z_coord[0, :, 0], axis=1)
 
     assert np.all(np.isclose(g_x, gx_truth)) and np.all(np.isclose(g_y, gy_truth)) and np.all(np.isclose(g_z, gz_truth))
+
+
+def test_phys_to_vox_gradient_synt():
+    """Define a previously calculated matrix"""
+    img_array = np.expand_dims(np.array([[6 * math.sqrt(2), 4 * math.sqrt(2), 2 * math.sqrt(2)],
+                                         [2 * math.sqrt(2), 0, -2 * math.sqrt(2)],
+                                         [-2 * math.sqrt(2), -4 * math.sqrt(2), -6 * math.sqrt(2)]]), -1)
+    # Define a scaling matrix
+    x_vox_spacing = 1
+    y_vox_spacing = -2
+    scale = np.array([[x_vox_spacing, 0, 0],
+                      [0, y_vox_spacing, 0],
+                      [0, 0, 1]])
+
+    # Define a rotation matrix
+    deg_angle = 10
+    rot = np.array([[math.cos(deg_angle * math.pi / 180), -math.sin(deg_angle * math.pi / 180), 0],
+                    [math.sin(deg_angle * math.pi / 180), math.cos(deg_angle * math.pi / 180), 0],
+                    [0, 0, 1]])
+
+    # Calculate affine matrix
+    m_affine = np.dot(rot, scale)
+    static_affine = [0, 0, 0, 1]
+    affine = np.zeros([4, 4])
+    affine[:3, :3] = m_affine
+    affine[3, :] = static_affine
+
+    gx_phys, gy_phys, gz_phys = phys_gradient(img_array, affine)
+
+    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)
+
+    # Calculate ground truth with the original matrix
+    # TODO: account for scaling being negative
+    gx_truth = np.gradient(img_array, x_vox_spacing, axis=0)
+    gy_truth = np.gradient(img_array, y_vox_spacing, axis=1)
+    gz_truth = np.zeros_like(img_array)
+
+    assert np.all(np.isclose(gx_vox, gx_truth)) and \
+           np.all(np.isclose(gy_vox, gy_truth)) and \
+           np.all(np.isclose(gz_vox, gz_truth))
+
+
+def test_phys_to_vox_gradient_reel():
+    """
+    Test the function on real data at 0 degrees of rotation so a ground truth can be calculated with a simple
+    gradient calculation since they are parallel. The reel data adds a degree of complexity since it is a sagittal image
+    """
+
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+
+    nii_fieldmap = nib.load(fname_fieldmap)
+
+    affine = nii_fieldmap.affine
+    fmap = nii_fieldmap.get_fdata()
+
+    gx_phys, gy_phys, gz_phys = phys_gradient(fmap[..., 0], affine)
+
+    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)
+
+    # Test against scaled, non rotated sagittal fieldmap, this should get the same results as phys_gradient
+    x_coord, y_coord, z_coord = generate_meshgrid(fmap[..., 0].shape, affine)
+    gx_truth = np.zeros_like(fmap[..., 0])
+    gy_truth = np.gradient(fmap[..., 0], y_coord[:, 0, 0], axis=0)
+    gz_truth = np.gradient(fmap[..., 0], z_coord[0, :, 0], axis=1)
+
+    assert np.all(np.isclose(gx_truth, gz_vox)) and \
+           np.all(np.isclose(gy_truth, gx_vox)) and \
+           np.all(np.isclose(gz_truth, gy_vox))
