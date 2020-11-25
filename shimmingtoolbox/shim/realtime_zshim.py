@@ -23,7 +23,21 @@ if not os.path.exists(fname_debug):
 
 
 def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=None):
+    """ TODO:
 
+    Args:
+        nii_fieldmap:
+        nii_anat:
+        fname_resp:
+        json_fmap:
+        nii_mask_anat:
+
+    Returns:
+        numpy.ndarray: static_correction
+        numpy.ndarray: riro_correction
+        numpy.ndarray: mean_p
+
+    """
     # Make sure fieldmap has the appropriate dimensions
     fieldmap = nii_fieldmap.get_fdata()
     if fieldmap.ndim != 4:
