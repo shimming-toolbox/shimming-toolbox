@@ -25,10 +25,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     context_settings=CONTEXT_SETTINGS,
     help=f"Perform realtime z-shimming."
 )
-# @click.option('-coil', 'fname_coil', required=True, type=click.Path(),
-#               help="Coil basis to use for shimming. Enter multiple files if "
-#                    "you wish to use more than one set of shim coils (eg: "
-#                    "Siemens gradient/shim coils and external custom coils).")
 @click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
               help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
 @click.option('-mask', 'fname_mask_anat', type=click.Path(),
@@ -59,11 +55,6 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     Returns:
 
     """
-    # Load coil
-    # When using only z channel (corresponding to index 0) TODO:Remove
-    # coil = np.expand_dims(nib.load(fname_coil).get_fdata()[:, :, :, 0], -1)
-    # When using all channels TODO: Keep
-    # coil = nib.load(fname_coil).get_fdata()
 
     # Look if output directory exists, if not, create it
     if not os.path.exists(fname_output):
@@ -102,15 +93,8 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
     if DEBUG:
         nib.save(nii_mask_fmap, os.path.join(fname_output, 'tmp.mask_fmap_resample.nii.gz'))
 
-    # Shim using sequencer and optimizer
-    # n_coils = coil.shape[-1]
-    # currents = np.zeros([n_coils, nt])
-    # shimmed = np.zeros_like(fieldmap)
     masked_fieldmaps = np.zeros_like(fieldmap)
     for i_t in range(nt):
-    #     currents[:, i_t] = sequential_zslice(fieldmap[..., i_t], coil, mask_fmap, z_slices=np.array(range(nz)),
-    #                                          bounds=[(-np.inf, np.inf)] * n_coils)
-    #     shimmed[..., i_t] = fieldmap[..., i_t] + np.sum(currents[:, i_t] * coil, axis=3, keepdims=False)
         masked_fieldmaps[..., i_t] = mask_fmap * fieldmap[..., i_t]
 
     # Calculate gz gradient
@@ -219,42 +203,6 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
 
     if DEBUG:
 
-        # Calculate masked shim for spherical harmonics plot
-        # masked_shimmed = np.zeros_like(shimmed)
-        # for i_t in range(nt):
-        #     masked_shimmed[..., i_t] = mask_fmap * shimmed[..., i_t]
-
-        # Plot unshimmed vs shimmed and their mask for spherical harmonics
-        # i_t = 0
-        # fig = Figure(figsize=(10, 10))
-        # ax = fig.add_subplot(2, 2, 1)
-        # im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Masked unshimmed")
-        # ax = fig.add_subplot(2, 2, 2)
-        # im = ax.imshow(masked_shimmed[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Masked shimmed")
-        # ax = fig.add_subplot(2, 2, 3)
-        # im = ax.imshow(fieldmap[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Unshimmed")
-        # ax = fig.add_subplot(2, 2, 4)
-        # im = ax.imshow(shimmed[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Shimmed")
-        # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_shimmed.png')
-        # fig.savefig(fname_figure)
-
-        # Plot the coil coefs through time
-        # fig = Figure(figsize=(10, 10))
-        # for i_coil in range(n_coils):
-        #     ax = fig.add_subplot(n_coils, 1, i_coil + 1)
-        #     ax.plot(np.arange(nt), currents[i_coil, :])
-        #     ax.set_title(f"Channel {i_coil}")
-        # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'fig_realtime_zshim_sphharm_currents.png')
-        # fig.savefig(fname_figure)
-
         # Plot Static and RIRO
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
@@ -267,27 +215,6 @@ def realtime_zshim(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_an
         ax.set_title("Static")
         fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_riro_static.png')
         fig.savefig(fname_figure)
-
-        # Calculate fitted and shimmed for pressure fitted plot
-        # fitted_fieldmap = riro * (acq_pressures - mean_p) + static
-        # shimmed_pressure_fitted = np.expand_dims(fitted_fieldmap, 2) + masked_fieldmaps
-        #
-        # # Plot pressure fitted fieldmap
-        # fig = Figure(figsize=(10, 10))
-        # ax = fig.add_subplot(3, 1, 1)
-        # im = ax.imshow(masked_fieldmaps[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("fieldmap")
-        # ax = fig.add_subplot(3, 1, 2)
-        # im = ax.imshow(fitted_fieldmap[:-1, :-1, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Fit")
-        # ax = fig.add_subplot(3, 1, 3)
-        # im = ax.imshow(shimmed_pressure_fitted[:-1, :-1, 0, i_t])
-        # fig.colorbar(im)
-        # ax.set_title("Shimmed (fit + fieldmap")
-        # fname_figure = os.path.join(fname_output, 'fig_realtime_zshim_pressure_fitted.png')
-        # fig.savefig(fname_figure)
 
         # Reshape pmu datapoints to fit those of the acquisition
         pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
