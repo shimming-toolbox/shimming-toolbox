@@ -50,3 +50,6 @@ misc
 
 .. automodule:: shimmingtoolbox.cli.download_data
    :members:
+
+.. automodule:: shimmingtoolbox.cli.dicom_to_nifti
+   :members:
