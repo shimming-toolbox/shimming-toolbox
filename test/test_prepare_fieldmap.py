@@ -26,7 +26,7 @@ class TestPrepareFieldmap(object):
         self.echo_times = [0.00246, 0.00492]
 
     def test_prepare_fieldmap_1_echo(self):
-        """Test default works"""
+        """Test default works."""
         fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine)
 
         assert fieldmap.shape == self.phase.shape
@@ -35,13 +35,13 @@ class TestPrepareFieldmap(object):
                                  np.array([18.51355514, 13.84794053,  9.48013154,  5.11232207,  0.64524454])))
 
     def test_prepare_fieldmap_with_mag(self):
-        """Test mag works"""
+        """Test mag works."""
         fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mag=self.mag)
 
         assert fieldmap.shape == self.phase.shape
 
     def test_prepare_fieldmap_2_echoes(self):
-        """Test 2 echoes works"""
+        """Test 2 echoes works."""
 
         # Import 2 echoes and rescale
         fname_phase1 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
@@ -63,7 +63,7 @@ class TestPrepareFieldmap(object):
 
     # Tests that should throw errors
     def test_prepare_fieldmap_wrong_range(self):
-        """Test error when range is not between -pi and pi"""
+        """Test error when range is not between -pi and pi."""
 
         # This should return an error
         try:
@@ -73,11 +73,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\nRange is not between -pi and pi but does not throw an error')
+        print("\nRange is not between -pi and pi but does not throw an error.")
         assert False
 
     def test_prepare_fieldmap_wrong_echo_times(self):
-        """Wrong number of echo times"""
+        """Wrong number of echo times."""
 
         echo_times = [0.001, 0.002, 0.003]
 
@@ -89,11 +89,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\nEcho_times has too many elements but does not throw an error')
+        print("\nEcho_times has too many elements but does not throw an error.")
         assert False
 
     def test_prepare_fieldmap_mag_wrong_shape(self):
-        """Mag has the wrong shape"""
+        """Mag has the wrong shape."""
 
         # This should return an error
         try:
@@ -103,11 +103,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\nMag has the wrong shape but does not throw an error')
+        print("\nMag has the wrong shape but does not throw an error.")
         assert False
 
     def test_prepare_fieldmap_mask_wrong_shape(self):
-        """Mask has the wrong shape"""
+        """Mask has the wrong shape."""
 
         # This should return an error
         try:
@@ -117,11 +117,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\nMask has the wrong shape but does not throw an error')
+        print("\nMask has the wrong shape but does not throw an error.")
         assert False
 
     def test_prepare_fieldmap_phasediff_1_echotime(self):
-        """EchoTime of length one for phasediff should fail"""
+        """EchoTime of length one for phasediff should fail."""
 
         # This should return an error
         try:
@@ -131,11 +131,11 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\necho_time has the wrong shape but does not throw an error')
+        print("\necho_time has the wrong shape but does not throw an error.")
         assert False
 
     def test_prepare_fieldmap_3_echoes(self):
-        """3 echoes are not implemented so the test should fail"""
+        """3 echoes are not implemented so the test should fail."""
 
         echo_times = [0.001, 0.002, 0.003]
 
@@ -147,5 +147,5 @@ class TestPrepareFieldmap(object):
             return 0
 
         # If there isn't an error, then there is a problem
-        print('\n3 echoes are not implemented')
+        print("\n3 echoes are not implemented.")
         assert False
