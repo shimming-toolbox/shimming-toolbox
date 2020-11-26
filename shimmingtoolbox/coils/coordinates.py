@@ -114,30 +114,34 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
 
     x_coord, y_coord, z_coord = generate_meshgrid(gx.shape, affine)
 
-    x_vox_is_neg = False
-    y_vox_is_neg = False
-    z_vox_is_neg = False
+    # Solve for rotation matrix
+    Rx = np.zeros([3, 3])
+
+    # x_vox_is_neg_x = x_vox_is_neg_y = x_vox_is_neg_z = x_vox_spacing
+    # y_vox_is_neg_x = y_vox_is_neg_y = y_vox_is_neg_z = y_vox_spacing
+    # z_vox_is_neg_x = z_vox_is_neg_y = z_vox_is_neg_z = z_vox_spacing
+
     # if x_coord.shape[0] > 1:
     #     if (x_coord[1, 0, 0] - x_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg = True
+    #         x_vox_is_neg_x *= -1
     #     if (y_coord[1, 0, 0] - y_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg = True
+    #         x_vox_is_neg_y *= -1
     #     if (z_coord[1, 0, 0] - z_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg = True
+    #         x_vox_is_neg_z *= -1
     # if x_coord.shape[1] > 1:
     #     if (x_coord[0, 1, 0] - x_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg = True
+    #         y_vox_is_neg_x *= -1
     #     if (y_coord[0, 1, 0] - y_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg = True
+    #         y_vox_is_neg_y *= -1
     #     if (z_coord[0, 1, 0] - z_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg = True
+    #         y_vox_is_neg_z *= -1
     # if x_coord.shape[2] > 1:
     #     if (x_coord[0, 0, 1] - x_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg = True
+    #         z_vox_is_neg_x *= -1
     #     if (y_coord[0, 0, 1] - y_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg = True
+    #         z_vox_is_neg_y *= -1
     #     if (z_coord[0, 0, 1] - z_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg = True
+    #         z_vox_is_neg_z *= -1
 
     # if x_coord.shape[0] > 1:
     #     x_point_0 = math.sqrt((x_coord[0, 0, 0] ** 2) + (y_coord[0, 0, 0] ** 2) + (z_coord[0, 0, 0] ** 2))
@@ -155,13 +159,6 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
     #     if (z_point_1 - z_point_0) < 0:
     #         z_vox_is_neg = True
 
-    if x_vox_is_neg:
-        x_vox_spacing *= -1
-    if y_vox_is_neg:
-        y_vox_spacing *= -1
-    if z_vox_is_neg:
-        z_vox_spacing *= -1
-
     inv_affine = np.linalg.inv(affine[:3, :3])
 
     gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
@@ -173,5 +170,15 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
     gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
              (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
              (gz * inv_affine[2, z_vox] * z_vox_spacing)
+
+    # gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
+    #          (gy * inv_affine[0, y_vox] * x_vox_spacing) + \
+    #          (gz * inv_affine[0, z_vox] * x_vox_spacing)
+    # gy_vox = (gx * inv_affine[1, x_vox] * y_vox_spacing) + \
+    #          (gy * inv_affine[1, y_vox] * y_vox_spacing) + \
+    #          (gz * inv_affine[1, z_vox] * y_vox_spacing)
+    # gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
+    #          (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
+    #          (gz * inv_affine[2, z_vox] * z_vox_spacing)
 
     return gx_vox, gy_vox, gz_vox
