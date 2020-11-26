@@ -18,11 +18,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.group(context_settings=CONTEXT_SETTINGS, help=f"Create a SCT (SpinalCordToolbox) mask.")
-def mask():
+def mask_cli():
     pass
 
 
-@mask.command(context_settings=CONTEXT_SETTINGS, help=f"Create a SCT (SpinalCordToolbox) mask from the input file. "
+@mask_cli.command(context_settings=CONTEXT_SETTINGS, help=f"Create a SCT (SpinalCordToolbox) mask from the input file. "
                                                       f"Return an output nifti file with SCT mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
               help="Input path of the nifti file to mask.")
@@ -52,7 +52,7 @@ def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
                           ny/2).
                           <centerline>: At each slice, the mask is centered
                           at the spinal cord centerline, defined by the input
-                          segmentation FILE.
+                          segmentation FILE. This segmentation file can be created with the CLI get_centerline.
                           (default: center)
             process2 (str): Process to generate mask.
                           For process1='coord': <XxY>: Center mask at the X,Y coordinates. (e.g.
@@ -64,8 +64,8 @@ def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
                           ny/2).
                           For process1='centerline': <FILE>: At each slice, the mask is centered
                           at the spinal cord centerline, defined by the input
-                          segmentation FILE. (e.g. "centerline,t2_seg.nii.gz")
-                          (default: center)
+                          segmentation FILE. This segmentation file can be created with the CLI get_centerline. 
+                          (e.g. "centerline,t2_seg.nii.gz") (default: center)
             size: Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter (Example:
                     35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41).
             shape (str): Shape of the mask (default: cylinder).
@@ -79,7 +79,17 @@ def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
     if not os.path.exists(output):
         os.makedirs(output)
     
-    subprocess.run(['bash', '-c','sct_create_mask', '-i', fname_input, '-p', process1, process2, '-size', size, '-f',
-                    shape, 'o', output, '-r', remove, '-v', verbose])
+    if process1 == "center" and process2 is None:
+        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1, '-size', size, '-f', shape, '-o', output,
+                        '-r', remove, '-v', verbose], check=True)
+
+    elif process1 == "center" and process2 is not None:
+        raise ValueError("The process 'center' must not have a 2nd argument in process2.")
+
+    else:
+        subprocess.run(
+            ['sct_create_mask', '-i', fname_input, '-p', process1 + "," + process2, '-size', size, '-f', shape,
+             '-o', output, '-r', remove, '-v', verbose], check=True)
+
     click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
     return output
