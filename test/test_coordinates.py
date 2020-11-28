@@ -135,7 +135,7 @@ def test_phys_to_vox_gradient_synt():
                       [0, 0, 1]])
 
     # Define a rotation matrix
-    deg_angle = 10
+    deg_angle = -10
     rot = np.array([[math.cos(deg_angle * math.pi / 180), -math.sin(deg_angle * math.pi / 180), 0],
                     [math.sin(deg_angle * math.pi / 180), math.cos(deg_angle * math.pi / 180), 0],
                     [0, 0, 1]])
@@ -147,14 +147,13 @@ def test_phys_to_vox_gradient_synt():
     affine[:3, :3] = m_affine
     affine[3, :] = static_affine
 
-    gx_phys, gy_phys, gz_phys = phys_gradient(img_array, affine)
+    gx_phys, gy_phys, gz_phys = phys_gradient(img_array, affine)  # gx = -5.32, gy = 2.37, gz = 0
 
-    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)
+    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)  # gx_vox = -5.66, gy_vox = -1.41
 
     # Calculate ground truth with the original matrix
-    # TODO: account for scaling being negative
-    gx_truth = np.gradient(img_array, x_vox_spacing, axis=0)
-    gy_truth = np.gradient(img_array, y_vox_spacing, axis=1)
+    gx_truth = np.gradient(img_array, abs(x_vox_spacing), axis=0)
+    gy_truth = np.gradient(img_array, abs(y_vox_spacing), axis=1)
     gz_truth = np.zeros_like(img_array)
 
     assert np.all(np.isclose(gx_vox, gx_truth)) and \
@@ -183,8 +182,8 @@ def test_phys_to_vox_gradient_reel():
     # Test against scaled, non rotated sagittal fieldmap, this should get the same results as phys_gradient
     x_coord, y_coord, z_coord = generate_meshgrid(fmap[..., 0].shape, affine)
     gx_truth = np.zeros_like(fmap[..., 0])
-    gy_truth = np.gradient(fmap[..., 0], y_coord[:, 0, 0], axis=0)
-    gz_truth = np.gradient(fmap[..., 0], z_coord[0, :, 0], axis=1)
+    gy_truth = np.gradient(fmap[..., 0], abs(y_coord[1, 0, 0] - y_coord[0, 0, 0]), axis=0)
+    gz_truth = np.gradient(fmap[..., 0], abs(z_coord[0, 1, 0] - z_coord[0, 0, 0]), axis=1)
 
     assert np.all(np.isclose(gx_truth, gz_vox)) and \
            np.all(np.isclose(gy_truth, gx_vox)) and \

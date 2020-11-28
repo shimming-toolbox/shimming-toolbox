@@ -112,53 +112,6 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
     y_vox_spacing = math.sqrt((affine[0, y_vox] ** 2) + (affine[1, y_vox] ** 2) + (affine[2, y_vox] ** 2))
     z_vox_spacing = math.sqrt((affine[0, z_vox] ** 2) + (affine[1, z_vox] ** 2) + (affine[2, z_vox] ** 2))
 
-    x_coord, y_coord, z_coord = generate_meshgrid(gx.shape, affine)
-
-    # Solve for rotation matrix
-    Rx = np.zeros([3, 3])
-
-    # x_vox_is_neg_x = x_vox_is_neg_y = x_vox_is_neg_z = x_vox_spacing
-    # y_vox_is_neg_x = y_vox_is_neg_y = y_vox_is_neg_z = y_vox_spacing
-    # z_vox_is_neg_x = z_vox_is_neg_y = z_vox_is_neg_z = z_vox_spacing
-
-    # if x_coord.shape[0] > 1:
-    #     if (x_coord[1, 0, 0] - x_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg_x *= -1
-    #     if (y_coord[1, 0, 0] - y_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg_y *= -1
-    #     if (z_coord[1, 0, 0] - z_coord[0, 0, 0]) < 0:
-    #         x_vox_is_neg_z *= -1
-    # if x_coord.shape[1] > 1:
-    #     if (x_coord[0, 1, 0] - x_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg_x *= -1
-    #     if (y_coord[0, 1, 0] - y_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg_y *= -1
-    #     if (z_coord[0, 1, 0] - z_coord[0, 0, 0]) < 0:
-    #         y_vox_is_neg_z *= -1
-    # if x_coord.shape[2] > 1:
-    #     if (x_coord[0, 0, 1] - x_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg_x *= -1
-    #     if (y_coord[0, 0, 1] - y_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg_y *= -1
-    #     if (z_coord[0, 0, 1] - z_coord[0, 0, 0]) < 0:
-    #         z_vox_is_neg_z *= -1
-
-    # if x_coord.shape[0] > 1:
-    #     x_point_0 = math.sqrt((x_coord[0, 0, 0] ** 2) + (y_coord[0, 0, 0] ** 2) + (z_coord[0, 0, 0] ** 2))
-    #     x_point_1 = math.sqrt((x_coord[1, 0, 0] ** 2) + (y_coord[1, 0, 0] ** 2) + (z_coord[1, 0, 0] ** 2))
-    #     if (x_point_1 - x_point_0) < 0:
-    #         x_vox_is_neg = True
-    # if x_coord.shape[1] > 1:
-    #     y_point_0 = math.sqrt((x_coord[0, 0, 0] ** 2) + (y_coord[0, 0, 0] ** 2) + (z_coord[0, 0, 0] ** 2))
-    #     y_point_1 = math.sqrt((x_coord[0, 1, 0] ** 2) + (y_coord[0, 1, 0] ** 2) + (z_coord[0, 1, 0] ** 2))
-    #     if (y_point_1 - y_point_0) < 0:
-    #         y_vox_is_neg = True
-    # if x_coord.shape[2] > 1:
-    #     z_point_0 = math.sqrt((x_coord[0, 0, 0] ** 2) + (y_coord[0, 0, 0] ** 2) + (z_coord[0, 0, 0] ** 2))
-    #     z_point_1 = math.sqrt((x_coord[0, 0, 1] ** 2) + (y_coord[0, 0, 1] ** 2) + (z_coord[0, 0, 1] ** 2))
-    #     if (z_point_1 - z_point_0) < 0:
-    #         z_vox_is_neg = True
-
     inv_affine = np.linalg.inv(affine[:3, :3])
 
     gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
@@ -170,15 +123,5 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
     gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
              (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
              (gz * inv_affine[2, z_vox] * z_vox_spacing)
-
-    # gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
-    #          (gy * inv_affine[0, y_vox] * x_vox_spacing) + \
-    #          (gz * inv_affine[0, z_vox] * x_vox_spacing)
-    # gy_vox = (gx * inv_affine[1, x_vox] * y_vox_spacing) + \
-    #          (gy * inv_affine[1, y_vox] * y_vox_spacing) + \
-    #          (gz * inv_affine[1, z_vox] * y_vox_spacing)
-    # gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
-    #          (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
-    #          (gz * inv_affine[2, z_vox] * z_vox_spacing)
 
     return gx_vox, gy_vox, gz_vox
