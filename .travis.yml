@@ -23,7 +23,7 @@ install:
   -
   - # Install SpinalCordToolbox v5.0.1
   - curl -JLO https://github.com/neuropoly/spinalcordtoolbox/archive/5.0.1.zip
-  - unzip -o 5.0.1.zip
+  - unzip -o spinalcordtoolbox-5.0.1.zip
   - ./install_sct
   -
   - pip install .
