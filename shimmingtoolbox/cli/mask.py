@@ -14,7 +14,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.group(context_settings=CONTEXT_SETTINGS,
              help=f"Create a mask based on a specified shape (box, rectangle, SpinalCord Toolbox mask) or based on the "
-                  f"thresholding of an input image. Callable with the prefix 'st_' (Example: 'st_mask -h').")
+                  f"thresholding of an input image. Callable with the prefix 'st' in front of 'mask'. "
+                  f"(Example: 'st_mask -h').")
 def mask_cli():
     pass
 
