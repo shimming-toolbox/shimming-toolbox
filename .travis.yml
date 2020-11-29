@@ -21,6 +21,11 @@ install:
   - unzip -o dcm2niix_lnx.zip
   - sudo install dcm2nii* /usr/bin/
   -
+  - # Install SpinalCordToolbox v5.0.1
+  - curl -JLO https://github.com/neuropoly/spinalcordtoolbox/archive/5.0.1.zip
+  - unzip -o 5.0.1.zip
+  - ./install_sct
+  -
   - pip install .
   - pip install coveralls
 # command to run tests
