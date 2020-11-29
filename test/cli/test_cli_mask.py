@@ -9,30 +9,32 @@ from shimmingtoolbox.cli.mask import mask_cli
 from shimmingtoolbox import __dir_testing__
 
 
-def test_cli_mask_cube():
+def test_cli_mask_box():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         out = os.path.join(tmp, 'nifti1')
-        size = 5
-
-        result = runner.invoke(mask_cli, ['cube', '-input', inp, '-output', out, '-size', size])
+        size1 = 10
+        size2 = 20
+        size3 = 5
+        result = runner.invoke(mask_cli, ['box', '-input', inp, '-output', out, '-size', size1, size2, size3])
 
         assert result.exit_code == 0
         assert result is not None
         assert len(os.listdir(out)) != 0
 
 
-def test_cli_mask_square():
+def test_cli_mask_rect():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         out = os.path.join(tmp, 'nifti2')
-        size = 50
+        size1 = 50
+        size2 = 5
 
-        result = runner.invoke(mask_cli, ['square', '-input', inp, '-output', out, '-size', size])
+        result = runner.invoke(mask_cli, ['rect', '-input', inp, '-output', out, '-size', size1, size2])
 
         assert result.exit_code == 0
         assert result is not None
