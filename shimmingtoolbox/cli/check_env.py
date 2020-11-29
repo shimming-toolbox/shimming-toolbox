@@ -11,10 +11,37 @@ import subprocess
 import os
 import platform
 import psutil
+import sys
 
 from typing import Dict, Tuple, List
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+
+def print_ok(more=None):
+    print("[{}OK{}]{}".format(bcolors.OKGREEN, bcolors.ENDC, more if more is not None else ""))
+
+
+def print_warning(more=None):
+    print("[{}WARNING{}]{}".format(bcolors.WARNING, bcolors.ENDC, more if more is not None else ""))
+
+
+def print_fail(more=None):
+    print("[{}FAIL{}]{}".format(bcolors.FAIL, bcolors.ENDC, more if more is not None else ""))
+
+
+def print_line(string):
+    """print without carriage return"""
+    sys.stdout.write(string.ljust(52, '.'))
+    sys.stdout.flush()
 
 
 @click.command(
@@ -25,20 +52,32 @@ def check_dependencies():
     """Verifies dependencies are installed by calling helper functions and
     formatting output accordingly.
     """
+    check_name = "Check if {} is installed"
+
+    # Prelude
+    prelude_check_msg = check_name.format("prelude")
+    print_line(prelude_check_msg)
     # 0 indicates prelude is installed.
     prelude_exit_code: int = check_prelude_installation()
     # negating condition because 0 indicates prelude is installed.
     if not prelude_exit_code:
-        print(get_prelude_version())
+        print_ok()
+        print("    " + get_prelude_version().replace("\n", "\n    "))
     else:
+        print_fail()
         print(f"Error {prelude_exit_code}: prelude is not installed or not in your PATH.")
 
+    # dcm2niix
+    dcm2niix_check_msg = check_name.format("dcm2niix")
+    print_line(dcm2niix_check_msg)
     # 0 indicates dcm2niix is installed.
     dcm2niix_exit_code: int = check_dcm2niix_installation()
     # negating condition because 0 indicates dcm2niix is installed.
     if not dcm2niix_exit_code:
-        print(get_dcm2niix_version())
+        print_ok()
+        print("    " + get_dcm2niix_version().replace("\n", "\n    "))
     else:
+        print_fail()
         print(f"Error {dcm2niix_exit_code}: dcm2niix is not installed or not in your PATH.")
 
     return
@@ -54,7 +93,7 @@ def check_prelude_installation() -> int:
         int: Exit code. 0 on success, nonzero on failure.
     """
 
-    return subprocess.check_call(['which', 'prelude'])
+    return subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def check_dcm2niix_installation() -> int:
@@ -66,7 +105,7 @@ def check_dcm2niix_installation() -> int:
     Returns:
         int: Exit code. 0 on success, nonzero on failure.
     """
-    return subprocess.check_call(['which', 'dcm2niix'])
+    return subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def get_prelude_version() -> str:
