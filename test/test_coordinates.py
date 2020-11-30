@@ -9,6 +9,7 @@ import nibabel as nib
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.coils.coordinates import phys_gradient
 from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
+from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox import __dir_testing__
 
 
@@ -188,3 +189,73 @@ def test_phys_to_vox_gradient_reel():
     assert np.all(np.isclose(gx_truth, gz_vox)) and \
            np.all(np.isclose(gy_truth, gx_vox)) and \
            np.all(np.isclose(gz_truth, gy_vox))
+
+
+def test_resample_from_to_2d():
+    """Test resample_from_to with 2d input."""
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                              'sub-example_unshimmed_e1.nii.gz')
+
+    nii_fieldmap = nib.load(fname_fieldmap)
+    nii_fieldmap_2d = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0, 0], nii_fieldmap.affine)
+    nii_anat = nib.load(fname_anat)
+
+    nii_resampled = resample_from_to(nii_fieldmap_2d, nii_anat, mode='nearest')
+
+    assert nii_resampled.shape == nii_anat.shape
+
+
+def test_resample_from_to_3d():
+    """Test resample_from_to with 3d input."""
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                              'sub-example_unshimmed_e1.nii.gz')
+
+    nii_fieldmap = nib.load(fname_fieldmap)
+    nii_fieldmap_3d = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine)
+    nii_anat = nib.load(fname_anat)
+
+    nii_resampled = resample_from_to(nii_fieldmap_3d, nii_anat, mode='nearest')
+
+    assert nii_resampled.shape == nii_anat.shape
+
+
+def test_resample_from_to_4d():
+    """Test resample_from_to with 4d input."""
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                              'sub-example_unshimmed_e1.nii.gz')
+
+    nii_fieldmap = nib.load(fname_fieldmap)
+    nii_anat = nib.load(fname_anat)
+
+    nii_resampled = resample_from_to(nii_fieldmap, nii_anat, mode='nearest')
+
+    assert nii_resampled.shape == (nii_anat.shape + (nii_fieldmap.shape[3],))
+
+
+def test_resample_from_to_5d():
+    """Test resample_from_to with 5d input. Should return an error."""
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                              'sub-example_unshimmed_e1.nii.gz')
+
+    nii_fieldmap = nib.load(fname_fieldmap)
+    nii_fieldmap_5d = nib.Nifti1Image(np.expand_dims(nii_fieldmap.get_fdata(), -1), nii_fieldmap.affine)
+    nii_anat = nib.load(fname_anat)
+
+    # This should return an error
+    try:
+        nii_resampled = resample_from_to(nii_fieldmap_5d, nii_anat, mode='nearest')
+    except NotImplementedError:
+        # If an exception occurs, this is the desired behaviour
+        return 0
+
+    # If there isn't an error, then there is a problem
+    print('\nWrong dimensions but does not throw an error.')
+    assert False
