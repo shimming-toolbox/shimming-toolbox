@@ -5,14 +5,14 @@ import numpy as np
 import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
-from nibabel.processing import resample_from_to
 # TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import st_progress_bar
-from shimmingtoolbox.coils.coordinates import generate_meshgrid
+from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.coils.coordinates import phys_gradient
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
 DEBUG = True
@@ -71,12 +71,17 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
 
     # Calculate gz gradient
     g = 1000 / 42.576e6  # [mT / Hz]
+    gx_gradient = np.zeros_like(fieldmap)
+    gy_gradient = np.zeros_like(fieldmap)
     gz_gradient = np.zeros_like(fieldmap)
-    # Get voxel coordinates. Z coordinates correspond to coord[2]
-    z_coord = generate_meshgrid(mask_fmap.shape, nii_fieldmap.affine)[2] / 1000  # [m]
-
     for it in range(nt):
-        gz_gradient[..., 0, it] = np.gradient(g * fieldmap[:, :, 0, it], z_coord[0, :, 0], axis=1)  # [mT / m]
+        gx_gradient[..., it], gy_gradient[..., it], gz_gradient[..., it] = phys_gradient(g * fieldmap[:, :, :, it],
+                                                                                         nii_fieldmap.affine)
+        # [mT / mm]
+    gx_gradient *= 1000  # [mT / m]
+    gy_gradient *= 1000  # [mT / m]
+    gz_gradient *= 1000  # [mT / m]
+
     if DEBUG:
         nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fieldmap.affine)
         nib.save(nii_gz_gradient, os.path.join(fname_debug, 'fig_gz_gradient.nii.gz'))
@@ -107,7 +112,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
-                # do regression to separate static componant and RIRO component
+                # do regression to separate static component and RIRO component
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -gz_gradient[i_x, i_y, i_z, :])
                 # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
                 # between scans. This allows to compare results between scans.
@@ -116,14 +121,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
                 progress_bar.update(1)
 
     # Resample masked_fieldmaps to target anatomical image
-    # TODO: convert to a function
-    masked_fmap_4d = np.zeros(anat.shape + (nt,))
-    for it in range(nt):
-        nii_masked_fmap_3d = nib.Nifti1Image(masked_fieldmaps[..., it], nii_fieldmap.affine)
-        nii_resampled_fmap_3d = resample_from_to(nii_masked_fmap_3d, nii_anat, order=2, mode='nearest')
-        masked_fmap_4d[..., it] = nii_resampled_fmap_3d.get_fdata()
-    nii_resampled_fmap = nib.Nifti1Image(masked_fmap_4d, nii_anat.affine)
-
+    nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
+    nii_resampled_fmap = resample_from_to(nii_masked_fieldmaps, nii_anat, order=2, mode='nearest')
     if DEBUG:
         nib.save(nii_resampled_fmap, os.path.join(fname_debug, 'fig_resampled_fmap.nii.gz'))
 
