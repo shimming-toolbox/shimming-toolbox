@@ -20,7 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
-            "st_realtime_zshim=shimmingtoolbox.cli.realtime_zshim:realtime_zshim",
+            "st_realtime_zshim=shimmingtoolbox.cli.realtime_zshim:realtime_zshim_cli",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
             "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",

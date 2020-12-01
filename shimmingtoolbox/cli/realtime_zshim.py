@@ -15,26 +15,28 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(
     context_settings=CONTEXT_SETTINGS,
-    help=f"Perform realtime z-shimming."
 )
 @click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
-              help="B0 fieldmap. For realtime shimming, this should be a 4d file (4th dimension being time")
-@click.option('-mask', 'fname_mask_anat', type=click.Path(), required=False,
-              help="3D nifti file with voxels between 0 and 1 used to weight the spatial region to shim. "
-                   "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('-resp', 'fname_resp', type=click.Path(), required=True,
-              help="Siemens respiratory file containing pressure data.")
+              help="B0 fieldmap. This should be a 4d file (4th dimension being time")
 @click.option('-anat', 'fname_anat', type=click.Path(), required=True,
               help="Filename of the anatomical image to apply the correction.")
-@click.option('-output', 'fname_output', type=click.Path(),
-              help="Directory to output gradient text file and figures")
+@click.option('-resp', 'fname_resp', type=click.Path(), required=True,
+              help="Siemens respiratory file containing pressure data.")
+@click.option('-mask', 'fname_mask_anat', type=click.Path(), required=False,
+              help="3D nifti file with used to define the spatial region to shim. "
+                   "The coordinate system should be the same as ``anat``'s coordinate system.")
+@click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
+              help="Directory to output gradient text file and figures.")
 # TODO: Remove json file as input
 @click.option('-json', 'fname_json', type=click.Path(), required=True,
               help="Filename of json corresponding BIDS sidecar.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
 def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_anat, fname_output, verbose=True):
-    """
-
+    """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
+    respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
+    bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
+    static and dynamic Gz component maps to match the MGRE image. Lastly the mean Gz values within the ROI are computed
+    for each slice. The mean pressure is also generated in the text file to be used to shim.
     """
 
     # Load fieldmap

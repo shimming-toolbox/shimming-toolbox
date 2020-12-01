@@ -5,7 +5,6 @@ import numpy as np
 import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
-# TODO: remove matplotlib and dirtesting import
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -34,8 +33,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                            provided.
 
     Returns:
-        numpy.ndarray: static_correction
-        numpy.ndarray: riro_correction
+        numpy.ndarray: 1D array of the static_correction. The correction is in mT/m for each slice.
+        numpy.ndarray: 1D array of the dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
         float: Average pressure of the pmu
         float: RMS of the pmu pressure
 
@@ -98,7 +97,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
     # Shim using PMU
     # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
-    #  Note: strong spatial autocorrelation on the a and b coefficients. Ie: two adjacent voxels are submitted to similar
+    # Note: strong spatial autocorrelation on the a and b coefficients. Ie: two adjacent voxels are submitted to similar
     #  static B0 field and RIRO component. --> we need to find a way to account for that
     #   solution 1: post-fitting regularization.
     #     pros: easy to implement
