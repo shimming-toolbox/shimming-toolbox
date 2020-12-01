@@ -13,6 +13,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import st_progress_bar
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.coils.coordinates import phys_gradient
+from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
 DEBUG = True
@@ -71,19 +72,13 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
 
     # Calculate gz gradient
     g = 1000 / 42.576e6  # [mT / Hz]
-    gx_gradient = np.zeros_like(fieldmap)
-    gy_gradient = np.zeros_like(fieldmap)
-    gz_gradient = np.zeros_like(fieldmap)
+    gradient = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
     for it in range(nt):
-        gx_gradient[..., it], gy_gradient[..., it], gz_gradient[..., it] = phys_gradient(g * fieldmap[:, :, :, it],
-                                                                                         nii_fieldmap.affine)
-        # [mT / mm]
-    gx_gradient *= 1000  # [mT / m]
-    gy_gradient *= 1000  # [mT / m]
-    gz_gradient *= 1000  # [mT / m]
+        gradient[:][..., it] = phys_gradient(g * fieldmap[:, :, :, it], nii_fieldmap.affine) # [mT / mm]
+    gradient *= 1000  # [mT / m]
 
     if DEBUG:
-        nii_gz_gradient = nib.Nifti1Image(gz_gradient, nii_fieldmap.affine)
+        nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine)
         nib.save(nii_gz_gradient, os.path.join(fname_debug, 'fig_gz_gradient.nii.gz'))
 
     # Fetch PMU timing
@@ -105,20 +100,27 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
-    riro = np.zeros_like(fieldmap[:, :, :, 0])
-    static = np.zeros_like(fieldmap[:, :, :, 0])
+    riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+                     np.zeros_like(fieldmap[:, :, :, 0]),
+                     np.zeros_like(fieldmap[:, :, :, 0])])
+    static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+                       np.zeros_like(fieldmap[:, :, :, 0]),
+                       np.zeros_like(fieldmap[:, :, :, 0])])
     # TODO fix progress bar not showing up
-    progress_bar = st_progress_bar(fieldmap[..., 0].size, desc="Fitting", ascii=False)
-    for i_x in range(fieldmap.shape[0]):
-        for i_y in range(fieldmap.shape[1]):
-            for i_z in range(fieldmap.shape[2]):
-                # do regression to separate static component and RIRO component
-                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, -gz_gradient[i_x, i_y, i_z, :])
-                # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
-                # between scans. This allows to compare results between scans.
-                riro[i_x, i_y, i_z] = reg.coef_ * pressure_rms
-                static[i_x, i_y, i_z] = reg.intercept_
-                progress_bar.update(1)
+    progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
+    for g_axis in range(3):
+        for i_x in range(fieldmap.shape[0]):
+            for i_y in range(fieldmap.shape[1]):
+                for i_z in range(fieldmap.shape[2]):
+
+                    # do regression to separate static component and RIRO component
+                    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
+                                                 -gradient[g_axis][i_x, i_y, i_z, :])
+                    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+                    # between scans. This allows to compare results between scans.
+                    riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
+                    static[g_axis][i_x, i_y, i_z] = reg.intercept_
+                    progress_bar.update(1)
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
@@ -127,30 +129,44 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
         nib.save(nii_resampled_fmap, os.path.join(fname_debug, 'fig_resampled_fmap.nii.gz'))
 
     # Resample static to target anatomical image
-    nii_static = nib.Nifti1Image(static, nii_fieldmap.affine)
-    nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
-    nii_resampled_static_masked = nib.Nifti1Image(nii_resampled_static.get_fdata() * nii_mask_anat.get_fdata(),
-                                                  nii_resampled_static.affine)
+    resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
+    for g_axis in range(3):
+        nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
+        nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
+        resampled_static[g_axis] = nii_resampled_static.get_fdata()
+
+    _, _, resampled_static_vox = phys_to_vox_gradient(resampled_static[0], resampled_static[1], resampled_static[2],
+                                                      nii_anat.affine)
+    nii_resampled_static_vox = nib.Nifti1Image(resampled_static_vox, nii_anat.affine)
+    nii_resampled_static_masked = nib.Nifti1Image(resampled_static_vox * nii_mask_anat.get_fdata(),
+                                                  nii_resampled_static_vox.affine)
     if DEBUG:
         nib.save(nii_resampled_static_masked, os.path.join(fname_debug, 'fig_resampled_static.nii.gz'))
 
     # Resample riro to target anatomical image
-    nii_riro = nib.Nifti1Image(riro, nii_fieldmap.affine)
-    nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
-    nii_resampled_riro_masked = nib.Nifti1Image(nii_resampled_riro.get_fdata() * nii_mask_anat.get_fdata(),
-                                                nii_resampled_riro.affine)
+    resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
+    for g_axis in range(3):
+        nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
+        nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
+        resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
+
+    _, _, resampled_riro_vox = phys_to_vox_gradient(resampled_riro[0], resampled_riro[1], resampled_riro[2],
+                                                    nii_anat.affine)
+    nii_resampled_riro_vox = nib.Nifti1Image(resampled_riro_vox, nii_anat.affine)
+    nii_resampled_static_masked = nib.Nifti1Image(resampled_riro_vox * nii_mask_anat.get_fdata(),
+                                                  nii_resampled_riro_vox.affine)
     if DEBUG:
-        nib.save(nii_resampled_riro_masked, os.path.join(fname_debug, 'fig_resampled_riro.nii.gz'))
+        nib.save(nii_resampled_static_masked, os.path.join(fname_debug, 'fig_resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a perticular slice
     n_slices = nii_anat.get_fdata().shape[2]
     static_correction = np.zeros([n_slices])
     riro_correction = np.zeros([n_slices])
     for i_slice in range(n_slices):
-        ma_static_anat = np.ma.array(nii_resampled_static.get_fdata()[..., i_slice],
+        ma_static_anat = np.ma.array(resampled_static_vox[..., i_slice],
                                      mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         static_correction[i_slice] = np.ma.mean(ma_static_anat)
-        ma_riro_anat = np.ma.array(nii_resampled_riro.get_fdata()[..., i_slice],
+        ma_riro_anat = np.ma.array(resampled_riro_vox[..., i_slice],
                                    mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         riro_correction[i_slice] = np.ma.mean(ma_riro_anat) / pressure_rms
 
@@ -161,11 +177,11 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
         # Plot Static and RIRO
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
-        im = ax.imshow(riro[:-1, :-1, 0] / pressure_rms)
+        im = ax.imshow(riro[2][:-1, :-1, 0] / pressure_rms)
         fig.colorbar(im)
         ax.set_title("RIRO")
         ax = fig.add_subplot(2, 1, 2)
-        im = ax.imshow(static[:-1, :-1, 0])
+        im = ax.imshow(static[2][:-1, :-1, 0])
         fig.colorbar(im)
         ax.set_title("Static")
         fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_riro_static.png')
@@ -215,10 +231,10 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
         # Show Gradient
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(1, 1, 1)
-        im = ax.imshow(gz_gradient[:, :, 0, 0])
+        im = ax.imshow(gradient[2][:, :, 0, 0])
         fig.colorbar(im)
-        ax.set_title("Gradient [:, :, 0, 0]")
-        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_gradient.png')
+        ax.set_title("Z Gradient [:, :, 0, 0]")
+        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_zgradient.png')
         fig.savefig(fname_figure)
 
         # Show evolution of coefficients
