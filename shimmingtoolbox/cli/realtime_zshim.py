@@ -75,7 +75,9 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_json, fnam
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
 
-    static_correction, riro_correction, mean_p = realtime_zshim(nii_fmap, nii_anat, fname_resp, json_data,
+    pmu = PmuResp(fname_resp)
+
+    static_correction, riro_correction, mean_p = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
                                                                 nii_mask_anat=nii_mask_anat)
 
     # Look if output directory exists, if not, create it

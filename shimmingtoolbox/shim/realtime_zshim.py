@@ -23,15 +23,20 @@ if not os.path.exists(fname_debug):
     os.makedirs(fname_debug)
 
 
-def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=None):
-    """ TODO:
+def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
+    """ This function will generate static and dynamic (due to respiration) Gz components based on a fieldmap time
+    series and respiratory trace information obtained from Siemens bellows  (PMUresp_signal.resp). An additional
+    multi-gradient echo (MGRE) magnitiude image is used to generate an ROI and resample the static and dynamic Gz
+    component maps to match the MGRE image. Lastly the mean Gz values within the ROI are computed for each slice.
 
     Args:
-        nii_fieldmap:
-        nii_anat:
-        fname_resp:
-        json_fmap:
-        nii_mask_anat:
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
+                                            timeseries. Fieldmap should be in Hz.
+        nii_anat (nibabel.Nifti1Image):  Nibabel object containing a 3d image of the target data to shim.
+        pmu (PmuResp): Filename of the file of the respiratory trace
+        json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
+                          timestamps)
+        nii_mask_anat (nibabel.Nifti1Image): Nibabel object containing the mask to specify the shimming region.
 
     Returns:
         numpy.ndarray: static_correction
@@ -83,7 +88,6 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
-    pmu = PmuResp(fname_resp)
     # TODO: deal with saturation
     # fit PMU and fieldmap values
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
@@ -134,7 +138,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
         nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
         nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
-
+    # Since this is zshimming, only the slice component is used.
     _, _, resampled_static_vox = phys_to_vox_gradient(resampled_static[0], resampled_static[1], resampled_static[2],
                                                       nii_anat.affine)
     nii_resampled_static_vox = nib.Nifti1Image(resampled_static_vox, nii_anat.affine)
@@ -149,7 +153,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
         nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
         nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
-
+    # Since this is zshimming, only the slice component is used.
     _, _, resampled_riro_vox = phys_to_vox_gradient(resampled_riro[0], resampled_riro[1], resampled_riro[2],
                                                     nii_anat.affine)
     nii_resampled_riro_vox = nib.Nifti1Image(resampled_riro_vox, nii_anat.affine)
@@ -158,7 +162,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, fname_resp, json_fmap, nii_mask_anat=
     if DEBUG:
         nib.save(nii_resampled_static_masked, os.path.join(fname_debug, 'fig_resampled_riro.nii.gz'))
 
-    # Calculate the mean for riro and static for a perticular slice
+    # Calculate the mean for riro and static for a particular slice
     n_slices = nii_anat.get_fdata().shape[2]
     static_correction = np.zeros([n_slices])
     riro_correction = np.zeros([n_slices])
