@@ -14,16 +14,9 @@ from shimmingtoolbox.utils import st_progress_bar
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.coils.coordinates import phys_gradient
 from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
-from shimmingtoolbox import __dir_shimmingtoolbox__
-
-DEBUG = True
-fname_debug = os.path.join(__dir_shimmingtoolbox__, 'test_realtime_zshim')
-
-if not os.path.exists(fname_debug):
-    os.makedirs(fname_debug)
 
 
-def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
+def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, path_output=None):
     """ This function will generate static and dynamic (due to respiration) Gz components based on a fieldmap time
     series and respiratory trace information obtained from Siemens bellows  (PMUresp_signal.resp). An additional
     multi-gradient echo (MGRE) magnitiude image is used to generate an ROI and resample the static and dynamic Gz
@@ -33,17 +26,28 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
                                             timeseries. Fieldmap should be in Hz.
         nii_anat (nibabel.Nifti1Image):  Nibabel object containing a 3d image of the target data to shim.
-        pmu (PmuResp): Filename of the file of the respiratory trace
+        pmu (PmuResp): Filename of the file of the respiratory trace.
         json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
-                          timestamps)
+                          timestamps).
         nii_mask_anat (nibabel.Nifti1Image): Nibabel object containing the mask to specify the shimming region.
+        path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is 
+                           provided.
 
     Returns:
         numpy.ndarray: static_correction
         numpy.ndarray: riro_correction
-        numpy.ndarray: mean_p
+        float: Average pressure of the pmu
+        float: RMS of the pmu pressure
 
     """
+
+    # Set up output of figures
+    is_outputting_figures = False
+    if path_output is not None:
+        is_outputting_figures = True
+        if not os.path.exists(path_output):
+            os.makedirs(path_output)
+
     # Make sure fieldmap has the appropriate dimensions
     fieldmap = nii_fieldmap.get_fdata()
     if fieldmap.ndim != 4:
@@ -64,12 +68,12 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         nii_mask_fmap = resample_from_to(nii_mask_anat, nii_fmap_3d_temp)
         mask_fmap = nii_mask_fmap.get_fdata()
     else:
-        mask_fmap = np.ones_like(fieldmap)
+        mask_fmap = np.ones_like(fieldmap[..., 0])
         nii_mask_fmap = nib.Nifti1Image(mask_fmap, nii_anat.affine)
         nii_mask_anat = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
-
-    if DEBUG:
-        nib.save(nii_mask_fmap, os.path.join(fname_debug, 'fig_mask_fmap.nii.gz'))
+        
+    if is_outputting_figures:
+        nib.save(nii_mask_fmap, os.path.join(path_output, 'fig_mask_fmap.nii.gz'))
 
     masked_fieldmaps = np.zeros_like(fieldmap)
     for i_t in range(nt):
@@ -82,9 +86,9 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         gradient[:][..., it] = phys_gradient(g * fieldmap[:, :, :, it], nii_fieldmap.affine) # [mT / mm]
     gradient *= 1000  # [mT / m]
 
-    if DEBUG:
+    if is_outputting_figures:
         nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine)
-        nib.save(nii_gz_gradient, os.path.join(fname_debug, 'fig_gz_gradient.nii.gz'))
+        nib.save(nii_gz_gradient, os.path.join(path_output, 'fig_gz_gradient.nii.gz'))
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
@@ -93,7 +97,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # Shim using PMU
-    # field(i_vox) = a(i_vox) * (acq_pressures - mean_p) + b(i_vox)
+    # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
     #  Note: strong spatial autocorrelation on the a and b coefficients. Ie: two adjacent voxels are submitted to similar
     #  static B0 field and RIRO component. --> we need to find a way to account for that
     #   solution 1: post-fitting regularization.
@@ -129,8 +133,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
     nii_resampled_fmap = resample_from_to(nii_masked_fieldmaps, nii_anat, order=2, mode='nearest')
-    if DEBUG:
-        nib.save(nii_resampled_fmap, os.path.join(fname_debug, 'fig_resampled_fmap.nii.gz'))
+    if is_outputting_figures:
+        nib.save(nii_resampled_fmap, os.path.join(path_output, 'fig_resampled_fmap.nii.gz'))
 
     # Resample static to target anatomical image
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
@@ -144,8 +148,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
     nii_resampled_static_vox = nib.Nifti1Image(resampled_static_vox, nii_anat.affine)
     nii_resampled_static_masked = nib.Nifti1Image(resampled_static_vox * nii_mask_anat.get_fdata(),
                                                   nii_resampled_static_vox.affine)
-    if DEBUG:
-        nib.save(nii_resampled_static_masked, os.path.join(fname_debug, 'fig_resampled_static.nii.gz'))
+    if is_outputting_figures:
+        nib.save(nii_resampled_static_masked, os.path.join(path_output, 'fig_resampled_static.nii.gz'))
 
     # Resample riro to target anatomical image
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
@@ -159,8 +163,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
     nii_resampled_riro_vox = nib.Nifti1Image(resampled_riro_vox, nii_anat.affine)
     nii_resampled_static_masked = nib.Nifti1Image(resampled_riro_vox * nii_mask_anat.get_fdata(),
                                                   nii_resampled_riro_vox.affine)
-    if DEBUG:
-        nib.save(nii_resampled_static_masked, os.path.join(fname_debug, 'fig_resampled_riro.nii.gz'))
+    if is_outputting_figures:
+        nib.save(nii_resampled_static_masked, os.path.join(path_output, 'fig_resampled_riro.nii.gz'))
 
     # Calculate the mean for riro and static for a particular slice
     n_slices = nii_anat.get_fdata().shape[2]
@@ -172,11 +176,11 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         static_correction[i_slice] = np.ma.mean(ma_static_anat)
         ma_riro_anat = np.ma.array(resampled_riro_vox[..., i_slice],
                                    mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
-        riro_correction[i_slice] = np.ma.mean(ma_riro_anat) / pressure_rms
+        riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
 
     # ================ PLOTS ================
 
-    if DEBUG:
+    if is_outputting_figures:
 
         # Plot Static and RIRO
         fig = Figure(figsize=(10, 10))
@@ -188,7 +192,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         im = ax.imshow(static[2][:-1, :-1, 0])
         fig.colorbar(im)
         ax.set_title("Static")
-        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_riro_static.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_zshim_riro_static.png')
         fig.savefig(fname_figure)
 
         # Reshape pmu datapoints to fit those of the acquisition
@@ -216,7 +220,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
         ax.legend()
         ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_pmu_vs_B0.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_zshim_pmu_vs_B0.png')
         fig.savefig(fname_figure)
 
         # Show anatomical image
@@ -229,7 +233,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 10])
         fig.colorbar(im)
         ax.set_title("Mask [:, :, 10]")
-        fname_figure = os.path.join(fname_debug, 'fig_reatime_zshim_anat.png')
+        fname_figure = os.path.join(path_output, 'fig_reatime_zshim_anat.png')
         fig.savefig(fname_figure)
 
         # Show Gradient
@@ -238,7 +242,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         im = ax.imshow(gradient[2][:, :, 0, 0])
         fig.colorbar(im)
         ax.set_title("Z Gradient [:, :, 0, 0]")
-        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_zgradient.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_zshim_zgradient.png')
         fig.savefig(fname_figure)
 
         # Show evolution of coefficients
@@ -247,10 +251,10 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None):
         ax.plot(range(n_slices), static_correction, label='Static correction')
         ax.set_title("Static correction evolution through slices")
         ax = fig.add_subplot(2, 1, 2)
-        ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * riro_correction, label='Riro correction')
+        ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * (riro_correction / pressure_rms),
+                label='Riro correction')
         ax.set_title("Riro correction evolution through slices")
-        fname_figure = os.path.join(fname_debug, 'fig_realtime_zshim_correction_slice.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_zshim_correction_slice.png')
         fig.savefig(fname_figure)
 
-    # TODO: output pressure_rms to scale for interperson testing
-    return static_correction, riro_correction, mean_p
+    return static_correction, riro_correction, mean_p, pressure_rms
