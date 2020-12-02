@@ -76,10 +76,10 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     nib.save(nii_fieldmap, fname_output)
 
     # Save json
+    json_fieldmap = json_phase
     if len(phase) > 1:
-        json_fieldmap = json_phase
         for i_echo in range(len(echo_times)):
             json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
     fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
-        json.dump(json_phase, outfile, indent=2)
+        json.dump(json_fieldmap, outfile, indent=2)
