@@ -48,3 +48,22 @@ def test_cli_prepare_fieldmap_2_echos():
         assert os.path.isfile(fname_output)
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_default_output():
+    runner = CliRunner()
+
+    fname_phase1 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
+    fname_phase2 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
+
+    fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+
+    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '-mag', fname_mag],
+                           catch_exceptions=False)
+
+    assert result.exit_code == 0
+    assert os.path.isfile(os.path.join(os.curdir, 'fieldmap.nii.gz'))
+    assert os.path.isfile(os.path.join(os.curdir, 'fieldmap.json'))
+    os.remove(os.path.join(os.curdir, 'fieldmap.nii.gz'))
+    os.remove(os.path.join(os.curdir, 'fieldmap.json'))
+

@@ -8,8 +8,6 @@ import numpy as np
 import nibabel as nib
 import json
 
-from nibabel import load as load_nib
-
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 
@@ -22,7 +20,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('-mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
 @click.option('-unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
-@click.option('-output', 'fname_output', type=click.Path(), default=os.curdir, help="Output filename for the fieldmap")
+@click.option('-output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'fieldmap.nii.gz'),
+              help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
 @click.option('-mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
@@ -59,7 +58,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
 
     # If fname_mag is not an input define mag as None
     if fname_mag is not None:
-        mag = load_nib(fname_mag).get_fdata()
+        mag = nib.load(fname_mag).get_fdata()
     else:
         mag = None
 
