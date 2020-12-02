@@ -47,8 +47,8 @@ def test_siemens_basis_resample():
     basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
 
     # Hard-coded values corresponding to the mid-point of the FOV.
-    expected = np.array([5.21405621e-18, -8.51520000e-02,  1.02182400e+00,  2.44386240e-02,
-                         2.50274698e-19, -4.08729600e-03, -1.70304000e-04, -2.08562248e-20])
+    expected = np.array([5.31991104e-18, -8.68807405e-02,  1.03212742e+00,  2.49321889e-02,
+                         2.57930573e-19, -4.21232592e-03, -1.77289155e-04, -2.17116596e-20])
 
     nx, ny, nz = nii.get_fdata().shape
     assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))

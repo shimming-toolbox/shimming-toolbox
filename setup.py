@@ -21,6 +21,9 @@ setup(
         'console_scripts': [
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
+            "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
+            "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
+            "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info"
         ]
     },
     packages=find_packages(exclude=["docs"]),
@@ -35,6 +38,7 @@ setup(
         "scipy~=1.5.0",
         "tqdm",
         "matplotlib~=3.1.2",
+        "psutil~=5.7.3",
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
     ],

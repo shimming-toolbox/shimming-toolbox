@@ -13,6 +13,7 @@ from hashlib import md5
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.cli.download_data import download_data
+from shimmingtoolbox.cli.check_env import check_dcm2niix_installation, check_prelude_installation
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +36,17 @@ def test_data_path_fixture():
 
 @pytest.fixture(params=[pytest.param(0, marks=pytest.mark.prelude)])
 def test_prelude_installation():
-    # note that subprocess.check_call() returns 0 on success, so it must be
-    # negated for the assertion.
-    assert not subprocess.check_call(['which', 'prelude'])
+    # note that check_prelude_installation() returns 0 on success, so it must
+    # be negated for the assertion.
+    assert not check_prelude_installation()
     return
 
 
 @pytest.fixture(params=[pytest.param(0, marks=pytest.mark.dcm2niix)])
 def test_dcm2niix_installation():
-    # note that subprocess.check_call() returns 0 on success, so it must be
-    # negated for the assertion.
-    assert not subprocess.check_call(['which', 'dcm2niix'])
+    # note that check_dcm2niix_installation() returns 0 on success, so it must
+    # be negated for the assertion.
+    assert not check_dcm2niix_installation()
     return
 
 
