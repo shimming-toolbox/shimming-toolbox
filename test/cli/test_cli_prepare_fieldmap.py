@@ -27,6 +27,7 @@ def test_cli_prepare_fieldmap_1_echo():
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
 @pytest.mark.prelude
@@ -45,3 +46,5 @@ def test_cli_prepare_fieldmap_2_echos():
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+

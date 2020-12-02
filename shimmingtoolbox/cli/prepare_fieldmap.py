@@ -6,6 +6,7 @@ import os
 import math
 import numpy as np
 import nibabel as nib
+import json
 
 from nibabel import load as load_nib
 
@@ -74,3 +75,12 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     # Save NIFTI
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
     nib.save(nii_fieldmap, fname_output)
+
+    # Save json
+    if len(phase) > 1:
+        json_fieldmap = json_phase
+        for i_echo in range(len(echo_times)):
+            json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
+    fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json, 'w') as outfile:
+        json.dump(json_phase, outfile, indent=2)
