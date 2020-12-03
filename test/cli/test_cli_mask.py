@@ -14,11 +14,11 @@ def test_cli_mask_sct():
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'nifti4')
+        out = os.path.join(tmp, 'mask.nii.gz')
         process1 = 'coord'
         process2 = '20x15'
-        result = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out, '-process1', process1, '-process2', process2])
+        result = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out, '-process1', process1, '-process2',
+                                          process2])
 
         assert result.exit_code == 0
         assert result is not None
-        assert len(os.listdir(out)) != 0
