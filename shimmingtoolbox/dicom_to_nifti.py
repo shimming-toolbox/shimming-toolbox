@@ -75,7 +75,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                 if ('ImageType' in json_data) and ('P' in json_data['ImageType']) and \
                    ('EchoTime1' in json_data) and ('EchoTime2' in json_data):
                     # Make sure it is not already named phasediff
-                    if len(os.path.basename(fname_json).rsplit('phasediff', 1)) == 1:
+                    if len(os.path.basename(fname_json).split(subject_id, 1)[-1].rsplit('phasediff', 1)) == 1:
                         # Split the filename in 2 and remove phase
                         file_parts = fname_json.rsplit('phase', 1)
                         if len(file_parts) == 2:
