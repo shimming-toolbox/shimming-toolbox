@@ -61,7 +61,7 @@ jobs:
           curl -JLO https://github.com/neuropoly/spinalcordtoolbox/archive/5.0.1.zip
           unzip -o spinalcordtoolbox-5.0.1.zip
           cd spinalcordtoolbox-5.0.1
-          ./install_sct
+          yes | ./install_sct
 
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
