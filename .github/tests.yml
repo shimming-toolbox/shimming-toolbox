@@ -1,0 +1,49 @@
+name: CI-Tests
+
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  branches:
+    - master
+  push:
+  pull_request:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - 'macos-10.15'
+          - 'macos-11.0'
+          - 'windows-2019'
+          - 'ubuntu-18.04'
+          - 'ubuntu-20.04'
+          - 'ubuntu-16.04'
+        python-version:
+          - '3.7'
+          - '3.8'
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set XCode version
+        if: contains(matrix.os, 'macos-11.0')
+        run: sudo xcode-select -s "/Applications/Xcode_12.2.app"
+
+      - name: Run CI script
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+        run: ./ci.sh
+  # Add test coverage stats to Coveralls.io
+  finish:
+    needs: test
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Coveralls Finished
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.github_token }}
+        parallel-finished: true

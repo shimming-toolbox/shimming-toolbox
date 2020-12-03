@@ -47,19 +47,3 @@ misc
 
 .. automodule:: shimmingtoolbox.utils
    :members:
-
-.. automodule:: shimmingtoolbox.cli.b0map
-   :members:
-
-.. automodule:: shimmingtoolbox.cli.download_data
-   :members:
-
-.. automodule:: shimmingtoolbox.cli.referencemaps
-   :members:
-
-cli
----
-
-.. click:: shimmingtoolbox.cli.mask:mask_cli
-   :prog: mask
-   :nested: full
