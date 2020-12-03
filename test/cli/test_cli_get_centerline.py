@@ -14,13 +14,12 @@ def test_cli_get_centerline():
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'nifti')
-        method = "fitseg"
-        centerline_algo = "linear"
+        out = os.path.join(tmp, 'mask')
+        method = 'fitseg'
+        centerline_algo = 'linear'
 
         result = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-centerline-algo',
                                                     centerline_algo, '-output', out])
 
         assert result.exit_code == 0
         assert result is not None
-        assert len(os.listdir(out)) != 0
