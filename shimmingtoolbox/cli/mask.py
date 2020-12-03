@@ -27,9 +27,11 @@ def mask_cli():
                        f" in 'center'. The mask is stored by default under the name 'mask.nii.gz' in the output folder."
                        f"Return the filename for the output mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 3D.")
-@click.option('-output', type=click.Path(), default=os.curdir,
-              help="(str): Output folder for mask in nifti file. (default: os.curdir)")
+              help="(str): Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
+                   " .nii or .nii.gz.")
+@click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
+                   "(os.curdir, 'mask.nii.gz'))")
 @click.option('-size', nargs=3, required=True, type=int,
               help="(int): Length of the side of the box along first, second and third dimension (in pixels). "
                    "(nargs=3)")
@@ -37,10 +39,6 @@ def mask_cli():
               help="(int): Center of the box along first, second and third dimension (in pixels). If no center "
                    "is provided (None), the middle is used. (nargs=3) (default: None, None, None)")
 def box(fname_input, output, size, center):
-    # Create the folder where the nifti file will be stored
-    if not os.path.exists(output):
-        os.makedirs(output)
-
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
@@ -49,9 +47,8 @@ def box(fname_input, output, size, center):
         # of the box mask
         mask_cb = mask_cb.astype(int)
         nii_img = nib.Nifti1Image(mask_cb, nii.affine)
-        fname_mask = os.path.join(output, 'mask.nii.gz')
-        nib.save(nii_img, fname_mask)
-        click.echo(f"The filename for the output mask is: {os.path.abspath(fname_mask)}")
+        nib.save(nii_img, output)
+        click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
         return output
 
     else:
@@ -69,29 +66,26 @@ def box(fname_input, output, size, center):
                        f" the name 'mask.nii.gz' in the output folder."
                        f"Return an output nifti file with square mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 2D or 3D.")
+              help="(str): Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
 @click.option('-output', type=click.Path(), default=os.curdir,
-              help="(str): Output folder for mask in nifti file. (default: os.curdir)")
+              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
+                   "(os.curdir, 'mask.nii.gz'))")
 @click.option('-size', nargs=2, required=True, type=int,
               help="(int): Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
 @click.option('-center', nargs=2, type=int, default=(None, None),
               help="(int): Center of the box along first and second dimension (in pixels). If no center is "
                    "provided (None), the middle is used. (nargs=2) (default: None, None)")
 def rect(fname_input, output, size, center):
-    # Create the folder where the nifti file will be stored
-    if not os.path.exists(output):
-        os.makedirs(output)
-
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
-    fname_mask = os.path.join(output, 'mask.nii.gz')
 
     if len(data.shape) == 2:
         mask_sqr = shape_square(data, size[0], size[1], center[0], center[1])  # creation of the rectangle mask
         mask_sqr = mask_sqr.astype(int)
         nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
-        nib.save(nii_img, fname_mask)
-        click.echo(f"The filename for the output mask is: {os.path.abspath(fname_mask)}")
+        nib.save(nii_img, output)
+        click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
         return output
 
     elif len(data.shape) == 3:
@@ -103,12 +97,9 @@ def rect(fname_input, output, size, center):
             mask_sqr[:, :, z] = mask_slice  # addition of each masked slice to form a 3D array
             mask_sqr = mask_sqr.astype(int)
             nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
-            nib.save(nii_img, fname_mask)
-            click.echo(f"The filename for the output mask is: {os.path.abspath(fname_mask)}")
+            nib.save(nii_img, output)
+            click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
             return output
-
-    else:
-        raise ValueError("The nifti file does not have 2 or 3 dimensions.")
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
@@ -117,23 +108,19 @@ def rect(fname_input, output, size, center):
                        f" of the array. The mask is stored by default under the name 'mask.nii.gz' in the output "
                        f"folder. Return an output nifti file with threshold mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask.")
+              help="(str): Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-output', type=click.Path(), default=os.curdir,
-              help="(str): Output folder for mask in nifti file. (default: os.curdir)")
+              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
+                   "(os.curdir, 'mask.nii.gz'))")
 @click.option('-thr', default=30, help="(int): Value to threshold the data: voxels will be set to zero if their "
                                        "value is equal or less than this threshold. (default: 30)")
 def threshold(fname_input, output, thr):
-    # Create the folder where the nifti file will be stored
-    if not os.path.exists(output):
-        os.makedirs(output)
-
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
     mask_thr = shimmingtoolbox.masking.threshold.threshold(data, thr)  # creation of the threshold mask
     mask_thr = mask_thr.astype(int)
     nii_img = nib.Nifti1Image(mask_thr, nii.affine)
-    fname_mask = os.path.join(output, 'mask.nii.gz')
-    nib.save(nii_img, fname_mask)
-    click.echo(f"The filename for the output mask is: {os.path.abspath(fname_mask)}")
+    nib.save(nii_img, output)
+    click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
     return output
