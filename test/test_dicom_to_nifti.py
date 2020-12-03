@@ -6,6 +6,7 @@ import tempfile
 
 from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
 from shimmingtoolbox import __dir_testing__
+import pytest
 
 
 def test_dicom_to_nifti():
@@ -22,7 +23,8 @@ def test_dicom_to_nifti():
                         modality, i, ext)))
 
 
-def test_dicom_to_nifti_realtime_zshim():
+@pytest.mark.dcm2niix
+def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
     """Test dicom_to_nifti outputs the correct files for realtime_zshimming_data"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
@@ -54,8 +56,8 @@ def test_dicom_to_nifti_realtime_zshim():
             assert os.path.exists(
                 os.path.join(path_nifti, subject_id, sequence_type, subject_id + f'_bold.{ext}'))
 
-            
-def test_dicom_to_nifti_remove_tmp():
+@pytest.mark.dcm2niix
+def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
     """Test the remove_tmp folder"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
