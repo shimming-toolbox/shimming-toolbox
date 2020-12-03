@@ -131,7 +131,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
-    nii_resampled_fmap = resample_from_to(nii_masked_fieldmaps, nii_anat, order=2, mode='nearest')
+    nii_resampled_fmap = resample_from_to(nii_masked_fieldmaps, nii_anat)
     if is_outputting_figures:
         nib.save(nii_resampled_fmap, os.path.join(path_output, 'fig_resampled_fmap.nii.gz'))
 
@@ -139,7 +139,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
         nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
-        nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
+        nii_resampled_static = resample_from_to(nii_static, nii_anat)
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
     # Since this is zshimming, only the slice component is used.
     _, _, resampled_static_vox = phys_to_vox_gradient(resampled_static[0], resampled_static[1], resampled_static[2],
@@ -154,7 +154,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
         nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
-        nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
+        nii_resampled_riro = resample_from_to(nii_riro, nii_anat)
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
     # Since this is zshimming, only the slice component is used.
     _, _, resampled_riro_vox = phys_to_vox_gradient(resampled_riro[0], resampled_riro[1], resampled_riro[2],
