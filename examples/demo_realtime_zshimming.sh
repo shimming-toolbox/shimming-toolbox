@@ -20,19 +20,10 @@ cd ../nifti/sub-example/fmap || exit
 st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.nii.gz" -unwrapper "prelude" -output "sub-example_fieldmap.nii.gz"
 
 # Mask anatomical image
-# Calling FSL directly
-# TODO: st_mask
-fslmaths sub-example_T2star_echo-1.nii.gz -thr 500 mask.nii.gz
-fslmaths mask.nii.gz -bin mask.nii.gz
-# Not implemented:
-# <<
-#st_mask -method sct
-# Alternatively, you could run it with arbitrary shape:
-# st_mask -method shape -shape cube -size 5 -o mask.nii
-# >>
+st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "./anat_mask.nii.gz"
 
 #TODO: st_realtime_zshim
-st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../PMUresp_signal.resp" -mask "TODO" 
+st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../PMUresp_signal.resp" -mask "anat_mask.nii.gz"
 # st_realtime_zshim will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap
