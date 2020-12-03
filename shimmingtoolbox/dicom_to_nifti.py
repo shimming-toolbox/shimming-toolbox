@@ -71,9 +71,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
             # Open the json file
             with open(fname_json) as json_file:
                 json_data = json.load(json_file)
-                # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined
+                # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined and that
+                # sequenceName's last digit is 2 (refers to number of echoes when using dcm2bids)
                 if ('ImageType' in json_data) and ('P' in json_data['ImageType']) and \
-                   ('EchoTime1' in json_data) and ('EchoTime2' in json_data):
+                   ('EchoTime1' in json_data) and ('EchoTime2' in json_data) and \
+                   ('SequenceName' in json_data) and (int(json_data['SequenceName'][-1]) == 2):
                     # Make sure it is not already named phasediff
                     if len(os.path.basename(fname_json).split(subject_id, 1)[-1].rsplit('phasediff', 1)) == 1:
                         # Split the filename in 2 and remove phase
