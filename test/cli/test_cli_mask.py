@@ -14,7 +14,7 @@ def test_cli_mask_box():
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'nifti1')
+        out = os.path.join(tmp, 'mask.nii.gz')
         size1 = 10
         size2 = 20
         size3 = 5
@@ -22,7 +22,6 @@ def test_cli_mask_box():
 
         assert result.exit_code == 0
         assert result is not None
-        assert len(os.listdir(out)) != 0
 
 
 def test_cli_mask_rect():
@@ -30,7 +29,7 @@ def test_cli_mask_rect():
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'nifti2')
+        out = os.path.join(tmp, 'mask.nii.gz')
         size1 = 50
         size2 = 5
 
@@ -38,7 +37,6 @@ def test_cli_mask_rect():
 
         assert result.exit_code == 0
         assert result is not None
-        assert len(os.listdir(out)) != 0
 
 
 def test_cli_mask_threshold():
@@ -46,10 +44,9 @@ def test_cli_mask_threshold():
         runner = CliRunner()
 
         inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'nifti3')
+        out = os.path.join(tmp, 'mask.nii.gz')
         thr = 30
         result = runner.invoke(mask_cli, ['threshold', '-input', inp, '-output', out, '-thr', thr])
 
         assert result.exit_code == 0
         assert result is not None
-        assert len(os.listdir(out)) != 0
