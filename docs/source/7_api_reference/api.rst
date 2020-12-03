@@ -47,6 +47,3 @@ misc
 
 .. automodule:: shimmingtoolbox.utils
    :members:
-
-.. automodule:: shimmingtoolbox.cli.download_data
-   :members:
