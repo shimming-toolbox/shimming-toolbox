@@ -86,12 +86,18 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                             digits = '0123456789'
                             fname_new_json = file_parts[0] + 'phasediff' + file_parts[1].lstrip(digits)
                             is_renaming = True
-            # Rename the json file
+            # Rename the json file an nifti file
             if is_renaming:
-                os.rename(fname_json, fname_new_json)
-                fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
-                fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
-                os.rename(fname_nifti_old, fname_nifti_new)
+                if os.path.exists(os.path.splitext(fname_json)[0] + '.nii'):
+                    fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii'
+                    fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii'
+                    os.rename(fname_nifti_old, fname_nifti_new)
+                    os.rename(fname_json, fname_new_json)
+                elif os.path.exists(os.path.splitext(fname_json)[0] + '.nii.gz'):
+                    fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
+                    fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
+                    os.rename(fname_nifti_old, fname_nifti_new)
+                    os.rename(fname_json, fname_new_json)
 
     # if 'win' in sys.platform:
     #     # dcm2bids is broken for windows as a python package so using CLI
