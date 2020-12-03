@@ -14,13 +14,12 @@ cd testing_data/realtime_zshimming_data || exit
 # dcm2bids -d . -o nifti -p sub-example -c ../../config/dcm2bids.json
 st_dicom_to_nifti -input . -output ../nifti -subject sub-example
 cd ../nifti/sub-example/fmap || exit
-# TODO: Name of phase2 should be phasediff
 
 # Create fieldmap
 st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.nii.gz" -unwrapper "prelude" -output "sub-example_fieldmap.nii.gz"
 
 # Mask anatomical image
-st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "./anat_mask.nii.gz"
+st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "sub-example_anat_mask.nii.gz"
 
 #TODO: st_realtime_zshim
 st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../PMUresp_signal.resp" -mask "anat_mask.nii.gz"
