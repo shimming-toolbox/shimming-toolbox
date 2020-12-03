@@ -88,12 +88,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                             is_renaming = True
             # Rename the json file an nifti file
             if is_renaming:
-                if os.path.exists(os.path.splitext(fname_json)[0] + '.nii'):
-                    fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii'
-                    fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii'
-                    os.rename(fname_nifti_old, fname_nifti_new)
-                    os.rename(fname_json, fname_new_json)
-                elif os.path.exists(os.path.splitext(fname_json)[0] + '.nii.gz'):
+                if os.path.exists(os.path.splitext(fname_json)[0] + '.nii.gz'):
                     fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
                     fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
                     os.rename(fname_nifti_old, fname_nifti_new)
