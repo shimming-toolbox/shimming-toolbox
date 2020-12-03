@@ -14,7 +14,7 @@ class PmuResp(object):
 
     Attributes:
             fname (str): Filename of the Siemens .resp file
-            data (numpy.ndarray): Pressure values ranging from -2048 to 2047
+            data (numpy.ndarray): Pressure values ranging from 0 to 4095
             start_time_mdh (int): Start time in milliseconds past midnight (mdh clock is expected to be the closest to
                                   the image header)
             stop_time_mdh (int): Stop time in milliseconds past midnight (mdh clock is expected to be the closest to
@@ -107,7 +107,7 @@ class PmuResp(object):
         # files limiting the data to points in the range 0..4095 will give us just the first channel's data.
         # We are assuming that the 5000/6000 marks are inserted into the data values list rather than overwriting.
         # That is we assume they do *not* occupy a raster position.
-        data_cleaned = data[data < 4096] - 2048
+        data_cleaned = data[data < 4096]
 
         attributes = {
             'fname': fname_pmu,
