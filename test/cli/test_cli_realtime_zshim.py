@@ -11,7 +11,6 @@ from click.testing import CliRunner
 from shimmingtoolbox.cli.realtime_zshim import realtime_zshim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox import __dir_shimmingtoolbox__
 
 
 def test_cli_realtime_zshim():
@@ -45,14 +44,14 @@ def test_cli_realtime_zshim():
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
 
         # Specify output for text file and figures
-        fname_output = os.path.join(__dir_shimmingtoolbox__, 'test_realtime_zshim')
+        path_output = os.path.join(tmp, 'test_realtime_zshim')
 
         # Run the CLI
         result = runner.invoke(realtime_zshim_cli, ['-fmap', fname_fieldmap,
                                                     '-mask', fname_mask,
-                                                    '-output', fname_output,
+                                                    '-output', path_output,
                                                     '-resp', fname_resp,
                                                     '-anat', fname_anat],
                                catch_exceptions=False)
-
+        assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
