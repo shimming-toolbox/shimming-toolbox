@@ -18,7 +18,7 @@ from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
 def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, path_output=None):
     """ This function will generate static and dynamic (due to respiration) Gz components based on a fieldmap time
     series and respiratory trace information obtained from Siemens bellows  (PMUresp_signal.resp). An additional
-    multi-gradient echo (MGRE) magnitiude image is used to generate an ROI and resample the static and dynamic Gz
+    multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resample the static and dynamic Gz
     component maps to match the MGRE image. Lastly the mean Gz values within the ROI are computed for each slice.
 
     Args:
@@ -78,7 +78,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     for i_t in range(nt):
         masked_fieldmaps[..., i_t] = mask_fmap * fieldmap[..., i_t]
 
-    # Calculate gz gradient
+    # Calculate Gx, Gy and Gz gradients (in the physical coordinate system)
     g = 1000 / 42.576e6  # [mT / Hz]
     gradient = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
     for it in range(nt):

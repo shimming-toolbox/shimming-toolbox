@@ -131,7 +131,7 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
 
 def resample_from_to(nii_from_img, nii_to_vox_map, order=3, mode='constant', cval=0., out_class=nib.Nifti1Image):
     """ Wrapper to nibabel's ``resample_from_to`` function. Resample image `from_img` to mapped voxel space
-    `to_vox_map`. The wrapper adds support for 2D input data (adds a singleton) and 4D timeseries support.
+    `to_vox_map`. The wrapper adds support for 2D input data (adds a singleton) and for 4D time series.
     For more info, refer to nibabel.processing.resample_from_to.
 
     Args:
