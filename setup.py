@@ -20,6 +20,7 @@ setup(
     entry_points={
         'console_scripts': [
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
+            "st_mask=shimmingtoolbox.cli.mask:mask_cli",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
             "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
@@ -43,6 +44,6 @@ setup(
         "pytest-cov~=2.5.1",
     ],
     extras_require={
-        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4"],
+        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
     },
 )
