@@ -27,11 +27,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
-# TODO: Remove json file as input
-@click.option('-json', 'fname_json', type=click.Path(), required=True,
-              help="Filename of json corresponding BIDS sidecar.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_json, fname_anat, fname_output, verbose=True):
+def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_anat, fname_output, verbose=True):
     """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
     respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
     bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
@@ -51,7 +48,7 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_json, fnam
     else:
         nii_mask_anat = None
 
-    # TODO: Add json to fieldmap instead of asking for another json file
+    fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
 

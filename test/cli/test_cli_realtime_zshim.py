@@ -44,10 +44,6 @@ def test_cli_realtime_zshim():
         # Path for resp data
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
 
-        # Path for json file
-        fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_magnitude1.json')
-
         # Specify output for text file and figures
         fname_output = os.path.join(__dir_shimmingtoolbox__, 'test_realtime_zshim')
 
@@ -56,7 +52,6 @@ def test_cli_realtime_zshim():
                                                     '-mask', fname_mask,
                                                     '-output', fname_output,
                                                     '-resp', fname_resp,
-                                                    '-json', fname_json,
                                                     '-anat', fname_anat],
                                catch_exceptions=False)
 
