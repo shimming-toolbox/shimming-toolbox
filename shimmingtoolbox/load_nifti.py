@@ -58,6 +58,7 @@ def load_nifti(path_data, modality='phase'):
     # Generate file_list
     file_list = []
     [file_list.append(os.path.join(path_data, f)) for f in os.listdir(path_data) if f not in file_list]
+    file_list = sorted(file_list)
 
     nifti_path = ""
     # Check for incompatible acquisition source path
@@ -92,6 +93,7 @@ def load_nifti(path_data, modality='phase'):
 
     # Get a list of nii files
     nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
+    nifti_list = sorted(nifti_list)
 
     # Read all images and headers available and store them
     nifti_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
@@ -172,8 +174,9 @@ def read_nii(nii_path, auto_scale=True):
 
     image = np.asarray(info.dataobj)
     if auto_scale:
-        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and (("*phase*" in json_data['ImageComments']) or ("P" in json_data["ImageType"])):
+        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens')\
+                and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
+                     or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
