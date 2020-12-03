@@ -7,10 +7,13 @@ import glob
 import nibabel as nib
 import numpy as np
 import logging
+import pytest
 
 from shimmingtoolbox.unwrap import prelude
 
 
+@pytest.mark.prelude
+@pytest.mark.usefixtures("test_prelude_installation")
 class TestCore(object):
 
     def setup(self):
@@ -61,10 +64,11 @@ class TestCore(object):
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])
 
-        self.phase_e1 = phase_e1
-        self.phase_e2 = phase_e2
-        self.mag_e1 = nii_mag_e1.get_fdata()
-        self.mag_e2 = nii_mag_e2.get_fdata()
+        # Make tests fater by having the last dim only be 1
+        self.phase_e1 = np.expand_dims(phase_e1[..., 0], -1)
+        self.phase_e2 = np.expand_dims(phase_e2[..., 0], -1)
+        self.mag_e1 = np.expand_dims(nii_mag_e1.get_fdata()[..., 0], -1)
+        self.mag_e2 = np.expand_dims(nii_mag_e2.get_fdata()[..., 0], -1)
         self.affine_phase_e1 = nii_phase_e1.affine
         self.affine_phase_e2 = nii_phase_e2.affine
 
@@ -73,7 +77,7 @@ class TestCore(object):
         Runs prelude and check output integrity.
         """
         # default prelude call
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1)
 
         assert (unwrapped_phase_e1.shape == self.phase_e1.shape)
 
@@ -85,10 +89,11 @@ class TestCore(object):
         mask = np.ones(self.phase_e1.shape)
 
         # Call prelude with mask (is_unwrapping_in_2d is also used because it is significantly faster)
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask, is_unwrapping_in_2d=True)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, mask=mask,
+                                     is_unwrapping_in_2d=True)
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
-        assert(unwrapped_phase_e1[5, 5, 5] != 0)
+        assert(unwrapped_phase_e1[5, 5, 0] != 0)
 
     def test_wrong_size_mask(self):
         # Create mask with wrong dimensions
@@ -96,7 +101,7 @@ class TestCore(object):
 
         # Call prelude with mask
         try:
-            prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, mask)
+            prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, mask=mask)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
@@ -110,7 +115,7 @@ class TestCore(object):
         phase_e1 = np.ones([4, 4])
 
         try:
-            prelude(phase_e1, self.mag_e1, self.affine_phase_e1)
+            prelude(phase_e1, self.affine_phase_e1, mag=self.mag_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -124,7 +129,7 @@ class TestCore(object):
         mag_e1 = np.ones([4, 4, 4])
 
         try:
-            prelude(self.phase_e1, mag_e1, self.affine_phase_e1)
+            prelude(self.phase_e1, self.affine_phase_e1, mag=mag_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -139,7 +144,7 @@ class TestCore(object):
         phase_e1 = np.ones([4])
 
         try:
-            prelude(phase_e1, mag_e1, self.affine_phase_e1)
+            prelude(phase_e1, self.affine_phase_e1, mag=mag_e1)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -155,7 +160,7 @@ class TestCore(object):
         # Get first slice
         phase_e1_2d = self.phase_e1[:, :, 0]
         mag_e1_2d = self.mag_e1[:, :, 0]
-        unwrapped_phase_e1 = prelude(phase_e1_2d, mag_e1_2d, self.affine_phase_e1)
+        unwrapped_phase_e1 = prelude(phase_e1_2d, self.affine_phase_e1, mag=mag_e1_2d)
 
         assert(unwrapped_phase_e1.shape == phase_e1_2d.shape)
 
@@ -163,5 +168,44 @@ class TestCore(object):
         """
         Call prelude with a threshold for masking
         """
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.mag_e1, self.affine_phase_e1, threshold=200)
+        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, threshold=200)
         assert(unwrapped_phase_e1.shape == self.phase_e1.shape)
+
+    def test_3rd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the z dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(self.phase_e1[..., 0], -1)
+        mag_singleton = np.expand_dims(self.mag_e1[..., 0], -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+
+        assert unwrapped_phase_singleton.ndim == 3
+
+    def test_2nd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the 2nd dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(self.phase_e1[:, 0, 0], -1)
+        mag_singleton = np.expand_dims(self.mag_e1[:, 0, 0], -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+
+        assert unwrapped_phase_singleton.ndim == 2
+
+    def test_2nd_and_3rd_dim_singleton(self):
+        """
+        Call prelude on data with a singleton on the 2nd and 3rd dimension
+        """
+
+        # Prepare singleton
+        phase_singleton = np.expand_dims(np.expand_dims(self.phase_e1[:, 0, 0], -1), -1)
+        mag_singleton = np.expand_dims(np.expand_dims(self.mag_e1[:, 0, 0], -1), -1)
+
+        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+
+        assert unwrapped_phase_singleton.ndim == 3

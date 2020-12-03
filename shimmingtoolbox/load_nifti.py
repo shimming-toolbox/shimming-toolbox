@@ -8,8 +8,33 @@ import nibabel as nib
 import json
 import math
 
+from shimmingtoolbox.utils import iso_times_to_ms
+
+
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
+
+
+def get_acquisition_times(nii_data, json_data):
+    """
+    Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+
+    Args:
+        nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        numpy.ndarray: Acquisition timestamps in ms.
+
+    """
+    # Get number of volumes
+    n_volumes = nii_data.header['dim'][4]
+
+    delta_t = json_data['RepetitionTime'] * 1000  # [ms]
+    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+
+    return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
 
 
 def load_nifti(path_data, modality='phase'):
@@ -33,6 +58,7 @@ def load_nifti(path_data, modality='phase'):
     # Generate file_list
     file_list = []
     [file_list.append(os.path.join(path_data, f)) for f in os.listdir(path_data) if f not in file_list]
+    file_list = sorted(file_list)
 
     nifti_path = ""
     # Check for incompatible acquisition source path
@@ -67,6 +93,7 @@ def load_nifti(path_data, modality='phase'):
 
     # Get a list of nii files
     nifti_list = [os.path.join(nifti_path, f) for f in os.listdir(nifti_path) if f.endswith((".nii", ".nii.gz"))]
+    nifti_list = sorted(nifti_list)
 
     # Read all images and headers available and store them
     nifti_init = [read_nii(nifti_list[i]) for i in range(len(nifti_list))]
@@ -147,8 +174,9 @@ def read_nii(nii_path, auto_scale=True):
 
     image = np.asarray(info.dataobj)
     if auto_scale:
-        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and (("*phase*" in json_data['ImageComments']) or ("P" in json_data["ImageType"])):
+        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens')\
+                and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
+                     or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image

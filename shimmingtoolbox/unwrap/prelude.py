@@ -10,11 +10,12 @@ import nibabel as nib
 import pathlib
 import tempfile
 import logging
+import numpy as np
 
 from shimmingtoolbox.utils import run_subprocess
 
 
-def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping_in_2d=False):
+def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -23,10 +24,10 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
 
     Args:
         wrapped_phase (numpy.ndarray): 2D or 3D radian numpy array to perform phase unwrapping. (2 pi interval)
-        mag (numpy.ndarray): 2D or 3D magnitude numpy array corresponding to the phase array
         affine (numpy.ndarray): 2D array containing the transformation coefficients. Can be calculated by using:
             nii = nib.load("nii_path")
             affine = nii.affine
+        mag (numpy.ndarray): 2D or 3D magnitude numpy array corresponding to the phase array
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
         threshold: Threshold value for automatic mask generation (Use either mask or threshold, not both)
@@ -38,8 +39,11 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
         raise RuntimeError("Wrapped_phase must be 2d or 3d")
-    if wrapped_phase.shape != mag.shape:
-        raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+    if mag is not None:
+        if wrapped_phase.shape != mag.shape:
+            raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+    else:
+        mag = np.zeros_like(wrapped_phase)
 
     tmp = tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem)
     path_tmp = tmp.name
@@ -80,4 +84,11 @@ def prelude(wrapped_phase, mag, affine, mask=None, threshold=None, is_unwrapping
 
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]
 
-    return nib.load(fname_phase_unwrapped).get_fdata()
+    # When loading fname_phase_unwrapped, if a singleton is on the last dimension in wrapped_phase, it will not appear
+    # in the last dimension in phase_unwrapped. To be consistent with the size of the input, the singletons are added
+    # back.
+    phase_unwrapped = nib.load(fname_phase_unwrapped).get_fdata()
+    for _ in range(wrapped_phase.ndim - phase_unwrapped.ndim):
+        phase_unwrapped = np.expand_dims(phase_unwrapped, -1)
+
+    return phase_unwrapped
