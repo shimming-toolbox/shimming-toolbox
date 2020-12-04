@@ -53,7 +53,7 @@ setup(
         "dipy~=1.2.0",
         "PyQt5",
         "ivadomed~=2.0.0",
-        "tensorflow~=2.2.0",
+        "tensorflow~=2.3.0",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
