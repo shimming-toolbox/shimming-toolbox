@@ -173,9 +173,12 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         ma_static_anat = np.ma.array(resampled_static_vox[..., i_slice],
                                      mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         static_correction[i_slice] = np.ma.mean(ma_static_anat)
+
         ma_riro_anat = np.ma.array(resampled_riro_vox[..., i_slice],
                                    mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
+    static_correction[np.isnan(static_correction)] = 0.
+    riro_correction[np.isnan(riro_correction)] = 0.
 
     # ================ PLOTS ================
 
