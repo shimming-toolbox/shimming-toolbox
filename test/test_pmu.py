@@ -17,8 +17,8 @@ def test_read_resp():
     fname = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname)
 
-    expected_first_data = np.array([1667, 1667, 1682, 1682, 1667])
-    expected_last_data = np.array([-2048, -2048, -2048, -2048, -2048])
+    expected_first_data = np.array([1667, 1667, 1682, 1682, 1667]) + 2048
+    expected_last_data = np.array([-2048, -2048, -2048, -2048, -2048]) + 2048
     expected_start_time_mdh = 44294387
     expected_stop_time_mdh = 44343130
     expected_start_time_mpcu = 44294295

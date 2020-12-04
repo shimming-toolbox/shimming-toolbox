@@ -5,6 +5,8 @@
 import numpy as np
 from nibabel.affines import apply_affine
 import math
+import nibabel as nib
+from nibabel.processing import resample_from_to as nib_resample_from_to
 
 
 def generate_meshgrid(dim, affine):
@@ -125,3 +127,49 @@ def phys_to_vox_gradient(gx, gy, gz, affine):
              (gz * inv_affine[2, z_vox] * z_vox_spacing)
 
     return gx_vox, gy_vox, gz_vox
+
+
+def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval=0., out_class=nib.Nifti1Image):
+    """ Wrapper to nibabel's ``resample_from_to`` function. Resample image `from_img` to mapped voxel space
+    `to_vox_map`. The wrapper adds support for 2D input data (adds a singleton) and for 4D time series.
+    For more info, refer to nibabel.processing.resample_from_to.
+
+    Args:
+        nii_from_img (nibabel.Nifti1Image): Nibabel object with 2D, 3D or 4D array. The 4d case will be treated as a
+                                            timeseries.
+        nii_to_vox_map (nibabel.Nifti1Image):
+        order (int): Refer to nibabel.processing.resample_from_to
+        mode (str): Refer to nibabel.processing.resample_from_to
+        cval (scalar): Refer to nibabel.processing.resample_from_to
+        out_class: Refer to nibabel.processing.resample_from_to
+
+    Returns:
+        nibabel.Nifti1Image: Return a Nibabel object with the resampled data. The 4d case will have an extra dimension
+                             for the different time points.
+
+    """
+
+    from_img = nii_from_img.get_fdata()
+    if from_img.ndim == 2:
+        nii_from_img_3d = nib.Nifti1Image(np.expand_dims(from_img, -1), nii_from_img.affine)
+        nii_resampled = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
+                                             out_class=out_class)
+
+    elif from_img.ndim == 3:
+        nii_resampled = nib_resample_from_to(nii_from_img, nii_to_vox_map, order=order, mode=mode, cval=cval,
+                                             out_class=out_class)
+
+    elif from_img.ndim == 4:
+        nt = from_img.shape[3]
+        resampled_4d = np.zeros(nii_to_vox_map.shape + (nt,))
+        for it in range(from_img.shape[3]):
+            nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
+            nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
+                                                    out_class=out_class)
+            resampled_4d[..., it] = nii_resampled_3d.get_fdata()
+        nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine)
+
+    else:
+        raise NotImplementedError("Dimensions of input can only be 2D, 3D or 4D")
+
+    return nii_resampled
