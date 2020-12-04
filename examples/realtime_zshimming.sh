@@ -12,7 +12,7 @@
 cd "$1" || exit
 
 # dcm2bids -d . -o rt_zshim_nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti -input "." -output "$2" -subject "sub-example" || exit
+st_dicom_to_nifti -input "." -output "../rt_zshim_nifti" -subject "sub-example" || exit
 cd ../rt_zshim_nifti/sub-example/fmap || exit
 
 # Create fieldmap
