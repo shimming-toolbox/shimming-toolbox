@@ -177,6 +177,10 @@ def read_nii(nii_path, auto_scale=True):
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens')\
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
-            image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
+            # Bootstrap
+            if image.min() < 0:
+                image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2)) + math.pi
+            else:
+                image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
 
     return info, json_data, image
