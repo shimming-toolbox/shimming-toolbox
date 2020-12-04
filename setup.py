@@ -49,7 +49,7 @@ setup(
         "pandas",
         "colored",
         "keras~=2.4.0",
-        "pyyaml~=5.0.0",
+        "pyyaml~=5.3.0",
         "dipy~=1.2.0",
         "PyQt5",
         "ivadomed~=2.0.0",
