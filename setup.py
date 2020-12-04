@@ -44,6 +44,12 @@ setup(
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
+        "pytest-console-scripts~=1.1.0",
+        "transforms3d~=0.3.1",
+        "pandas",
+        "colored~=1.4.2",
+        "keras~=2.4.3",
+        "pyyaml~=5.3.1",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
