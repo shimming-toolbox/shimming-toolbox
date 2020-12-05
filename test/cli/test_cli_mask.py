@@ -85,3 +85,18 @@ def test_cli_mask_threshold():
         assert result.exit_code == 0
         assert result is not None
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
+
+
+def test_cli_mask_sct():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        out = os.path.join(tmp, 'mask.nii.gz')
+        process1 = 'coord'
+        process2 = '20x15'
+        result = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out, '-process1', process1, '-process2',
+                                          process2])
+
+        assert result.exit_code == 0
+        assert result is not None
