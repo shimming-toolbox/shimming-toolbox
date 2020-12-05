@@ -26,9 +26,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
 @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
                                                      "-centerline-algo {bspline, linear}. (default: 30)")
-@click.option('-output', type=click.Path(),
-              help="(str): File name (without extension) for the centerline output files. By default, output file will"
-                   " be the input with suffix '_centerline'. Example: 'centerline_optic'.")
+@click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask_centerline'),
+              help="(str): File name (without extension) for the centerline output files. Example: 'centerline_optic'. "
+                   "(default: (os.curdir, 'mask_centerline')).")
 @click.option('-gap', default=20.0, help="(float): Gap in mm between manually selected points. Only with method=viewer."
                                          " (default: 20.0)")
 @click.option('-v', type=click.IntRange(0, 2), default=1,
