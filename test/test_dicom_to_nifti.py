@@ -40,21 +40,22 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
                 for ext in ['nii.gz', 'json']:
                     if modality == 'phase':
                         assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
-                                                           subject_id + f'_{modality}{2}.{ext}'))
+                                                           subject_id + f"_{'phasediff'}.{ext}"))
                     else:
                         assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
-                                                           subject_id + f'_{modality}{i+1}.{ext}'))
+                                                           subject_id + f"_{modality}{i+1}.{ext}"))
 
         sequence_type = 'anat'
         for i in range(3):
             for ext in ['nii.gz', 'json']:
                 assert os.path.exists(
-                    os.path.join(path_nifti, subject_id, sequence_type, subject_id + f'_unshimmed_e{i+1}.{ext}'))
+                    os.path.join(path_nifti, subject_id, sequence_type, subject_id + f"_unshimmed_e{i+1}.{ext}"))
 
         sequence_type = 'func'
         for ext in ['nii.gz', 'json']:
             assert os.path.exists(
-                os.path.join(path_nifti, subject_id, sequence_type, subject_id + f'_bold.{ext}'))
+                os.path.join(path_nifti, subject_id, sequence_type, subject_id + f"_bold.{ext}"))
+
 
 @pytest.mark.dcm2niix
 def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
