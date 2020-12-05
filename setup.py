@@ -26,7 +26,6 @@ setup(
             "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
-            "st_mask=shimmingtoolbox.cli.mask:mask_cli",
             "st_get_centerline=shimmingtoolbox.cli.get_centerline:get_centerline_cli",
         ]
     },
