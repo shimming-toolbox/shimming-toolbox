@@ -61,7 +61,7 @@ jobs:
         run: |
           mkdir spinalcordtoolbox-5.0.1
           curl -o spinalcordtoolbox-5.0.1/spinalcordtoolbox-5.0.1 -JL https://github.com/neuropoly/spinalcordtoolbox/archive/5.0.1.zip
-          cd spinalcordtoolbox-5.0.1/spinalcordtoolbox-5.0.1
+          cd spinalcordtoolbox-5.0.1
           yes | ./install_sct
 
       - name: SpinalCord Toolbox v5.0.1 installation Ubuntu
