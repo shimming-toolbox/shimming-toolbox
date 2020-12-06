@@ -62,6 +62,7 @@ jobs:
           unzip -o spinalcordtoolbox-5.0.1.zip
           cd spinalcordtoolbox-5.0.1
           yes | ./install_sct
+          cd ..
 
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
