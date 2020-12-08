@@ -13,13 +13,29 @@ def test_cli_get_centerline():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
-        out = os.path.join(tmp, 'mask')
+        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        out1 = os.path.join(tmp, 'centerline1')
         method = 'fitseg'
         centerline_algo = 'linear'
 
-        result = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-centerline-algo',
-                                                    centerline_algo, '-output', out])
+        result1 = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-centerline_algo',
+                                                     centerline_algo, '-output', out1])
 
-        assert result.exit_code == 0
-        assert result is not None
+        out2 = os.path.join(tmp, 'centerline2')
+        method = 'fitseg'
+        centerline_algo = 'nurbs'
+
+        result2 = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-centerline_algo',
+                                                     centerline_algo, '-output', out2])
+
+        out3 = os.path.join(tmp, 'centerline3')
+        method = 'optic'
+
+        result3 = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-output', out3])
+
+        assert result1.exit_code == 0
+        assert result1 is not None
+        assert result2.exit_code == 0
+        assert result2 is not None
+        assert result3.exit_code == 0
+        assert result3 is not None
