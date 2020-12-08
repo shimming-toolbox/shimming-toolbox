@@ -60,7 +60,7 @@ jobs:
         run: |
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
-          yes | ./install_sct
+          yes 2>/dev/null | ./install_sct
 
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
