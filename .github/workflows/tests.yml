@@ -58,9 +58,10 @@ jobs:
 
       - name: SpinalCord Toolbox installation
         run: |
+          bash
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
-          printf 'y\ny\ny\n' | ASK_REPORT_QUESTION=false PIP_PROGRESS_BAR=off ./install_sct
+          yes | ASK_REPORT_QUESTION=false PIP_PROGRESS_BAR=off ./install_sct
 
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
