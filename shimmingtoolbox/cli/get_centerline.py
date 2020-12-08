@@ -28,19 +28,17 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask_centerline'),
               help="(str): File name (without extension) for the centerline output files. Example: 'centerline_optic'. "
                    "(default: (os.curdir, 'mask_centerline')).")
-@click.option('-v', type=click.IntRange(0, 2), default=1,
-              help="(int): 1: display on (default), 0: display off, 2: extended. (default: 1)")
-def get_centerline_cli(fname_input, contrast, method, centerline_algo, centerline_smooth, output, v):
+def get_centerline_cli(fname_input, contrast, method, centerline_algo, centerline_smooth, output):
     if method == "optic":
-        subprocess.run(['sct_get_centerline', '-i', fname_input, '-c', contrast, '-o', output, '-v', v], check=True)
+        subprocess.run(['sct_get_centerline', '-i', fname_input, '-c', contrast, '-o', output], check=True)
 
     elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
         subprocess.run(['sct_get_centerline', '-i', fname_input, '-method', method, '-centerline-algo', centerline_algo,
-                        '-o', output, '-v', v], check=True)
+                        '-o', output], check=True)
 
     elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
         subprocess.run(['sct_get_centerline', '-i', fname_input, '-method', method, '-centerline-algo', centerline_algo,
-                        '-centerline-smooth', centerline_smooth, '-o', output, '-v', v], check=True)
+                        '-centerline-smooth', centerline_smooth, '-o', output], check=True)
 
     else:
         raise ValueError("The implementation of get_centerline_cli is bad. Run get_centerline_cli -h for more "
