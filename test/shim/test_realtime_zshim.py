@@ -58,8 +58,8 @@ class TestRealtimeZShim(object):
                                                                                   self.nii_anat,
                                                                                   self.pmu,
                                                                                   self.json)
-        assert np.isclose(static_correction[0], .1291971459)
-        assert np.isclose(riro_correction[0], -0.008030084397911533)
+        assert np.isclose(static_correction[0], 0.1291926595061463,)
+        assert np.isclose(riro_correction[0], -0.00802980555042238)
         assert np.isclose(mean_p, 1326.3179660207873)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
@@ -70,8 +70,8 @@ class TestRealtimeZShim(object):
                                                                                   self.pmu,
                                                                                   self.json,
                                                                                   nii_mask_anat=self.nii_mask)
-        assert np.isclose(static_correction[0], 0.27666341763067254)
-        assert np.isclose(riro_correction[0], -0.05114633799219973)
+        assert np.isclose(static_correction[0], 0.2766538103967352)
+        assert np.isclose(riro_correction[0], -0.051144561917725075)
         assert np.isclose(mean_p, 1326.318)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
