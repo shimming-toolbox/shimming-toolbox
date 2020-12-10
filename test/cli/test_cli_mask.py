@@ -103,6 +103,4 @@ def test_cli_mask_sct():
         result2 = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out2, '-process1', process1])
 
         assert result1.exit_code == 0
-        assert result1 is not None
         assert result2.exit_code == 0
-        assert result2 is not None
