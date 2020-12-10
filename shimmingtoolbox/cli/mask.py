@@ -163,18 +163,20 @@ def threshold(fname_input, output, thr):
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
 @click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
-def sct(fname_input, output, process1, process2, size, shape):
+@click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
+@click.option('-verbose', type=click.IntRange(0, 2), default=1,
+              help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
+def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
     if process1 == "center" and process2 is None:
-        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1, '-size', size, '-f', shape, '-o', output],
-                       check=True)
+        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1, '-size', size, '-f', shape, '-o', output,
+                        '-r', str(remove), '-v', str(verbose)], check=True)
 
     elif process1 == "center" and process2 is not None:
         raise ValueError("The process 'center' must not have a 2nd argument in process2.")
 
     else:
-        subprocess.run(
-            ['sct_create_mask', '-i', fname_input, '-p', process1 + "," + process2, '-size', size, '-f', shape,
-             '-o', output], check=True)
+        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1 + "," + process2, '-size', size, '-f',
+                        shape, '-o', output, '-r', str(remove), '-v', str(verbose)], check=True)
 
     click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
     return output
