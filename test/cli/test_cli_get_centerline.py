@@ -34,8 +34,5 @@ def test_cli_get_centerline():
         result3 = runner.invoke(get_centerline_cli, ['-input', inp, '-method', method, '-output', out3])
 
         assert result1.exit_code == 0
-        assert result1 is not None
         assert result2.exit_code == 0
-        assert result2 is not None
         assert result3.exit_code == 0
-        assert result3 is not None
