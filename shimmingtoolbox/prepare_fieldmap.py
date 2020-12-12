@@ -1,8 +1,9 @@
-#!/usr/bin/python3
+ #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
 import math
 import numpy as np
+from skimage.filters import gaussian
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
@@ -81,4 +82,9 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
     fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
+    # Gaussian blur the fieldmap
+    #if gaussian_filter == True
+    #    fieldmap_hz = gaussian(fieldmap_hz, sigma = 1, mode = 'constant', cval = 0.0)
+
+    # return fieldmap_hz_gaussian
     return fieldmap_hz
