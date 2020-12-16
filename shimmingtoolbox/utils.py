@@ -76,11 +76,14 @@ def iso_times_to_ms(iso_times):
             minutes = int(a_time[2:4])
             seconds = int(a_time[4:6])
             micros = int(a_time[7:13])
-        elif len(a_time) == 15 and a_time[2] + a_time[5] + a_time[8] == ['::.'] or isinstance(a_time, str):
-            hours = int(a_time[0:2])
-            minutes = int(a_time[3:5])
-            seconds = int(a_time[6:8])
-            micros = int(a_time[9:15])
+        elif isinstance(a_time, str) and \
+                (len(a_time.split(':')) == 3) and \
+                (len(a_time.split(':')[2].split('.')) == 2):
+            split_colon = a_time.split(':')
+            hours = int(split_colon[0])
+            minutes = int(split_colon[1])
+            seconds = int(split_colon[2].split('.')[0])
+            micros = int(split_colon[2].split('.')[1])
         else:
             raise RuntimeError("Input format does not follow 'HHMMSS.mmmmmm'")
 

@@ -193,7 +193,7 @@
             "dataType": "anat",
             "modalityLabel": "unshimmed_e1",
             "criteria": {
-                "SeriesDescription": "*gre*UNSHIMMED*",
+                "SeriesDescription": "*gre*realtime*",
                 "EchoNumber": "1"
             }
         },
@@ -201,7 +201,7 @@
             "dataType": "anat",
             "modalityLabel": "unshimmed_e2",
             "criteria": {
-                "SeriesDescription": "*gre*UNSHIMMED*",
+                "SeriesDescription": "*gre*realtime*",
                 "EchoNumber": "2"
             }
         },
@@ -209,7 +209,7 @@
             "dataType": "anat",
             "modalityLabel": "unshimmed_e3",
             "criteria": {
-                "SeriesDescription": "*gre*UNSHIMMED*",
+                "SeriesDescription": "*gre*realtime*",
                 "EchoNumber": "3"
             }
         },
