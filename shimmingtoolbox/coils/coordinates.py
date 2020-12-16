@@ -72,6 +72,10 @@ def phys_gradient(data, affine):
     if data.shape[z_vox] != 1:
         z_vox_gradient = np.gradient(data, z_vox_spacing, axis=z_vox)
     else:
+        # realtime_zshim case where sagittal, rotated, one slice Gx = Gy
+        # z_vox_gradient = (x_vox_gradient * y_vox_spacing * z_vox_spacing * (affine[0, x_vox] - affine[1, x_vox]) +
+        #                   y_vox_gradient * x_vox_spacing * z_vox_spacing * (affine[0, y_vox] - affine[1, y_vox])) / \
+        #                  (x_vox_spacing * y_vox_spacing * (affine[1, z_vox] - affine[0, z_vox]))
         z_vox_gradient = np.zeros_like(data)
 
     # Compute the gradient along the physical axis
@@ -84,6 +88,8 @@ def phys_gradient(data, affine):
     z_gradient = (x_vox_gradient * affine[2, x_vox] / x_vox_spacing) + \
                  (y_vox_gradient * affine[2, y_vox] / y_vox_spacing) + \
                  (z_vox_gradient * affine[2, z_vox] / z_vox_spacing)
+
+
 
     return x_gradient, y_gradient, z_gradient
 
