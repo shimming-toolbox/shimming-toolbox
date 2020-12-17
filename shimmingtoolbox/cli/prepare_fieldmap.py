@@ -24,7 +24,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
 @click.option('-mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
-def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold):
+@click.option('-gaussian_filter', 'gaussian_filter', type=bool, help="Gaussian filter for B0 map")
+def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold, gaussian_filter):
     """Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
@@ -69,7 +70,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
         mask = None
 
     fieldmap_hz = prepare_fieldmap(list_phase, echo_times, affine, mag=mag, unwrapper=unwrapper, mask=mask,
-                                   threshold=threshold)
+                                   threshold=threshold, gaussian_filter=gaussian_filter)
 
     # Save NIFTI
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
