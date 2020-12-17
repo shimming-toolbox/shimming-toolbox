@@ -20,10 +20,10 @@ with standard manufacturer-supplied gradient/shim coils or with custom
    :glob:
    :caption: Contents:
 
-   1_overview/*
-   2_getting_started/*
-   3_contributing/*
-   4_about/*
-   5_other-resources/hardware/*
-   6_cli_reference/cli.rst
-   7_api_reference/api.rst
+   overview/*
+   getting_started/*
+   contributing/*
+   about/*
+   other-resources/hardware/*
+   cli_reference/cli.rst
+   api_reference/api.rst
