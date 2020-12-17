@@ -20,8 +20,11 @@ with standard manufacturer-supplied gradient/shim coils or with custom
    :glob:
    :caption: Contents:
 
-   overview/*
-   getting_started/*
+   overview/introduction.rst
+   overview/flowchart.rst
+   getting_started/installation.rst
+   getting_started/getting_started.rst
+   getting_started/help.rst
    contributing/*
    about/*
    other-resources/hardware/*
