@@ -56,12 +56,6 @@ jobs:
           unzip -o dcm2niix_lnx.zip
           sudo install dcm2nii* /usr/bin/
       
-      - name: SpinalCord Toolbox installation
-        run: |
-          git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
-          cd spinalcordtoolbox
-          yes | ./install_sct
-
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
         run: |
@@ -81,7 +75,7 @@ jobs:
         run: st_check_dependencies
 
       - name: Run unit tests
-        run: py.test --ignore=spinalcordtoolbox/ -v --cov shimmingtoolbox/ --cov-report term-missing
+        run: py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 
       - name: macOS Shellcheck
         if: contains(matrix.os, 'macos')
