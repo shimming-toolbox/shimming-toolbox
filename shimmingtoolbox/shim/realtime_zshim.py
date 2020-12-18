@@ -111,43 +111,26 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
-    #riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
-    #                 np.zeros_like(fieldmap[:, :, :, 0]),
-    #                 np.zeros_like(fieldmap[:, :, :, 0])])
-    #static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
-    #                   np.zeros_like(fieldmap[:, :, :, 0]),
-    #                   np.zeros_like(fieldmap[:, :, :, 0])])
-
     riro = np.squeeze( np.array([np.zeros_like(fieldmap[:, :, :, 0])]) )
     static = np.squeeze( np.array([np.zeros_like(fieldmap[:, :, :, 0])]) )
 
-    print(riro.shape)
-
     # TODO fix progress bar not showing up
     progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
-    #for g_axis in range(3):
     for i_x in range(fieldmap.shape[0]):
         for i_y in range(fieldmap.shape[1]):
             for i_z in range(fieldmap.shape[2]):
 
                 # do regression to separate static component and RIRO component
-                #reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
-                #                             -gradient[g_axis][i_x, i_y, i_z, :])
                 reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
                                                  -fieldmap[i_x, i_y, i_z, :])                             
                 # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
                 # between scans. This allows to compare results between scans.
-                #riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
                 riro[i_x, i_y, i_z] = reg.coef_ * pressure_rms
-                #static[g_axis][i_x, i_y, i_z] = reg.intercept_
                 static[i_x, i_y, i_z] = reg.intercept_
                 progress_bar.update(1)
 
     # Calculate gradient of the static and riro corrections (in the physical coordinate system)
     g = 1000 / 42.5774785178325552e6  # [mT / Hz]
-
-    #gradient_static = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
-    #gradient_riro = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
     
     gradient_riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
                      np.zeros_like(fieldmap[:, :, :, 0]),
@@ -155,8 +138,6 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     gradient_static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
                        np.zeros_like(fieldmap[:, :, :, 0]),
                        np.zeros_like(fieldmap[:, :, :, 0])])
-
-    print(gradient_riro.shape)
 
     gradient_static[:][:,:,:] = phys_gradient(g * static[:, :, :], nii_fieldmap.affine) # [mT / mm]
     gradient_riro[:][:,:,:] = phys_gradient(g * riro[:, :, :], nii_fieldmap.affine) # [mT / mm]
