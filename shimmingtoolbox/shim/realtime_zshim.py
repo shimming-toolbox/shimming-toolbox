@@ -111,27 +111,59 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
-    riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
-                     np.zeros_like(fieldmap[:, :, :, 0]),
-                     np.zeros_like(fieldmap[:, :, :, 0])])
-    static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
-                       np.zeros_like(fieldmap[:, :, :, 0]),
-                       np.zeros_like(fieldmap[:, :, :, 0])])
+    #riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+    #                 np.zeros_like(fieldmap[:, :, :, 0]),
+    #                 np.zeros_like(fieldmap[:, :, :, 0])])
+    #static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+    #                   np.zeros_like(fieldmap[:, :, :, 0]),
+    #                   np.zeros_like(fieldmap[:, :, :, 0])])
+
+    riro = np.squeeze( np.array([np.zeros_like(fieldmap[:, :, :, 0])]) )
+    static = np.squeeze( np.array([np.zeros_like(fieldmap[:, :, :, 0])]) )
+
+    print(riro.shape)
+
     # TODO fix progress bar not showing up
     progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
-    for g_axis in range(3):
-        for i_x in range(fieldmap.shape[0]):
-            for i_y in range(fieldmap.shape[1]):
-                for i_z in range(fieldmap.shape[2]):
+    #for g_axis in range(3):
+    for i_x in range(fieldmap.shape[0]):
+        for i_y in range(fieldmap.shape[1]):
+            for i_z in range(fieldmap.shape[2]):
 
-                    # do regression to separate static component and RIRO component
-                    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
-                                                 -gradient[g_axis][i_x, i_y, i_z, :])
-                    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
-                    # between scans. This allows to compare results between scans.
-                    riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
-                    static[g_axis][i_x, i_y, i_z] = reg.intercept_
-                    progress_bar.update(1)
+                # do regression to separate static component and RIRO component
+                #reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
+                #                             -gradient[g_axis][i_x, i_y, i_z, :])
+                reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
+                                                 -fieldmap[i_x, i_y, i_z, :])                             
+                # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+                # between scans. This allows to compare results between scans.
+                #riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
+                riro[i_x, i_y, i_z] = reg.coef_ * pressure_rms
+                #static[g_axis][i_x, i_y, i_z] = reg.intercept_
+                static[i_x, i_y, i_z] = reg.intercept_
+                progress_bar.update(1)
+
+    # Calculate gradient of the static and riro corrections (in the physical coordinate system)
+    g = 1000 / 42.5774785178325552e6  # [mT / Hz]
+
+    #gradient_static = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
+    #gradient_riro = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
+    
+    gradient_riro = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+                     np.zeros_like(fieldmap[:, :, :, 0]),
+                     np.zeros_like(fieldmap[:, :, :, 0])])
+    gradient_static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
+                       np.zeros_like(fieldmap[:, :, :, 0]),
+                       np.zeros_like(fieldmap[:, :, :, 0])])
+
+    print(gradient_riro.shape)
+
+    gradient_static[:][:,:,:] = phys_gradient(g * static[:, :, :], nii_fieldmap.affine) # [mT / mm]
+    gradient_riro[:][:,:,:] = phys_gradient(g * riro[:, :, :], nii_fieldmap.affine) # [mT / mm]
+
+    gradient_static = 1000 * gradient_static # [mT / m]
+    gradient_riro = 1000 * gradient_riro # [mT / m]
+    
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
@@ -142,7 +174,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     # Resample static to target anatomical image
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
-        nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
+        nii_static = nib.Nifti1Image(gradient_static[g_axis], nii_fieldmap.affine)
         nii_resampled_static = resample_from_to(nii_static, nii_anat)
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
     # Since this is zshimming, only the slice component is used.
@@ -157,7 +189,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     # Resample riro to target anatomical image
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
-        nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
+        nii_riro = nib.Nifti1Image(gradient_riro[g_axis], nii_fieldmap.affine)
         nii_resampled_riro = resample_from_to(nii_riro, nii_anat)
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
     # Since this is zshimming, only the slice component is used.
@@ -191,11 +223,11 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         # Plot Static and RIRO
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
-        im = ax.imshow(riro[2][:-1, :-1, 0] / pressure_rms)
+        im = ax.imshow(gradient_riro[2][:-1, :-1, 0] / pressure_rms)
         fig.colorbar(im)
         ax.set_title("RIRO")
         ax = fig.add_subplot(2, 1, 2)
-        im = ax.imshow(static[2][:-1, :-1, 0])
+        im = ax.imshow(gradient_static[2][:-1, :-1, 0])
         fig.colorbar(im)
         ax.set_title("Static")
         fname_figure = os.path.join(path_output, 'fig_realtime_zshim_riro_static.png')
