@@ -119,6 +119,30 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                        np.zeros_like(fieldmap[:, :, :, 0])])
     # TODO fix progress bar not showing up
     progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
+
+    #linear operator: A
+    p = acq_pressures.reshape(-1, 1) - mean_p
+    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] * fieldmap.shape[2]
+
+    I = np.identity(nVoxels)
+    A = np.concatenate([I, p[0]*I], axis=1)
+    
+    # solution vector: Bt
+    Bt = np.array([fieldmap[:, :, :, 0]])
+    Bt = np.reshape(Bt, (nVoxels, 1))
+
+    print(fieldmap.shape[3])
+    for iT in range(1, fieldmap.shape[3]):
+        print(iT)
+        A = np.array([ A, np.concatenate([I, p[0]*I], axis=1) ])
+
+        tmpB = np.array([fieldmap[:, :, :, iT]])
+        tmpB = np.reshape(tmpB, (nVoxels, 1))
+
+        Bt = np.concatenate([Bt, tmpB])
+    
+
+
     for g_axis in range(3):
         for i_x in range(fieldmap.shape[0]):
             for i_y in range(fieldmap.shape[1]):
