@@ -122,25 +122,29 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
     #linear operator: A
     p = acq_pressures.reshape(-1, 1) - mean_p
-    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] * fieldmap.shape[2]
+    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] 
 
     I = np.identity(nVoxels)
     A = np.concatenate([I, p[0]*I], axis=1)
     
     # solution vector: Bt
-    Bt = np.array([fieldmap[:, :, :, 0]])
+    Bt = np.array([fieldmap[:, :, 0, 0]])
     Bt = np.reshape(Bt, (nVoxels, 1))
 
-    print(fieldmap.shape[3])
     for iT in range(1, fieldmap.shape[3]):
-        print(iT)
-        A = np.array([ A, np.concatenate([I, p[0]*I], axis=1) ])
+        A = np.concatenate([ A, np.concatenate([I, p[iT]*I], axis=1)], axis=0 )
 
-        tmpB = np.array([fieldmap[:, :, :, iT]])
+        tmpB = np.array([fieldmap[:, :, 0, iT]])
         tmpB = np.reshape(tmpB, (nVoxels, 1))
 
         Bt = np.concatenate([Bt, tmpB])
-    
+
+    AT = np.transpose(A)
+    AT_A = np.dot(AT,A)
+    AT_Bt = np.dot(AT, Bt)
+
+    betas = np.dot(np.linalg.inv(AT_A), AT_Bt)
+    print(np.shape(betas))
 
 
     for g_axis in range(3):
