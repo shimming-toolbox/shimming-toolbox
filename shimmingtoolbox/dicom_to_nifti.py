@@ -2,9 +2,12 @@
 # -*- coding: utf-8
 
 from distutils.dir_util import copy_tree
+
+import goop
 import json
 import numpy as np
 import os
+import re
 import sys
 import subprocess
 import dcm2bids
@@ -25,12 +28,15 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
 
     # Create the folder where the nifti files will be stored
     if not os.path.exists(path_dicom):
-        raise FileNotFoundError("No dicom path found at:" path_dicom)
-    #TODO: Char: fix syntactic issues; close but not quite
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_config_dicom)
+        #No dicom path found at
+
+
+
     if not os.path.exists(path_config_dcm2bids):
-        error_message = "No dcm2bids config file found at:"
-        raise FileNotFoundError(error_message, path_config_dcm2bids)
-        error_message = None
+        #error_message = "No dcm2bids config file found at:" #TODO: Charlotte can I put error_message back in?
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path_config_dcm2bids)
+        #error_message = None
     if not os.path.exists(path_nifti):
         os.makedirs(path_nifti)
 
@@ -62,7 +68,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
 
     subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids],
                    check=True)
-#TODO: Charlotte this is not good
+
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
     # Go in the fieldmap folder
@@ -71,11 +77,9 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         # Make a list of the json files in fmap folder
         file_list = []
 
-        for file in glob.glob("*.json"):
+        for file in glob.glob("*.json", recursive=False):
             file_list.append(os.path.join(path_fmap, file)) for file in os.listdir(path_fmap)
-            #TODO Charlotte make sure this is checked for recursivity(under 3.5 it's serious)
             file_list = sorted(file_list)
-
 
         for fname_json in file_list:
             is_renaming = False
@@ -84,24 +88,15 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                 json_data = json.load(json_file)
                 # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined and that
                 # sequenceName's last digit is 2 (refers to number of echoes when using dcm2bids)
+
+
+#TODO Charlotte clean this up.
                 if ('ImageType' in json_data) and ('P' in json_data['ImageType']) and \
                    ('EchoTime1' in json_data) and ('EchoTime2' in json_data) and \
                    ('SequenceName' in json_data) and (int(json_data['SequenceName'][-1]) == 2):
-                    #TODO: Charlotte- do this check first, save yourself one iteration. doesn't matter that much, but it irks me
-                    # Make sure it is not already named phasediff
-                    if len(os.path.basename(fname_json).split(subject_id, 1)[-1].rsplit('phasediff', 1)) == 1:
-                        # Split the filename in 2 and remove phase
-                        #TODO Charlotte: better way to do this?
-                        file_parts = fname_json.rsplit('phase', 1)
-                        if len(file_parts) == 2:
-                            # Stitch the filename back together making sure to remove any digits that could be after
-                            # 'phase'
-                            #TODO: Charlotte No try for regex
-                            digits = '0123456789'
-                            fname_new_json = file_parts[0] + 'phasediff' + file_parts[1].lstrip(digits)
-                            is_renaming = True
-            # Rename the json file an nifti file
-            #TODO Charlotte, just do this in the same breath as above. 
+                        fname_new_json = fname_json =  re.sub('[0-9]', '', fname)
+                        is_renaming = True
+            # Rename the json file an nifti file 
             if is_renaming:
                 #TODO: Charlotte I dont't like splittext
                 if os.path.exists(os.path.splitext(fname_json)[0] + '.nii.gz'):
@@ -109,44 +104,6 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                     fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
                     os.rename(fname_nifti_old, fname_nifti_new)
                     os.rename(fname_json, fname_new_json)
-
-    #TODO: Charlotte why is this here? comment for postarity or remove it.
-    # if 'win' in sys.platform:
-    #     # dcm2bids is broken for windows as a python package so using CLI
-    #     # Create bids structure for data
-    #     subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True)
-    #
-    #     #
-    #     # # Copy original dicom files into nifti_path/sourcedata
-    #     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
-    #     #
-    #     # # Call the dcm2bids_helper
-    #     subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
-    #     #
-    #     # Check if the helper folder has been created
-    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(path_helper):
-    #         raise ValueError('dcm2bids_helper could not create directory helper')
-    #
-    #     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
-    #     helper_file_list = os.listdir(path_helper)
-    #     if not helper_file_list:
-    #         raise ValueError('No data to process')
-    #
-    #     subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids],
-    #     check=True)
-    # else:
-    #     bids_info = dcm2bids.Dcm2bids([path_dicom], subject_id, path_config_dcm2bids, path_nifti)
-    #     scaffold()
-    #
-    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(path_helper):
-    #         raise ValueError('dcm2bids_helper could not create directory helper')
-    #     helper_file_list = os.listdir(path_helper)
-    #     if not helper_file_list:
-    #         raise ValueError('No data to process')
-    #
-    #     bids_info.run()
 
     if remove_tmp:
         shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))
