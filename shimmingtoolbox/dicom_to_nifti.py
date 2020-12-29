@@ -2,12 +2,15 @@
 # -*- coding: utf-8
 
 from distutils.dir_util import copy_tree
+
+import dcm2bids
 import json
 import numpy as np
 import os
-import sys
 import subprocess
-import dcm2bids
+import sys
+
+
 # from dcm2bids.scaffold import scaffold
 import shutil
 
