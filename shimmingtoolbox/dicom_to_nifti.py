@@ -17,43 +17,42 @@ import dcm2bids
 import shutil
 
 
-def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
-    """ Converts dicom files into nifti files by calling dcm2bids
+""" Converts dicom files into nifti files by calling dcm2bids
 
-    Args:
-        path_dicom (str): path to the input dicom folder
+ Args:
+	path_dicom (str): path to the input dicom folder
         path_nifti (str): path to the output nifti folder
 
-    """
+"""
+def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
 
 
-    #TODO Charlotte make this in config!!
     #TODO Charlotte check error types, you're wrong all over
     # Check for specified nifti file, else create a new file
     if not os.path.exists(path_dicom):
-        raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._no_dicom_path, path_config_dicom)
+        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_dicom_path, path_config_dicom)
     if not os.path.exists(path_nifti):
         os.makedirs(path_nifti)
 
     # Check for dicom config file
     if not os.path.exists(path_config_dcm2bids):
-        raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._no_dicom_config, path_config_dcm2bids)
+        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_dicom_config, path_config_dcm2bids)
 
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    sub_process = subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True)
-    if not sub_process.<ERROR CODE> == 0: #TODO CHARLOTTE there's a python thingy here i need to check itches wrong
-        raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._no_bids_structure, sub_process.<ERROR STATEMENT>)
+    sub_process = subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True, capture_output=True)
+    if not sub_process.returncode == 0: #TODO CHARLOTTE there's a python thingy here i need to check itches wrong
+        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_bids_structure, sub_process.stderr)
 
 
     # Copy original dicom files into nifti_path/sourcedata
     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
     
     # Call the dcm2bids_helper
-    sub_process = subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
-    if not sub_process.<ERROR CODE> == 0: #TODO CHARLOTTE there's a python thingy here i need to check, itches wrong
-        raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._failed_dcm2bids_helper, sub_process.<ERROR STATEMENT>)
+    sub_process = subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True, capture_output=True)
+    if not sub_process.returncode == 0: #TODO CHARLOTTE there's a python thingy here i need to check, itches wrong
+        raise FileNotFoundError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
 
     # Check if the helper folder has been created
     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
@@ -65,10 +64,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     if not helper_file_list:
         raise ValueError(_no_data)
 
-    sub_process = subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids],
-                   check=True)
-    if not sub_process.<ERROR CODE> == 0: 
-        raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._failed_dcm2bids_helper, sub_process._no_dcm2bids)
+    sub_process = subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, \
+				 '-c', path_config_dcm2bids], check=True, capture_output=True)
+
+    if not sub_process.returncode == 0: 
+        raise FileNotFoundError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
@@ -84,7 +84,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
 
         for json_file in file_list:
             is_renaming = False
-            # Open the json file TODO: CHARLOTTE ADD AN ELSE
+            # Open the json file TODO: CHARLOTTE ADD AN ELSE ???
             with open(json_file) as file:  
                 json_data = json.load(file) #todo: Charlotte can this be guarded as well?
                 # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined and that
@@ -111,9 +111,9 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                     fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
                     os.rename(fname_nifti_old, fname_nifti_new)
                     os.rename(fname_json, fname_new_json)
-		raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._json_file_location, sub_process._no_dcm2bids)
+		raise FileNotFoundError(errno.ENOENT, notice.message_lang._json_file_location, sub_process._no_dcm2bids)
 
     if remove_tmp:
         removal_tmp = shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))#TODO CHARLOTTE gentalize the raise
-    	if not removal_tmp.<ERROR CODE> == 0: 
-        	raise FileNotFoundError(errno.ENOENT, notice.<CONFIG VARIABLE>._temp_removal, sub_process._no_dcm2bids)
+    	if not removal_tmp.returncode == 0: 
+        	raise FileNotFoundError(errno.ENOENT, notice.message_lang._temp_removal, sub_process.stderr)
