@@ -62,8 +62,6 @@ jobs:
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
           ./install_sct -y
-          cd ..
-          cd shimming-toolbox
 
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
