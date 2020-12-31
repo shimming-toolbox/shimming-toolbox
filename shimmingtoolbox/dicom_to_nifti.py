@@ -17,6 +17,7 @@ import dcm2bids
 import shutil
 
 
+
 """ Converts dicom files into nifti files by calling dcm2bids
 
  Args:
@@ -42,8 +43,8 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
     sub_process = subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True, capture_output=True)
-    if not sub_process.returncode == 0: #TODO CHARLOTTE there's a python thingy here i need to check itches wrong
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_bids_structure, sub_process.stderr)
+    if not sub_process.returncode == 0:
+        raise SystemError(errno.ENOENT, notice.message_lang._no_bids_structure, sub_process.stderr)
 
 
     # Copy original dicom files into nifti_path/sourcedata
@@ -51,8 +52,8 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     
     # Call the dcm2bids_helper
     sub_process = subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True, capture_output=True)
-    if not sub_process.returncode == 0: #TODO CHARLOTTE there's a python thingy here i need to check, itches wrong
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
+    if not sub_process.returncode == 0: 
+        raise SystemError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
 
     # Check if the helper folder has been created
     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
@@ -68,7 +69,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
 				 '-c', path_config_dcm2bids], check=True, capture_output=True)
 
     if not sub_process.returncode == 0: 
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
+        raise SystemError(errno.ENOENT, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
@@ -116,4 +117,4 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     if remove_tmp:
         removal_tmp = shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))#TODO CHARLOTTE gentalize the raise
     	if not removal_tmp.returncode == 0: 
-        	raise FileNotFoundError(errno.ENOENT, notice.message_lang._temp_removal, sub_process.stderr)
+        	raise ValueError(errno.ENOENT, notice.message_lang._temp_removal, sub_process.stderr)
