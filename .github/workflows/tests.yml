@@ -60,7 +60,7 @@ jobs:
         run: |
           bash
           cd ../..
-          git clone --depth 1 --single-branch --branch ng/strict-shell https://github.com/neuropoly/spinalcordtoolbox
+          git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
           ./install_sct -y
           cd ..
