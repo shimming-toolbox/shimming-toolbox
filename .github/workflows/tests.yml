@@ -58,7 +58,6 @@ jobs:
 
       - name: SpinalCord Toolbox installation
         run: |
-          bash
           cd ../..
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
