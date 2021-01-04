@@ -5,20 +5,10 @@
  Business Case Validation for running Processes 
 '''
 
-# Python Descriptor 
-from distutils.dir_util import copy_tree
-from shimmingtoolbox import __dir_config_dcm2bids__
-
-import goop
-import json
+#from shimmingtoolbox import __dir_config_dcm2bids__
 import language as notice
-import numpy as np
-import os
-import re
-import sys
 import subprocess
-import dcm2bids
-import shutil
+
 
 ''' 
  Identifies if a subprocess provides the expected return value for a particular business case

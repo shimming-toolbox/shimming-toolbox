@@ -3,7 +3,14 @@
 
 # from dcm2bids.scaffold import scaffold
 from distutils.dir_util import copy_tree
+
 from shimmingtoolbox import __dir_config_dcm2bids__
+
+from shimmingtoolbox.Domain import data_domain as d_data
+from shimmingtoolbox.Domain import file_system_domain as d_file_system
+from shimmingtoolbox.Domain import process_domain as d_process
+
+from shimmingtoolbox.Repository import file_system_repository as r_file_system
 
 import goop
 import json
@@ -18,6 +25,10 @@ import shutil
 
 
 
+r_file_system.found( working_file, error_message=_quiet )
+
+
+
 """ Converts dicom files into nifti files by calling dcm2bids
 
  Args:
@@ -28,41 +39,37 @@ import shutil
 def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
 
     # Check for specified nifti file, else create a new file
-    
-    dicom_path_exists_response = os.path.exists(path_dicom)
-    if not dicom_path_exists_response.returncode == 0:
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_dicom_path, RAISE)
-    
-    if not os.path.exists(path_nifti):
-	file_creation = os.makedirs(path_nifti).returncode
-        if not file_creation.returncode == 0:
-		raise raise(errno.raise, notice.message_lang.raise, raise)
-        
+    r_file_system.found( path_dicom, error_message=notice.message_lang._no_dicom_path )
+	r_file_system.create( path_nifti, notice.message_lang._no_nifty_file )
+   
     # Check for dicom config file
-    dicom_config_exists_check = os.path.exists(path_config_dcm2bids)
-    if not dicom_config_exists_check.returncode == 0:
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_dicom_config, RAISE)
-
+    r_file_system.found( path_config_dcm2bids, notice.message_lang._no_dicom_config )
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    sub_process = subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True, capture_output=True)
-    if not scaffold_sub_process.returncode == 0:
-        raise SystemError(errno.EIO, notice.message_lang._no_bids_structure, scaffold_sub_process.stderr)
+    subprocess_arguments = ['dcm2bids_scaffold', '-o', path_nifti]
+    error_message = notice.message_lang._no_bids_structure
 
+    d_process.subprocess_return_validation( expected_value = 0, subprocess_arguments, error_message )    
 
     # Copy original dicom files into nifti_path/sourcedata
-    copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
+    copy_location = os.path.join(path_nifti, 'sourcedata')
+    r_file_system.copied( path_dicom, copy_location, error_message=_copy_dicom_failure ):
+
     
     # Call the dcm2bids_helper
-    sub_process = subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True, capture_output=True)
-    if not sub_process.returncode == 0: 
-        raise SystemError(errno.EIO, notice.message_lang._failed_dcm2bids_helper, sub_process.stderr)
+    subprocess_arguments = None
+    error_message = None
+
+    subprocess_arguments = ['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti]
+    error_message = notice.message_lang._failed_dcm2bids_helper
+
+    d_process.subprocess_return_validation( expected_value = 0, subprocess_arguments, error_message )    
+
 
     # Check if the helper folder has been created
     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    if not os.path.isdir(path_helper):
-        raise FileNotFoundError(errno.ENOENT, notice.message_lang._dir_tmp_dcm2bidsRAISE, RAISE)
+    r_file_system.found( path_helper, error_message=notice.message_lang._dcm2bids_helper_creation)
 
     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
     helper_file_list = os.listdir(path_helper)
@@ -91,32 +98,21 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
             is_renaming = False
             
             with open(json_file) as file:
-		json_data = json.load(file) 
-		if not json.load(file) == 0:
-		raise ValueError(errno.ENODATA, notice._json_formatting, json_data.stderr))
-                # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined and that
-                # sequenceName's last digit is 2 (refers to number of echoes when using dcm2bids)
+                json.load(file)
+                d_process.subprocess_return_validation( expected_value = 0, subprocess_options, notice.message_lang._json_formatting ):
 
-		#TODO: Charlotte --> check these variables using tests.
-                if ('ImageType' in json_data) and \
-		('P' in json_data['ImageType']) and \
-		('EchoTime1' in json_data) and \
-		('EchoTime2' in json_data) and \
-                ('SequenceName' in json_data) and \
-		(int(json_data['SequenceName'][-1]) == 2):
-                        fname_new_json = fname_json =  re.sub('[0-9]', '', json_file)
-                        is_renaming = True
 
-            # Rename the json file an nifti file 
-            if is_renaming:
-		nifti_file_path = os.path.splitext(fname_json)[0] + '.nii.gz'
-		
-                fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
-                fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
-                os.rename(fname_nifti_old, fname_nifti_new)
-                os.rename(fname_json, fname_new_json)
+        json_data =  d_data.json_load_validation( file_to_load, error_message = _quiet )
+
+	#TODO: Charlotte --> check variables, Check indentations
+        d_data.json_data_valid( json_data, error_message = _quiet )
+
+        fname_new_json = fname_json =  re.sub('[0-9]', '', file_to_load)
+
+        nifti_file_path = os.path.splitext(fname_json)[0] + '.nii.gz'
+        fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
+        r_file_system.rename( nifti_file_path, fname_nifti_new ):
 
     if remove_tmp:
-        tmp_to_remove = shutil.rmtree(os.path.join(path_file_nifti, 'tmp_dcm2bids'))
-    	if not tmp_to_remove.returncode == 0: 
-        	raise ValueError(errno.ENOENT, notice.message_lang._temp_removal, tmp_to_remove.stderr)
+        path_to_file = os.path.join(path_file_nifti, 'tmp_dcm2bids')
+        r_file_system.remove( path_to_file, notice.message_lang._temp_removal )
