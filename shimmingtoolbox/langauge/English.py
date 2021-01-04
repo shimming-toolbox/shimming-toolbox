@@ -3,9 +3,10 @@
 
 
 # Error messages
+_quiet = ""
 _dcm2bids_helper_creation ='dcm2bids_helper could not create directory helper'
 _failed_dcm2bids_helper = 'Could not run dcm2bids_helper'
-_json_file_location = 'Cannot find JSON file in specified location'
+_json_formatting = 'Errors in JSON file syntax'
 _no_bids_structure = 'Creating bids structure for data failed'
 _no_data = 'No data to process'
 _no_dcm2bids = 'Cannot call dcm2bids'
