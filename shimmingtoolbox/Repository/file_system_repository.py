@@ -6,18 +6,14 @@
  Takes in file, a specific error (default is blank), and returns error message and standard error
 '''
 
-from distutils.dir_util import copy_tree
-from shimmingtoolbox import __dir_config_dcm2bids__
+# TODO: REPLACE THIS
+#from distutils.dir_util import copy_tree --> replace
 
-import goop
-import json
+#from shimmingtoolbox import __dir_config_dcm2bids__
+
+
 import language as notice
-import numpy as np
 import os
-import re
-import sys
-import subprocess
-import dcm2bids
 import shutil
 
 
@@ -36,7 +32,10 @@ def rename( working_file, new_name, error_message=_quiet ):
     	if not command_rename.returncode == 0: 
         	raise ValueError(errno.ENOENT, notice.message_lang.error_message, command_rename.stderr)
 
-def remove( working_file, error_message=_quiet ):
-        command_remove = shutil.rmtree(os.path.join(path_file_nifti, 'tmp_dcm2bids'))
+def remove( working_file_path, error_message=_quiet ):
+        command_remove = shutil.rmtree(working_file_path)
     	if not command_remove.returncode == 0: 
         	raise ValueError(errno.ENOENT, notice.message_lang.error_message, command_remove.stderr)
+
+
+
