@@ -6,6 +6,10 @@ import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
 from matplotlib.figure import Figure
+from scipy import sparse
+from scipy.sparse.linalg import spsolve
+from scipy.sparse.linalg import inv
+from scipy.sparse.linalg import lsqr
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -117,49 +121,42 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     static = np.array([np.zeros_like(fieldmap[:, :, :, 0]),
                        np.zeros_like(fieldmap[:, :, :, 0]),
                        np.zeros_like(fieldmap[:, :, :, 0])])
-    # TODO fix progress bar not showing up
-    progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
 
-    #linear operator: A
-    p = acq_pressures.reshape(-1, 1) - mean_p
-    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] 
 
-    I = np.identity(nVoxels)
-    A = np.concatenate([I, p[0]*I], axis=1)
-    
-    # solution vector: Bt
-    Bt = np.array([fieldmap[:, :, 0, 0]])
-    Bt = np.reshape(Bt, (nVoxels, 1))
+    p = acq_pressures - mean_p
+    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] * fieldmap.shape[2] 
 
-    for iT in range(1, fieldmap.shape[3]):
-        A = np.concatenate([ A, np.concatenate([I, p[iT]*I], axis=1)], axis=0 )
-
-        tmpB = np.array([fieldmap[:, :, 0, iT]])
-        tmpB = np.reshape(tmpB, (nVoxels, 1))
-
-        Bt = np.concatenate([Bt, tmpB])
-
-    AT = np.transpose(A)
-    AT_A = np.dot(AT,A)
-    AT_Bt = np.dot(AT, Bt)
-
-    betas = np.dot(np.linalg.inv(AT_A), AT_Bt)
-    print(np.shape(betas))
-
+    I = sparse.identity(nVoxels,format='csc')
 
     for g_axis in range(3):
-        for i_x in range(fieldmap.shape[0]):
-            for i_y in range(fieldmap.shape[1]):
-                for i_z in range(fieldmap.shape[2]):
+        #linear operator: A
+        A = sparse.hstack((I,p[0]*I))
+        
+        # solution vector: Bt
+        Bt = np.array([-gradient[g_axis][:, :, :, 0]])
+        Bt = np.reshape(Bt, (nVoxels, 1))
 
-                    # do regression to separate static component and RIRO component
-                    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
-                                                 -gradient[g_axis][i_x, i_y, i_z, :])
-                    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
-                    # between scans. This allows to compare results between scans.
-                    riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
-                    static[g_axis][i_x, i_y, i_z] = reg.intercept_
-                    progress_bar.update(1)
+        progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Preparing linear regression matrices", ascii=False)
+
+        for iT in range(1, fieldmap.shape[3]):
+            A = sparse.vstack((A,sparse.hstack((I,p[iT]*I))))
+
+            tmpB = np.array([-gradient[g_axis][:, :, :, iT]])
+            tmpB = np.reshape(tmpB, (nVoxels, 1))
+
+            Bt = np.concatenate([Bt, tmpB])
+            progress_bar.update(1)
+
+        progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
+
+        #betas = inv(A.T.dot(A)).dot(A.T.dot(Bt))
+        x, istop, itn, r1norm = lsqr(A,Bt)[:4]
+        
+        progress_bar.update(1)
+        betas = np.reshape(x, (2, fieldmap.shape[0], fieldmap.shape[1], fieldmap.shape[2]))
+
+        static[g_axis][:, :, :] = betas[0, :, :, :]
+        riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
