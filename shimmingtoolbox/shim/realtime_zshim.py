@@ -132,8 +132,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
     # lamda[0]: regularization parameter for the static field component
     # lamda[1]: regularization parameter for the RIRO component
-    #lamda = np.array([20, 30000]) # regularization parameters selected by trial and error
-    lamda = np.array([0, 0]) # regularization parameters selected by trial and error
+    lamda = np.array([20, 30000]) # regularization parameters selected by trial and error
+    #lamda = np.array([0, 0]) # regularization parameters selected by trial and error
 
     # first order finite difference operator: D
     # 1st dimension
@@ -199,13 +199,10 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
         progress_bar.update(1)
 
-        betas = np.reshape(x, (2, nVoxels))
-        #betas = np.reshape(x, (2, nx, ny, nz))
+        betas = np.reshape(x, (2, nx, ny, nz))
 
-        static[g_axis][:, :, :] = np.reshape(betas[0,:],(nx,ny,nz))
-        #static[g_axis][:, :, :] = betas[0, :, :, :]
-        riro[g_axis][:, :, :] = np.reshape(betas[1,:],(nx,ny,nz)) * pressure_rms
-        #riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
+        static[g_axis][:, :, :] = betas[0, :, :, :]
+        riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
     print(static.shape)
 
     # Resample masked_fieldmaps to target anatomical image
