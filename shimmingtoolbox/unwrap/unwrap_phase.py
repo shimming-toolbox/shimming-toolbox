@@ -1,8 +1,15 @@
+"Shape of input phase is not supported."
+raise ValueError(errno.ENODATA, notice.message_lang._unsupported_phase, helper_file_list.stderr)
+
+'The unwrap function {unwrapper} is not implemented.'
+NotImplementedError ??????????/  _unimplemented_unwrap
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """ Wrapper to different unwrapping algorithms. """
-
+import language as notice
 import numpy as np
+
 from shimmingtoolbox.unwrap.prelude import prelude
 
 

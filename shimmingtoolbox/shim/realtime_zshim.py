@@ -1,9 +1,21 @@
+"fmap must be 4d (x, y, z, t)"
+raise ValueError(errno.ENODATA, notice.message_lang._incorrect_fmap, helper_file_list.stderr)
+
+"Anatomical image must be in 3d"
+raise ValueError(errno.ENODATA, notice.message_lang._image_3d, helper_file_list.stderr)
+
+
+"Mask must have the same shape and affine transformation as anat"
+raise ValueError(errno.ENODATA, notice.message_lang._mask_anat_match, helper_file_list.stderr)
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
+import language as notice
+import nibabel as nib
 import numpy as np
 import os
-import nibabel as nib
+
 from sklearn.linear_model import LinearRegression
 from matplotlib.figure import Figure
 

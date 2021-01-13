@@ -1,11 +1,18 @@
+"Dimensions of input can only be 2D, 3D or 4D"
+raise ValueError(errno.ENODATA, notice.message_lang._dimensions_input, helper_file_list.stderr)
+
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
-
-import numpy as np
-from nibabel.affines import apply_affine
+import language as notice
 import math
 import nibabel as nib
+import numpy as np
+
+
+from nibabel.affines import apply_affine
 from nibabel.processing import resample_from_to as nib_resample_from_to
 
 
