@@ -7,9 +7,9 @@ import nibabel as nib
 from sklearn.linear_model import LinearRegression
 from matplotlib.figure import Figure
 from scipy import sparse
-from scipy.sparse.linalg import spsolve
-from scipy.sparse.linalg import inv
-from scipy.sparse.linalg import lsqr
+from scipy.sparse import spdiags, coo_matrix
+from scipy.sparse.linalg import spsolve, lsqr
+from scipy.linalg import block_diag
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -56,6 +56,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     if fieldmap.ndim != 4:
         raise RuntimeError("fmap must be 4d (x, y, z, t)")
     nx, ny, nz, nt = nii_fieldmap.shape
+    delx, dely, delz, delt = nii_fieldmap.header.get_zooms()
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -124,21 +125,62 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
 
     p = acq_pressures - mean_p
-    nVoxels = fieldmap.shape[0] * fieldmap.shape[1] * fieldmap.shape[2] 
+    nVoxels = nx * ny * nz
+    nVoxPerSlice = nx * ny
 
     I = sparse.identity(nVoxels,format='csc')
 
+    # lamda[0]: regularization parameter for the static field component
+    # lamda[1]: regularization parameter for the RIRO component
+    #lamda = np.array([20, 30000]) # regularization parameters selected by trial and error
+    lamda = np.array([0, 0]) # regularization parameters selected by trial and error
+
+    # first order finite difference operator: D
+    # 1st dimension
+    e = np.ones(nx)
+    diags = np.array([-1, 1])
+    Dx = spdiags([-e, e], diags, nx, nx).toarray()
+
+    while Dx.shape[1] < nVoxels :
+        Dx = block_diag(Dx, Dx)
+    Dx = Dx[0:nVoxels,0:nVoxels]     
+
+    # 2nd dimension
+    e = np.ones(nVoxPerSlice)
+    diags = np.array([-nx, nx])
+    Dy = spdiags([-e, e], diags, nVoxPerSlice, nVoxPerSlice).toarray() 
+
+    while Dy.shape[1] < nVoxels :
+        Dy = block_diag(Dy, Dy)  
+    Dy = Dy[0:nVoxels,0:nVoxels]
+
+    # 3rd dimension
+    e = np.ones(nVoxels)
+    diags = np.array([-nVoxPerSlice, nVoxPerSlice])
+    Dz = spdiags([-e, e], diags, nVoxels, nVoxels).toarray() 
+
+    Dx = Dx/(2*delx) 
+    Dy = Dy/(2*dely) 
+    Dz = Dz/(2*delz) 
+    L = coo_matrix(Dx + Dy + Dz)
+
+    # R: regularization matrix
+    R = sparse.vstack([sparse.hstack([lamda[0]*L,coo_matrix((L.shape[0],L.shape[1]))]),sparse.hstack([coo_matrix((L.shape[0],L.shape[1])),lamda[1]*L])])
+    #print(R.shape)
+
     for g_axis in range(3):
+        print('Axis',g_axis)
+
         #linear operator: A
         A = sparse.hstack((I,p[0]*I))
-        
+            
         # solution vector: Bt
         Bt = np.array([-gradient[g_axis][:, :, :, 0]])
         Bt = np.reshape(Bt, (nVoxels, 1))
 
         progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Preparing linear regression matrices", ascii=False)
 
-        for iT in range(1, fieldmap.shape[3]):
+        for iT in range(1, nt):
             A = sparse.vstack((A,sparse.hstack((I,p[iT]*I))))
 
             tmpB = np.array([-gradient[g_axis][:, :, :, iT]])
@@ -147,16 +189,24 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
             Bt = np.concatenate([Bt, tmpB])
             progress_bar.update(1)
 
+        #print(A.shape)
+        A = sparse.vstack((A, R))
+        Bt = np.concatenate([Bt, np.zeros((2*nVoxels,1))])
+
         progress_bar = st_progress_bar(fieldmap[..., 0].size * 3, desc="Fitting", ascii=False)
 
-        #betas = inv(A.T.dot(A)).dot(A.T.dot(Bt))
         x, istop, itn, r1norm = lsqr(A,Bt)[:4]
-        
-        progress_bar.update(1)
-        betas = np.reshape(x, (2, fieldmap.shape[0], fieldmap.shape[1], fieldmap.shape[2]))
 
-        static[g_axis][:, :, :] = betas[0, :, :, :]
-        riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
+        progress_bar.update(1)
+
+        betas = np.reshape(x, (2, nVoxels))
+        #betas = np.reshape(x, (2, nx, ny, nz))
+
+        static[g_axis][:, :, :] = np.reshape(betas[0,:],(nx,ny,nz))
+        #static[g_axis][:, :, :] = betas[0, :, :, :]
+        riro[g_axis][:, :, :] = np.reshape(betas[1,:],(nx,ny,nz)) * pressure_rms
+        #riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
+    print(static.shape)
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
