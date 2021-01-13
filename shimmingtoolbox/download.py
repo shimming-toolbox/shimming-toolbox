@@ -1,16 +1,28 @@
+"Unable to determine target filename for URL:"
+raise FileNotFoundError(errno.ENOENT, notice.message_lang._url_filename, find_check.stderr)
+
+'Download error'
+raise SystemError(errno.EIO, notice.message_lang._download_error, sub_process_dcmsbids.stderr)
+
+
+
+
+
 #!/usr/bin/env python
 # -*- coding: utf-8
 # Functions dealing with data download and installation from the Internet.
-
-import os
-import shutil
-import logging
 import cgi
+import language as notice
+import logging
+import os
+import requests
+import shutil
+import tarfile
 import tempfile
 import urllib.parse
-import tarfile
 import zipfile
-import requests
+
+
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util import Retry
 

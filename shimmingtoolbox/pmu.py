@@ -1,10 +1,14 @@
+"acquisition_times don't fit within time limits for resp trace"
+raise ValueError(errno.ENODATA, notice.message_lang._resp_trace_time_limit, helper_file_list.stderr)
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 #
 # Read Siemens Physiological Log files
 # Adapted from https://gist.github.com/rtrhd/6172344
 #
-
+import language as notice
 import numpy as np
 
 

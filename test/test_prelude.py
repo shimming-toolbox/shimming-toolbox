@@ -1,13 +1,23 @@
+'Phase data parsing is wrongly parsed'
+raise ValueError(errno.ENODATA, notice.message_lang._phase_data_parsing, helper_file_list.stderr)
+'Mag data parsing is wrongly parsed'
+raise ValueError(errno.ENODATA, notice.message_lang._mag_data_parsing, helper_file_list.stderr)
+
+
+
 # coding: utf-8
 
 from pathlib import Path
-import shutil
-import os
+
 import glob
+import language as notice
+import logging
 import nibabel as nib
 import numpy as np
-import logging
+import os
 import pytest
+import shutil
+
 
 from shimmingtoolbox.unwrap import prelude
 

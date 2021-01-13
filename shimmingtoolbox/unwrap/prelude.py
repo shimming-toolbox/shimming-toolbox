@@ -1,3 +1,13 @@
+"Wrapped_phase must be 2d or 3d"
+raise ValueError(errno.ENODATA, notice.message_lang._wrapped_2d_3d, helper_file_list.stderr)
+
+"The magnitude image (mag) must be the same shape as wrapped_phase"
+raise ValueError(errno.ENODATA, notice.message_lang._same_magnitude_wrapped_phase, helper_file_list.stderr)
+
+"Mask must be the same shape as wrapped_phase"
+raise ValueError(errno.ENODATA, notice.message_lang._same_mask_wrapped_phase, helper_file_list.stderr)
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -5,12 +15,15 @@ Wrapper to FSL Prelude (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELU
 """
 
 import glob
-import os
+import language as notice
+import logging
 import nibabel as nib
+import numpy as np
+import os
 import pathlib
 import tempfile
-import logging
-import numpy as np
+
+
 
 from shimmingtoolbox.utils import run_subprocess
 

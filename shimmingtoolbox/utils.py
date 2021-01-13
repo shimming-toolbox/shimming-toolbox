@@ -1,12 +1,17 @@
+"Input format does not follow"
+raise ValueError(errno.ENODATA, notice.message_lang._input_date_format, helper_file_list.stderr)
+
 #!/usr/bin/env python
 # -*- coding: utf-8
 # Misc functions
 
+
+import language as notice
+import logging
 import numpy as np
 import os
-import tqdm
 import subprocess
-import logging
+import tqdm
 
 
 def run_subprocess(cmd):

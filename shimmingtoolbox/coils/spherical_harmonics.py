@@ -1,8 +1,19 @@
+"Input arrays X, Y, and Z must be identically sized"
+raise ValueError(errno.ENODATA, notice.message_lang._identical_sizing, helper_file_list.stderr)
+
+"Input arrays X, Y, and Z must have 3 dimensions"
+raise ValueError(errno.ENODATA, notice.message_lang._array_3d, helper_file_list.stderr)
+
+"Orders must be positive"
+raise ValueError(errno.ENODATA, notice.message_lang._pos_order, helper_file_list.stderr)
+
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-
-import numpy as np
+import language as notice
 import math
+import numpy as np
 from scipy.special import factorial2
 from scipy.special import lpmv
 

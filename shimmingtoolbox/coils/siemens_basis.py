@@ -1,7 +1,19 @@
+"Input arrays should have 4th dimension's shape equal to 8"
+raise ValueError(errno.ENODATA, notice.message_lang._array_8_shape, helper_file_list.stderr)
+
+"Input arrays X, Y, and Z must be 3d"
+raise ValueError(errno.ENODATA, notice.message_lang._array_3d, helper_file_list.stderr)
+
+"Input arrays X, Y, and Z must be identically sized"
+raise ValueError(errno.ENODATA, notice.message_lang._identical_sizing, helper_file_list.stderr)
+
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-
+import language as notice
 import numpy as np
+
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
 

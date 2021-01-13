@@ -1,6 +1,14 @@
-#!/usr/bin/env python3
+"The nifti file does not have 3 dimensions."
+raise ValueError(errno.ENODATA, notice.message_lang._nifty_3d, helper_file_list.stderr)
 
+"The nifti file does not have 2 or 3 dimensions."
+raise ValueError(errno.ENODATA, notice.message_lang._nifty_2d_3d, helper_file_list.stderr)
+
+
+
+#!/usr/bin/env python3
 import click
+import language as notice
 import nibabel as nib
 import numpy as np
 import os

@@ -1,12 +1,23 @@
+"Not an existing NIFTI path"
+raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_existing_nifty_path, <help>.stderr)
+
+"Directories and files in input path")
+raise SystemError(errno.EIO, notice.message_lang._dir_files_input, <help>.stderr)
+
+'Missing json file'
+raise FileNotFoundError(errno.ENOENT, notice.message_lang._json_missing, find_check.stderr)
+
+ 
+
 #!usr/bin/env python3
 # -*- coding: utf-8
-
-import os
-import logging
-import numpy as np
-import nibabel as nib
 import json
+import language as notice
+import logging
 import math
+import nibabel as nib
+import numpy as np
+import os
 
 from shimmingtoolbox.utils import iso_times_to_ms
 

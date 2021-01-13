@@ -1,9 +1,16 @@
+
+'shape_square only allows for 2 dimensions'
+raise ValueError(errno.ENODATA, notice.message_lang._square_2d, helper_file_list.stderr)
+raise ValueError(errno.ENODATA, notice.message_lang._square_2d, helper_file_list.stderr)
+
+
+
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 Image mask with shape API
 """
-
+import language as notice
 import numpy as np
 
 
