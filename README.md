@@ -1,6 +1,7 @@
 # shimming-toolbox
 
  [![Build Status](https://github.com/shimming-toolbox/shimming-toolbox/workflows/CI-Tests/badge.svg?branch=master)](https://github.com/shimming-toolbox/shimming-toolbox/actions?query=workflow%3ACI-Tests+branch%3Amaster) [![Coverage Status](https://coveralls.io/repos/github/shimming-toolbox/shimming-toolbox/badge.svg?branch=master)](https://coveralls.io/github/shimming-toolbox/shimming-toolbox?branch=master) [![Documentation Status](https://readthedocs.org/projects/shimming-toolbox-py/badge/?version=latest)](https://shimming-toolbox.org/en/latest/)
+ [![Twitter Follow](https://img.shields.io/twitter/follow/shimmingtoolbox.svg?style=social&label=Follow)](https://twitter.com/shimmingtoolbox)
 
 
 Code for performing real-time shimming using external MRI shim coils
