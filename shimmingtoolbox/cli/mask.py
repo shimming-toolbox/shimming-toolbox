@@ -89,17 +89,21 @@ def rect(fname_input, output, size, center):
         return output
 
     elif len(data.shape) == 3:
+        mask_sqr = np.zeros_like(data)  # initialization of 3D array of zeros
         for z in range(data.shape[2]):
-            mask_sqr = np.zeros_like(data)  # initialization of 3D array of zeros
             img_2d = data[:, :, z]  # extraction of a MRI slice (2D)
             mask_slice = shape_square(img_2d, size[0], size[1], center[0], center[1])  # creation of the mask
             # on each slice (2D)
             mask_sqr[:, :, z] = mask_slice  # addition of each masked slice to form a 3D array
-            mask_sqr = mask_sqr.astype(int)
-            nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
-            nib.save(nii_img, output)
-            click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
-            return output
+
+        mask_sqr = mask_sqr.astype(int)
+        nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
+        nib.save(nii_img, output)
+        click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
+        return output
+
+    else:
+        raise ValueError("The nifti file does not have 2 or 3 dimensions.")
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
