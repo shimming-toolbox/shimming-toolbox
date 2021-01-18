@@ -123,7 +123,6 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                        np.zeros_like(fieldmap[:, :, :, 0]),
                        np.zeros_like(fieldmap[:, :, :, 0])])
 
-
     p = acq_pressures - mean_p
     nVoxels = nx * ny * nz
     nVoxPerSlice = nx * ny
@@ -203,7 +202,6 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
         static[g_axis][:, :, :] = betas[0, :, :, :]
         riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
-    print(static.shape)
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
