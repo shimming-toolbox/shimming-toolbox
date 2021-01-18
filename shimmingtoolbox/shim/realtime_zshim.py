@@ -55,8 +55,9 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     fieldmap = nii_fieldmap.get_fdata()
     if fieldmap.ndim != 4:
         raise RuntimeError("fmap must be 4d (x, y, z, t)")
-    nx, ny, nz, nt = nii_fieldmap.shape
-    delx, dely, delz, delt = nii_fieldmap.header.get_zooms()
+    # print(nii_fieldmap.header.get_dim_info()) # note: this could be used to identify the phase and frequency encoding axes, but returns none, none, none (???)
+    nCol, nRow, nSlice, nt = nii_fieldmap.shape
+    delCol, delRow, delSlice, delt = nii_fieldmap.header.get_zooms()
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -124,8 +125,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                        np.zeros_like(fieldmap[:, :, :, 0])])
 
     p = acq_pressures - mean_p
-    nVoxels = nx * ny * nz
-    nVoxPerSlice = nx * ny
+    nVoxels = nRow * nCol * nSlice
+    nVoxPerSlice = nRow * nCol
 
     I = sparse.identity(nVoxels,format='csc')
 
@@ -135,33 +136,33 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     #lamda = np.array([0, 0]) # regularization parameters selected by trial and error
 
     # first order finite difference operator: D
-    # 1st dimension
-    e = np.ones(nx)
+    # 1st dimension : Drow
+    e = np.ones(nRow)
     diags = np.array([-1, 1])
-    Dx = spdiags([-e, e], diags, nx, nx).toarray()
+    Drow = spdiags([-e, e], diags, nRow, nRow).toarray()
 
-    while Dx.shape[1] < nVoxels :
-        Dx = block_diag(Dx, Dx)
-    Dx = Dx[0:nVoxels,0:nVoxels]     
+    while Drow.shape[1] < nVoxels :
+        Drow = block_diag(Drow, Drow)
+    Drow = Drow[0:nVoxels,0:nVoxels]     
 
-    # 2nd dimension
+    # 2nd dimension : Dcol
     e = np.ones(nVoxPerSlice)
-    diags = np.array([-nx, nx])
-    Dy = spdiags([-e, e], diags, nVoxPerSlice, nVoxPerSlice).toarray() 
+    diags = np.array([-nRow, nRow])
+    Dcol = spdiags([-e, e], diags, nVoxPerSlice, nVoxPerSlice).toarray() 
 
-    while Dy.shape[1] < nVoxels :
-        Dy = block_diag(Dy, Dy)  
-    Dy = Dy[0:nVoxels,0:nVoxels]
+    while Dcol.shape[1] < nVoxels :
+        Dcol = block_diag(Dcol, Dcol)  
+    Dcol = Dcol[0:nVoxels,0:nVoxels]
 
-    # 3rd dimension
+    # 3rd dimension : Dslice
     e = np.ones(nVoxels)
     diags = np.array([-nVoxPerSlice, nVoxPerSlice])
-    Dz = spdiags([-e, e], diags, nVoxels, nVoxels).toarray() 
+    Dslice = spdiags([-e, e], diags, nVoxels, nVoxels).toarray() 
 
-    Dx = Dx/(2*delx) 
-    Dy = Dy/(2*dely) 
-    Dz = Dz/(2*delz) 
-    L = coo_matrix(Dx + Dy + Dz)
+    Drow = Drow/(2*delRow) 
+    Dcol = Dcol/(2*delCol) 
+    Dslice = Dslice/(2*delSlice) 
+    L = coo_matrix(Drow + Dcol + Dslice)
 
     # R: regularization matrix
     R = sparse.vstack([sparse.hstack([lamda[0]*L,coo_matrix((L.shape[0],L.shape[1]))]),sparse.hstack([coo_matrix((L.shape[0],L.shape[1])),lamda[1]*L])])
@@ -198,10 +199,11 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
 
         progress_bar.update(1)
 
-        betas = np.reshape(x, (2, nx, ny, nz))
+        betas = np.reshape(x, (2, nCol, nRow, nSlice))
 
         static[g_axis][:, :, :] = betas[0, :, :, :]
         riro[g_axis][:, :, :] = betas[1, :, :, :] * pressure_rms
+
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
