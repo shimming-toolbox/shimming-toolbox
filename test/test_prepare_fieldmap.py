@@ -149,3 +149,13 @@ class TestPrepareFieldmap(object):
         # If there isn't an error, then there is a problem
         print("\n3 echoes are not implemented.")
         assert False
+
+    def test_prepare_fieldmap_gaussian_filter(self):
+        """ Test output of gaussian filter optional argument"""
+
+        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, gaussian_filter=True)
+
+        assert fieldmap.shape == self.phase.shape
+        # If the behaviour of the called function is modified, this assertion below should capture it:
+        # assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
+        #                          np.array([18.51355514, 13.84794053,  9.48013154,  5.11232207,  0.64524454])))
