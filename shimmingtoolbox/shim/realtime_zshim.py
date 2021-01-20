@@ -5,6 +5,7 @@ import numpy as np
 import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
+from skimage.filters import gaussian
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -132,6 +133,9 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                     riro[g_axis][i_x, i_y, i_z] = reg.coef_ * pressure_rms
                     static[g_axis][i_x, i_y, i_z] = reg.intercept_
                     progress_bar.update(1)
+
+        #riro[g_axis][:, :, :] = gaussian(riro[g_axis][:, :, :], sigma = 2, mode = 'constant', cval = 0.0, multichannel=False) 
+        #static[g_axis][:, :, :] = gaussian(static[g_axis][:, :, :], sigma = 1.5, mode = 'constant', cval = 0.0, multichannel=False)             
 
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)

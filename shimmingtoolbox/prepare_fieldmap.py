@@ -85,7 +85,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
 
     # Gaussian blur the fieldmap
     if gaussian_filter == True:
-        fieldmap_hz = gaussian(fieldmap_hz, sigma = 1, mode = 'constant', cval = 0.0)
+        fieldmap_hz = gaussian(fieldmap_hz, sigma = 2, mode = 'constant', cval = 0.0)
 
     # return fieldmap_hz_gaussian
     return fieldmap_hz
