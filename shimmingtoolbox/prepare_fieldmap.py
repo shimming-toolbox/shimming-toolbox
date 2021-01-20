@@ -8,7 +8,8 @@ from skimage.filters import gaussian
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 
-def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None, gaussian_filter=None):
+def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None,
+                     gaussian_filter=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
@@ -84,8 +85,13 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
     # Gaussian blur the fieldmap
+<<<<<<< HEAD
     if gaussian_filter == True:
         fieldmap_hz = gaussian(fieldmap_hz, sigma = 2, mode = 'constant', cval = 0.0)
+=======
+    if gaussian_filter is True:
+        fieldmap_hz = gaussian(fieldmap_hz, sigma=0.1, mode='constant', cval=0.0)
+>>>>>>> 744ea9d8bc5c8926d3b3b1f898bbd44abc1af1f4
 
     # return fieldmap_hz_gaussian
     return fieldmap_hz
