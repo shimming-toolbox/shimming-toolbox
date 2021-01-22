@@ -79,7 +79,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         masked_fieldmaps[..., i_t] = mask_fmap * fieldmap[..., i_t]
 
     # Calculate Gx, Gy and Gz gradients (in the physical coordinate system)
-    g = 1000 / 42.576e6  # [mT / Hz]
+    g = 1000 / 42.5774785178325552e6  # [mT / Hz]
     gradient = np.array([np.zeros_like(fieldmap), np.zeros_like(fieldmap), np.zeros_like(fieldmap)])
     for it in range(nt):
         gradient[:][..., it] = phys_gradient(g * fieldmap[:, :, :, it], nii_fieldmap.affine) # [mT / mm]
@@ -88,6 +88,10 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     if is_outputting_figures:
         nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine)
         nib.save(nii_gz_gradient, os.path.join(path_output, 'fig_gz_gradient.nii.gz'))
+        nii_gy_gradient = nib.Nifti1Image(gradient[1], nii_fieldmap.affine)
+        nib.save(nii_gy_gradient, os.path.join(path_output, 'fig_gy_gradient.nii.gz'))
+        nii_gx_gradient = nib.Nifti1Image(gradient[0], nii_fieldmap.affine)
+        nib.save(nii_gx_gradient, os.path.join(path_output, 'fig_gx_gradient.nii.gz'))
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
@@ -173,9 +177,12 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         ma_static_anat = np.ma.array(resampled_static_vox[..., i_slice],
                                      mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         static_correction[i_slice] = np.ma.mean(ma_static_anat)
+
         ma_riro_anat = np.ma.array(resampled_riro_vox[..., i_slice],
                                    mask=nii_mask_anat.get_fdata()[..., i_slice] == False)
         riro_correction[i_slice] = np.ma.mean(ma_riro_anat)
+    static_correction[np.isnan(static_correction)] = 0.
+    riro_correction[np.isnan(riro_correction)] = 0.
 
     # ================ PLOTS ================
 
