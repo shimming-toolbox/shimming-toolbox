@@ -87,20 +87,16 @@ def test_cli_mask_threshold():
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
 
 
-def test_cli_mask_sct():
+def test_cli_mask_sct_default():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
-        out1 = os.path.join(tmp, 'mask1.nii.gz')
-        process1 = 'coord'
-        process2 = '20x15'
-        result1 = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out1, '-process1', process1, '-process2',
-                                           process2])
+        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'mask1.nii.gz')
 
-        out2 = os.path.join(tmp, 'mask2.nii.gz')
-        process1 = 'center'
-        result2 = runner.invoke(mask_cli, ['sct', '-input', inp, '-output', out2, '-process1', process1])
+        result1 = runner.invoke(mask_cli, ['sct', '-input', fname_input, '-output', fname_output],
+                                catch_exceptions=False)
 
         assert result1.exit_code == 0
-        assert result2.exit_code == 0
+        assert os.path.isfile(fname_output)
+
