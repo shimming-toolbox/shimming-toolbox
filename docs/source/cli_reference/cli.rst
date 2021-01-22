@@ -17,6 +17,3 @@ The following section outlines the CLI of shimming-toolbox.
    :prog: mask
    :nested: full
 
-.. click:: shimmingtoolbox.cli.get_centerline:get_centerline_cli
-   :prog: get_centerline
-   :nested: full
