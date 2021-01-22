@@ -8,6 +8,7 @@ import os
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.masking.shapes import shape_cube
+from shimmingtoolbox.utils import run_subprocess
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -131,52 +132,65 @@ def threshold(fname_input, output, thr):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help=f"Creates a SCT (SpinalCordToolbox) mask from the input file. Depending on the shape (cylinder,"
-                       f" box or Gaussian), a mask is created along z direction. To generate this mask, its center"
-                       f" must be specified by the user according to 4 processes."
-                       f"Return an output nifti file with SCT mask.")
+                  help="Creates a SCT (SpinalCordToolbox) mask from the input file. Depending on the shape (cylinder,"
+                       " box or Gaussian), a mask is created along z direction. To generate this mask, its center"
+                       " must be specified by the user according the method"
+                       " Return an output nifti file with SCT mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
                    "data.nii.gz")
 @click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
               help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii. (default:"
                    " (os.curdir, 'mask.nii.gz')).")
-@click.option('-process1', type=click.Choice(['coord', 'point', 'center', 'centerline']), default='center',
-              help="(str): First process to generate mask: "
-                   "<coord>: Center mask at the X,Y coordinates. "
-                   "<point>: Center mask at the X,Y coordinates of the label defined in input volume file"
-                   "<center>: Center mask in the middle of the FOV (nx/2, ny/2). "
-                   "<centerline>: At each slice, the mask is centered at the spinal cord centerline, defined by the "
-                   "input segmentation FILE. This segmentation file can be created with the CLI get_centerline. "
-                   "(default: center)")
-@click.option('-process2', default=None,
-              help="(str): Second process to generate mask: "
-                   "For process1='coord': <XxY>: Center mask at the X,Y coordinates. (e.g. 'coord,20x15')."
-                   "For process1='point': <FILE>: Center mask at the X,Y coordinates of the label defined in input "
-                   "volume FILE. (e.g. 'point,label.nii.gz')."
-                   "For process1='center': <(None)>: Center mask in the middle of the FOV (nx/2, ny/2)."
-                   "For process1='centerline': <FILE>: At each slice, the mask is centered at the spinal cord "
-                   "centerline, defined by the input segmentation FILE. This segmentation file can be created with the"
-                   " CLI get_centerline. (e.g. 'centerline,t2_seg.nii.gz'). (default: None)")
+
 @click.option('-size', default='41',
               help="(str): Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
 @click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
+
+@click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
+              help="(str): Type of image contrast. Only with method=optic. (default: t1)")
+@click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
+              help="(str): Method used for extracting the centerline: "
+                   "- optic: automatic spinal cord detection method"
+                   "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
+                   "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., every "
+                   "axial slice will exhibit a centerline pixel). (default: optic)")
+@click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
+              help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
+@click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
+                                                     "-centerline-algo {bspline, linear}. (default: 30)")
+
 @click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
 @click.option('-verbose', type=click.IntRange(0, 2), default=1,
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
-def sct(fname_input, output, process1, process2, size, shape, remove, verbose):
-    if process1 == "center" and process2 is None:
-        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1, '-size', size, '-f', shape, '-o', output,
-                        '-r', str(remove), '-v', str(verbose)], check=True)
+def sct(fname_input, output, method, contrast, centerline_algo, centerline_smooth, size, shape, remove, verbose):
 
-    elif process1 == "center" and process2 is not None:
-        raise ValueError("The process 'center' must not have a 2nd argument in process2.")
+    # Get the centerline
+    path_centerline = os.path.join(os.path.dirname(output), 'centerline')
+    if method == "optic":
+        run_subprocess(f"sct_get_centerline -i {fname_input} -c {contrast} -o {path_centerline} -v {str(verbose)}")
+
+    elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
+        run_subprocess(f"sct_get_centerline -i {fname_input} -method {method} -centerline-algo {centerline_algo} "
+                       f"-o {path_centerline} -v {str(verbose)}")
+
+    elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
+        run_subprocess(f"sct_get_centerline -i {fname_input} -method {method} -centerline-algo {centerline_algo} "
+                       f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
 
     else:
-        subprocess.run(['sct_create_mask', '-i', fname_input, '-p', process1 + "," + process2, '-size', size, '-f',
-                        shape, '-o', output, '-r', str(remove), '-v', str(verbose)], check=True)
+        raise ValueError("The implementation of get_centerline_cli is bad. Run get_centerline_cli -h for more "
+                         "information on how to call this command.")
+
+    # Create the mask
+    fname_centerline = path_centerline + '.nii.gz'
+    run_subprocess(f"sct_create_mask -i {fname_input} -p centerline,{fname_centerline} -size {size} -f {shape} "
+                   f"-o {output} -r {str(remove)} -v {str(verbose)}")
+
+    if remove:
+        os.remove(fname_centerline)
 
     click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
     return output
