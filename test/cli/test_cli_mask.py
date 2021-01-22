@@ -94,9 +94,56 @@ def test_cli_mask_sct_default():
         fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'mask1.nii.gz')
 
-        result1 = runner.invoke(mask_cli, ['sct', '-input', fname_input, '-output', fname_output],
-                                catch_exceptions=False)
+        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output}", catch_exceptions=False)
 
-        assert result1.exit_code == 0
+        assert result.exit_code == 0
+        assert len(os.listdir(tmp)) == 1
         assert os.path.isfile(fname_output)
 
+
+def test_cli_mask_sct_fitseg_linear():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'mask1.nii.gz')
+        method = 'fitseg'
+        centerline_algo = 'linear'
+
+        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -method {method} "
+                                         f"-centerline_algo {centerline_algo}", catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+
+
+def test_cli_mask_sct_fitseg_nurbs():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'mask1.nii.gz')
+        method = 'fitseg'
+        centerline_algo = 'nurbs'
+
+        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -method {method} "
+                                         f"-centerline_algo {centerline_algo}", catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+
+
+def test_cli_mask_sct_all_flags():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'mask1.nii.gz')
+
+        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -size 40 -shape gaussian "
+                                         f"-contrast t1 -method fitseg -centerline_algo polyfit -centerline_smooth 20 "
+                                         f"-remove 0 -verbose 1", catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert len(os.listdir(tmp)) == 3
+        assert os.path.isfile(fname_output)

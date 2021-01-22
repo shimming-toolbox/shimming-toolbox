@@ -148,7 +148,6 @@ def threshold(fname_input, output, thr):
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
 @click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
-
 @click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
               help="(str): Type of image contrast. Only with method=optic. (default: t1)")
 @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
@@ -161,7 +160,6 @@ def threshold(fname_input, output, thr):
               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
 @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
                                                      "-centerline-algo {bspline, linear}. (default: 30)")
-
 @click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
 @click.option('-verbose', type=click.IntRange(0, 2), default=1,
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
@@ -181,8 +179,7 @@ def sct(fname_input, output, method, contrast, centerline_algo, centerline_smoot
                        f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
 
     else:
-        raise ValueError("The implementation of get_centerline_cli is bad. Run get_centerline_cli -h for more "
-                         "information on how to call this command.")
+        raise ValueError("Could not get centerline.")
 
     # Create the mask
     fname_centerline = path_centerline + '.nii.gz'
@@ -191,6 +188,7 @@ def sct(fname_input, output, method, contrast, centerline_algo, centerline_smoot
 
     if remove:
         os.remove(fname_centerline)
+        os.remove(path_centerline + '.csv')
 
     click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
     return output
