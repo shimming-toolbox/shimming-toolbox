@@ -134,7 +134,7 @@ def threshold(fname_input, output, thr):
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Creates a SCT (SpinalCordToolbox) mask from the input file. Depending on the shape (cylinder,"
                        " box or Gaussian), a mask is created along z direction. To generate this mask, its center"
-                       " must be specified by the user according the method"
+                       " must be specified by the user according the method."
                        " Return an output nifti file with SCT mask.")
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
@@ -142,7 +142,6 @@ def threshold(fname_input, output, thr):
 @click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
               help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii. (default:"
                    " (os.curdir, 'mask.nii.gz')).")
-
 @click.option('-size', default='41',
               help="(str): Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
