@@ -20,7 +20,7 @@ jobs:
       matrix:
         os:
           - 'macos-10.15'
-          - 'macos-11.0'
+          # - 'macos-11.0'
           - 'ubuntu-18.04'
           - 'ubuntu-20.04'
           - 'ubuntu-16.04'
@@ -55,7 +55,14 @@ jobs:
           curl -JLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
           unzip -o dcm2niix_lnx.zip
           sudo install dcm2nii* /usr/bin/
-      
+
+      - name: SpinalCord Toolbox installation
+        run: |
+          cd ../..
+          git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
+          cd spinalcordtoolbox
+          ./install_sct -y
+
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
         run: |
@@ -90,11 +97,12 @@ jobs:
       - name: Upload Coverage
         run: |
           pip3 install coveralls
-          coveralls
+          coveralls --service=github
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: ${{ matrix.os }}-Python-${{ matrix.python-version }}
           COVERALLS_PARALLEL: true
+
   coveralls:
     name: Finish Coveralls
     needs: test
