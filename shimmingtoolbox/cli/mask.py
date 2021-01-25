@@ -148,7 +148,7 @@ def threshold(fname_input, output, thr):
 @click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
 @click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
-              help="(str): Type of image contrast. Only with method=optic. (default: t1)")
+              help="(str): Type of image contrast. Only with method=optic. (default: t2s)")
 @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
               help="(str): Method used for extracting the centerline: "
                    "- optic: automatic spinal cord detection method"
