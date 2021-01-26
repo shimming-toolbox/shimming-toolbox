@@ -236,13 +236,13 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         # Show anatomical image
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
-        im = ax.imshow(anat[:, :, 10])
+        im = ax.imshow(anat[:, :, 3])
         fig.colorbar(im)
-        ax.set_title("Anatomical image [:, :, 10]")
+        ax.set_title("Anatomical image [:, :, 3]")
         ax = fig.add_subplot(2, 1, 2)
-        im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 10])
+        im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 3])
         fig.colorbar(im)
-        ax.set_title("Mask [:, :, 10]")
+        ax.set_title("Mask [:, :, 3]")
         fname_figure = os.path.join(path_output, 'fig_reatime_zshim_anat.png')
         fig.savefig(fname_figure)
 
