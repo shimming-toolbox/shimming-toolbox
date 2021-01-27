@@ -33,4 +33,4 @@ Please see the documentation for instructions on building and testing a [develop
 
 ## Contributing
 
-Please see our [contribution guidelines](https://shimming-toolbox.org/en/latest/contributing/CONTRIBUTING.html#).
+Please see our [contribution guidelines](https://shimming-toolbox.org/en/latest/contributing/CONTRIBUTING.html).
