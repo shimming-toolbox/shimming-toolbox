@@ -164,26 +164,64 @@ def threshold(fname_input, output, thr):
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
 def sct(fname_input, output, method, contrast, centerline_algo, centerline_smooth, size, shape, remove, verbose):
 
-    # Get the centerline
-    path_centerline = os.path.join(os.path.dirname(output), 'centerline')
-    if method == "optic":
-        run_subprocess(f"sct_get_centerline -i {fname_input} -c {contrast} -o {path_centerline} -v {str(verbose)}")
+    # Make sure input path exists
+    if not os.path.exists(fname_input):
+        raise RuntimeError("Input file does not exist")
 
-    elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
-        run_subprocess(f"sct_get_centerline -i {fname_input} -method {method} -centerline-algo {centerline_algo} "
-                       f"-o {path_centerline} -v {str(verbose)}")
-
-    elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
-        run_subprocess(f"sct_get_centerline -i {fname_input} -method {method} -centerline-algo {centerline_algo} "
-                       f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
-
+    # Get the number of dimensions
+    nii_input = nib.load(fname_input)
+    ndim = nii_input.ndim
+    # If 4d, last dimension is time
+    if ndim == 4:
+        range_volumes = range(nii_input.shape[3])
+        mask_4d = np.zeros(nii_input.shape)
     else:
-        raise ValueError("Could not get centerline.")
+        range_volumes = range(1)
 
-    # Create the mask
-    fname_centerline = path_centerline + '.nii.gz'
-    run_subprocess(f"sct_create_mask -i {fname_input} -p centerline,{fname_centerline} -size {size} -f {shape} "
-                   f"-o {output} -r {str(remove)} -v {str(verbose)}")
+    for i_volume in range_volumes:
+
+        # Create 3d file from 4d file if its 4d
+        if ndim == 4:
+            input_3d = nii_input.get_fdata()[..., i_volume]
+            nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
+            fname_temp = os.path.join(os.path.dirname(output), 'temp_3d.nii.gz')
+            nib.save(nii_3d, fname_temp)
+            fname_process = fname_temp
+        # Set the filename if its not 4d
+        else:
+            fname_process = fname_input
+
+        # Get the centerline
+        path_centerline = os.path.join(os.path.dirname(output), 'centerline')
+        if method == "optic":
+            run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_centerline} -v {str(verbose)}")
+
+        elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
+            run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+                           f"-o {path_centerline} -v {str(verbose)}")
+
+        elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
+            run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+                           f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
+
+        else:
+            raise ValueError("Could not get centerline.")
+
+        # Create the mask
+        fname_centerline = path_centerline + '.nii.gz'
+        run_subprocess(f"sct_create_mask -i {fname_process} -p centerline,{fname_centerline} -size {size} -f {shape} "
+                       f"-o {output} -r {str(remove)} -v {str(verbose)}")
+
+        if ndim == 4:
+            # Remove temp file
+            os.remove(fname_temp)
+            # Stitch 4d file back together
+            nii_temp_mask = nib.load(output)
+            mask_4d[..., i_volume] = nii_temp_mask.get_fdata()
+
+    if ndim == 4:
+        os.remove(output)
+        nib.save(nib.Nifti1Image(mask_4d, nii_input.affine), output)
 
     if remove:
         os.remove(fname_centerline)
