@@ -83,15 +83,7 @@ def check_dependencies():
     # SCT
     sct_check_msg = check_name.format("Spinal Cord Toolbox")
     print_line(sct_check_msg)
-    # 0 indicates sct_check_msg is installed.
-    sct_exit_code: int = check_sct_installation()
-    # negating condition because 0 indicates sct is installed.
-    if not sct_exit_code:
-        print_ok()
-        print("    " + get_sct_version().replace("\n", "\n    "))
-    else:
-        print_fail()
-        print(f"Error {sct_exit_code}: Spinal Cord Toolbox is not installed or not in your PATH.")
+    check_sct_installation()
 
     return
 
@@ -128,10 +120,19 @@ def check_sct_installation() -> int:
     that ``sct`` is installed.
 
     Returns:
-        int: Exit code. 0 on success, nonzero on failure.
+        bool: True if sct is installed, False if not.
     """
-    return subprocess.check_call(['which', 'sct_check_dependencies'], stdout=subprocess.DEVNULL,
-                                 stderr=subprocess.DEVNULL)
+    try:
+        subprocess.check_call(['which', 'sct_check_dependencies'], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + get_sct_version().replace("\n", "\n    "))
+        return True
 
 
 def get_prelude_version() -> str:
@@ -186,9 +187,11 @@ def get_sct_version() -> str:
     """
     # `sct_check_dependencies -short` returns
     sct_version: str = subprocess.run(["sct_check_dependencies", "-short"], capture_output=True, encoding="utf-8")
-    assert sct_version.returncode == 0
+    if sct_version.returncode != 0:
+        raise subprocess.CalledProcessError("Error while getting SCT's version")
     version_output: str = sct_version.stdout.rstrip()
     version_output = version_output.split("\n\n")[2].split("\n")[1]
+
     return version_output
 
 
