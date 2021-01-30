@@ -6,3 +6,4 @@ repos:
     -   id: check-merge-conflict
     -   id: check-ast
     -   id: check-added-large-files
+    -   id: end-of-file-fixer
