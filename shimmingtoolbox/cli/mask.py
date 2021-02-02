@@ -139,30 +139,46 @@ def threshold(fname_input, output, thr):
 @click.option('-input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
                    "data.nii.gz")
-@click.option('-output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+@click.option('-output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
               help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii. (default:"
                    " (os.curdir, 'mask.nii.gz')).")
-@click.option('-size', default='41',
+@click.option('-size', default='20',
               help="(str): Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
 @click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
 @click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
               help="(str): Type of image contrast. Only with method=optic. (default: t2s)")
-@click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
-              help="(str): Method used for extracting the centerline: "
-                   "- optic: automatic spinal cord detection method"
-                   "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
-                   "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., every "
-                   "axial slice will exhibit a centerline pixel). (default: optic)")
-@click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
-              help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
-@click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
-                                                     "-centerline-algo {bspline, linear}. (default: 30)")
+# @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
+#               help="(str): Method used for extracting the centerline: "
+#                    "- optic: automatic spinal cord detection method"
+#                    "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
+#                    "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., every "
+#                    "axial slice will exhibit a centerline pixel). (default: optic)")
+# @click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
+#               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
+# @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
+#                                                      "-centerline-algo {bspline, linear}. (default: 30)")
+@click.option('-centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
+              help="(str): Algorithm for centerline fitting.")
+@click.option('-file_centerline', type=str,
+              help="(str):  Input centerline file (to use with flag -centerline file). "
+                   "Example: t2_centerline_manual.nii.gz")
+@click.option('-thr', type=float,
+              help="Binarization threshold (between 0 and 1) to apply to the segmentation prediction. Set to -1 for no "
+                   "binarization (i.e. soft segmentation output). The default threshold is specific to each contrast "
+                   "and wasestimated using an optimization algorithm. More details at: "
+                   "https://github.com/sct-pipeline/deepseg-threshold.")
+@click.option('-brain', type=click.IntRange(0, 1),
+              help="(str):  Indicate if the input image contains brain sections (to speed up segmentation). "
+                   "Only use with '-centerline cnn'.")
+@click.option('-kernel', type=click.Choice(['2d', '3d']), default='2d',
+              help="(str):  Choice of kernel shape for the CNN. Segmentation with 3D kernels is slower than with "
+                   "2D kernels. (default: 2d)")
 @click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
 @click.option('-verbose', type=click.IntRange(0, 2), default=1,
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
-def sct(fname_input, output, method, contrast, centerline_algo, centerline_smooth, size, shape, remove, verbose):
+def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, brain, kernel, size, shape, remove, verbose):
 
     # Make sure input path exists
     if not os.path.exists(fname_input):
@@ -171,61 +187,58 @@ def sct(fname_input, output, method, contrast, centerline_algo, centerline_smoot
     # Get the number of dimensions
     nii_input = nib.load(fname_input)
     ndim = nii_input.ndim
-    # If 4d, last dimension is time
+    # If 4d, last dimension is time, average last dim for better SNT
     if ndim == 4:
-        range_volumes = range(nii_input.shape[3])
-        mask_4d = np.zeros(nii_input.shape)
+        input_3d = np.mean(nii_input.get_fdata(), 3)
+        nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
+        fname_mean = os.path.join(os.path.dirname(fname_output), 'mean_3d.nii.gz')
+        nib.save(nii_3d, fname_mean)
+        fname_process = fname_mean
+    # If not then only set the processing filename
     else:
-        range_volumes = range(1)
+        fname_process = fname_input
 
-    for i_volume in range_volumes:
+    # # Get the centerline
+    # method = 'fitseg'
+    # centerline_algo = 'linear'
+    # centerline_smooth = 30
+    # path_centerline = os.path.join(os.path.dirname(fname_output), 'centerline')
+    # fname_seg = path_centerline + '.nii.gz'
+    # if method == "optic":
+    #     run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_centerline} -v {str(verbose)}")
+    #
+    # elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
+    #     run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+    #                    f"-o {path_centerline} -v {str(verbose)}")
+    #
+    # elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
+    #     run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+    #                    f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
+    #
+    # else:
+    #     raise ValueError("Could not get centerline.")
 
-        # Create 3d file from 4d file if its 4d
-        if ndim == 4:
-            input_3d = nii_input.get_fdata()[..., i_volume]
-            nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
-            fname_temp = os.path.join(os.path.dirname(output), 'temp_3d.nii.gz')
-            nib.save(nii_3d, fname_temp)
-            fname_process = fname_temp
-        # Set the filename if its not 4d
-        else:
-            fname_process = fname_input
+    # Run sct_deepseg_sc
+    fname_seg = os.path.join(os.path.dirname(fname_output), 'seg.nii.gz')
+    cmd = f"sct_deepseg_sc -i {fname_process} -o {fname_seg} -c {contrast} -centerline {centerline} -kernel {kernel} " \
+          f"-r {remove}"
+    if centerline == 'file':
+        cmd += f" -file_centerline {file_centerline}"
+    if thr is not None:
+        cmd += f" -thr {thr}"
+    if brain is not None and centerline == 'cnn':
+        cmd += f" -brain {brain}"
 
-        # Get the centerline
-        path_centerline = os.path.join(os.path.dirname(output), 'centerline')
-        if method == "optic":
-            run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_centerline} -v {str(verbose)}")
+    run_subprocess(cmd)
 
-        elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
-            run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-                           f"-o {path_centerline} -v {str(verbose)}")
-
-        elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
-            run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-                           f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
-
-        else:
-            raise ValueError("Could not get centerline.")
-
-        # Create the mask
-        fname_centerline = path_centerline + '.nii.gz'
-        run_subprocess(f"sct_create_mask -i {fname_process} -p centerline,{fname_centerline} -size {size} -f {shape} "
-                       f"-o {output} -r {str(remove)} -v {str(verbose)}")
-
-        if ndim == 4:
-            # Remove temp file
-            os.remove(fname_temp)
-            # Stitch 4d file back together
-            nii_temp_mask = nib.load(output)
-            mask_4d[..., i_volume] = nii_temp_mask.get_fdata()
-
-    if ndim == 4:
-        os.remove(output)
-        nib.save(nib.Nifti1Image(mask_4d, nii_input.affine), output)
+    # Create the mask
+    run_subprocess(f"sct_create_mask -i {fname_process} -p centerline,{fname_seg} -size {size} -f {shape} "
+                   f"-o {fname_output} -r {str(remove)} -v {str(verbose)}")
 
     if remove:
-        os.remove(fname_centerline)
-        os.remove(path_centerline + '.csv')
+        os.remove(fname_seg)
+        if ndim == 4:
+            os.remove(fname_mean)
 
-    click.echo(f"The path for the output mask is: {os.path.abspath(output)}")
-    return output
+    click.echo(f"The path for the output mask is: {os.path.abspath(fname_output)}")
+    return fname_output
