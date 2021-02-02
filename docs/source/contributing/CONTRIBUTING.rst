@@ -69,7 +69,7 @@ Some good real-life examples:
 Opening a Branch
 ----------------
 
-If you are part of the core developer team, you can open a branchdirectly in this repository. Prefix the branch name with a personal
+If you are part of the core developer team, you can open a branch directly in this repository. Prefix the branch name with a personal
 identifier (e.g. your initials) and a forward slash; If the branch you are working on is in response to an issue, provide the issue number;
 Add some text that make the branch name meaningful.
 
@@ -81,6 +81,11 @@ Examples:
 
 Developing
 ----------
+
+Pre-commit checks
+~~~~~~~~~~~~~~~~~
+
+We use ``pre-commit`` to enforce conventions like file sizes, correct Python syntax, and no merge conflict strings in the changeset. After you've installed ``shimming-toolbox``, install the hooks by running ``pre-commit install`` at the root of the repo clone.
 
 Conflicts
 ~~~~~~~~~
@@ -110,7 +115,7 @@ Please use the `Google style docstrings <https://sphinxcontrib-napoleon.readthed
 Testing
 ~~~~~~~
 
-Please add tests, especially with new code. As of now, we have unit tests (in `/test`). They are straightforward to augment, but we understand
+Please add tests, especially with new code. As of now, we have unit tests (in ``/test``). They are straightforward to augment, but we understand
 it's the extra mile; it would still be appreciated if you provide something lighter (eg. in the commit messages or in the PR or issue text)
 that demonstrates that an issue was fixed, or a feature is functional.
 
