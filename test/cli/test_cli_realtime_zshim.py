@@ -30,15 +30,26 @@ def test_cli_realtime_zshim():
 
         # Set up mask
         # Cube
+        # static
         nx, ny, nz = anat.shape
-        mask = shapes(anat, 'cube',
+        mask = shapes(nii_anat.get_fdata(), 'cube',
                       center_dim1=int(nx / 2),
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
-        fname_mask = os.path.join(tmp, 'mask.nii.gz')
-        nib.save(nii_mask, fname_mask)
+        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        fname_mask_static = os.path.join(tmp, 'mask.nii.gz')
+        nib.save(nii_mask_static, fname_mask_static)
+
+        # Riro
+        mask = shapes(nii_anat.get_fdata(), 'cube',
+                      center_dim1=int(nx / 2),
+                      center_dim2=int(ny / 2),
+                      len_dim1=20, len_dim2=20, len_dim3=nz)
+
+        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        fname_mask_riro = os.path.join(tmp, 'mask.nii.gz')
+        nib.save(nii_mask_riro, fname_mask_riro)
 
         # Path for resp data
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -48,7 +59,8 @@ def test_cli_realtime_zshim():
 
         # Run the CLI
         result = runner.invoke(realtime_zshim_cli, ['-fmap', fname_fieldmap,
-                                                    '-mask', fname_mask,
+                                                    '-mask_static', fname_mask_static,
+                                                    '-mask_riro', fname_mask_riro,
                                                     '-output', path_output,
                                                     '-resp', fname_resp,
                                                     '-anat', fname_anat],
