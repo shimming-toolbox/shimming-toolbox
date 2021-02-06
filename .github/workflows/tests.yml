@@ -66,6 +66,7 @@ jobs:
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
           git rev-parse HEAD > ~/work/.sct_HEAD_hash
+          cat ~/work/.sct_HEAD_hash
 
       - name: Cache SCT
         id: cache-sct
