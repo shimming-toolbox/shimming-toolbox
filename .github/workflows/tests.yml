@@ -58,11 +58,24 @@ jobs:
           unzip -o dcm2niix_lnx.zip
           sudo install dcm2nii* /usr/bin/
 
-      - name: SpinalCord Toolbox installation
+      - name: Spinal Cord Toolbox clone
         run: |
-          cd ../..
+          cd $HOME/work
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
+          git rev-parse HEAD > $HOME/work/.sct_HEAD_hash
+
+      - name: Cache SCT
+        id: cache-sct
+        uses: actions/cache@v2
+        with:
+          path: ~/work/spinalcordtoolbox
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('~/work/.sct_HEAD_hash')}}
+
+      - name: Spinal Cord Toolbox installation
+        if: steps.cache-sct.outputs.cache-hit != 'true'
+        run: |
+          cd ../../spinalcordtoolbox
           ./install_sct -y
 
       - name: prelude macOS
