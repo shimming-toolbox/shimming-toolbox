@@ -30,7 +30,9 @@ jobs:
 
     steps:
       - name: Get home directory
-        run: echo $HOME
+        run: |
+          echo ~
+          echo $HOME
       - uses: actions/checkout@v2
 
       - name: Set XCode version
@@ -60,10 +62,10 @@ jobs:
 
       - name: Spinal Cord Toolbox clone
         run: |
-          cd $HOME/work
+          cd ~/work
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
-          git rev-parse HEAD > $HOME/work/.sct_HEAD_hash
+          git rev-parse HEAD > ~/work/.sct_HEAD_hash
 
       - name: Cache SCT
         id: cache-sct
