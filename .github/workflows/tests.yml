@@ -65,8 +65,8 @@ jobs:
           cd ~/work
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
-          git rev-parse HEAD > .sct_HEAD_hash
-          cat .sct_HEAD_hash
+          git rev-parse HEAD > $GITHUB_WORKSPACE/.sct_HEAD_hash
+          cat $GITHUB_WORKSPACE/.sct_HEAD_hash
 
       - name: Cache SCT
         id: cache-sct
@@ -74,7 +74,7 @@ jobs:
         with:
           path: ~/work/spinalcordtoolbox
           # Use commit hash file from previous step as key
-          key: ${{ matrix.os }}_python-${{ matrix.python-version }}-${{ hashFiles('~/work/spinalcordtoolbox/.sct_HEAD_hash') }}
+          key: ${{ matrix.os }}_python-${{ matrix.python-version }}-${{ hashFiles('**/.sct_HEAD_hash') }}
 
       - name: Spinal Cord Toolbox installation
         if: steps.cache-sct.outputs.cache-hit != 'true'
