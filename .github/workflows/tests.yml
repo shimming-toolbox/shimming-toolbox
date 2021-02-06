@@ -70,6 +70,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ~/work/spinalcordtoolbox
+          # Use commit hash file from previous step as key
           key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('~/work/.sct_HEAD_hash')}}
 
       - name: Spinal Cord Toolbox installation
