@@ -74,7 +74,7 @@ jobs:
         with:
           path: ~/work/spinalcordtoolbox
           # Use commit hash file from previous step as key
-          key: ${{ matrix.os }}-${{ matrix.python-version }}-${{ hashFiles('~/work/.sct_HEAD_hash') }}
+          key: ${{ matrix.os }}-python-${{ matrix.python-version }}-${{ hashFiles('~/work/.sct_HEAD_hash') }}
 
       - name: Spinal Cord Toolbox installation
         if: steps.cache-sct.outputs.cache-hit != 'true'
