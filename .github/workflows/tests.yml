@@ -65,6 +65,7 @@ jobs:
           cd ~/work
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
+          # Use HEAD commit hash as key for cache
           git rev-parse HEAD > $GITHUB_WORKSPACE/.sct_HEAD_hash
           cat $GITHUB_WORKSPACE/.sct_HEAD_hash
 
