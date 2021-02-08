@@ -55,4 +55,3 @@ def download_data(verbose, output, data):
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output, keep=True)
-

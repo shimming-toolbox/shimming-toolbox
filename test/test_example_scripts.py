@@ -28,4 +28,3 @@ class TestCore(object):
         fname_nifti = general_demo(self.tmp_path)
 
         assert (os.path.isfile(fname_nifti))
-
