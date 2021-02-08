@@ -29,4 +29,3 @@ st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example
 # - Calculate a static offset component
 # - Calculate a respiratory induce component (RIRO)
 # - Output, riro, static and mean_p per slice in a text file that can be read by the sequence
-
