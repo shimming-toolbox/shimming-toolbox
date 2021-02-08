@@ -125,7 +125,7 @@ Licensing
 ~~~~~~~~~
 
 Ensure that you are the original author of your changes, and if that is not the case, ensure that the borrowed/adapted code is compatible with
-the `project's license <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/LICENSE>`_. 
+the `project's license <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/LICENSE>`_.
 
 
 Committing
@@ -188,10 +188,10 @@ Work in progress
 
 If your PR is not ready for review yet, you can convert it to a "Draft", so the team is informed.
 
-A draft pull request is styled differently to clearly indicate that it’s in a draft state. 
-Merging is blocked in draft pull requests. Change the status to "Ready for review" near the 
-bottom of your pull request to remove the draft state and allow merging according to your 
-project’s settings. 
+A draft pull request is styled differently to clearly indicate that it’s in a draft state.
+Merging is blocked in draft pull requests. Change the status to "Ready for review" near the
+bottom of your pull request to remove the draft state and allow merging according to your
+project’s settings.
 
 Continuous Integration
 ~~~~~~~~~~~~~~~~~~~~~~

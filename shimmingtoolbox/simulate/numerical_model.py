@@ -42,8 +42,8 @@ np.seterr(divide="ignore", invalid="ignore")
 class NumericalModel:
     """Multi-echo B0 field mapping data numerical simulator.
 
-    Simulate multi-echo B0 field mapping data in the presence of a B0 field. 
-    Can simulate data under ideal conditions or with noise. Export simulations 
+    Simulate multi-echo B0 field mapping data in the presence of a B0 field.
+    Can simulate data under ideal conditions or with noise. Export simulations
     in a NIfTI or ``.mat`` file formats.
 
     Attributes:
@@ -135,12 +135,12 @@ class NumericalModel:
         """Simulates a multi-echo measurement for field mapping
 
         Resets the measurement class attribute to zero before simulating. Simulates
-        the signal for each echo-time provided. If defined, adds noise to the 
+        the signal for each echo-time provided. If defined, adds noise to the
         complex simulated signal measurements using an SNR value.
 
         Args:
             FA: Flip angle in degrees.
-            TE: Echo-times in seconds. Can be either a single value, list, or 
+            TE: Echo-times in seconds. Can be either a single value, list, or
                 array.
             SNR: Signal-to-noise ratio used to define noise. If not set, no noise
                 is added to the measurements.
@@ -245,7 +245,7 @@ class NumericalModel:
         """Exports simulated data to a file with a JSON sidecar.
 
         Resets the measurement class attribute to zero before simulating. Simulates
-        the signal for each echo-time provided. If defined, adds noise to the 
+        the signal for each echo-time provided. If defined, adds noise to the
         complex simulated signal measurements using an SNR value.
 
         Args:
