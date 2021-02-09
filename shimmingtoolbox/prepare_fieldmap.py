@@ -9,7 +9,7 @@ from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 
 def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None,
-                     gaussian_filter=None):
+                     gaussian_filter=None, sigma=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
@@ -24,8 +24,8 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
         mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
         threshold: Prelude parameter used for masking.
-        gaussian_filter: Option of using a Gaussian filter (sigma = 1) to smooth the fieldmaps (boolean)
-
+        gaussian_filter: Option of using a Gaussian filter to smooth the fieldmaps (boolean)
+        sigma: Standard deviation of gaussian filter.
     Returns
         numpy.ndarray: Unwrapped fieldmap in Hz.
     """
@@ -86,7 +86,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
 
     # Gaussian blur the fieldmap
     if gaussian_filter == True:
-        fieldmap_hz = gaussian(fieldmap_hz, sigma = 2, mode = 'nearest')
+        fieldmap_hz = gaussian(fieldmap_hz, sigma, mode = 'nearest')
 
     # return fieldmap_hz_gaussian
     return fieldmap_hz
