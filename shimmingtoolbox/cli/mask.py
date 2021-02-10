@@ -198,6 +198,9 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     else:
         fname_process = fname_input
 
+    # TODO: Create function for get_centerline
+    # get_centerline is faster, however, it is a bit less accurate. More investigations needed in the future, this
+    # code is commented out so that we can persue investigation.
     # # Get the centerline
     # method = 'fitseg'
     # centerline_algo = 'linear'
