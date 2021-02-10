@@ -58,7 +58,7 @@ def _loop_segments(center, normal, radius, segment_num):
         center (numpy.ndarray): 3D center point of loop in arbitrary units
         normal (numpy.ndarray): 3D normal vector to loop in arbitrary units
         radius (float): Loop radius in arbitrary units
-        segment_num (int): Number of segments for loop approximation 
+        segment_num (int): Number of segments for loop approximation
 
     Returns:
         numpy.ndarray: (2, 3, segment_num) array of segments (segment start [0] or end [1]; x, y, z ; segment number)
