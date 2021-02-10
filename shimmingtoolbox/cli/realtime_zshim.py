@@ -22,11 +22,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Filename of the anatomical image to apply the correction.")
 @click.option('-resp', 'fname_resp', type=click.Path(), required=True,
               help="Siemens respiratory file containing pressure data.")
-@click.option('-mask_static', 'fname_mask_anat_static', type=click.Path(), required=False,
+@click.option('-mask-static', 'fname_mask_anat_static', type=click.Path(), required=False,
               help="3D nifti file used to define the static spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('-mask_riro', 'fname_mask_anat_riro', type=click.Path(), required=False,
-              help="3D nifti file used to define the time varying spatial region to shim. "
+@click.option('-mask-riro', 'fname_mask_anat_riro', type=click.Path(), required=False,
+              help="3D nifti file used to define the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
+                   "spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
