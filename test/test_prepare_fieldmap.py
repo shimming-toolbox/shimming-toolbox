@@ -153,7 +153,7 @@ class TestPrepareFieldmap(object):
     def test_prepare_fieldmap_gaussian_filter(self):
         """ Test output of gaussian filter optional argument"""
 
-        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, gaussian_filter=True)
+        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, gaussian_filter=True, sigma = 1)
 
         assert fieldmap.shape == self.phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
