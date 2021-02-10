@@ -29,8 +29,8 @@ or write it with `install --user` (for a user-local install) in order to be allo
 
 ## Development
 
-Please see the documentation for instructions on building and testing a [development version](https://shimming-toolbox.org/en/latest/2_getting_started/1_installation.html) of shimming-toolbox.
+Please see the documentation for instructions on building and testing a [development version](https://shimming-toolbox.org/en/latest/getting_started/installation.html) of shimming-toolbox.
 
 ## Contributing
 
-Please see our [contribution guidelines](docs/source/3_contributing/CONTRIBUTING.rst).
+Please see our [contribution guidelines](https://shimming-toolbox.org/en/latest/contributing/CONTRIBUTING.html).

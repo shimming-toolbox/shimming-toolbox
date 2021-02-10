@@ -66,4 +66,3 @@ def test_cli_prepare_fieldmap_default_output():
     assert os.path.isfile(os.path.join(os.curdir, 'fieldmap.json'))
     os.remove(os.path.join(os.curdir, 'fieldmap.nii.gz'))
     os.remove(os.path.join(os.curdir, 'fieldmap.json'))
-

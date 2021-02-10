@@ -1,4 +1,4 @@
-# Context: That scripts covers a volume-wise realtime shimming with respiratory probe scenario 
+# Context: That scripts covers a volume-wise realtime shimming with respiratory probe scenario
 #
 # Sort unorganized images from DICOM socket transfer (this is how they are returned by the scanner)
 # dcm2bids is used to convert the dicoms into niftis following the BIDS convension and organize them into a folder structure (separating magnitude and phase)
@@ -10,9 +10,9 @@
 # Using nifti_path will prompt the user to select the appropriate acquisition (by displaying the different acquisitions stored in nifti_path)
 # Alternatively, if the direct path to the acquisition is known, it can be directly use as an input and the function won't prompt the user
 # mag & phase : 5D arrays (x y z nEcho nAcq)
-# > mag = load_nii( nifti_path ) 
+# > mag = load_nii( nifti_path )
 # > phase = load_nii( nifti_path )
-# 
+#
 # Convert into a complex 5D array (x y z nEcho nAcq)
 # > complex_array = np.multiply( mag, exp( phase*1j ) )
 #
@@ -28,7 +28,7 @@
 # b0_fieldmap could be 2d, 3d or 4d. The 4th dimension being the time in [s] (i.e. one B0 per timestamp).
 # Note: the function should accommodate multiple fieldmap data (one per time point, in case of realtime shimming scenario)
 # Note: map_field calls b0_mappers and might call unwrap_phase if needed
-# threshold: sets the maximum frequency (Hz) value returned by map_field. If not defined, a default value is applied 
+# threshold: sets the maximum frequency (Hz) value returned by map_field. If not defined, a default value is applied
 # > b0_fieldmap = map_field( complex_array, mapping_algo, unwrapping_algo, mask (optional), threshold (optional) )
 #
 # Load Siemens respiratory probe trace

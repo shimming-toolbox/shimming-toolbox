@@ -22,7 +22,7 @@ class LSQ_Optimizer(Optimizer):
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
 
         """
-        self._error_if(unshimmed_vec.shape[0] != coil_mat.shape[0], 
+        self._error_if(unshimmed_vec.shape[0] != coil_mat.shape[0],
                        (f'Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape})'
                         ' arrays do not align on axis 0'))
         return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)

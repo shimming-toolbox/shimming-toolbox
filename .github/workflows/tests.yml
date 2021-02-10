@@ -29,6 +29,10 @@ jobs:
           - '3.8'
 
     steps:
+      - name: Get home directory
+        run: |
+          echo ~
+          echo $HOME
       - uses: actions/checkout@v2
 
       - name: Set XCode version
@@ -56,11 +60,27 @@ jobs:
           unzip -o dcm2niix_lnx.zip
           sudo install dcm2nii* /usr/bin/
 
-      - name: SpinalCord Toolbox installation
+      - name: Spinal Cord Toolbox clone
         run: |
-          cd ../..
+          cd ~/work
           git clone --depth 1 https://github.com/neuropoly/spinalcordtoolbox
           cd spinalcordtoolbox
+          # Use HEAD commit hash as key for cache
+          git rev-parse HEAD > $GITHUB_WORKSPACE/.sct_HEAD_hash
+          cat $GITHUB_WORKSPACE/.sct_HEAD_hash
+
+      - name: Cache SCT
+        id: cache-sct
+        uses: actions/cache@v2
+        with:
+          path: ~/work/spinalcordtoolbox
+          # Use commit hash file from previous step as key
+          key: ${{ matrix.os }}-${{ hashFiles('**/.sct_HEAD_hash') }}
+
+      - name: Spinal Cord Toolbox installation
+        if: steps.cache-sct.outputs.cache-hit != 'true'
+        run: |
+          cd ../../spinalcordtoolbox
           ./install_sct -y
           echo "$HOME/work/spinalcordtoolbox/bin" >> $GITHUB_PATH
 
