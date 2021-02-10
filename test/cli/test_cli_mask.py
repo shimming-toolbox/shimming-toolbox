@@ -93,7 +93,7 @@ def test_cli_mask_sct_default():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
         result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -remove 0", catch_exceptions=False)
@@ -108,7 +108,7 @@ def test_cli_mask_sct_all_flags():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        fname_input = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
         result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -size 11 -shape gaussian "
