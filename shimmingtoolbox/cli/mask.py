@@ -4,6 +4,7 @@ import click
 import nibabel as nib
 import numpy as np
 import os
+from pathlib import Path
 
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.shapes import shape_square
@@ -202,24 +203,9 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     # get_centerline is faster, however, it is a bit less accurate. More investigations needed in the future, this
     # code is commented out so that we can persue investigation.
     # # Get the centerline
-    # method = 'fitseg'
-    # centerline_algo = 'linear'
-    # centerline_smooth = 30
-    # path_centerline = os.path.join(os.path.dirname(fname_output), 'centerline')
-    # fname_seg = path_centerline + '.nii.gz'
-    # if method == "optic":
-    #     run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_centerline} -v {str(verbose)}")
-    #
-    # elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
-    #     run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-    #                    f"-o {path_centerline} -v {str(verbose)}")
-    #
-    # elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
-    #     run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-    #                    f"-centerline-smooth {str(centerline_smooth)} -o {path_centerline} -v {str(verbose)}")
-    #
-    # else:
-    #     raise ValueError("Could not get centerline.")
+
+    path_centerline = os.path.join(os.path.dirname(fname_output), 'centerline')
+    get_centerline(fname_process, path_centerline)
 
     # Run sct_deepseg_sc
     fname_seg = os.path.join(os.path.dirname(fname_output), 'seg.nii.gz')
@@ -245,3 +231,36 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
 
     click.echo(f"The path for the output mask is: {os.path.abspath(fname_output)}")
     return fname_output
+
+
+def get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
+                   centerline_smooth='30', verbose='1'):
+    """
+
+    Args:
+        fname_process:
+        fname_output: Filename with the extension
+        method:
+        contrast:
+        centerline_algo:
+        centerline_smooth:
+        verbose:
+
+    Returns:
+
+    """
+    print('.').join(fname_output.split('.')[:-1])
+    # path_seg = Path(fname_output).stem  # file
+    if method == "optic":
+        run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_seg} -v {str(verbose)}")
+
+    elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
+        run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+                       f"-o {path_seg} -v {str(verbose)}")
+
+    elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
+        run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+                       f"-centerline-smooth {str(centerline_smooth)} -o {path_seg} -v {str(verbose)}")
+
+    else:
+        raise ValueError("Could not get centerline.")
