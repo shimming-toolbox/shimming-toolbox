@@ -25,7 +25,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('-threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 @click.option('-gaussian-filter', 'gaussian_filter', type=bool, help="Gaussian filter for B0 map")
-@click.option('-sigma', 'sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
+@click.option('-sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, threshold, gaussian_filter, sigma):
     """Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case

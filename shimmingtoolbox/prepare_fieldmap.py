@@ -9,7 +9,7 @@ from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 
 def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None,
-                     gaussian_filter=None, sigma=None):
+                     gaussian_filter=None, sigma=1):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
