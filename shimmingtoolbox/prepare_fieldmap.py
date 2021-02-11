@@ -24,7 +24,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
         mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
         threshold: Prelude parameter used for masking.
-        gaussian_filter: Option of using a Gaussian filter to smooth the fieldmaps (boolean)
+        gaussian_filter (bool): Option of using a Gaussian filter to smooth the fieldmaps (boolean)
         sigma: Standard deviation of gaussian filter.
     Returns
         numpy.ndarray: Unwrapped fieldmap in Hz.
