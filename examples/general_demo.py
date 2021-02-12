@@ -108,4 +108,3 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
 
 if __name__ == '__main__':
     general_demo()
-

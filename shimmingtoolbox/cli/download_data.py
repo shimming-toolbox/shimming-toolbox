@@ -15,7 +15,7 @@ from shimmingtoolbox.download import install_data
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
     "testing_data": (
-        ["https://github.com/shimming-toolbox/data-testing/archive/r20210126.zip"],
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20210209.zip"],
         "Light-weighted dataset for testing purpose.",
     ),
     "prelude": (
@@ -55,4 +55,3 @@ def download_data(verbose, output, data):
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
     install_data(url, output, keep=True)
-

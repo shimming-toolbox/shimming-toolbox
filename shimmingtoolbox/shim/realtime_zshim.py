@@ -41,7 +41,6 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=No
         numpy.ndarray: 1D array of the dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
         float: Average pressure of the pmu
         float: RMS of the pmu pressure
-
     """
 
     # Set up output of figures
@@ -87,7 +86,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=No
         mask_fmap_static = np.ones_like(fieldmap[..., 0])
         nii_mask_fmap_static = nib.Nifti1Image(mask_fmap_static, nii_anat.affine)
         nii_mask_anat_static = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
-        
+
     if is_outputting_figures:
         nib.save(nii_mask_fmap_riro, os.path.join(path_output, 'fig_mask_fmap_riro.nii.gz'))
         nib.save(nii_mask_fmap_static, os.path.join(path_output, 'fig_mask_fmap_static.nii.gz'))
