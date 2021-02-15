@@ -233,42 +233,43 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     return fname_output
 
 
-def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
-                    centerline_smooth='30', verbose='1'):
-    """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
-    containing the output mask.
-
-    Args:
-        fname_process (str): Input filename containing the spinal cord image. Supported extensions are .nii or .nii.gz.
-        fname_output (str): Output filename containing the senterline of the spinal cord.Supported extensions is
-                            ".nii.gz".
-        method (str): Method used for extracting the centerline:
-                      - optic: automatic spinal cord detection method
-                      - fitseg: fit a regularized centerline on an already-existing cord segmentation. It will
-                      interpolate if slices are missing and extrapolate beyond the segmentation boundaries
-                      (i.e., every axial slice will exhibit a centerline pixel).
-        contrast (str): Type of image contrast. Supported contrast: t1, t2, t2s, dwi.
-        centerline_algo (str): Algorithm for centerline fitting. Only relevant with -method fitseg.
-                         Supported algo: polyfit, bspline, linear, nurbs.
-        centerline_smooth (int): Degree of smoothing for centerline fitting.
-                                 Only for -centerline-algo {bspline, linear}.
-        verbose (int): Verbose: 0 = nothing, 1 = classic, 2 = expended.
-
-    Returns:
-
-    """
-    path_seg = fname_output.rsplit('.nii.gz', 1)[0]
-
-    if method == "optic":
-        run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_seg} -v {str(verbose)}")
-
-    elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
-        run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-                       f"-o {path_seg} -v {str(verbose)}")
-
-    elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
-        run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-                       f"-centerline-smooth {str(centerline_smooth)} -o {path_seg} -v {str(verbose)}")
-
-    else:
-        raise ValueError("Could not get centerline.")
+# def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
+#                     centerline_smooth='30', verbose='1'):
+#     """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
+#     containing the output mask.
+#
+#     Args:
+#         fname_process (str): Input filename containing the spinal cord image. Supported extensions are .nii or
+#                              .nii.gz.
+#         fname_output (str): Output filename containing the senterline of the spinal cord.Supported extensions is
+#                             ".nii.gz".
+#         method (str): Method used for extracting the centerline:
+#                       - optic: automatic spinal cord detection method
+#                       - fitseg: fit a regularized centerline on an already-existing cord segmentation. It will
+#                       interpolate if slices are missing and extrapolate beyond the segmentation boundaries
+#                       (i.e., every axial slice will exhibit a centerline pixel).
+#         contrast (str): Type of image contrast. Supported contrast: t1, t2, t2s, dwi.
+#         centerline_algo (str): Algorithm for centerline fitting. Only relevant with -method fitseg.
+#                          Supported algo: polyfit, bspline, linear, nurbs.
+#         centerline_smooth (int): Degree of smoothing for centerline fitting.
+#                                  Only for -centerline-algo {bspline, linear}.
+#         verbose (int): Verbose: 0 = nothing, 1 = classic, 2 = expended.
+#
+#     Returns:
+#
+#     """
+#     path_seg = fname_output.rsplit('.nii.gz', 1)[0]
+#
+#     if method == "optic":
+#         run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_seg} -v {str(verbose)}")
+#
+#     elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
+#         run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+#                        f"-o {path_seg} -v {str(verbose)}")
+#
+#     elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
+#         run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
+#                        f"-centerline-smooth {str(centerline_smooth)} -o {path_seg} -v {str(verbose)}")
+#
+#     else:
+#         raise ValueError("Could not get centerline.")
