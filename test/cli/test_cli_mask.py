@@ -119,6 +119,3 @@ def test_cli_mask_sct_all_flags():
         assert result.exit_code == 0
         assert len(os.listdir(tmp)) == 1
         assert os.path.isfile(fname_output)
-
-
-# def test_cli_mask_get_centerline():
