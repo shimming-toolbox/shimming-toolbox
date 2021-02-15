@@ -150,16 +150,6 @@ def threshold(fname_input, output, thr):
               help="(str): Shape of the mask. (default: cylinder)")
 @click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
               help="(str): Type of image contrast. (default: t2s)")
-# @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
-#               help="(str): Method used for extracting the centerline: "
-#                    "- optic: automatic spinal cord detection method"
-#                    "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
-#                    "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., every "
-#                    "axial slice will exhibit a centerline pixel). (default: optic)")
-# @click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
-#               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
-# @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
-#                                                      "-centerline-algo {bspline, linear}. (default: 30)")
 @click.option('-centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
               help="(str): Algorithm for centerline fitting.")
 @click.option('-file_centerline', type=str,
@@ -179,7 +169,19 @@ def threshold(fname_input, output, thr):
 @click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
 @click.option('-verbose', type=click.IntRange(0, 2), default=1,
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
-def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, brain, kernel, size, shape, remove, verbose):
+# Options for _get_centerline
+# @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
+#               help="(str): Method used for extracting the centerline: "
+#                    "- optic: automatic spinal cord detection method"
+#                    "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
+#                    "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., "
+#                    "every axial slice will exhibit a centerline pixel). (default: optic)")
+# @click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
+#               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
+# @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
+#                                                      "-centerline-algo {bspline, linear}. (default: 30)")
+def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, brain, kernel, size, shape, remove,
+        verbose):
 
     # Make sure input path exists
     if not os.path.exists(fname_input):
@@ -199,16 +201,14 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     else:
         fname_process = fname_input
 
-    # TODO: Create function for get_centerline
-    # get_centerline is faster, however, it is a bit less accurate. More investigations needed in the future, this
-    # code is commented out so that we can persue investigation.
-    # # Get the centerline
+    fname_seg = os.path.join(os.path.dirname(fname_output), 'seg.nii.gz')
 
-    path_centerline = os.path.join(os.path.dirname(fname_output), 'centerline')
-    get_centerline(fname_process, path_centerline)
+    # sct_get_centerline is faster than sct_deepseg_sc, however, it is a bit less accurate. More investigations needed
+    # in the future, this code is commented out so that we can persue investigation.
+    # # Get the centerline
+    # _get_centerline(fname_process, fname_seg)
 
     # Run sct_deepseg_sc
-    fname_seg = os.path.join(os.path.dirname(fname_output), 'seg.nii.gz')
     cmd = f"sct_deepseg_sc -i {fname_process} -o {fname_seg} -c {contrast} -centerline {centerline} -kernel {kernel} " \
           f"-r {remove}"
     if centerline == 'file':
@@ -233,24 +233,32 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     return fname_output
 
 
-def get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
-                   centerline_smooth='30', verbose='1'):
-    """
+def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
+                    centerline_smooth='30', verbose='1'):
+    """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
+    containing the output mask.
 
     Args:
-        fname_process:
-        fname_output: Filename with the extension
-        method:
-        contrast:
-        centerline_algo:
-        centerline_smooth:
-        verbose:
+        fname_process (str): Input filename containing the spinal cord image. Supported extensions are .nii or .nii.gz.
+        fname_output (str): Output filename containing the senterline of the spinal cord.Supported extensions is
+                            ".nii.gz".
+        method (str): Method used for extracting the centerline:
+                      - optic: automatic spinal cord detection method
+                      - fitseg: fit a regularized centerline on an already-existing cord segmentation. It will
+                      interpolate if slices are missing and extrapolate beyond the segmentation boundaries
+                      (i.e., every axial slice will exhibit a centerline pixel).
+        contrast (str): Type of image contrast. Supported contrast: t1, t2, t2s, dwi.
+        centerline_algo (str): Algorithm for centerline fitting. Only relevant with -method fitseg.
+                         Supported algo: polyfit, bspline, linear, nurbs.
+        centerline_smooth (int): Degree of smoothing for centerline fitting.
+                                 Only for -centerline-algo {bspline, linear}.
+        verbose (int): Verbose: 0 = nothing, 1 = classic, 2 = expended.
 
     Returns:
 
     """
-    print('.').join(fname_output.split('.')[:-1])
-    # path_seg = Path(fname_output).stem  # file
+    path_seg = fname_output.rsplit('.nii.gz', 1)[0]
+
     if method == "optic":
         run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_seg} -v {str(verbose)}")
 
