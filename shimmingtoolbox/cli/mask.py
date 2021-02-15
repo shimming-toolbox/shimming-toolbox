@@ -137,48 +137,48 @@ def threshold(fname_input, output, thr):
                        " box or Gaussian), a mask is created along z direction. To generate this mask, its center"
                        " must be specified by the user according the method."
                        " Return an output nifti file with SCT mask.")
-@click.option('-input', 'fname_input', type=click.Path(), required=True,
+@click.option('--input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
                    "data.nii.gz")
-@click.option('-output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+@click.option('--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
               help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii. (default:"
                    " (os.curdir, 'mask.nii.gz')).")
-@click.option('-size', default='20',
+@click.option('--size', default='20',
               help="(str): Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
                    "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
-@click.option('-shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
+@click.option('--shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
               help="(str): Shape of the mask. (default: cylinder)")
-@click.option('-contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
+@click.option('--contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
               help="(str): Type of image contrast. (default: t2s)")
-@click.option('-centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
+@click.option('--centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
               help="(str): Algorithm for centerline fitting.")
-@click.option('-file_centerline', type=str,
+@click.option('--file-centerline', 'file_centerline', type=str,
               help="(str):  Input centerline file (to use with flag -centerline file). "
                    "Example: t2_centerline_manual.nii.gz")
-@click.option('-thr', type=float,
+@click.option('--thr', type=float,
               help="Binarization threshold (between 0 and 1) to apply to the segmentation prediction. Set to -1 for no "
                    "binarization (i.e. soft segmentation output). The default threshold is specific to each contrast "
                    "and wasestimated using an optimization algorithm. More details at: "
                    "https://github.com/sct-pipeline/deepseg-threshold.")
-@click.option('-brain', type=click.IntRange(0, 1),
+@click.option('--brain', type=click.IntRange(0, 1),
               help="(str):  Indicate if the input image contains brain sections (to speed up segmentation). "
                    "Only use with '-centerline cnn'.")
-@click.option('-kernel', type=click.Choice(['2d', '3d']), default='2d',
+@click.option('--kernel', type=click.Choice(['2d', '3d']), default='2d',
               help="(str):  Choice of kernel shape for the CNN. Segmentation with 3D kernels is slower than with "
                    "2D kernels. (default: 2d)")
-@click.option('-remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
-@click.option('-verbose', type=click.IntRange(0, 2), default=1,
+@click.option('--remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
+@click.option('--verbose', type=click.IntRange(0, 2), default=1,
               help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
 # Options for _get_centerline
-# @click.option('-method', type=click.Choice(['optic', 'fitseg']), default='optic',
+# @click.option('--method', type=click.Choice(['optic', 'fitseg']), default='optic',
 #               help="(str): Method used for extracting the centerline: "
 #                    "- optic: automatic spinal cord detection method"
 #                    "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
 #                    "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., "
 #                    "every axial slice will exhibit a centerline pixel). (default: optic)")
-# @click.option('-centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
+# @click.option('--centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
 #               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
-# @click.option('-centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
+# @click.option('--centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
 #                                                      "-centerline-algo {bspline, linear}. (default: 30)")
 def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, brain, kernel, size, shape, remove,
         verbose):

@@ -97,7 +97,8 @@ def test_cli_mask_sct_default():
         fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
-        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -remove 0", catch_exceptions=False)
+        result = runner.invoke(mask_cli, f"sct --input {fname_input} --output {fname_output} --remove 0",
+                               catch_exceptions=False)
 
         assert result.exit_code == 0
         assert len(os.listdir(tmp)) == 2
@@ -112,9 +113,9 @@ def test_cli_mask_sct_all_flags():
         fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
-        result = runner.invoke(mask_cli, f"sct -input {fname_input} -output {fname_output} -size 11 -shape gaussian "
-                                         f"-contrast t1 -thr 0.5 -brain 0 -kernel 2d -centerline cnn "
-                                         f"-remove 1 -verbose 1", catch_exceptions=False)
+        result = runner.invoke(mask_cli, f"sct --input {fname_input} --output {fname_output} --size 11 --shape gaussian"
+                                         f" --contrast t1 --thr 0.5 --brain 0 --kernel 2d --centerline cnn"
+                                         f" --remove 1 --verbose 1", catch_exceptions=False)
 
         assert result.exit_code == 0
         assert len(os.listdir(tmp)) == 1
