@@ -1,22 +1,3 @@
-"read_nii must range from -pi to pi."
-raise ValueError(errno.ENODATA, notice.message_lang._pi_range, helper_file_list.stderr)
-
-"Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
-raise ValueError(errno.ENODATA, notice.message_lang._echo_point_numbers, helper_file_list.stderr)
-
-
-"mag and phase must have the same dimensions."
-raise ValueError(errno.ENODATA, notice.message_lang._mag_phase_dimension, helper_file_list.stderr
-
-"Shape of mask and phase must match."
-raise ValueError(errno.ENODATA, notice.message_lang._mask_phase, helper_file_list.stderr)
-
-"This number of phase input is not supported"
-raise ValueError(errno.ENODATA, notice.message_lang._phase_number, helper_file_list.stderr)
-
-
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 import language as notice
@@ -49,24 +30,23 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     for i_echo in range(len(phase)):
         # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
         if (phase[i_echo].max() > math.pi) or (phase[i_echo].min() < -math.pi):
-            raise RuntimeError("read_nii must range from -pi to pi.")
+            raise ValueError( errno.ENODATA, notice._pi_range )
 
     # Check that the input echotimes are the appropriate size by looking at phase
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
     if not is_phasediff:
         if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
-            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
-                               " number of echo times.")
+        raise ValueError( errno.ENODATA, notice._echo_point_numbers )
 
     # Make sure mag is the right shape
     if mag is not None:
         if mag.shape != phase[0].shape:
-            raise RuntimeError("mag and phase must have the same dimensions.")
+            raise ValueError( errno.ENODATA, notice._mag_phase_dimension )
 
     # Make sure mask has the right shape
     if mask is not None:
         if mask.shape != phase[0].shape:
-            raise RuntimeError("Shape of mask and phase must match.")
+            raise ValueError( errno.ENODATA, notice._mask_phase )
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
@@ -89,7 +69,9 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     else:
         # TODO: More echoes
         # TODO: Add method once multiple methods are implemented
-        raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
+        # TODO Assert the len(phase) is captured by the stderr
+        # raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
+        raise ValueError( errno.ENODATA, notice._phase_number )
 
     # Run the unwrapper
     phasediff_unwrapped = unwrap_phase(phasediff, affine, unwrapper=unwrapper, mag=mag, mask=mask, threshold=threshold)

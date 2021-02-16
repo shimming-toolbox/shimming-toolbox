@@ -1,7 +1,3 @@
-"acquisition_times don't fit within time limits for resp trace"
-raise ValueError(errno.ENODATA, notice.message_lang._resp_trace_time_limit, helper_file_list.stderr)
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 #
@@ -137,7 +133,7 @@ class PmuResp(object):
             numpy.ndarray: 1D array with interpolated times
         """
         if np.any(self.start_time_mdh > acquisition_times) or np.all(self.stop_time_mdh < acquisition_times):
-            raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
+            raise ValueError( errno.ENODATA, notice._resp_trace_time_limit )
 
         raster = float(self.stop_time_mdh - self.start_time_mdh) / len(self.data-1)
         times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms

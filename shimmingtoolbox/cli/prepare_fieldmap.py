@@ -1,24 +1,3 @@
-"read_nii must range from -pi to pi."
-raise ValueError(errno.ENODATA, notice.message_lang._pi_range, helper_file_list.stderr)
-
-"Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
-raise ValueError(errno.ENODATA, notice.message_lang._echo_point_numbers, helper_file_list.stderr)
-
-"mag and phase must have the same dimensions."
-raise ValueError(errno.ENODATA, notice.message_lang._mag_phase_dimension, helper_file_list.stderr)
-
-"Shape of mask and phase must match."
-raise ValueError(errno.ENODATA, notice.message_lang._mask_phase, helper_file_list.stderr)
-
-"This number of phase input is not supported"
-raise ValueError(errno.ENODATA, notice.message_lang._phase_number, helper_file_list.stderr)
-
-"Not an existing NIFTI path"
-raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_existing_nifty_path, find_check.stderr)
-
-
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
@@ -69,9 +48,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
             # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the
             # metadata
             if not ('EchoTime1' in json_phase) or not ('EchoTime2' in json_phase):
-                raise RuntimeError(
-                    "The JSON file of the input phase should include the fields EchoTime1 and EchoTime2 if"
-                    "it is a phase difference.")
+                raise ValueError( errno.ENODATA, notice._input_phase_difference )
             echo_times = [json_phase['EchoTime1'], json_phase['EchoTime2']]  # [s]
         else:
             echo_times.append(json_phase['EchoTime'])

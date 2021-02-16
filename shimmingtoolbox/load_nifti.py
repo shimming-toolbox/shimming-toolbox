@@ -1,14 +1,3 @@
-"Not an existing NIFTI path"
-raise FileNotFoundError(errno.ENOENT, notice.message_lang._no_existing_nifty_path, <help>.stderr)
-
-"Directories and files in input path")
-raise SystemError(errno.EIO, notice.message_lang._dir_files_input, <help>.stderr)
-
-'Missing json file'
-raise FileNotFoundError(errno.ENOENT, notice.message_lang._json_missing, find_check.stderr)
-
- 
-
 #!usr/bin/env python3
 # -*- coding: utf-8
 import json
@@ -64,7 +53,7 @@ def load_nifti(path_data, modality='phase'):
         ask the user for which acquisition to use.
     """
     if not os.path.exists(path_data):
-        raise RuntimeError("Not an existing NIFTI path")
+        raise FileNotFoundError(errno.ENOENT, notice._no_existing_nifty_path )
 
     # Generate file_list
     file_list = []
@@ -80,7 +69,7 @@ def load_nifti(path_data, modality='phase'):
         logging.info("Acquisition directory given. Using acquisitions.")
         nifti_path = path_data
     else:
-        raise RuntimeError("Directories and files in input path")
+        raise SystemError(errno.EIO, notice._dir_files_input )
 
     # Choose an acquisition between all folders
     if not nifti_path:
@@ -181,7 +170,7 @@ def read_nii(nii_path, auto_scale=True):
     if os.path.isfile(json_path):
         json_data = json.load(open(json_path))
     else:
-        raise ValueError('Missing json file')
+        raise FileNotFoundError(errno.ENOENT, notice._json_missing )
 
     image = np.asarray(info.dataobj)
     if auto_scale:

@@ -1,10 +1,3 @@
-
-'shape_square only allows for 2 dimensions'
-raise ValueError(errno.ENODATA, notice.message_lang._square_2d, helper_file_list.stderr)
-raise ValueError(errno.ENODATA, notice.message_lang._square_2d, helper_file_list.stderr)
-
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -32,7 +25,7 @@ def shape_square(data, len_dim1, len_dim2, center_dim1=None, center_dim2=None):
 
     # Only takes data with 2 dimensions
     if data.ndim != 2:
-        raise RuntimeError('shape_square only allows for 2 dimensions')
+        raise ValueError( errno.ENODATA, notice._square_2d )
 
     # Default to middle
     if center_dim1 is None:
@@ -74,7 +67,7 @@ def shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1=None, center_dim2
 
     # Only takes data with 3 dimensions
     if data.ndim != 3:
-        raise RuntimeError('shape_square only allows for 2 dimensions')
+        raise ValueError( errno.ENODATA, notice._square_2d )
 
     # Default to middle
     if center_dim1 is None:

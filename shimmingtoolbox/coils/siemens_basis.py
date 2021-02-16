@@ -1,14 +1,3 @@
-"Input arrays should have 4th dimension's shape equal to 8"
-raise ValueError(errno.ENODATA, notice.message_lang._array_8_shape, helper_file_list.stderr)
-
-"Input arrays X, Y, and Z must be 3d"
-raise ValueError(errno.ENODATA, notice.message_lang._array_3d, helper_file_list.stderr)
-
-"Input arrays X, Y, and Z must be identically sized"
-raise ValueError(errno.ENODATA, notice.message_lang._identical_sizing, helper_file_list.stderr)
-
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 import language as notice
@@ -39,7 +28,7 @@ def _reorder_to_siemens(spher_harm):
     """
 
     if spher_harm.shape[3] != 8:
-        raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+        raise ValueError(errno.ENODATA, notice._array_8_shape)
 
     reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
 
@@ -143,10 +132,10 @@ def siemens_basis(x, y, z):
 
     # Check inputs
     if not (x.ndim == y.ndim == z.ndim == 3):
-        raise RuntimeError("Input arrays X, Y, and Z must be 3d")
+        raise ValueError(errno.ENODATA, notice._array_3d)
 
     if not (x.shape == y.shape == z.shape):
-        raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
+        raise ValueError(errno.ENODATA, notice._identical_sizing)
 
     # Create spherical harmonics from first to second order
     orders = np.array(range(1, 3))

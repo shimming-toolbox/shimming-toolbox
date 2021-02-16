@@ -1,9 +1,3 @@
-"Shape of input phase is not supported."
-raise ValueError(errno.ENODATA, notice.message_lang._unsupported_phase, helper_file_list.stderr)
-
-'The unwrap function {unwrapper} is not implemented.'
-NotImplementedError ??????????/  _unimplemented_unwrap
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """ Wrapper to different unwrapping algorithms. """
@@ -71,9 +65,10 @@ def unwrap_phase(phase, affine, unwrapper='prelude', mag=None, mask=None, thresh
                 phase_unwrapped[..., i_t] = prelude(phase3d, affine, mag=mag_input, mask=mask_input, threshold=threshold)
 
         else:
-            raise RuntimeError("Shape of input phase is not supported.")
+            raise ValueError( errno.ENODATA, notice._unsupported_phase )
 
     else:
-        raise NotImplementedError(f'The unwrap function {unwrapper} is not implemented.')
+        # TODO: Assert that the unwrap's name is caught in the standard error
+        raise NotImplementedError(errno.ENODATA, notice._unimplemented_unwrap )
 
     return phase_unwrapped
