@@ -210,7 +210,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
 
     # Run sct_deepseg_sc
     cmd = f"sct_deepseg_sc -i {fname_process} -o {fname_seg} -c {contrast} -centerline {centerline} -kernel {kernel} " \
-          f"-r {remove}"
+          f"-r {str(remove)} -v {str(verbose)}"
     if centerline == 'file':
         cmd += f" -file_centerline {file_centerline}"
     if thr is not None:

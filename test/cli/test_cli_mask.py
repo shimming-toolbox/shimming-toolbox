@@ -120,3 +120,27 @@ def test_cli_mask_sct_all_flags():
         assert result.exit_code == 0
         assert len(os.listdir(tmp)) == 1
         assert os.path.isfile(fname_output)
+
+
+@pytest.mark.sct
+def test_cli_mask_sct_4d():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_3d = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
+        nii_3d = nib.load(fname_3d)
+        data_4d = np.expand_dims(nii_3d.get_fdata(), 3)
+        data_4d = np.append(data_4d, data_4d, 3)
+        nii_4d = nib.Nifti1Image(data_4d, nii_3d.affine, nii_3d.header)
+        fname_4d = os.path.join(tmp, 't2_4d.nii.gz')
+        nib.save(nii_4d, fname_4d)
+
+        fname_output = os.path.join(tmp, 'mask.nii.gz')
+
+        result = runner.invoke(mask_cli, f"sct --input {fname_4d} --output {fname_output} --remove 1",
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        # There should be 2 files left since we remove tmp files: the input 4d file and the mask.
+        assert len(os.listdir(tmp)) == 2
+        assert os.path.isfile(fname_output)
