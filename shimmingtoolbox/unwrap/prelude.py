@@ -1,13 +1,3 @@
-"Wrapped_phase must be 2d or 3d"
-raise ValueError(errno.ENODATA, notice.message_lang._wrapped_2d_3d, helper_file_list.stderr)
-
-"The magnitude image (mag) must be the same shape as wrapped_phase"
-raise ValueError(errno.ENODATA, notice.message_lang._same_magnitude_wrapped_phase, helper_file_list.stderr)
-
-"Mask must be the same shape as wrapped_phase"
-raise ValueError(errno.ENODATA, notice.message_lang._same_mask_wrapped_phase, helper_file_list.stderr)
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
@@ -51,10 +41,10 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     """
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
-        raise RuntimeError("Wrapped_phase must be 2d or 3d")
+        raise ValueError( errno.ENODATA, notice._wrapped_2d_3d )
     if mag is not None:
         if wrapped_phase.shape != mag.shape:
-            raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+            raise ValueError( errno.ENODATA, notice._same_magnitude_wrapped_phase )
     else:
         mag = np.zeros_like(wrapped_phase)
 
@@ -75,7 +65,7 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     # Add mask data and options if there is a mask provided
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
-            raise RuntimeError("Mask must be the same shape as wrapped_phase")
+            raise ValueError(errno.ENODATA, notice._same_mask_wrapped_phase )
         nii_mask = nib.Nifti1Image(mask, affine)
 
         options += ' -m '

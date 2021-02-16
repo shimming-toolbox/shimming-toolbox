@@ -44,6 +44,7 @@ setup(
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
+        "goop",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],

@@ -1,18 +1,7 @@
-"Unable to determine target filename for URL:"
-raise FileNotFoundError(errno.ENOENT, notice.message_lang._url_filename, find_check.stderr)
-
-'Download error'
-raise SystemError(errno.EIO, notice.message_lang._download_error, sub_process_dcmsbids.stderr)
-
-
-
-
-
 #!/usr/bin/env python
 # -*- coding: utf-8
 # Functions dealing with data download and installation from the Internet.
 import cgi
-import language as notice
 import logging
 import os
 import requests
@@ -27,7 +16,7 @@ from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util import Retry
 
 from shimmingtoolbox.utils import st_progress_bar
-
+from shimmingtoolbox.language import English as notice
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +55,7 @@ def download_data(urls):
             if not filename:
                 # this handles cases where you're loading something like an index page
                 # instead of a specific file. e.g. https://osf.io/ugscu/?action=view.
-                raise ValueError("Unable to determine target filename for URL: %s" % (url,))
+                raise FileNotFoundError( errno.ENOENT, notice._url_filename )
 
             tmp_path = os.path.join(tempfile.mkdtemp(), filename)
 
@@ -89,8 +78,7 @@ def download_data(urls):
             logger.warning("Link download error, trying next mirror (error was: %s)" % e)
             exceptions.append(e)
     else:
-        raise Exception('Download error', exceptions)
-
+        raise SystemError( errno.EIO, notice._download_error )
 
 def unzip(compressed, dest_folder):
     """

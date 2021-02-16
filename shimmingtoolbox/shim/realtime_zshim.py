@@ -1,14 +1,3 @@
-"fmap must be 4d (x, y, z, t)"
-raise ValueError(errno.ENODATA, notice.message_lang._incorrect_fmap, helper_file_list.stderr)
-
-"Anatomical image must be in 3d"
-raise ValueError(errno.ENODATA, notice.message_lang._image_3d, helper_file_list.stderr)
-
-
-"Mask must have the same shape and affine transformation as anat"
-raise ValueError(errno.ENODATA, notice.message_lang._mask_anat_match, helper_file_list.stderr)
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import language as notice
@@ -62,19 +51,19 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
     # Make sure fieldmap has the appropriate dimensions
     fieldmap = nii_fieldmap.get_fdata()
     if fieldmap.ndim != 4:
-        raise RuntimeError("fmap must be 4d (x, y, z, t)")
+        raise ValueError(errno.ENODATA, notice._incorrect_fmap)
     nx, ny, nz, nt = nii_fieldmap.shape
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
     if anat.ndim != 3:
-        raise RuntimeError("Anatomical image must be in 3d")
+        raise ValueError(errno.ENODATA, notice._image_3d)
 
     # Load mask
     if nii_mask_anat is not None:
         if not np.all(np.isclose(nii_anat.affine, nii_mask_anat.affine)) or \
                 not np.all(nii_mask_anat.shape == nii_anat.shape):
-            raise RuntimeError("Mask must have the same shape and affine transformation as anat")
+            raise ValueError(errno.ENODATA, notice._mask_anat_match)
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
         nii_mask_fmap = resample_from_to(nii_mask_anat, nii_fmap_3d_temp)
         mask_fmap = nii_mask_fmap.get_fdata()

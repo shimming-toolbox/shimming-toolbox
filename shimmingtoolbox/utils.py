@@ -1,17 +1,19 @@
-"Input format does not follow"
-raise ValueError(errno.ENODATA, notice.message_lang._input_date_format, helper_file_list.stderr)
-
 #!/usr/bin/env python
 # -*- coding: utf-8
 # Misc functions
 
+# TODO: This should be refactored in such a way that there are not multiple utilities -
+# Depricate utility functions that copy one another -
+# There may only be one for maintenance
+# file_system_repository should be used 
 
-import language as notice
 import logging
 import numpy as np
 import os
 import subprocess
 import tqdm
+
+from shimmingtoolbox.language import English as notice
 
 
 def run_subprocess(cmd):
@@ -90,7 +92,7 @@ def iso_times_to_ms(iso_times):
             seconds = int(split_colon[2].split('.')[0])
             micros = int(split_colon[2].split('.')[1])
         else:
-            raise RuntimeError("Input format does not follow 'HHMMSS.mmmmmm'")
+            raise ValueError(errno.ENODATA, notice._input_date_format )
 
         ms_times.append(1000 * (hours * 3600 + minutes * 60 + seconds) + micros / 1000)  # ms
 

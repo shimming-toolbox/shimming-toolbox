@@ -1,16 +1,8 @@
-'Phase data parsing is wrongly parsed'
-raise ValueError(errno.ENODATA, notice.message_lang._phase_data_parsing, helper_file_list.stderr)
-'Mag data parsing is wrongly parsed'
-raise ValueError(errno.ENODATA, notice.message_lang._mag_data_parsing, helper_file_list.stderr)
-
-
-
 # coding: utf-8
 
 from pathlib import Path
 
 import glob
-import language as notice
 import logging
 import nibabel as nib
 import numpy as np
@@ -18,7 +10,7 @@ import os
 import pytest
 import shutil
 
-
+from shimmingtoolbox.message_language import message_english as notice
 from shimmingtoolbox.unwrap import prelude
 
 
@@ -56,7 +48,7 @@ class TestCore(object):
         # Open phase data
         fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
         if len(fname_phases) > 2:
-            raise IndexError('Phase data parsing is wrongly parsed')
+            raise IndexError( errno.ENODATA, notice._phase_data_parsing )
 
         nii_phase_e1 = nib.load(fname_phases[0])
         nii_phase_e2 = nib.load(fname_phases[1])
@@ -69,7 +61,7 @@ class TestCore(object):
         fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
 
         if len(fname_mags) > 2:
-            raise IndexError('Mag data parsing is wrongly parsed')
+            raise IndexError( errno.ENODATA, notice._mag_data_parsing )
 
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])

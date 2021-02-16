@@ -5,8 +5,8 @@
  Business Case Validation for running Processes 
 '''
 
-#from shimmingtoolbox import __dir_config_dcm2bids__
-import language as notice
+from shimmingtoolbox.language import English as notice
+
 import subprocess
 
 
@@ -16,8 +16,8 @@ import subprocess
  expected_value is the numerical return value expected by the subprocess
  error_message may be left blank for the default ""
 '''
-subprocess_return_validation( expected_value = 0, subprocess_options, error_message = _quiet ):
-    process_response = subprocess.run( subprocess_options ), check=True, capture_output=True)
+def subprocess_return_validation( subprocess_options, expected_value = 0, error_message = notice._quiet ):
+    process_response = subprocess.run( subprocess_options , check=True, capture_output=True)
     if not process_response.returncode == expected_value:
-        raise SystemError(errno.EIO, notice.message_lang.error_message, process_response.stderr)
+        raise SystemError(errno.EIO, notice.error_message, process_response.stderr)
 

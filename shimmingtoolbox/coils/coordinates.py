@@ -1,8 +1,3 @@
-"Dimensions of input can only be 2D, 3D or 4D"
-raise ValueError(errno.ENODATA, notice.message_lang._dimensions_input, helper_file_list.stderr)
-
-
-
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
@@ -33,7 +28,7 @@ def generate_meshgrid(dim, affine):
                   np.zeros_like(coord_vox[1]).astype(float),
                   np.zeros_like(coord_vox[2]).astype(float)]
 
-    # TODO: Better code
+    # TODO: This is difficult to read; requires refactoring
     for ix in range(nx):
         for iy in range(ny):
             for iz in range(nz):
@@ -183,6 +178,6 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine)
 
     else:
-        raise NotImplementedError("Dimensions of input can only be 2D, 3D or 4D")
+        raise ValueError(errno.ENODATA, notice._dimensions_input )
 
     return nii_resampled
