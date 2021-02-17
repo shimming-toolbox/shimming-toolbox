@@ -133,39 +133,45 @@ def threshold(fname_input, output, thr):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="Creates a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which size can be specified, requires to identify the spinal cord centerline. The method of identification is specified by the flag '--centerline'. The output of this function is a NIfTI file containing the mask.")
+                  help="""Creates a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which
+                   size can be specified, requires to identify the spinal cord centerline. The method of identification
+                   is specified by the flag '--centerline'. The output of this function is a NIfTI file containing the
+                   mask.""")
 @click.option('--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
+              help="Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
                    "data.nii.gz")
 @click.option('--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii. (default:"
-                   " (os.curdir, 'mask.nii.gz')).")
-@click.option('--size', default='20',
-              help="(str): Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
-                   "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45). (default: 41)")
+              show_default=True,
+              help="Name of output mask. Supported extensions are .nii or .nii.gz. Example: data.nii.")
+@click.option('--size', default='20', type=int, show_default=True,
+              help="Size of the mask in the axial plane, given in pixel (Example: 35) or in millimeter "
+                   "(Example: 35mm). If shape=gaussian, size corresponds to sigma (Example: 45).")
 @click.option('--shape', type=click.Choice(['cylinder', 'box', 'gaussian']), default='cylinder',
-              help="(str): Shape of the mask. (default: cylinder)")
-@click.option('--contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s',
-              help="(str): Type of image contrast. (default: t2s)")
-@click.option('--centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
-              help="(str): Algorithm for centerline fitting.")
-@click.option('--file-centerline', 'file_centerline', type=str,
-              help="(str):  Input centerline file. This option is only valid with '--centerline file'. "
+              help="Shape of the mask.")
+@click.option('--contrast', type=click.Choice(['t1', 't2', 't2s', 'dwi']), default='t2s', show_default=True,
+              help="Type of image contrast.")
+@click.option('--centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm', show_default=True,
+              help="""
+              Method used for extracting the centerline:
+              - svm: Automatic detection using Support Vector Machine algorithm.
+              - cnn: Automatic detection using Convolutional Neural Network.
+              - viewer: Semi-automatic detection using manual selection of a few points with an interactive viewer
+              followed by regularization.
+              - file: Use an existing centerline
+              (use with flag --file_centerline)""")
+@click.option('--file-centerline', 'file_centerline', type=click.Path(),
+              help="Input centerline file. This option is only valid with '--centerline file'. "
                    "Example: t2_centerline_manual.nii.gz")
-@click.option('--thr', type=float,
-              help="Binarization threshold (between 0 and 1) to apply to the segmentation prediction. Set to -1 for no "
-                   "binarization (i.e. soft segmentation output). The default threshold is specific to each contrast "
-                   "and wasestimated using an optimization algorithm. More details at: "
-                   "https://github.com/sct-pipeline/deepseg-threshold.")
 @click.option('--brain', type=click.IntRange(0, 1),
-              help="(int):  Set to 1 if the image contains the brain (or part of it), set to 0 otherwise (to speed up the segmentation). "
-                   "This option is only valid with '--centerline cnn'.")
-@click.option('--kernel', type=click.Choice(['2d', '3d']), default='2d',
-              help="(str):  Choice of kernel shape for the CNN. Segmentation with 3D kernels is slower than with "
-                   "2D kernels. (default: 2d)")
-@click.option('--remove', type=click.IntRange(0, 1), default=1, help="(int): Remove temporary files. (default: 1)")
-@click.option('--verbose', type=click.IntRange(0, 2), default=1,
-              help="(int): Verbose: 0 = nothing, 1 = classic, 2 = expended. (default: 1)")
+              help="Set to 1 if the image contains the brain (or part of it), set to 0 otherwise "
+                   "(to speed up the segmentation). This option is only valid with '--centerline cnn'.")
+@click.option('--kernel', type=click.Choice(['2d', '3d']), default='2d', show_default=True,
+              help="Choice of kernel shape for the CNN. Segmentation with 3D kernels is slower than with "
+                   "2D kernels.")
+@click.option('--remove-tmp', 'remove_tmp', type=bool, default=True, show_default=True,
+              help="Remove temporary files.")
+@click.option('--verbose', type=click.IntRange(0, 2), default=1, show_default=True,
+              help="Verbose: 0 = nothing, 1 = classic, 2 = expended.")
 # Options for _get_centerline
 # @click.option('--method', type=click.Choice(['optic', 'fitseg']), default='optic',
 #               help="(str): Method used for extracting the centerline: "
@@ -177,7 +183,7 @@ def threshold(fname_input, output, thr):
 #               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
 # @click.option('--centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
 #                                                      "-centerline-algo {bspline, linear}. (default: 30)")
-def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, brain, kernel, size, shape, remove,
+def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain, kernel, size, shape, remove_tmp,
         verbose):
 
     # Make sure input path exists
@@ -206,12 +212,16 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, thr, b
     # _get_centerline(fname_process, fname_seg)
 
     # Run sct_deepseg_sc
+    # Use sct parameter convention
+    if remove_tmp:
+        remove = 1
+    else:
+        remove = 0
+
     cmd = f"sct_deepseg_sc -i {fname_process} -o {fname_seg} -c {contrast} -centerline {centerline} -kernel {kernel} " \
           f"-r {str(remove)} -v {str(verbose)}"
     if centerline == 'file':
         cmd += f" -file_centerline {file_centerline}"
-    if thr is not None:
-        cmd += f" -thr {thr}"
     if brain is not None and centerline == 'cnn':
         cmd += f" -brain {brain}"
 
