@@ -133,10 +133,7 @@ def threshold(fname_input, output, thr):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="Creates a SCT (SpinalCordToolbox) mask from the input file. Depending on the shape (cylinder,"
-                       " box or Gaussian), a mask is created along z direction. To generate this mask, its center"
-                       " must be specified by the user according the method."
-                       " Return an output nifti file with SCT mask.")
+                  help="Creates a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which size can be specified, requires to identify the spinal cord centerline. The method of identification is specified by the flag '--centerline'. The output of this function is a NIfTI file containing the mask.")
 @click.option('--input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input nifti file to mask. Must be 3D. Supported extensions are .nii or .nii.gz. Example: "
                    "data.nii.gz")
@@ -153,7 +150,7 @@ def threshold(fname_input, output, thr):
 @click.option('--centerline', type=click.Choice(['svm', 'cnn', 'viewer', 'file']), default='svm',
               help="(str): Algorithm for centerline fitting.")
 @click.option('--file-centerline', 'file_centerline', type=str,
-              help="(str):  Input centerline file (to use with flag -centerline file). "
+              help="(str):  Input centerline file. This option is only valid with '--centerline file'. "
                    "Example: t2_centerline_manual.nii.gz")
 @click.option('--thr', type=float,
               help="Binarization threshold (between 0 and 1) to apply to the segmentation prediction. Set to -1 for no "
@@ -161,8 +158,8 @@ def threshold(fname_input, output, thr):
                    "and wasestimated using an optimization algorithm. More details at: "
                    "https://github.com/sct-pipeline/deepseg-threshold.")
 @click.option('--brain', type=click.IntRange(0, 1),
-              help="(str):  Indicate if the input image contains brain sections (to speed up segmentation). "
-                   "Only use with '-centerline cnn'.")
+              help="(int):  Set to 1 if the image contains the brain (or part of it), set to 0 otherwise (to speed up the segmentation). "
+                   "This option is only valid with '--centerline cnn'.")
 @click.option('--kernel', type=click.Choice(['2d', '3d']), default='2d',
               help="(str):  Choice of kernel shape for the CNN. Segmentation with 3D kernels is slower than with "
                    "2D kernels. (default: 2d)")
