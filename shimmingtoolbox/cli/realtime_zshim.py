@@ -67,17 +67,17 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_anat, fnam
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_zcorrections, 'w')
     for i_slice in range(static_zcorrection.shape[-1]):
-        file_gradients.write(f'Vector_Gz[0][{i_slice}]= {static_zcorrection[i_slice]:.6f}\n')
-        file_gradients.write(f'Vector_Gz[1][{i_slice}]= {riro_zcorrection[i_slice] / pressure_rms:.12f}\n')
-        file_gradients.write(f'Vector_Gz[2][{i_slice}]= {mean_p:.3f}\n')
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_zcorrection[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_zcorrection[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
     fname_ycorrections = os.path.join(fname_output, 'yshim_gradients.txt')
     file_gradients = open(fname_ycorrections, 'w')
     for i_slice in range(static_ycorrection.shape[-1]):
-        file_gradients.write(f'Vector_Gy[0][{i_slice}]= {static_ycorrection[i_slice]:.6f}\n')
-        file_gradients.write(f'Vector_Gy[1][{i_slice}]= {riro_ycorrection[i_slice] / pressure_rms:.12f}\n')
-        file_gradients.write(f'Vector_Gy[2][{i_slice}]= {mean_p:.3f}\n')
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_ycorrection[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_ycorrection[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
     return fname_ycorrections, fname_zcorrections
