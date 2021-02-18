@@ -9,8 +9,9 @@ import numpy as np
 import os
 import pytest
 import shutil
+import errno
 
-from shimmingtoolbox.message_language import message_english as notice
+from shimmingtoolbox.language import English as notice
 from shimmingtoolbox.unwrap import prelude
 
 
@@ -48,7 +49,7 @@ class TestCore(object):
         # Open phase data
         fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
         if len(fname_phases) > 2:
-            raise IndexError( errno.ENODATA, notice._phase_data_parsing )
+            raise ValueError( errno.ENODATA, notice._phase_data_parsing )
 
         nii_phase_e1 = nib.load(fname_phases[0])
         nii_phase_e2 = nib.load(fname_phases[1])
@@ -61,7 +62,7 @@ class TestCore(object):
         fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
 
         if len(fname_mags) > 2:
-            raise IndexError( errno.ENODATA, notice._mag_data_parsing )
+            raise ValueError( errno.ENODATA, notice._mag_data_parsing )
 
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])
@@ -104,7 +105,7 @@ class TestCore(object):
         # Call prelude with mask
         try:
             prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, mask=mask)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
             return 0
 
@@ -118,7 +119,7 @@ class TestCore(object):
 
         try:
             prelude(phase_e1, self.affine_phase_e1, mag=self.mag_e1)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -132,7 +133,7 @@ class TestCore(object):
 
         try:
             prelude(self.phase_e1, self.affine_phase_e1, mag=mag_e1)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -147,7 +148,7 @@ class TestCore(object):
 
         try:
             prelude(phase_e1, self.affine_phase_e1, mag=mag_e1)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 

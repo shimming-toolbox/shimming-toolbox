@@ -7,10 +7,12 @@
 # TODO: This should be refactored in such a way that there are not multiple utilities -
 # Depricate utility functions that copy one another -
 # There may only be one for maintenance
-
-
 import goop
+import errno
+import os
+
 from shimmingtoolbox.language import English as notice
+
 
 '''
  Identifies if there is at least one file with the provided extension
@@ -32,17 +34,27 @@ def does_contain_extension( directory_path, extension ):
 # error message is empty by default
 def isFound( working_file, error_message=notice._quiet ):
 	command_find = os.path.exists(working_file)
-	if not command_find.returncode == 0:
-        	raise FileNotFoundError(errno.ENOENT, notice.error_message, find_check.stderr)
+	if not command_find == True:
+		raise NameError(errno.ENOENT, notice.error_message)
         	
 # Copy a file
 # working_file is a path to a candidate file
 # error message is a string containing an error message for the specific case
 # error message is empty by default
 def copy( working_file, new_file, error_message=notice._quiet ):
-    command_copy = copy_tree(working_file, new_file)
-    if not command_copy.returncode == 0: 
+    if not copy2(working_file, new_file):
         raise ValueError(errno.ENOENT, notice.error_message, command_copy.stderr)
+        
+        
+import os, shutil
+def copytree(src, dst, symlinks=False, ignore=None):
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            shutil.copytree(s, d, symlinks, ignore)
+        else:
+            shutil.copy2(s, d)
         
 # Rename a File
 # working_file is a path to the file that requires a name change

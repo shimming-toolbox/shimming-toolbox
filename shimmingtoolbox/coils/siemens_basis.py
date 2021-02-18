@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-import language as notice
+
 import numpy as np
+import errno
 
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
-
+from shimmingtoolbox.language import English as notice
 
 Y = 1
 Z = 2

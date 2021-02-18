@@ -10,7 +10,7 @@ import tarfile
 import tempfile
 import urllib.parse
 import zipfile
-
+import errno
 
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util import Retry
@@ -55,7 +55,7 @@ def download_data(urls):
             if not filename:
                 # this handles cases where you're loading something like an index page
                 # instead of a specific file. e.g. https://osf.io/ugscu/?action=view.
-                raise FileNotFoundError( errno.ENOENT, notice._url_filename )
+                raise NameError( errno.ENOENT, notice._url_filename )
 
             tmp_path = os.path.join(tempfile.mkdtemp(), filename)
 

@@ -3,8 +3,10 @@
 """
 Image mask with shape API
 """
-import language as notice
+from shimmingtoolbox.language import English as notice
+
 import numpy as np
+import errno
 
 
 def shape_square(data, len_dim1, len_dim2, center_dim1=None, center_dim2=None):

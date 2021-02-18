@@ -12,6 +12,7 @@
 
 import os
 import shutil
+import errno
 
 from shimmingtoolbox.language import English as notice
 
@@ -20,9 +21,24 @@ from shimmingtoolbox.language import English as notice
 # error message is a string containing an error message for the specific case
 # error message is empty by default
 def remove( working_file_path, error_message=notice._quiet ):
-    command_remove = shutil.rmtree(working_file_path)
-    if not command_remove.returncode == 0: 
-        raise ValueError(errno.ENOENT, notice.error_message)
+    try :
+        shutil.rmtree(working_file_path)
+    except:
+        raise ValueError(errno.ENOENT, error_message)
 
 
+
+
+# Create a file
+# working_file is a path at which to create the file
+# error message is a string containing an error message for the specific case
+# error message is empty by default
+def create( working_file_path, error_message=notice._quiet ):
+    command_create = open(working_file_path, "w") 
+    try :
+        command_create.returncode
+    except:
+        raise ValueError(errno.ENOENT, error_message)
+    finally:
+        command_create.close() 
 

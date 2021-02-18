@@ -81,7 +81,7 @@ class TestUnwrapPhase(object):
         # This should return an error
         try:
             unwrap_phase(np.expand_dims(self.phase, -1), self.affine, mag=self.mag)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 

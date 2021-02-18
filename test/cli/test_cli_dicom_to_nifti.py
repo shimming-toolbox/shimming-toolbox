@@ -21,7 +21,6 @@ def test_cli_dicom_to_nifti(test_dcm2niix_installation):
         subject_id = 'sub-test'
         result = runner.invoke(dicom_to_nifti_cli, ['-input', path_dicoms, '-output', path_nifti,
                                                     '-subject', subject_id])
-
         assert result.exit_code == 0
         # Check that dicom_to_nifti was invoked, not if files were actually created (API test already looks for that)
         assert os.path.isdir(path_nifti)

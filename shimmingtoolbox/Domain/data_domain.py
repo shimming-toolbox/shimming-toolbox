@@ -7,6 +7,7 @@
 
 import goop
 import os
+import errno
 
 from shimmingtoolbox.language import English as notice
 

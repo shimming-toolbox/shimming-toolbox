@@ -96,7 +96,7 @@ class TestRealtimeZShim(object):
         # This should return an error
         try:
             realtime_zshim(nii_fieldmap_3d, self.nii_anat, self.pmu, self.json)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -113,7 +113,7 @@ class TestRealtimeZShim(object):
         # This should return an error
         try:
             realtime_zshim(self.nii_fieldmap, nii_anat_2d, self.pmu, self.json)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -130,7 +130,7 @@ class TestRealtimeZShim(object):
         # This should return an error
         try:
             realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat=nii_mask_2d)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 

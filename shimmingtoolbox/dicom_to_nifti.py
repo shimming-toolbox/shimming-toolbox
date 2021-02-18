@@ -3,14 +3,15 @@
 
 # from dcm2bids.scaffold import scaffold
 from distutils.dir_util import copy_tree
+
 from shimmingtoolbox import __dir_config_dcm2bids__
 
 from shimmingtoolbox.Domain import data_domain as d_data
 from shimmingtoolbox.Domain import file_system_domain as d_file_system
 from shimmingtoolbox.Domain import process_domain as d_process
-
-from shimmingtoolbox.Domain import file_system_domain as d_file_system
+from shimmingtoolbox.Repository import file_system_repository as r_file_system
 from shimmingtoolbox.language import English as notice
+
 
 import goop
 import json
@@ -21,6 +22,7 @@ import sys
 import subprocess
 import dcm2bids
 import shutil
+import errno
 
 
 """ Converts dicom files into nifti files by calling dcm2bids
@@ -34,24 +36,24 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
 
     # Check for specified nifti file, else create a new file
     d_file_system.isFound( path_dicom, error_message=notice._no_dicom_path )
-    d_file_system.create( path_nifti, notice._no_nifty_file )
+    r_file_system.create( path_nifti, notice._no_nifty_file )
    
     # Check for dicom config file
     d_file_system.isFound( path_config_dcm2bids, notice._no_dicom_config )
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    subprocess_arguments = ['dcm2bids_scaffold', '-o', path_nifti]
+    subprocess_arguments = ['dcm2bids_scaffold', '-o', 'path_nifti']
     error_message = notice._no_bids_structure
 
     expected_value = 0
     d_process.subprocess_return_validation( subprocess_arguments, expected_value, error_message )    
 
     # Copy original dicom files into nifti_path/sourcedata
-    copy_location = os.path.join(path_nifti, 'sourcedata')
-    d_file_system.copied( path_dicom, copy_location, error_message=_copy_dicom_failure )
-
-    
+    # TODO: This copy_tree should be put intp file system domain 
+    # And with it use: notice._copy_dicom_failure
+    copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
+   
     # Call the dcm2bids_helper
     subprocess_arguments = None
     error_message = None
@@ -89,19 +91,14 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         for file in glob.glob("*.json", recursive=False):
             file_list.append(os.path.join(path_fmap, file))
             file_list = sorted(file_list)
-
-        for json_file in file_list:
-            is_renaming = False
             
             with open(json_file) as file:
-                json.load(file)
-                expected_value = 0
-                d_process.subprocess_return_validation( subprocess_options, expected_value, notice._json_formatting )
+                if not json.load(file):
+                    raise SystemError(errno.EIO, notice._json_formatting)
 
+        json_data =  d_data.json_load_validation( file_to_load, error_message = notice._quiet )
 
-        json_data =  d_data.json_load_validation( file_to_load, error_message = _quiet )
-
-        d_data.json_data_valid( json_data, error_message = _quiet )
+        d_data.json_data_valid( json_data, error_message = notice._quiet )
 
         fname_new_json = fname_json =  re.sub('[0-9]', '', file_to_load)
 
@@ -110,5 +107,5 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         d_file_system.rename( nifti_file_path, fname_nifti_new )
 
     if remove_tmp:
-        path_to_file = os.path.join(path_file_nifti, 'tmp_dcm2bids')
-        d_file_system.remove( path_to_file, notice._temp_removal )
+        path_to_file = os.path.join(path_nifti, 'tmp_dcm2bids')
+        r_file_system.remove( path_to_file, notice._temp_removal )
