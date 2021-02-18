@@ -29,3 +29,5 @@ class TestCore(object):
 
         assert (os.path.isfile(fname_nifti))
 
+
+

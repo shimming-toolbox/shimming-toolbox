@@ -1,10 +1,12 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
-import language as notice
 import math
 import nibabel as nib
 import numpy as np
+import errno
+
+from shimmingtoolbox.language import English as notice
 
 
 from nibabel.affines import apply_affine

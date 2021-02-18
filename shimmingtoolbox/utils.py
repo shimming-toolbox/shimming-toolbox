@@ -12,6 +12,7 @@ import numpy as np
 import os
 import subprocess
 import tqdm
+import errno
 
 from shimmingtoolbox.language import English as notice
 

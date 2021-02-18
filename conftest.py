@@ -15,7 +15,6 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.cli.download_data import download_data
 from shimmingtoolbox.cli.check_env import check_dcm2niix_installation, check_prelude_installation
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -41,6 +40,7 @@ def test_prelude_installation():
     # be negated for the assertion.
     assert not check_prelude_installation()
     return
+
 
 @pytest.fixture(params=[pytest.param(0, marks=pytest.mark.dcm2niix)])
 def test_dcm2niix_installation():

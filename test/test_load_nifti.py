@@ -192,7 +192,7 @@ class TestCore(object):
         """
         try:
             load_nifti("dummy")
-        except RuntimeError:
+        except NameError:
             return 0
 
         assert False, "Did not fail if no valid path given"
@@ -250,7 +250,7 @@ class TestCore(object):
         os.remove(os.path.join(self.data_path, "dummy.json"))
         try:
             load_nifti(self.data_path)
-        except ValueError:
+        except NameError:
             return 0
 
         assert (False), "Did not fail with missing JSON file"

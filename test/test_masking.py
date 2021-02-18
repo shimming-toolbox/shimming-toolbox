@@ -42,7 +42,7 @@ def test_mask_square_wrong_dims():
     data = np.ones([2, 2, 2])
     try:
         shim.masking.shapes.shapes(data, 'square', center_dim1=0, center_dim2=1, len_dim1=1, len_dim2=3)
-    except RuntimeError:
+    except ValueError:
         # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
         return 0
 
@@ -62,7 +62,7 @@ def test_mask_cube_wrong_dims():
     try:
         shim.masking.shapes.shapes(data, 'cube', center_dim1=1, center_dim2=1, center_dim3=1, len_dim1=1,
                                    len_dim2=3, len_dim3=1)
-    except RuntimeError:
+    except ValueError:
         # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
         return 0
 

@@ -27,7 +27,7 @@ def test_wrong_input_dimension(x, y, z):
     # Call spherical harmonics with wrong dimension
     try:
         spherical_harmonics(orders, x[:, :, 0], y, z)
-    except RuntimeError:
+    except ValueError:
         # If an exception occurs, this is the desired behaviour
         return 0
 
@@ -43,7 +43,7 @@ def test_negative_order(x, y, z):
     # Call spherical harmonics with negative order
     try:
         spherical_harmonics(orders, x, y, z)
-    except RuntimeError:
+    except ValueError:
         # If an exception occurs, this is the desired behaviour
         return 0
 

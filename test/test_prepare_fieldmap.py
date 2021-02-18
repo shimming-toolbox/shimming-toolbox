@@ -68,7 +68,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase - math.pi], self.echo_times, self.affine)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -84,7 +84,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase], echo_times, self.affine)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -98,7 +98,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mag=np.zeros_like([5, 5]))
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -112,7 +112,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mask=np.zeros_like([5, 5]))
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -126,7 +126,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase], [self.echo_times[0]], self.affine)
-        except RuntimeError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
@@ -142,7 +142,7 @@ class TestPrepareFieldmap(object):
         # This should return an error
         try:
             fieldmap = prepare_fieldmap([self.phase, self.phase, self.phase], echo_times, self.affine)
-        except NotImplementedError:
+        except ValueError:
             # If an exception occurs, this is the desired behaviour
             return 0
 

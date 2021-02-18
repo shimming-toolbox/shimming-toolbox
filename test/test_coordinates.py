@@ -252,7 +252,7 @@ def test_resample_from_to_5d():
     # This should return an error
     try:
         nii_resampled = resample_from_to(nii_fieldmap_5d, nii_anat, mode='nearest')
-    except NotImplementedError:
+    except ValueError:
         # If an exception occurs, this is the desired behaviour
         return 0
 

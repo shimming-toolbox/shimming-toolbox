@@ -1,5 +1,6 @@
 from setuptools import setup, find_packages
 from os import path
+import errno
 
 # Get the directory where this current file is saved
 here = path.abspath(path.dirname(__file__))

@@ -3,8 +3,9 @@
 
 import numpy as np
 import pytest
+import errno
 
-from shimmingtoolbox.message_language import message_english as notice
+from shimmingtoolbox.language import English as notice
 from shimmingtoolbox import __dir_testing__
 
 
@@ -16,7 +17,7 @@ from shimmingtoolbox import __dir_testing__
 '''
 
 #from shimmingtoolbox import __dir_config_dcm2bids__
-import language as notice
+
 import subprocess
 
 
@@ -24,13 +25,14 @@ import subprocess
 
 
 # Happy path (Subprocess works)
-def test_subprocess_runs:
-
+def test_subprocess_runs():
+    assert 1==1
 # Negative Path (Existing Subprocess fails)
-def test_subprocess_fails:
-
+def test_subprocess_fails():
+    assert 1==1
 # Negative Path (Non-existent Subprocess fails)
 # Also checks default and parametrized error messages
-def test_subprocess_does_not_exist:
+def test_subprocess_does_not_exist():
+    assert 1==1
 
 

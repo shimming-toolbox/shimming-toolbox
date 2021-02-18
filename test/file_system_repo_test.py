@@ -3,7 +3,8 @@
 
 import numpy as np
 import pytest
-from tempfile import TempDir
+import tempfile
+import errno
 
 from shimmingtoolbox.language import English as notice
 from shimmingtoolbox import __dir_testing__
@@ -13,13 +14,13 @@ from shimmingtoolbox import __dir_testing__
 
 # Test Setup
 def setup():
-    with TempDir() as test_directory:
+    with tempfile.TempDir() as test_directory:
         temp_file_name = os.path.join(test_directory.name, 'test_file_repo.txt')
 
 
 # Happy path (File is removed)
 @pytest.fixture(scope="session")
-def test_remove_happy_path:
+def test_remove_happy_path():
     setup()
     command_remove = remove( tempfile.gettempdir()+'/test_file_repo.txt' )
     
@@ -29,7 +30,7 @@ def test_remove_happy_path:
 # File to delete is not found
 # Also checks default and parametrized error messages
 @pytest.fixture(scope="session")
-def test_remove_not_found:
+def test_remove_not_found():
     setup()
     command_remove = remove( tempfile.gettempdir()+'/nonsense.txt' )
     assert command_remove.returncode == 1

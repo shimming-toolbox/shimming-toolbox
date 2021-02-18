@@ -1,10 +1,14 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-import language as notice
 import math
 import numpy as np
+import errno
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
+from shimmingtoolbox.language import English as notice
+
+from shimmingtoolbox import __dir_config_dcm2bids__
+
 
 
 def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None):
@@ -36,7 +40,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
     if not is_phasediff:
         if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
-        raise ValueError( errno.ENODATA, notice._echo_point_numbers )
+            raise ValueError( errno.ENODATA, notice._echo_point_numbers )
 
     # Make sure mag is the right shape
     if mag is not None:
