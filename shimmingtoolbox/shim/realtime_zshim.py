@@ -5,6 +5,7 @@ import numpy as np
 import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
+from skimage.filters import gaussian
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -133,6 +134,9 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                     static[g_axis][i_x, i_y, i_z] = reg.intercept_
                     progress_bar.update(1)
 
+        #riro[g_axis][:, :, :] = gaussian(riro[g_axis][:, :, :], sigma = 2, mode = 'constant', cval = 0.0, multichannel=False) 
+        #static[g_axis][:, :, :] = gaussian(static[g_axis][:, :, :], sigma = 1.5, mode = 'constant', cval = 0.0, multichannel=False)             
+
     # Resample masked_fieldmaps to target anatomical image
     nii_masked_fieldmaps = nib.Nifti1Image(masked_fieldmaps, nii_fieldmap.affine)
     nii_resampled_fmap = resample_from_to(nii_masked_fieldmaps, nii_anat)
@@ -232,13 +236,13 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         # Show anatomical image
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(2, 1, 1)
-        im = ax.imshow(anat[:, :, 10])
+        im = ax.imshow(anat[:, :, 3])
         fig.colorbar(im)
-        ax.set_title("Anatomical image [:, :, 10]")
+        ax.set_title("Anatomical image [:, :, 3]")
         ax = fig.add_subplot(2, 1, 2)
-        im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 10])
+        im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 3])
         fig.colorbar(im)
-        ax.set_title("Mask [:, :, 10]")
+        ax.set_title("Mask [:, :, 3]")
         fname_figure = os.path.join(path_output, 'fig_reatime_zshim_anat.png')
         fig.savefig(fname_figure)
 
