@@ -30,7 +30,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                           timestamps).
         nii_mask_anat (nibabel.Nifti1Image): Nibabel object containing the mask to specify the shimming region.
-        path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is 
+        path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is
                            provided.
 
     Returns:
@@ -71,7 +71,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         mask_fmap = np.ones_like(fieldmap[..., 0])
         nii_mask_fmap = nib.Nifti1Image(mask_fmap, nii_anat.affine)
         nii_mask_anat = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
-        
+
     if is_outputting_figures:
         nib.save(nii_mask_fmap, os.path.join(path_output, 'fig_mask_fmap.nii.gz'))
 
@@ -283,7 +283,11 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 3])
         fig.colorbar(im)
         ax.set_title("Mask [:, :, 3]")
+<<<<<<< HEAD
         fname_figure = os.path.join(path_output, 'fig_reatime_yzshim_anat.png')
+=======
+        fname_figure = os.path.join(path_output, 'fig_reatime_zshim_anat.png')
+>>>>>>> master
         fig.savefig(fname_figure)
 
         # Show Gradient

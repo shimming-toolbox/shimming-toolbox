@@ -47,5 +47,6 @@ setup(
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
+        'dev': ["pre-commit>=2.10.0"]
     },
 )
