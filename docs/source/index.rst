@@ -16,17 +16,49 @@ with standard manufacturer-supplied gradient/shim coils or with custom
 "multi-coil" arrays.
 
 .. toctree::
-   :maxdepth: 4
-   :glob:
-   :caption: Contents:
+    :maxdepth: 4
+    :glob:
+    :caption: Overview
 
-   overview/introduction.rst
-   overview/flowchart.rst
-   getting_started/installation.rst
-   getting_started/getting_started.rst
-   getting_started/help.rst
-   contributing/*
-   about/*
-   other-resources/hardware/*
-   cli_reference/cli.rst
-   api_reference/api.rst
+    overview/introduction.rst
+    overview/flowchart.rst
+
+.. toctree::
+    :maxdepth: 4
+    :glob:
+    :caption: Getting Started
+
+    getting_started/installation.rst
+    getting_started/getting_started.rst
+    getting_started/help.rst
+
+.. toctree::
+    :maxdepth: 4
+    :glob:
+    :caption: GUI (FSLeyes)
+
+    gui/*
+
+.. toctree::
+    :maxdepth: 4
+    :glob:
+    :caption: Developer Section
+
+    contributing/*
+    cli_reference/cli.rst
+    api_reference/api.rst
+
+.. toctree::
+    :maxdepth: 4
+    :glob:
+    :caption: Hardware
+
+    other-resources/hardware/*
+
+
+.. toctree::
+    :maxdepth: 4
+    :glob:
+    :caption: About
+
+    about/*
