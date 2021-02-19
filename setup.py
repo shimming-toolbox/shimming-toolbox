@@ -47,6 +47,7 @@ setup(
         # "openpyxl",
         "pandas",
         "pillow~=8.0",
+        "dataclasses",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
