@@ -223,14 +223,15 @@ def read_nii(fname_nifti, auto_scale=True):
             mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices*n_coils))
             phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
             for i in range(n_coils):
-                mag_vector[:, :, i*n_slices:(i+1)*n_slices] = np.flip(b1_mag[:, :, :, i],2)
-                phase_vector[:, :, i*n_slices:(i+1)*n_slices] = np.flip(b1_phase[:, :, :, i],2)
+                mag_vector[:, :, i*n_slices:(i+1)*n_slices] = b1_mag[:, :, :, i]
+                phase_vector[:, :, i*n_slices:(i+1)*n_slices] = b1_phase[:, :, :, i]
 
             for i in range(n_coils):
-                b1_mag_new[:, :, :, i] = mag_vector[:, :, np.arange(0, n_coils*n_slices, n_coils)]
-                b1_phase_new[:, :, :, i] = phase_vector[:, :, np.arange(0, n_coils*n_slices, n_coils)]
+                b1_mag_new[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)]
+                b1_phase_new[:, :, :, i] = phase_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)]
+                image[:, :, :, i] = b1_mag_new[:, :, :, i] * np.exp(1j * b1_phase_new[:, :, :, i])
 
-            image = b1_mag_new * np.exp(1j * b1_phase_new)
+            image = np.multiply(b1_mag_new, np.exp(1j * b1_phase_new))
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
