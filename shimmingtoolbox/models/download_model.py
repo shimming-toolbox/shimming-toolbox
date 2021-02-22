@@ -1,12 +1,12 @@
-from AxonDeepSeg.ads_utils import *
+from shimmingtoolbox.gui_utils import *
 from pathlib import Path
 import shutil
 
 
 def download_model(destination = None):
     if destination is None:
-        sem_destination = Path("AxonDeepSeg/models/default_SEM_model")
-        tem_destination = Path("AxonDeepSeg/models/default_TEM_model")
+        sem_destination = Path("shimmingtoolbox/models/default_SEM_model")
+        tem_destination = Path("shimmingtoolbox/models/default_TEM_model")
     else:
         destination = convert_path(destination)
         sem_destination = destination / "default_SEM_model"
