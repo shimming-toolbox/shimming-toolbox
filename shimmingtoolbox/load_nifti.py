@@ -10,9 +10,10 @@ import math
 
 from shimmingtoolbox.utils import iso_times_to_ms
 
-
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
+GAMMA = 2.675e8  # Proton's gyromagnetic ratio (rad/(T.s))
+SATURATION_FA = 90  # Saturation flip angle hard-coded in TFL B1 mapping sequence (deg)
 
 
 def get_acquisition_times(nii_data, json_data):
@@ -151,10 +152,10 @@ def load_nifti(path_data, modality='phase'):
     return niftis, info, json_info
 
 
-def read_nii(nii_path, auto_scale=True):
+def read_nii(fname_nifti, auto_scale=True):
     """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
-        nii_path (str): direct path to the .nii or .nii.gz file that is going to be read
+        fname_nifti (str): direct path to the .nii or .nii.gz file that is going to be read
         auto_scale (:obj:`bool`, optional): Tells if scaling is done before return
     Returns:
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
@@ -162,19 +163,77 @@ def read_nii(nii_path, auto_scale=True):
         image (ndarray): Image contained in the read nifti file. Siemens phase images are rescaled between 0 and 2pi.
     """
 
-    info = nib.load(nii_path)
+    info = nib.load(fname_nifti)
 
     # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
-    json_path = nii_path.split('.nii')[0] + '.json'
+    json_path = fname_nifti.split('.nii')[0] + '.json'
 
     if os.path.isfile(json_path):
         json_data = json.load(open(json_path))
     else:
-        raise ValueError('Missing json file')
+        raise ValueError("Missing json file")
 
+    # Store nifti image in a numpy array
     image = np.asarray(info.dataobj)
+
     if auto_scale:
-        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens')\
+
+        # If Siemens' TurboFLASH B1 mapping
+        if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
+
+            if 'ShimSetting' in json_data:
+                pass
+            else:
+                raise ValueError("Missing json tag: 'ShimSetting'")
+
+            n_coils = len(json_data['ShimSetting'])
+
+            if 'SliceTiming' in json_data:
+                pass
+            else:
+                raise ValueError("Missing json tag: 'SliceTiming'")
+
+            n_slices = len(json_data['SliceTiming'])
+
+            # Scale magnitude in nT/V
+            # Calculate B1 efficiency using a 1ms, pi-pulse at the acquisition voltage, then scale the efficiency by
+            # the ratio of the measured flip angle to the saturation flip angle in the pulse sequence.
+            # Get the Transmission amplifier reference amplitude
+            amplifier_voltage = json_data['TxRefAmp']  # [V]
+            socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
+            # Magnitude values are stored in the first half of the 4th dimension
+            b1_mag = image[:, :, :, :image.shape[3] // 2] / 10  # Siemens magnitude values are stored in degrees x10
+
+            if b1_mag.min() < 0:
+                raise ValueError("Unexpected negative magnitude values")
+
+            b1_mag[b1_mag > 180] = 180  # Values higher than 180 degrees are due to noise
+            b1_mag = (b1_mag / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
+
+            # Scale the phase between [-pi, pi]
+            # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
+            b1_phase = image[:, :, :, image.shape[3] // 2:]  # [248 - 3848]
+            # Remove potential out of range zeros (set them as null phase = 2048)
+            b1_phase[b1_phase == 0] = 2048
+            b1_phase = (b1_phase - 496) * np.pi / 1800  # [-pi pi]
+
+            # Reorder data shuffled by dm2niix and compute complex b1 maps (x, y, n_slices, n_coils)
+            b1_mag_new = np.zeros((image.shape[0], image.shape[1], n_slices, n_coils))
+            b1_phase_new = np.zeros((image.shape[0], image.shape[1], n_slices, n_coils))
+            mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices*n_coils))
+            phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
+            for i in range(n_coils):
+                mag_vector[:, :, i*n_slices:(i+1)*n_slices] = np.flip(b1_mag[:, :, :, i],2)
+                phase_vector[:, :, i*n_slices:(i+1)*n_slices] = np.flip(b1_phase[:, :, :, i],2)
+
+            for i in range(n_coils):
+                b1_mag_new[:, :, :, i] = mag_vector[:, :, np.arange(0, n_coils*n_slices, n_coils)]
+                b1_phase_new[:, :, :, i] = phase_vector[:, :, np.arange(0, n_coils*n_slices, n_coils)]
+
+            image = b1_mag_new * np.exp(1j * b1_phase_new)
+
+        # If B0 phase maps
+        elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             # Bootstrap

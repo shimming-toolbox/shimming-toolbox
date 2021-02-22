@@ -382,3 +382,13 @@ class TestCore(object):
         assert nii.shape == (64, 96, 1, 10)
         assert ('P' in json_info['ImageType'])
         assert (phasediff.max() <= 2 * math.pi) and (phasediff.min() >= 0)
+
+    def test_read_nii_b1(self):
+        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
+        nii, json_info, b1 = read_nii(fname_b1)
+
+        assert b1.shape == (64, 64, 16, 8)
+        assert np.abs(b1).max() <= 180 and np.abs(b1).min() >= 0
+        assert np.angle(b1).max() <= np.pi and np.angle(b1).min() >= -np.pi
+
+        # Check masking consistency for all coils at each slice
