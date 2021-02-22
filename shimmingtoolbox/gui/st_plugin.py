@@ -1,7 +1,6 @@
 """
-This is an FSLeyes plugin script that integrates AxonDeepSeg tools into FSLeyes.
+This is an FSLeyes plugin script that integrates spinaltoolbox tools into FSLeyes.
 
-Author : Stoyan I. Asenov
 """
 
 import wx
@@ -41,7 +40,7 @@ import pandas as pd
 
 VERSION = "0.2.14"
 
-class ADScontrol(ctrlpanel.ControlPanel):
+class STcontrol(ctrlpanel.ControlPanel):
     """
     This class is the object corresponding to the AxonDeepSeg control panel.
     """
@@ -193,7 +192,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
 
         # Create a temporary directory that will hold the NIfTI files
-        self.ads_temp_dir = tempfile.TemporaryDirectory()
+        self.st_temp_dir = tempfile.TemporaryDirectory()
 
         # Check the version
         # self.verrify_version()
@@ -271,11 +270,11 @@ class ADScontrol(ctrlpanel.ControlPanel):
         myelin_mask = params.intensity['binary'] * np.array(myelin_mask, dtype=np.uint8)
 
         # Load the masks into FSLeyes
-        axon_outfile = self.ads_temp_dir.name + "/" + image_name + "-axon.png"
+        axon_outfile = self.st_temp_dir.name + "/" + image_name + "-axon.png"
         gui_utils.imwrite(axon_outfile, axon_mask)
         self.load_png_image_from_path(axon_outfile, is_mask=True, colormap="blue")
 
-        myelin_outfile = self.ads_temp_dir.name + "/" + image_name + "-myelin.png"
+        myelin_outfile = self.st_temp_dir.name + "/" + image_name + "-myelin.png"
         gui_utils.imwrite(myelin_outfile, myelin_mask)
         self.load_png_image_from_path(myelin_outfile, is_mask=True, colormap="red")
 
@@ -480,7 +479,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         # Save the watershed mask as a png then load it as an overlay
         watershed_image_array = np.rot90(watershed_data, k=3, axes=(1, 0))
         watershed_image = Image.fromarray(watershed_image_array)
-        file_name = self.ads_temp_dir.name + "/watershed_mask.png"
+        file_name = self.st_temp_dir.name + "/watershed_mask.png"
         watershed_image.save(file_name)
         wantershed_mask_overlay = self.load_png_image_from_path(
             file_name, add_to_overlayList=False
@@ -517,7 +516,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
 
         axon_corr_array = np.flipud(axon_extracted_array)
         axon_corr_array = params.intensity['binary'] * np.rot90(axon_corr_array, k=1, axes=(1, 0))
-        file_name = self.ads_temp_dir.name + "/" + myelin_mask_overlay.name[:-len("-myelin")] + "-axon-corr.png"
+        file_name = self.st_temp_dir.name + "/" + myelin_mask_overlay.name[:-len("-myelin")] + "-axon-corr.png"
         gui_utils.imwrite(filename=file_name, img=axon_corr_array)
         self.load_png_image_from_path(file_name, is_mask=True, colormap="blue")
 
@@ -639,7 +638,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
                                                                   mean_diameter_in_pixel)
 
         # Load the axon coordinate image into FSLeyes
-        number_outfile = self.ads_temp_dir.name + "/numbers.png"
+        number_outfile = self.st_temp_dir.name + "/numbers.png"
         gui_utils.imwrite(number_outfile, number_array)
         self.load_png_image_from_path(number_outfile, is_mask=False, colormap="yellow")
 
@@ -734,7 +733,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
 
         # Save the NIfTI image in a temporary directory
         img_name = os.path.basename(image_path)
-        out_file = self.ads_temp_dir.name + "/" + img_name[:-3] + "nii.gz"
+        out_file = self.st_temp_dir.name + "/" + img_name[:-3] + "nii.gz"
         nib.save(img_NIfTI, out_file)
 
         # Load the NIfTI image as an overlay
@@ -908,10 +907,10 @@ class ADScontrol(ctrlpanel.ControlPanel):
         """
         This function checks if the plugin version is the same as the one in the AxonDeepSeg directory
         """
-        ads_path = Path(os.path.abspath(AxonDeepSeg.__file__)).parents[0]
-        plugin_path_parts = ads_path.parts[:-1]
+        st_path = Path(os.path.abspath(AxonDeepSeg.__file__)).parents[0]
+        plugin_path_parts = st_path.parts[:-1]
         plugin_path = str(Path(*plugin_path_parts))
-        plugin_file = plugin_path + "/ads_plugin.py"
+        plugin_file = plugin_path + "/st_plugin.py"
 
         # Check if the plugin file exists
         plugin_file_exists = os.path.isfile(plugin_file)
