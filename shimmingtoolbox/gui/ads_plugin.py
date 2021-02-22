@@ -10,6 +10,10 @@ import wx.lib.agw.hyperlink as hl
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as ovLoad
 
+import shimmingtoolbox
+from shimmingtoolbox import __dir_shimmingtoolbox__
+from shimmingtoolbox import gui_utils
+
 import numpy as np
 import nibabel as nib
 from PIL import Image, ImageDraw, ImageOps
@@ -18,12 +22,10 @@ import os
 import json
 from pathlib import Path
 
-from shimmingtoolbox import __dir_shimmingtoolbox__
 # import AxonDeepSeg
 # from AxonDeepSeg.apply_model import axon_segmentation
 # from AxonDeepSeg.segment import segment_image
 # import AxonDeepSeg.morphometrics.compute_morphometrics as compute_morphs
-# from AxonDeepSeg import postprocessing, params, ads_utils
 # from config import axonmyelin_suffix, axon_suffix, myelin_suffix
 
 import math
@@ -61,48 +63,49 @@ class ADScontrol(ctrlpanel.ControlPanel):
         sizer_h.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
         # # Add the citation to the control panel
-        # citation_box = wx.TextCtrl(
-        #     self, value=self.get_citation(), size=(100, 50), style=wx.TE_MULTILINE
-        # )
-        # sizer_h.Add(citation_box, flag=wx.SHAPED, proportion=1)
+        citation_box = wx.TextCtrl(
+            self, value=self.get_citation(), size=(100, 50), style=wx.TE_MULTILINE
+        )
+        sizer_h.Add(citation_box, flag=wx.SHAPED, proportion=1)
         #
         # # Add a hyperlink to the documentation
-        # hyper = hl.HyperLinkCtrl(
-        #     self, -1, label="Need help? Read the documentation", URL="https://axondeepseg.readthedocs.io/en/latest/"
-        # )
-        # sizer_h.Add(hyper, flag=wx.SHAPED, proportion=1)
+        hyper = hl.HyperLinkCtrl(
+            self, -1, label="Need help? Read the documentation", URL="https://shimming-toolbox.org/en/latest/"
+        )
+        sizer_h.Add(hyper, flag=wx.SHAPED, proportion=1)
         #
         # # Define the color of button labels
-        # button_label_color = (0, 0, 0)
+        button_label_color = (0, 0, 0)
         #
         # # Add the image loading button
-        # load_png_button = wx.Button(self, label="Load PNG or TIF file")
-        # load_png_button.SetForegroundColour(button_label_color)
-        # load_png_button.Bind(wx.EVT_BUTTON, self.on_load_png_button)
-        # load_png_button.SetToolTip(wx.ToolTip("Loads a .png or .tif file into FSLeyes"))
-        # sizer_h.Add(load_png_button, flag=wx.SHAPED, proportion=1)
+        load_png_button = wx.Button(self, label="Load PNG or TIF file")
+        load_png_button.SetForegroundColour(button_label_color)
+        load_png_button.Bind(wx.EVT_BUTTON, self.on_load_png_button)
+        load_png_button.SetToolTip(wx.ToolTip("Loads a .png or .tif file into FSLeyes"))
+        sizer_h.Add(load_png_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the mask loading button
-        # load_mask_button = wx.Button(self, label="Load existing mask")
-        # load_mask_button.SetForegroundColour(button_label_color)
-        # load_mask_button.Bind(wx.EVT_BUTTON, self.on_load_mask_button)
-        # load_mask_button.SetToolTip(
-        #     wx.ToolTip(
-        #         "Loads an existing axonmyelin mask into FSLeyes. "
-        #         "The selected image should contain both the axon and myelin masks. "
-        #         "The regions on the image should have an intensity of 0 for the background, "
-        #         "127 for the myelin and 255 for the axons. "
-        #     )
-        # )
-        # sizer_h.Add(load_mask_button, flag=wx.SHAPED, proportion=1)
+        load_mask_button = wx.Button(self, label="Load existing mask")
+        load_mask_button.SetForegroundColour(button_label_color)
+        load_mask_button.Bind(wx.EVT_BUTTON, self.on_load_mask_button)
+        load_mask_button.SetToolTip(
+            wx.ToolTip(
+                "Loads an existing axonmyelin mask into FSLeyes. "
+               "The selected image should contain both the axon and myelin masks. "
+                "The regions on the image should have an intensity of 0 for the background, "
+                "127 for the myelin and 255 for the axons. "
+            )
+        )
+        sizer_h.Add(load_mask_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the model choice combobox
-        # # self.model_combobox = wx.ComboBox(
-        # #     self,
-        # #     choices=ads_utils.get_existing_models_list(),
-        # #     size=(100, 20),
-        # #     value="Select the modality",
-        # # )
+        self.model_combobox = wx.ComboBox(
+            self,
+            choices=gui_utils.get_existing_models_list(),
+            size=(100, 20),
+            value="Select the modality",
+        )
+        # TODO: was this commented out before? Check in push 
         # # self.model_combobox.SetForegroundColour(button_label_color)
         # # self.model_combobox.SetToolTip(
         # #     wx.ToolTip("Select the modality used to acquire the image")
@@ -110,16 +113,17 @@ class ADScontrol(ctrlpanel.ControlPanel):
         # # sizer_h.Add(self.model_combobox, flag=wx.SHAPED, proportion=1)
         #
         # # Add the button that applies the prediction model
-        # apply_model_button = wx.Button(self, label="Apply ADS prediction model")
-        # apply_model_button.SetForegroundColour(button_label_color)
-        # apply_model_button.Bind(wx.EVT_BUTTON, self.on_apply_model_button)
-        # apply_model_button.SetToolTip(
-        #     wx.ToolTip("Applies the prediction model and displays the masks")
-        # )
-        # sizer_h.Add(apply_model_button, flag=wx.SHAPED, proportion=1)
+        apply_model_button = wx.Button(self, label="Apply ADS prediction model")
+        apply_model_button.SetForegroundColour(button_label_color)
+        apply_model_button.Bind(wx.EVT_BUTTON, self.on_apply_model_button)
+        apply_model_button.SetToolTip(
+            wx.ToolTip("Applies the prediction model and displays the masks")
+        )
+        sizer_h.Add(apply_model_button, flag=wx.SHAPED, proportion=1)
         #
         # # The Watershed button's purpose isn't clear. It is unavailable for now.
         #
+        # TODO: was this commented out before? Check in push 
         # # # Add the button that runs the watershed algorithm
         # # run_watershed_button = wx.Button(self, label="Run Watershed")
         # # run_watershed_button.Bind(wx.EVT_BUTTON, self.on_run_watershed_button)
@@ -133,41 +137,41 @@ class ADScontrol(ctrlpanel.ControlPanel):
         # # sizer_h.Add(run_watershed_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the fill axon tool
-        # fill_axons_button = wx.Button(self, label="Fill axons")
-        # fill_axons_button.SetForegroundColour(button_label_color)
-        # fill_axons_button.Bind(wx.EVT_BUTTON, self.on_fill_axons_button)
-        # fill_axons_button.SetToolTip(
-        #     wx.ToolTip(
-        #         "Automatically fills the axons inside myelin objects."
-        #         " THE MYELIN OBJECTS NEED TO BE CLOSED AND SEPARATED FROM EACH "
-        #         "OTHER (THEY MUST NOT TOUCH) FOR THIS TOOL TO WORK CORRECTLY."
-        #     )
-        # )
-        # sizer_h.Add(fill_axons_button, flag=wx.SHAPED, proportion=1)
+        fill_axons_button = wx.Button(self, label="Fill axons")
+        fill_axons_button.SetForegroundColour(button_label_color)
+        fill_axons_button.Bind(wx.EVT_BUTTON, self.on_fill_axons_button)
+        fill_axons_button.SetToolTip(
+            wx.ToolTip(
+                "Automatically fills the axons inside myelin objects."
+                " THE MYELIN OBJECTS NEED TO BE CLOSED AND SEPARATED FROM EACH "
+                "OTHER (THEY MUST NOT TOUCH) FOR THIS TOOL TO WORK CORRECTLY."
+            )
+        )
+        sizer_h.Add(fill_axons_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the save Segmentation button
-        # save_segmentation_button = wx.Button(self, label="Save segmentation")
-        # save_segmentation_button.SetForegroundColour(button_label_color)
-        # save_segmentation_button.Bind(wx.EVT_BUTTON, self.on_save_segmentation_button)
-        # save_segmentation_button.SetToolTip(
-        #     wx.ToolTip("Saves the axon and myelin masks in the selected folder")
-        # )
-        # sizer_h.Add(save_segmentation_button, flag=wx.SHAPED, proportion=1)
+        save_segmentation_button = wx.Button(self, label="Save segmentation")
+        save_segmentation_button.SetForegroundColour(button_label_color)
+        save_segmentation_button.Bind(wx.EVT_BUTTON, self.on_save_segmentation_button)
+        save_segmentation_button.SetToolTip(
+            wx.ToolTip("Saves the axon and myelin masks in the selected folder")
+        )
+        sizer_h.Add(save_segmentation_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add compute morphometrics button
-        # compute_morphometrics_button = wx.Button(self, label="Compute morphometrics")
-        # compute_morphometrics_button.SetForegroundColour(button_label_color)
-        # compute_morphometrics_button.Bind(wx.EVT_BUTTON, self.on_compute_morphometrics_button)
-        # compute_morphometrics_button.SetToolTip(
-        #     wx.ToolTip(
-        #         "Calculates and saves the morphometrics to an excel and csv file. "
-        #         "Shows the numbers of the axons at the coordinates specified in the morphometrics file."
-        #     )
-        # )
-        # sizer_h.Add(compute_morphometrics_button, flag=wx.SHAPED, proportion=1)
+        compute_morphometrics_button = wx.Button(self, label="Compute morphometrics")
+        compute_morphometrics_button.SetForegroundColour(button_label_color)
+        compute_morphometrics_button.Bind(wx.EVT_BUTTON, self.on_compute_morphometrics_button)
+        compute_morphometrics_button.SetToolTip(
+            wx.ToolTip(
+                "Calculates and saves the morphometrics to an excel and csv file. "
+                "Shows the numbers of the axons at the coordinates specified in the morphometrics file."
+            )
+        )
+        sizer_h.Add(compute_morphometrics_button, flag=wx.SHAPED, proportion=1)
         #
         # # Set the sizer of the control panel
-        # self.SetSizer(sizer_h)
+        self.SetSizer(sizer_h)
         #
         # Initialize the variables that are used to track the active image
         self.png_image_name = []
@@ -253,7 +257,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
             return
 
         # Get the image data
-        img_png2D = ads_utils.imread(in_file)
+        img_png2D = gui_utils.imread(in_file)
 
         image_name = os.path.basename(in_file)
         image_name = image_name.split(image_extension)[0]
@@ -268,11 +272,11 @@ class ADScontrol(ctrlpanel.ControlPanel):
 
         # Load the masks into FSLeyes
         axon_outfile = self.ads_temp_dir.name + "/" + image_name + "-axon.png"
-        ads_utils.imwrite(axon_outfile, axon_mask)
+        gui_utils.imwrite(axon_outfile, axon_mask)
         self.load_png_image_from_path(axon_outfile, is_mask=True, colormap="blue")
 
         myelin_outfile = self.ads_temp_dir.name + "/" + image_name + "-myelin.png"
-        ads_utils.imwrite(myelin_outfile, myelin_mask)
+        gui_utils.imwrite(myelin_outfile, myelin_mask)
         self.load_png_image_from_path(myelin_outfile, is_mask=True, colormap="red")
 
     def on_apply_model_button(self, event):
@@ -311,7 +315,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         selected_model = self.model_combobox.GetStringSelection()
 
         # Get the path of the selected model
-        if any(selected_model in models for models in ads_utils.get_existing_models_list()):
+        if any(selected_model in models for models in gui_utils.get_existing_models_list()):
             dir_path = os.path.dirname(AxonDeepSeg.__file__)
             model_path = os.path.join(
                 dir_path, "models", selected_model
@@ -437,9 +441,9 @@ class ADScontrol(ctrlpanel.ControlPanel):
         image_name = myelin_mask_overlay.name[:-len("_seg-myelin")]
 
         myelin_and_axon_array = (myelin_array // 2 + axon_array).astype(np.uint8)
-        ads_utils.imwrite(filename=save_dir + "/" + image_name + str(axonmyelin_suffix), img=myelin_and_axon_array)
-        ads_utils.imwrite(filename=save_dir + "/" + image_name + str(myelin_suffix), img=myelin_array)
-        ads_utils.imwrite(filename=save_dir +"/" + image_name + str(axon_suffix), img=axon_array)
+        gui_utils.imwrite(filename=save_dir + "/" + image_name + str(axonmyelin_suffix), img=myelin_and_axon_array)
+        gui_utils.imwrite(filename=save_dir + "/" + image_name + str(myelin_suffix), img=myelin_array)
+        gui_utils.imwrite(filename=save_dir +"/" + image_name + str(axon_suffix), img=axon_array)
 
     def on_run_watershed_button(self, event):
         """
@@ -514,7 +518,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         axon_corr_array = np.flipud(axon_extracted_array)
         axon_corr_array = params.intensity['binary'] * np.rot90(axon_corr_array, k=1, axes=(1, 0))
         file_name = self.ads_temp_dir.name + "/" + myelin_mask_overlay.name[:-len("-myelin")] + "-axon-corr.png"
-        ads_utils.imwrite(filename=file_name, img=axon_corr_array)
+        gui_utils.imwrite(filename=file_name, img=axon_corr_array)
         self.load_png_image_from_path(file_name, is_mask=True, colormap="blue")
 
     def on_compute_morphometrics_button(self, event):
@@ -636,7 +640,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
 
         # Load the axon coordinate image into FSLeyes
         number_outfile = self.ads_temp_dir.name + "/numbers.png"
-        ads_utils.imwrite(number_outfile, number_array)
+        gui_utils.imwrite(number_outfile, number_array)
         self.load_png_image_from_path(number_outfile, is_mask=False, colormap="yellow")
 
         return
@@ -700,7 +704,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         The parameter add_to_overlayList allows to display the overlay into FSLeyes.
         :param image_path: The location of the image, including the name and the .extension
         :type image_path: string
-        :param is_mask: (optional) Whether or not this is a segmentation mask. It will be treated as a normal
+        :param is_mask: (optional) Whether or not this is a segmentation mask. It will be treated as a normalads_utils
         image by default.
         :type is_mask: bool
         :param add_to_overlayList: (optional) Whether or not to add the image to the overlay list. If so, the image will
@@ -714,7 +718,7 @@ class ADScontrol(ctrlpanel.ControlPanel):
         """
 
         # Open the 2D image
-        img_png2D = ads_utils.imread(image_path)
+        img_png2D = gui_utils.imread(image_path)
 
         if is_mask is True:
             img_png2D = img_png2D // params.intensity['binary']  # Segmentation masks should be binary
