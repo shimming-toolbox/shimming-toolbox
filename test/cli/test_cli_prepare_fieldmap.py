@@ -66,3 +66,23 @@ def test_cli_prepare_fieldmap_default_output():
     assert os.path.isfile(os.path.join(os.curdir, 'fieldmap.json'))
     os.remove(os.path.join(os.curdir, 'fieldmap.nii.gz'))
     os.remove(os.path.join(os.curdir, 'fieldmap.json'))
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_gaussian():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_phasediff.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                 'sub-example_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output,
+                                                      '-gaussian-filter', 'True', '-sigma', 1],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
