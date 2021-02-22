@@ -8,7 +8,13 @@ Installation
 First, you will need to make sure ``shimming-toolbox`` is installed using a ``conda``
 environment, as detailed here in the ``Installation`` section.
 
-Next, install ``fsleyes`` using ``conda-forge``:
+Next, install ``wxPython`` using ``conda-forge``:
+
+```
+conda install -c conda-forge/label/cf202003 wxpython
+```
+
+Now you can install ``fsleyes`` using ``conda-forge``:
 
 ```
 cd shimming-toolbox
