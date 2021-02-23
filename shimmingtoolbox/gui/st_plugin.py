@@ -14,6 +14,7 @@ from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import gui_utils
 
 import numpy as np
+import webbrowser
 import nibabel as nib
 from PIL import Image, ImageDraw, ImageOps
 import scipy.misc
@@ -59,12 +60,11 @@ class STcontrol(ctrlpanel.ControlPanel):
         st_logo = self.get_logo()
         sizer_info.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
-        hyper = hl.HyperLinkCtrl(
-            self, -1, label="Need help? Read the documentation", URL="https://shimming-toolbox.org/en/latest/"
-        )
-        sizer_info.Add(hyper, flag=wx.SHAPED, proportion=1)
-        #
-        # # Define the color of button labels
+        button_documentation = wx.Button(self, label="Documentation")
+        button_documentation.Bind(wx.EVT_BUTTON, self.documentation_url)
+        sizer_info.Add(button_documentation, flag=wx.SHAPED, proportion=1)
+
+        # Define the color of button labels
         button_label_color = (0, 0, 0)
         #
         # # Add the image loading button
@@ -187,9 +187,11 @@ class STcontrol(ctrlpanel.ControlPanel):
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
 
-
-        # Check the version
         # self.verify_version()
+
+    def documentation_url(self, event):
+        url = "https://shimming-toolbox.org/en/latest/"
+        webbrowser.open(url)
 
 
     def on_load_png_button(self, event):
