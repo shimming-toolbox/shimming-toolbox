@@ -1,5 +1,5 @@
 """
-This is an FSLeyes plugin script that integrates spinaltoolbox tools into FSLeyes.
+This is an FSLeyes plugin script that integrates shimmingtoolbox tools into FSLeyes.
 
 """
 
@@ -36,7 +36,6 @@ import tempfile
 import pandas as pd
 # import imageio
 
-# from AxonDeepSeg.morphometrics.compute_morphometrics import *
 
 VERSION = "0.2.14"
 
@@ -46,10 +45,14 @@ class STcontrol(ctrlpanel.ControlPanel):
     """
 
     def __init__(self, ortho, *args, **kwargs):
-        """
-        This function initializes the control panel. It generates the widgets and adds them to the panel. It also sets
-        the initial position of the panel to the left
-        :param ortho: This is used to access the ortho ops in order to turn off the X and Y canvas as well as the cursor
+        """Initialize the control panel.
+
+        Generates the widgets and adds them to the panel. Also sets the initial position of the
+        panel to the left.
+
+        Args:
+            ortho: This is used to access the ortho ops in order to turn off the X and Y canvas as
+                well as the cursor
         """
         ctrlpanel.ControlPanel.__init__(self, ortho, *args, **kwargs)
 
@@ -61,11 +64,6 @@ class STcontrol(ctrlpanel.ControlPanel):
         st_logo = self.get_logo()
         sizer_h.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
-        # # Add the citation to the control panel
-        citation_box = wx.TextCtrl(
-            self, value=self.get_citation(), size=(100, 50), style=wx.TE_MULTILINE
-        )
-        sizer_h.Add(citation_box, flag=wx.SHAPED, proportion=1)
         #
         # # Add a hyperlink to the documentation
         hyper = hl.HyperLinkCtrl(
@@ -104,7 +102,7 @@ class STcontrol(ctrlpanel.ControlPanel):
             size=(100, 20),
             value="Select the modality",
         )
-        # TODO: was this commented out before? Check in push 
+        # TODO: was this commented out before? Check in push
         # # self.model_combobox.SetForegroundColour(button_label_color)
         # # self.model_combobox.SetToolTip(
         # #     wx.ToolTip("Select the modality used to acquire the image")
@@ -122,7 +120,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         #
         # # The Watershed button's purpose isn't clear. It is unavailable for now.
         #
-        # TODO: was this commented out before? Check in push 
+        # TODO: was this commented out before? Check in push
         # # # Add the button that runs the watershed algorithm
         # # run_watershed_button = wx.Button(self, label="Run Watershed")
         # # run_watershed_button.Bind(wx.EVT_BUTTON, self.on_run_watershed_button)
@@ -775,11 +773,11 @@ class STcontrol(ctrlpanel.ControlPanel):
         image_overlay = None
         n_found_overlays = 0
 
-        if visible_overlay_list.__len__() is 0:
+        if visible_overlay_list.__len__() == 0:
             self.show_message("No overlays are displayed")
             return None
 
-        if visible_overlay_list.__len__() is 1:
+        if visible_overlay_list.__len__() == 1:
             return visible_overlay_list[0]
 
         for an_overlay in visible_overlay_list:
@@ -797,7 +795,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         if n_found_overlays > 1:
             self.show_message("More than one microscopy image has been found")
             return None
-        if n_found_overlays is 0:
+        if n_found_overlays == 0:
             self.show_message("No visible microscopy image has been found")
             return None
 
@@ -813,7 +811,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         axon_overlay = None
         n_found_overlays = 0
 
-        if visible_overlay_list.__len__() is 0:
+        if visible_overlay_list.__len__() == 0:
             self.show_message("No overlays are displayed")
             return None
 
@@ -825,7 +823,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         if n_found_overlays > 1:
             self.show_message("More than one axon mask has been found")
             return None
-        if n_found_overlays is 0:
+        if n_found_overlays == 0:
             self.show_message("No visible axon mask has been found")
             return None
 
@@ -841,7 +839,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         axon_overlay = None
         n_found_overlays = 0
 
-        if visible_overlay_list.__len__() is 0:
+        if visible_overlay_list.__len__() == 0:
             self.show_message("No overlays are displayed")
             return None
 
@@ -853,7 +851,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         if n_found_overlays > 1:
             self.show_message("More than one corrected axon mask has been found")
             return None
-        if n_found_overlays is 0:
+        if n_found_overlays == 0:
             return None
 
         return axon_overlay
@@ -868,7 +866,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         myelin_overlay = None
         n_found_overlays = 0
 
-        if visible_overlay_list.__len__() is 0:
+        if visible_overlay_list.__len__() == 0:
             self.show_message("No overlays are displayed")
             return None
 
@@ -880,7 +878,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         if n_found_overlays > 1:
             self.show_message("More than one myelin mask has been found")
             return None
-        if n_found_overlays is 0:
+        if n_found_overlays == 0:
             self.show_message("No visible myelin mask has been found")
             return None
 
@@ -942,34 +940,22 @@ class STcontrol(ctrlpanel.ControlPanel):
             self.show_message(message, "Warning")
         return
 
-    def get_citation(self):
-        """
-        This function returns the AxonDeepSeg paper citation.
-        :return: The AxonDeepSeg citation
-        :rtype: string
-        """
+    def get_logo(self, scale=0.5):
+        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
 
-        return (
-            "If you use this work in your research, please cite it as follows: \n"
-            "Zaimi, A., Wabartha, M., Herman, V., Antonsanti, P.-L., Perone, C. S., & Cohen-Adad, J. (2018). "
-            "AxonDeepSeg: automatic axon and myelin segmentation from microscopy data using convolutional "
-            "neural networks. Scientific Reports, 8(1), 3816. "
-            "Link to paper: https://doi.org/10.1038/s41598-018-22181-4. \n"
-            "Copyright (c) 2018 NeuroPoly (Polytechnique Montreal)"
-        )
-
-    def get_logo(self):
+        Retunrs:
+            wx.StaticBitmap: The ShimmingToolbox logo
         """
-        This function finds the AxonDeepSeg logo saved as a png image and returns it as a wx bitmap image.
-        :return: The AxonDeepSeg logo
-        :rtype: wx.StaticBitmap
-        """
-        fname_st_logo = os.path.join(__dir_shimmingtoolbox__, 'docs', 'source', '_static', 'shimming_toolbox_logo.png')
+        fname_st_logo = os.path.join(__dir_shimmingtoolbox__, 'docs', 'source', '_static',
+                                     'shimming_toolbox_logo.png')
 
         png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-        png.SetSize((png.GetWidth(), png.GetHeight()))
+        png.SetSize((png.GetWidth()*scale, png.GetHeight()*scale))
         logo_image = wx.StaticBitmap(
-            self, -1, png, wx.DefaultPosition, (png.GetWidth(), png.GetHeight())
+            parent=self,
+            id=-1,
+            bitmap=png,
+            pos=wx.DefaultPosition
         )
         return logo_image
 
