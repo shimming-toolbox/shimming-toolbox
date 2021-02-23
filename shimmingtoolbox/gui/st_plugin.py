@@ -21,12 +21,6 @@ import os
 import json
 from pathlib import Path
 
-# import AxonDeepSeg
-# from AxonDeepSeg.apply_model import axon_segmentation
-# from AxonDeepSeg.segment import segment_image
-# import AxonDeepSeg.morphometrics.compute_morphometrics as compute_morphs
-# from config import axonmyelin_suffix, axon_suffix, myelin_suffix
-
 import math
 from scipy import ndimage as ndi
 from skimage import measure, morphology, feature
@@ -38,6 +32,7 @@ import pandas as pd
 
 
 VERSION = "0.2.14"
+
 
 class STcontrol(ctrlpanel.ControlPanel):
     """
@@ -58,18 +53,16 @@ class STcontrol(ctrlpanel.ControlPanel):
 
         # Add a sizer to the control panel
         # This sizer will contain the buttons
-        sizer_h = wx.BoxSizer(wx.VERTICAL)
+        sizer_info = wx.BoxSizer(wx.VERTICAL)
 
         # # Add the logo to the control panel
         st_logo = self.get_logo()
-        sizer_h.Add(st_logo, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
-        #
-        # # Add a hyperlink to the documentation
         hyper = hl.HyperLinkCtrl(
             self, -1, label="Need help? Read the documentation", URL="https://shimming-toolbox.org/en/latest/"
         )
-        sizer_h.Add(hyper, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(hyper, flag=wx.SHAPED, proportion=1)
         #
         # # Define the color of button labels
         button_label_color = (0, 0, 0)
@@ -79,7 +72,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         load_png_button.SetForegroundColour(button_label_color)
         load_png_button.Bind(wx.EVT_BUTTON, self.on_load_png_button)
         load_png_button.SetToolTip(wx.ToolTip("Loads a .png or .tif file into FSLeyes"))
-        sizer_h.Add(load_png_button, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(load_png_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the mask loading button
         load_mask_button = wx.Button(self, label="Load existing mask")
@@ -93,21 +86,15 @@ class STcontrol(ctrlpanel.ControlPanel):
                 "127 for the myelin and 255 for the axons. "
             )
         )
-        sizer_h.Add(load_mask_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Add the model choice combobox
-        self.model_combobox = wx.ComboBox(
-            self,
-            choices=gui_utils.get_existing_models_list(),
-            size=(100, 20),
-            value="Select the modality",
-        )
+        sizer_info.Add(load_mask_button, flag=wx.SHAPED, proportion=1)
+
+
         # TODO: was this commented out before? Check in push
         # # self.model_combobox.SetForegroundColour(button_label_color)
         # # self.model_combobox.SetToolTip(
         # #     wx.ToolTip("Select the modality used to acquire the image")
         # # )
-        # # sizer_h.Add(self.model_combobox, flag=wx.SHAPED, proportion=1)
+        # # sizer_info.Add(self.model_combobox, flag=wx.SHAPED, proportion=1)
         #
         # # Add the button that applies the prediction model
         apply_model_button = wx.Button(self, label="Apply ADS prediction model")
@@ -116,7 +103,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         apply_model_button.SetToolTip(
             wx.ToolTip("Applies the prediction model and displays the masks")
         )
-        sizer_h.Add(apply_model_button, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(apply_model_button, flag=wx.SHAPED, proportion=1)
         #
         # # The Watershed button's purpose isn't clear. It is unavailable for now.
         #
@@ -131,7 +118,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         # #         " between two axon+myelin objects."
         # #     )
         # # )
-        # # sizer_h.Add(run_watershed_button, flag=wx.SHAPED, proportion=1)
+        # # sizer_info.Add(run_watershed_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the fill axon tool
         fill_axons_button = wx.Button(self, label="Fill axons")
@@ -144,7 +131,7 @@ class STcontrol(ctrlpanel.ControlPanel):
                 "OTHER (THEY MUST NOT TOUCH) FOR THIS TOOL TO WORK CORRECTLY."
             )
         )
-        sizer_h.Add(fill_axons_button, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(fill_axons_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add the save Segmentation button
         save_segmentation_button = wx.Button(self, label="Save segmentation")
@@ -153,7 +140,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         save_segmentation_button.SetToolTip(
             wx.ToolTip("Saves the axon and myelin masks in the selected folder")
         )
-        sizer_h.Add(save_segmentation_button, flag=wx.SHAPED, proportion=1)
+        sizer_info.Add(save_segmentation_button, flag=wx.SHAPED, proportion=1)
         #
         # # Add compute morphometrics button
         compute_morphometrics_button = wx.Button(self, label="Compute morphometrics")
@@ -165,11 +152,19 @@ class STcontrol(ctrlpanel.ControlPanel):
                 "Shows the numbers of the axons at the coordinates specified in the morphometrics file."
             )
         )
-        sizer_h.Add(compute_morphometrics_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Set the sizer of the control panel
-        self.SetSizer(sizer_h)
-        #
+        sizer_info.Add(compute_morphometrics_button, flag=wx.SHAPED, proportion=1)
+
+        my_panel = TabPanel(self)
+        sizer_tabs = wx.BoxSizer(wx.VERTICAL)
+        sizer_tabs.SetMinSize(400, 300)
+        sizer_tabs.Add(my_panel, 0, wx.EXPAND)
+
+        # Set the sizer of the control panel
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(sizer_info)
+        sizer.Add(sizer_tabs, wx.EXPAND)
+        self.SetSizer(sizer)
+
         # Initialize the variables that are used to track the active image
         self.png_image_name = []
         self.image_dir_path = []
@@ -192,8 +187,9 @@ class STcontrol(ctrlpanel.ControlPanel):
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
 
+
         # Check the version
-        # self.verrify_version()
+        # self.verify_version()
 
 
     def on_load_png_button(self, event):
@@ -901,7 +897,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         ) as msg:
             msg.ShowModal()
 
-    def verrify_version(self):
+    def verify_version(self):
         """
         This function checks if the plugin version is the same as the one in the AxonDeepSeg directory
         """
@@ -940,7 +936,7 @@ class STcontrol(ctrlpanel.ControlPanel):
             self.show_message(message, "Warning")
         return
 
-    def get_logo(self, scale=0.5):
+    def get_logo(self, scale=0.3):
         """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
 
         Retunrs:
@@ -974,3 +970,48 @@ class STcontrol(ctrlpanel.ControlPanel):
         This method makes the control panel appear on the left of the FSLeyes window.
         """
         return {"location": wx.LEFT}
+
+
+class TabPanel(wx.Panel):
+    def __init__(self, parent):
+        super().__init__(parent=parent)
+        nb = wx.Notebook(self)
+        tab1 = ShimTab(nb)
+        tab2 = FieldMapTab(nb)
+        tab3 = MaskTab(nb)
+        tab4 = DicomToNiftiTab(nb)
+
+        # Add the windows to tabs and name them.
+        nb.AddPage(tab1, tab1.title)
+        nb.AddPage(tab2, tab2.title)
+        nb.AddPage(tab3, tab3.title)
+        nb.AddPage(tab4, tab4.title)
+
+        sizer = wx.BoxSizer()
+        sizer.Add(nb, 1, wx.EXPAND)
+        self.SetSizer(sizer)
+
+class Tab(wx.Panel):
+    def __init__(self, parent, title):
+        wx.Panel.__init__(self, parent)
+        self.title = title
+
+class ShimTab(Tab):
+    def __init__(self, parent, title="Shim"):
+        super().__init__(parent, title)
+        t = wx.StaticText(self, -1, "This is the first tab", (20,20))
+
+class FieldMapTab(Tab):
+    def __init__(self, parent, title="Field Map"):
+        super().__init__(parent, title)
+        t = wx.StaticText(self, -1, "This is the second tab", (20,20))
+
+class MaskTab(Tab):
+    def __init__(self, parent, title="Mask"):
+        super().__init__(parent, title)
+        t = wx.StaticText(self, -1, "This is the third tab", (20,20))
+
+class DicomToNiftiTab(Tab):
+    def __init__(self, parent, title="Dicom to Nifti"):
+        super().__init__(parent, title)
+        t = wx.StaticText(self, -1, "This is the last tab", (20,20))
