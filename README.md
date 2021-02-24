@@ -8,7 +8,7 @@ Code for performing real-time shimming using external MRI shim coils
 
 ## Installation
 
-The first dependency you need is [`dcm2niix`](https://github.com/rordenlab/dcm2niix) >= v1.0.20200331.
+The first dependency you need is [`dcm2niix`](https://github.com/rordenlab/dcm2niix) >= v1.0.20201102.
 You can download precompiled binaries from https://github.com/rordenlab/dcm2niix/releases/latest -- make
 sure to add them to your PATH.
 It is also [in the AUR](https://aur.archlinux.org/packages/dcm2niix/) (`pikaur -Sy dcm2niix`),
