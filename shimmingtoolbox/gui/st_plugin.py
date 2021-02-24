@@ -223,6 +223,7 @@ class TabPanel(wx.Panel):
         sizer.Add(nb, 1, wx.EXPAND)
         self.SetSizer(sizer)
 
+
 class Tab(wx.Panel):
     def __init__(self, parent, title, description):
         wx.Panel.__init__(self, parent)
@@ -258,7 +259,6 @@ class Tab(wx.Panel):
         """Create the left sizer containing generic Shimming Toolbox information."""
         sizer_info = wx.BoxSizer(wx.VERTICAL)
 
-        # Add the logo
         st_logo = self.get_logo()
         sizer_info.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
@@ -275,6 +275,7 @@ class Tab(wx.Panel):
         """Create the right sizer containing tab-specific functionality."""
         sizer_tab = wx.BoxSizer(wx.VERTICAL)
         sizer_tab.SetMinSize(400, 300)
+        sizer_tab.AddSpacer(10)
         return sizer_tab
 
     def create_sizer(self):
@@ -289,46 +290,205 @@ class Tab(wx.Panel):
         sizer.Add(self.sizer_tab, wx.EXPAND)
         return sizer
 
+    def add_input_text_boxes(self, metadata, spacer_size=20):
+        """Add a list of input text boxes (TextWithButton) to the sizer_tab.
+
+        Args:
+            metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
+                ``button_label`` and ``button_function``.
+                .. code::
+
+                    {
+                        "button_label": The label to go on the button.
+                        "button function": the class function (self.myfunc) which will get
+                            called when the button is pressed. If no action is desired, create
+                            a function that is just ``pass``.
+                    }
+            spacer_size (int): The size of the space to be placed between each input text box.
+
+        """
+        for twb_dict in metadata:
+            text_with_button = TextWithButton(panel=self,
+                                              button_label=twb_dict["button_label"],
+                                              button_function=twb_dict["button_function"])
+            box = text_with_button.create()
+            self.sizer_tab.Add(box, 0, wx.EXPAND)
+            self.sizer_tab.AddSpacer(spacer_size)
+
+
 class ShimTab(Tab):
     def __init__(self, parent, title="Shim"):
         description = "Shimming Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the first tab", (20,20))
-        sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
+        self.add_input_text_boxes()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
+    def add_input_text_boxes(self, metadata=None):
+        metadata = [
+            {
+                "button_label": "Input Fieldmap",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Anat",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Static Mask",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input RIRO Mask",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Respiratory Trace",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": self.button_do_something
+            }
+        ]
+        super().add_input_text_boxes(metadata)
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
+
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the second tab", (20,20))
-        sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
+        self.add_input_text_boxes()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
+    def add_input_text_boxes(self, metadata=None):
+        metadata = [
+            {
+                "button_label": "Number of Echoes",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Echo 1",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Echo 2",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Magnitude",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Unwrapper",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Threshold",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Input Mask",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": self.button_do_something
+            }
+        ]
+        super().add_input_text_boxes(metadata)
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
+
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
         description = "Mask Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the third tab", (20,20))
-        sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
+        self.add_input_text_boxes()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
+    def add_input_text_boxes(self, metadata=None):
+        metadata = [
+            {
+                "button_label": "Input",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Threshold",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": self.button_do_something
+            }
+        ]
+        super().add_input_text_boxes(metadata)
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
         description = "Dicom to Nifti Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the last tab", (20,20))
-        sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
+        self.add_input_text_boxes()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
+    def add_input_text_boxes(self, metadata=None):
+        metadata = [
+            {
+                "button_label": "Input Folder",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Subject Name",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Config Path",
+                "button_function": self.button_do_something
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": self.button_do_something
+            }
+        ]
+        super().add_input_text_boxes(metadata)
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
+
+class TextWithButton:
+    def __init__(self, panel, button_label, button_function):
+        self.panel = panel
+        self.button_label = button_label
+        self.button_function = button_function
+
+    def create(self):
+        textctrl = wx.TextCtrl(self.panel)
+        text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
+        button = wx.Button(self.panel, -1, label=self.button_label)
+        button.Bind(wx.EVT_BUTTON, self.button_function)
+        text_with_button_box.Add(button, 0, wx.ALIGN_LEFT| wx.RIGHT, 10)
+        text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT|wx.LEFT, 10)
+        return text_with_button_box
