@@ -61,19 +61,19 @@ class STControlPanel(ctrlpanel.ControlPanel):
         self.image_dir_path = []
         self.most_recent_watershed_mask_name = None
 
-        # Toggle off the X and Y canvas
-        oopts = ortho.sceneOpts
-        oopts.showXCanvas = False
-        oopts.showYCanvas = False
-
-        # Toggle off the cursor
-        oopts.showCursor = False
-
-        # Toggle off the radiological orientation
-        self.displayCtx.radioOrientation = False
-
-        # Invert the Y display
-        self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
+        # # Toggle off the X and Y canvas
+        # oopts = ortho.sceneOpts
+        # oopts.showXCanvas = False
+        # oopts.showYCanvas = False
+        #
+        # # Toggle off the cursor
+        # oopts.showCursor = False
+        #
+        # # Toggle off the radiological orientation
+        # self.displayCtx.radioOrientation = False
+        #
+        # # Invert the Y display
+        # self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
 
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
@@ -133,7 +133,6 @@ class STControlPanel(ctrlpanel.ControlPanel):
             opts.cmap = colormap
 
         return img_overlay
-
 
     def show_message(self, message, caption="Error"):
         """
@@ -201,7 +200,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
     @staticmethod
     def defaultLayout():
         """This method makes the control panel appear on the left of the FSLeyes window."""
-        return {"location": wx.LEFT}
+        return {"location": wx.BOTTOM}
 
 
 class TabPanel(wx.Panel):
@@ -222,6 +221,7 @@ class TabPanel(wx.Panel):
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
         self.SetSizer(sizer)
+
 
 class Tab(wx.Panel):
     def __init__(self, parent, title, description):
@@ -289,45 +289,49 @@ class Tab(wx.Panel):
         sizer.Add(self.sizer_tab, wx.EXPAND)
         return sizer
 
+
 class ShimTab(Tab):
     def __init__(self, parent, title="Shim"):
         description = "Shimming Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the first tab", (20,20))
+        t = wx.StaticText(self, -1, "This is the first tab", (20, 20))
         sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the second tab", (20,20))
+        t = wx.StaticText(self, -1, "This is the second tab", (20, 20))
         sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
         description = "Mask Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the third tab", (20,20))
+        t = wx.StaticText(self, -1, "This is the third tab", (20, 20))
         sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
         self.SetSizer(sizer)
+
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
         description = "Dicom to Nifti Tab description: TODO"
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
-        t = wx.StaticText(self, -1, "This is the last tab", (20,20))
+        t = wx.StaticText(self, -1, "This is the last tab", (20, 20))
         sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
