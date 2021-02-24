@@ -61,19 +61,19 @@ class STControlPanel(ctrlpanel.ControlPanel):
         self.image_dir_path = []
         self.most_recent_watershed_mask_name = None
 
-        # Toggle off the X and Y canvas
-        oopts = ortho.sceneOpts
-        oopts.showXCanvas = False
-        oopts.showYCanvas = False
-
-        # Toggle off the cursor
-        oopts.showCursor = False
-
-        # Toggle off the radiological orientation
-        self.displayCtx.radioOrientation = False
-
-        # Invert the Y display
-        self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
+        # # Toggle off the X and Y canvas
+        # oopts = ortho.sceneOpts
+        # oopts.showXCanvas = False
+        # oopts.showYCanvas = False
+        #
+        # # Toggle off the cursor
+        # oopts.showCursor = False
+        #
+        # # Toggle off the radiological orientation
+        # self.displayCtx.radioOrientation = False
+        #
+        # # Invert the Y display
+        # self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
 
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
@@ -133,7 +133,6 @@ class STControlPanel(ctrlpanel.ControlPanel):
             opts.cmap = colormap
 
         return img_overlay
-
 
     def show_message(self, message, caption="Error"):
         """
@@ -201,7 +200,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
     @staticmethod
     def defaultLayout():
         """This method makes the control panel appear on the left of the FSLeyes window."""
-        return {"location": wx.LEFT}
+        return {"location": wx.BOTTOM}
 
 
 class TabPanel(wx.Panel):
