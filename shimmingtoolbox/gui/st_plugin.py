@@ -31,7 +31,7 @@ import pandas as pd
 VERSION = "0.2.14"
 
 
-class STcontrol(ctrlpanel.ControlPanel):
+class STControlPanel(ctrlpanel.ControlPanel):
     """Class for Shimming Toolbox Control Panel"""
 
     def __init__(self, ortho, *args, **kwargs):
@@ -255,9 +255,10 @@ class Tab(wx.Panel):
         webbrowser.open(url)
 
     def create_sizer_info(self):
+        """Create the left sizer containing generic Shimming Toolbox information."""
         sizer_info = wx.BoxSizer(wx.VERTICAL)
 
-        # # Add the logo to the control panel
+        # Add the logo
         st_logo = self.get_logo()
         sizer_info.Add(st_logo, flag=wx.SHAPED, proportion=1)
 
@@ -266,17 +267,22 @@ class Tab(wx.Panel):
         button_documentation.Bind(wx.EVT_BUTTON, self.documentation_url)
         sizer_info.Add(button_documentation, flag=wx.SHAPED, proportion=1)
 
-
         description_text = wx.StaticText(self, id=-1, label=self.description)
         sizer_info.Add(description_text)
         return sizer_info
 
     def create_sizer_tab(self):
+        """Create the right sizer containing tab-specific functionality."""
         sizer_tab = wx.BoxSizer(wx.VERTICAL)
         sizer_tab.SetMinSize(400, 300)
         return sizer_tab
 
     def create_sizer(self):
+        """Create the parent sizer for the tab.
+
+        Tab is divided into 2 main sizers:
+            sizer_info | sizer_tab
+        """
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.sizer_info)
         sizer.AddSpacer(30)
@@ -315,7 +321,6 @@ class MaskTab(Tab):
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
         self.SetSizer(sizer)
-        self.SetSizer(sizer)
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
@@ -326,5 +331,4 @@ class DicomToNiftiTab(Tab):
         sizer_tab.Add(t, 0, wx.EXPAND)
         self.sizer_tab = sizer_tab
         sizer = self.create_sizer()
-        self.SetSizer(sizer)
         self.SetSizer(sizer)
