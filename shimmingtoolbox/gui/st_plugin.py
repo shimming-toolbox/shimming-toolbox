@@ -21,24 +21,18 @@ import scipy.misc
 import os
 import json
 from pathlib import Path
-
 import math
 from scipy import ndimage as ndi
 from skimage import measure, morphology, feature
-
 import tempfile
-# import openpyxl
 import pandas as pd
-# import imageio
 
 
 VERSION = "0.2.14"
 
 
 class STcontrol(ctrlpanel.ControlPanel):
-    """
-    This class is the object corresponding to the AxonDeepSeg control panel.
-    """
+    """Class for Shimming Toolbox Control Panel"""
 
     def __init__(self, ortho, *args, **kwargs):
         """Initialize the control panel.
@@ -66,15 +60,15 @@ class STcontrol(ctrlpanel.ControlPanel):
 
         # Define the color of button labels
         button_label_color = (0, 0, 0)
-        #
-        # # Add the image loading button
+
+        # Add the image loading button
         load_png_button = wx.Button(self, label="Load PNG or TIF file")
         load_png_button.SetForegroundColour(button_label_color)
         load_png_button.Bind(wx.EVT_BUTTON, self.on_load_png_button)
         load_png_button.SetToolTip(wx.ToolTip("Loads a .png or .tif file into FSLeyes"))
         sizer_info.Add(load_png_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Add the mask loading button
+
+        # Add the mask loading button
         load_mask_button = wx.Button(self, label="Load existing mask")
         load_mask_button.SetForegroundColour(button_label_color)
         load_mask_button.Bind(wx.EVT_BUTTON, self.on_load_mask_button)
@@ -119,8 +113,8 @@ class STcontrol(ctrlpanel.ControlPanel):
         # #     )
         # # )
         # # sizer_info.Add(run_watershed_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Add the fill axon tool
+
+        # Add the fill axon tool
         fill_axons_button = wx.Button(self, label="Fill axons")
         fill_axons_button.SetForegroundColour(button_label_color)
         fill_axons_button.Bind(wx.EVT_BUTTON, self.on_fill_axons_button)
@@ -132,8 +126,8 @@ class STcontrol(ctrlpanel.ControlPanel):
             )
         )
         sizer_info.Add(fill_axons_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Add the save Segmentation button
+
+        # Add the save Segmentation button
         save_segmentation_button = wx.Button(self, label="Save segmentation")
         save_segmentation_button.SetForegroundColour(button_label_color)
         save_segmentation_button.Bind(wx.EVT_BUTTON, self.on_save_segmentation_button)
@@ -141,8 +135,8 @@ class STcontrol(ctrlpanel.ControlPanel):
             wx.ToolTip("Saves the axon and myelin masks in the selected folder")
         )
         sizer_info.Add(save_segmentation_button, flag=wx.SHAPED, proportion=1)
-        #
-        # # Add compute morphometrics button
+
+        # Add compute morphometrics button
         compute_morphometrics_button = wx.Button(self, label="Compute morphometrics")
         compute_morphometrics_button.SetForegroundColour(button_label_color)
         compute_morphometrics_button.Bind(wx.EVT_BUTTON, self.on_compute_morphometrics_button)
@@ -190,6 +184,7 @@ class STcontrol(ctrlpanel.ControlPanel):
         # self.verify_version()
 
     def documentation_url(self, event):
+        """Redirect ``documentation_button`` to the ``shimming-toolbox`` page."""
         url = "https://shimming-toolbox.org/en/latest/"
         webbrowser.open(url)
 
