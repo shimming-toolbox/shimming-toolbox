@@ -234,6 +234,7 @@ class Tab(wx.Panel):
         self.title = title
         self.description = description
         self.sizer_info = self.create_sizer_info()
+        self.sizer_terminal = self.create_sizer_terminal()
 
     def get_logo(self, scale=0.2):
         """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
@@ -276,22 +277,32 @@ class Tab(wx.Panel):
         return sizer_info
 
     def create_sizer_tab(self):
-        """Create the right sizer containing tab-specific functionality."""
+        """Create the centre sizer containing tab-specific functionality."""
         sizer_tab = wx.BoxSizer(wx.VERTICAL)
         sizer_tab.SetMinSize(400, 300)
         sizer_tab.AddSpacer(10)
         return sizer_tab
 
+    def create_sizer_terminal(self):
+        """Create the right sizer containing the terminal interface."""
+        sizer_terminal = wx.BoxSizer(wx.VERTICAL)
+        sizer_terminal.AddSpacer(10)
+        text = wx.StaticText(self, id=-1, label="This is where the terminal will go")
+        sizer_terminal.Add(text)
+        return sizer_terminal
+
     def create_sizer(self):
         """Create the parent sizer for the tab.
 
-        Tab is divided into 2 main sizers:
-            sizer_info | sizer_tab
+        Tab is divided into 3 main sizers:
+            sizer_info | sizer_tab | sizer_terminal
         """
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.sizer_info)
         sizer.AddSpacer(30)
         sizer.Add(self.sizer_tab, wx.EXPAND)
+        sizer.AddSpacer(30)
+        sizer.Add(self.sizer_terminal, wx.EXPAND)
         return sizer
 
     def add_input_text_boxes(self, metadata, spacer_size=20):
