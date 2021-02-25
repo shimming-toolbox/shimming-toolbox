@@ -233,8 +233,22 @@ class Tab(wx.Panel):
         wx.Panel.__init__(self, parent)
         self.title = title
         self.description = description
+        self.terminal = None
         self.sizer_info = self.create_sizer_info()
         self.sizer_terminal = self.create_sizer_terminal()
+
+    @property
+    def terminal(self):
+        return self._terminal
+
+    @terminal.setter
+    def terminal(self, terminal):
+        if terminal is None:
+            terminal = wx.TextCtrl(self, wx.ID_ANY, size=(500, 300),
+                                   style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+            terminal.SetBackgroundColour(wx.BLACK)
+        self._terminal = terminal
 
     def get_logo(self, scale=0.2):
         """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
@@ -259,6 +273,12 @@ class Tab(wx.Panel):
         """Redirect ``documentation_button`` to the ``shimming-toolbox`` page."""
         url = "https://shimming-toolbox.org/en/latest/"
         webbrowser.open(url)
+
+    def log_to_terminal(self, msg, level=None):
+        if level is None:
+            self.terminal.AppendText(f"{msg}\n")
+        else:
+            self.terminal.AppendText(f"{level}: {msg}\n")
 
     def create_sizer_info(self):
         """Create the left sizer containing generic Shimming Toolbox information."""
@@ -287,11 +307,7 @@ class Tab(wx.Panel):
         """Create the right sizer containing the terminal interface."""
         sizer_terminal = wx.BoxSizer(wx.VERTICAL)
         sizer_terminal.AddSpacer(10)
-        terminal = wx.TextCtrl(self, wx.ID_ANY, size=(500, 300),
-                               style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
-        terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE))
-        terminal.SetBackgroundColour(wx.BLACK)
-        sizer_terminal.Add(terminal)
+        sizer_terminal.Add(self.terminal)
         return sizer_terminal
 
     def create_sizer(self):
@@ -384,7 +400,8 @@ class ShimTab(Tab):
         pass
 
     def button_run_on_click(self, event):
-        pass
+        msg = "This is a test log message"
+        self.log_to_terminal(msg, level="TEST")
 
 
 class FieldMapTab(Tab):
@@ -440,7 +457,8 @@ class FieldMapTab(Tab):
         pass
 
     def button_run_on_click(self, event):
-        pass
+        msg = "This is a test log message"
+        self.log_to_terminal(msg, level="TEST")
 
 
 class MaskTab(Tab):
@@ -476,7 +494,8 @@ class MaskTab(Tab):
         pass
 
     def button_run_on_click(self, event):
-        pass
+        msg = "This is a test log message"
+        self.log_to_terminal(msg, level="TEST")
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
@@ -515,7 +534,8 @@ class DicomToNiftiTab(Tab):
         pass
 
     def button_run_on_click(self, event):
-        pass
+        msg = "This is a test log message"
+        self.log_to_terminal(msg, level="TEST")
 
 class TextWithButton:
     def __init__(self, panel, button_label, button_function):
