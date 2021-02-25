@@ -287,8 +287,11 @@ class Tab(wx.Panel):
         """Create the right sizer containing the terminal interface."""
         sizer_terminal = wx.BoxSizer(wx.VERTICAL)
         sizer_terminal.AddSpacer(10)
-        text = wx.StaticText(self, id=-1, label="This is where the terminal will go")
-        sizer_terminal.Add(text)
+        terminal = wx.TextCtrl(self, wx.ID_ANY, size=(500, 300),
+                               style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+        terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE))
+        terminal.SetBackgroundColour(wx.BLACK)
+        sizer_terminal.Add(terminal)
         return sizer_terminal
 
     def create_sizer(self):
