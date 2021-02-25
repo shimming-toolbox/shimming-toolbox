@@ -314,6 +314,11 @@ class Tab(wx.Panel):
             self.sizer_tab.Add(box, 0, wx.EXPAND)
             self.sizer_tab.AddSpacer(spacer_size)
 
+    def add_button_run(self):
+        button_run = wx.Button(self, -1, label="Run")
+        button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
+        self.sizer_tab.Add(button_run, 0, wx.CENTRE)
+
 
 class ShimTab(Tab):
     def __init__(self, parent, title="Shim"):
@@ -322,6 +327,7 @@ class ShimTab(Tab):
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
         self.add_input_text_boxes()
+        self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -358,6 +364,9 @@ class ShimTab(Tab):
         """TODO"""
         pass
 
+    def button_run_on_click(self, event):
+        pass
+
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
@@ -366,6 +375,7 @@ class FieldMapTab(Tab):
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
         self.add_input_text_boxes()
+        self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -410,6 +420,9 @@ class FieldMapTab(Tab):
         """TODO"""
         pass
 
+    def button_run_on_click(self, event):
+        pass
+
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
@@ -418,6 +431,7 @@ class MaskTab(Tab):
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
         self.add_input_text_boxes()
+        self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -442,6 +456,9 @@ class MaskTab(Tab):
         """TODO"""
         pass
 
+    def button_run_on_click(self, event):
+        pass
+
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
         description = "Dicom to Nifti Tab description: TODO"
@@ -449,6 +466,7 @@ class DicomToNiftiTab(Tab):
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
         self.add_input_text_boxes()
+        self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -475,6 +493,9 @@ class DicomToNiftiTab(Tab):
 
     def button_do_something(self, event):
         """TODO"""
+        pass
+
+    def button_run_on_click(self, event):
         pass
 
 class TextWithButton:
