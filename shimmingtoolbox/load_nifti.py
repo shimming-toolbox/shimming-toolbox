@@ -161,10 +161,10 @@ def read_nii(fname_nifti, auto_scale=True):
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
         json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
         image (ndarray): Image contained in the read nifti file. Siemens phase images are rescaled between 0 and 2pi.
+                         For RF-maps, image is a complex array of dimension (x, y, n_slices, n_coils)
     """
 
     info = nib.load(fname_nifti)
-
     # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
     json_path = fname_nifti.split('.nii')[0] + '.json'
 
@@ -195,9 +195,7 @@ def read_nii(fname_nifti, auto_scale=True):
 
             n_slices = len(json_data['SliceTiming'])
 
-            # Scale magnitude in nT/V
-            # Calculate B1 efficiency using a 1ms, pi-pulse at the acquisition voltage, then scale the efficiency by
-            # the ratio of the measured flip angle to the saturation flip angle in the pulse sequence.
+            # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
             # Get the Transmission amplifier reference amplitude
             amplifier_voltage = json_data['TxRefAmp']  # [V]
             socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
@@ -207,6 +205,7 @@ def read_nii(fname_nifti, auto_scale=True):
             if b1_mag.min() < 0:
                 raise ValueError("Unexpected negative magnitude values")
 
+            # Scale magnitude in nT/V
             b1_mag[b1_mag > 180] = 180  # Values higher than 180 degrees are due to noise
             b1_mag = (b1_mag / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
 
@@ -215,23 +214,20 @@ def read_nii(fname_nifti, auto_scale=True):
             b1_phase = image[:, :, :, image.shape[3] // 2:]  # [248 - 3848]
             # Remove potential out of range zeros (set them as null phase = 2048)
             b1_phase[b1_phase == 0] = 2048
-            b1_phase = (b1_phase - 496) * np.pi / 1800  # [-pi pi]
+            b1_phase = (b1_phase - 2048) * np.pi / 1800  # [-pi pi]
 
-            # Reorder data shuffled by dm2niix and compute complex b1 maps (x, y, n_slices, n_coils)
-            b1_mag_new = np.zeros((image.shape[0], image.shape[1], n_slices, n_coils))
-            b1_phase_new = np.zeros((image.shape[0], image.shape[1], n_slices, n_coils))
+            # Reorder data shuffled by dm2niix
             mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices*n_coils))
             phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
             for i in range(n_coils):
                 mag_vector[:, :, i*n_slices:(i+1)*n_slices] = b1_mag[:, :, :, i]
                 phase_vector[:, :, i*n_slices:(i+1)*n_slices] = b1_phase[:, :, :, i]
 
+            # Compute complex B1 maps
+            image = image.astype(complex)
             for i in range(n_coils):
-                b1_mag_new[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)]
-                b1_phase_new[:, :, :, i] = phase_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)]
-                image[:, :, :, i] = b1_mag_new[:, :, :, i] * np.exp(1j * b1_phase_new[:, :, :, i])
-
-            image = np.multiply(b1_mag_new, np.exp(1j * b1_phase_new))
+                image[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)] * \
+                    np.exp(1j*phase_vector[:, :, np.arange(i, n_coils*n_slices, n_coils)])
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \

@@ -392,3 +392,6 @@ class TestCore(object):
         assert np.angle(b1).max() <= np.pi and np.angle(b1).min() >= -np.pi
 
         # Check masking consistency for all coils at each slice
+        for i in range(b1.shape[2]):
+            for j in range(b1.shape[3]-1):
+                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j+1] != 0)).any()
