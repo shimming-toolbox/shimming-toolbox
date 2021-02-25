@@ -201,8 +201,11 @@ class STControlPanel(ctrlpanel.ControlPanel):
 
     @staticmethod
     def defaultLayout():
-        """This method makes the control panel appear on the left of the FSLeyes window."""
-        return {"location": wx.BOTTOM}
+        """This method makes the control panel appear on the bottom of the FSLeyes window."""
+        return {
+            "location": wx.BOTTOM,
+            "title": "Shimming Toolbox"
+        }
 
 
 class TabPanel(wx.Panel):
