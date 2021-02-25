@@ -26,6 +26,8 @@ from scipy import ndimage as ndi
 from skimage import measure, morphology, feature
 import tempfile
 import pandas as pd
+import logging
+logger = logging.getLogger(__name__)
 
 
 VERSION = "0.2.14"
@@ -355,7 +357,7 @@ class ShimTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": self.button_do_something
+                "button_function": "select_folder"
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -411,7 +413,7 @@ class FieldMapTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": self.button_do_something
+                "button_function": "select_folder"
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -447,7 +449,7 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": self.button_do_something
+                "button_function": "select_folder"
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -474,7 +476,7 @@ class DicomToNiftiTab(Tab):
         metadata = [
             {
                 "button_label": "Input Folder",
-                "button_function": self.button_do_something
+                "button_function": "select_folder"
             },
             {
                 "button_label": "Subject Name",
@@ -486,7 +488,7 @@ class DicomToNiftiTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": self.button_do_something
+                "button_function": "select_folder"
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -508,7 +510,19 @@ class TextWithButton:
         textctrl = wx.TextCtrl(self.panel)
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
+        if self.button_function == "select_folder":
+            self.button_function = lambda event, ctrl=textctrl: self.select_folder(event, ctrl)
         button.Bind(wx.EVT_BUTTON, self.button_function)
         text_with_button_box.Add(button, 0, wx.ALIGN_LEFT| wx.RIGHT, 10)
         text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT|wx.LEFT, 10)
         return text_with_button_box
+
+    def select_folder(self, event, ctrl):
+        """Select a file folder from system path."""
+        dlg = wx.DirDialog (None, "Choose output directory", "",
+                            wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            folder = dlg.GetPath()
+            ctrl.SetValue(folder)
+            logger.info(f"Folder set to: {folder}")
