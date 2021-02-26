@@ -1,6 +1,16 @@
-"""
-This is an FSLeyes plugin script that integrates shimmingtoolbox tools into FSLeyes.
+# -*- coding: utf-8 -*-
+"""Shimming Toolbox FSLeyes Plugin
 
+This is an FSLeyes plugin script that integrates ``shimmingtoolbox`` tools into FSLeyes:
+
+- dicom_to_nifti_cli
+- mask_cli
+- prepare_fieldmap_cli
+- realtime_zshim_cli
+
+---------------------------------------------------------------------------------------
+Copyright (c) 2021 Polytechnique Montreal <www.neuro.polymtl.ca>
+Authors: Alexandre D'Astous, Ainsleigh Hill, Charlotte, Gaspard Cereza, Julien Cohen-Adad
 """
 
 import wx
