@@ -344,9 +344,10 @@ class Tab(wx.Panel):
 
                     {
                         "button_label": The label to go on the button.
-                        "button function": the class function (self.myfunc) which will get
+                        "button_function": the class function (self.myfunc) which will get
                             called when the button is pressed. If no action is desired, create
                             a function that is just ``pass``.
+                        "default_text": (optional) The default text to be displayed.
                     }
             spacer_size (int): The size of the space to be placed between each input text box.
 
@@ -354,7 +355,8 @@ class Tab(wx.Panel):
         for twb_dict in metadata:
             text_with_button = TextWithButton(panel=self,
                                               button_label=twb_dict["button_label"],
-                                              button_function=twb_dict["button_function"])
+                                              button_function=twb_dict["button_function"],
+                                              default_text=twb_dict.pop("default_text", ""))
             box = text_with_button.create()
             self.sizer_tab.Add(box, 0, wx.EXPAND)
             self.sizer_tab.AddSpacer(spacer_size)
@@ -400,7 +402,8 @@ class ShimTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": "select_folder"
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -457,7 +460,8 @@ class FieldMapTab(Tab):
             },
             {
                 "button_label": "Output Folder",
-                "button_function": "select_folder"
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -490,11 +494,13 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Threshold",
-                "button_function": self.button_do_something
+                "button_function": self.button_do_something,
+                "default_text": "30"
             },
             {
                 "button_label": "Output Folder",
-                "button_function": "select_folder"
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -530,11 +536,15 @@ class DicomToNiftiTab(Tab):
             },
             {
                 "button_label": "Config Path",
-                "button_function": self.button_do_something
+                "button_function": "select_file",
+                "default_text": os.path.join(__dir_shimmingtoolbox__,
+                                             "config",
+                                             "dcm2bids.json")
             },
             {
                 "button_label": "Output Folder",
-                "button_function": "select_folder"
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__
             }
         ]
         super().add_input_text_boxes(metadata)
@@ -548,17 +558,20 @@ class DicomToNiftiTab(Tab):
         self.log_to_terminal(msg, level="TEST")
 
 class TextWithButton:
-    def __init__(self, panel, button_label, button_function):
+    def __init__(self, panel, button_label, button_function, default_text=""):
         self.panel = panel
         self.button_label = button_label
         self.button_function = button_function
+        self.default_text = default_text
 
     def create(self):
-        textctrl = wx.TextCtrl(self.panel)
+        textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text)
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
         if self.button_function == "select_folder":
             self.button_function = lambda event, ctrl=textctrl: self.select_folder(event, ctrl)
+        elif self.button_function == "select_file":
+            self.button_function = lambda event, ctrl=textctrl: self.select_file(event, ctrl)
         button.Bind(wx.EVT_BUTTON, self.button_function)
         text_with_button_box.Add(button, 0, wx.ALIGN_LEFT| wx.RIGHT, 10)
         text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT|wx.LEFT, 10)
@@ -566,10 +579,22 @@ class TextWithButton:
 
     def select_folder(self, event, ctrl):
         """Select a file folder from system path."""
-        dlg = wx.DirDialog (None, "Choose output directory", "",
-                            wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+        dlg = wx.DirDialog(None, "Choose Directory", __dir_shimmingtoolbox__,
+                           wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
         if dlg.ShowModal() == wx.ID_OK:
             folder = dlg.GetPath()
             ctrl.SetValue(folder)
             logger.info(f"Folder set to: {folder}")
+
+    def select_file(self, event, ctrl):
+        """Select a file from system path."""
+        dlg = wx.FileDialog(parent=None,
+                            message="Select File",
+                            defaultDir=__dir_shimmingtoolbox__,
+                            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            ctrl.SetValue(folder)
+            logger.info(f"File set to: {path}")
