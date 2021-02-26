@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw, ImageOps
 import scipy.misc
 import os
 import json
+import subprocess
 from pathlib import Path
 import math
 from scipy import ndimage as ndi
@@ -222,7 +223,7 @@ class TabPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent=parent)
         nb = wx.Notebook(self)
-        tab1 = ShimTab(nb)
+        tab1 = RealTimeZShimTab(nb)
         tab2 = FieldMapTab(nb)
         tab3 = MaskTab(nb)
         tab4 = DicomToNiftiTab(nb)
@@ -246,6 +247,7 @@ class Tab(wx.Panel):
         self.terminal = None
         self.sizer_info = self.create_sizer_info()
         self.sizer_terminal = self.create_sizer_terminal()
+        self.input_text_boxes = {}
 
     @property
     def terminal(self):
@@ -334,7 +336,7 @@ class Tab(wx.Panel):
         sizer.Add(self.sizer_terminal, wx.EXPAND)
         return sizer
 
-    def add_input_text_boxes(self, metadata, spacer_size=20):
+    def add_input_text_boxes(self, spacer_size=20):
         """Add a list of input text boxes (TextWithButton) to the sizer_tab.
 
         Args:
@@ -352,19 +354,52 @@ class Tab(wx.Panel):
             spacer_size (int): The size of the space to be placed between each input text box.
 
         """
-        for twb_dict in metadata:
-            text_with_button = TextWithButton(panel=self,
-                                              button_label=twb_dict["button_label"],
-                                              button_function=twb_dict["button_function"],
-                                              default_text=twb_dict.pop("default_text", ""))
-            box = text_with_button.create()
-            self.sizer_tab.Add(box, 0, wx.EXPAND)
-            self.sizer_tab.AddSpacer(spacer_size)
+        for twb_dict in self.input_text_box_metadata:
+            text_with_button = TextWithButton(
+                panel=self,
+                button_label=twb_dict["button_label"],
+                button_function=twb_dict.pop("button_function", self.button_do_something),
+                default_text=twb_dict.pop("default_text", "")
+            )
+            self.add_input_text_box(text_with_button, twb_dict.pop("name", "default"))
+
+    def add_input_text_box(self, text_with_button, name, spacer_size=20):
+        box = text_with_button.create()
+        self.sizer_tab.Add(box, 0, wx.EXPAND)
+        self.sizer_tab.AddSpacer(spacer_size)
+        self.input_text_boxes[name] = text_with_button
 
     def add_button_run(self):
         button_run = wx.Button(self, -1, label="Run")
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
         self.sizer_tab.Add(button_run, 0, wx.CENTRE)
+
+    def button_run_on_click(self, event, st_function):
+        try:
+            command, msg = self.get_run_args(st_function)
+            self.log_to_terminal(msg, level="INFO")
+            subprocess.run(command)
+        except Exception as err:
+            self.log_to_terminal(err, level="ERROR")
+
+    def get_run_args(self, st_function):
+        msg = f"Running "
+        command = [st_function]
+        for name, input_text_box in self.input_text_boxes.items():
+            arg = input_text_box.textctrl.GetValue()
+            if arg == "" or arg is None:
+                raise RunArgumentErrorST(f"""
+                    Argument {name} is missing a value, please enter a valid input
+                    """)
+            else:
+                command.append(f"-{name}")
+                command.append(arg)
+                msg = msg + f"-{name} {arg}"
+        return command, msg
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
 
 
 class ShimTab(Tab):
@@ -373,48 +408,47 @@ class ShimTab(Tab):
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
+        self.input_text_boxes = {}
         self.add_input_text_boxes()
         self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
-    def add_input_text_boxes(self, metadata=None):
-        metadata = [
+
+class RealTimeZShimTab(ShimTab):
+    def __init__(self, parent, title="Shim"):
+        self.input_text_box_metadata = [
             {
                 "button_label": "Input Fieldmap",
-                "button_function": self.button_do_something
+                "name": "fmap"
             },
             {
                 "button_label": "Input Anat",
-                "button_function": self.button_do_something
+                "name": "anat"
             },
             {
                 "button_label": "Input Static Mask",
-                "button_function": self.button_do_something
+                "name": "mask"
             },
             {
                 "button_label": "Input RIRO Mask",
-                "button_function": self.button_do_something
+                "name": "mask"
             },
             {
                 "button_label": "Input Respiratory Trace",
-                "button_function": self.button_do_something
+                "name": "resp"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
             }
         ]
-        super().add_input_text_boxes(metadata)
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
+        super().__init__(parent, title)
 
     def button_run_on_click(self, event):
-        msg = "This is a test log message"
-        self.log_to_terminal(msg, level="TEST")
+        super().button_run_on_click(event=event, st_function="st_realtime_zshim")
 
 
 class FieldMapTab(Tab):
@@ -423,56 +457,48 @@ class FieldMapTab(Tab):
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
+        self.input_text_boxes = {}
+        # TODO: add CLI for echoes (dropdown?)
+        self.input_text_box_metadata = [
+            {
+                "button_label": "Number of Echoes"
+            },
+            {
+                "button_label": "Input Echo 1"
+            },
+            {
+                "button_label": "Input Echo 2"
+            },
+            {
+                "button_label": "Input Magnitude",
+                "name": "mag"
+            },
+            {
+                "button_label": "Unwrapper",
+                "name": "unwrapper"
+            },
+            {
+                "button_label": "Threshold",
+                "name": "threshold"
+            },
+            {
+                "button_label": "Input Mask",
+                "name": "mask"
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
+            }
+        ]
         self.add_input_text_boxes()
         self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
-    def add_input_text_boxes(self, metadata=None):
-        metadata = [
-            {
-                "button_label": "Number of Echoes",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Input Echo 1",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Input Echo 2",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Input Magnitude",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Unwrapper",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Threshold",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Input Mask",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Output Folder",
-                "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__
-            }
-        ]
-        super().add_input_text_boxes(metadata)
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
-
     def button_run_on_click(self, event):
-        msg = "This is a test log message"
-        self.log_to_terminal(msg, level="TEST")
+        super().button_run_on_click(event=event, st_function="st_prepare_fieldmap")
 
 
 class MaskTab(Tab):
@@ -481,37 +507,32 @@ class MaskTab(Tab):
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
+        self.input_text_boxes = {}
+        self.input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "name": "input"
+            },
+            {
+                "button_label": "Threshold",
+                "default_text": "30",
+                "name": "thr"
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
+            }
+        ]
         self.add_input_text_boxes()
         self.add_button_run()
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
-    def add_input_text_boxes(self, metadata=None):
-        metadata = [
-            {
-                "button_label": "Input",
-                "button_function": self.button_do_something
-            },
-            {
-                "button_label": "Threshold",
-                "button_function": self.button_do_something,
-                "default_text": "30"
-            },
-            {
-                "button_label": "Output Folder",
-                "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__
-            }
-        ]
-        super().add_input_text_boxes(metadata)
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
-
     def button_run_on_click(self, event):
-        msg = "This is a test log message"
-        self.log_to_terminal(msg, level="TEST")
+        super().button_run_on_click(event=event, st_function="st_mask")
+
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
@@ -519,43 +540,45 @@ class DicomToNiftiTab(Tab):
         super().__init__(parent, title, description)
         sizer_tab = self.create_sizer_tab()
         self.sizer_tab = sizer_tab
-        self.add_input_text_boxes()
-        self.add_button_run()
-        sizer = self.create_sizer()
-        self.SetSizer(sizer)
-
-    def add_input_text_boxes(self, metadata=None):
-        metadata = [
+        self.input_text_boxes = {}
+        self.input_text_box_metadata = [
             {
                 "button_label": "Input Folder",
-                "button_function": "select_folder"
+                "button_function": "select_folder",
+                "name": "input"
             },
             {
                 "button_label": "Subject Name",
-                "button_function": self.button_do_something
+                "name": "subject"
             },
             {
                 "button_label": "Config Path",
                 "button_function": "select_file",
                 "default_text": os.path.join(__dir_shimmingtoolbox__,
                                              "config",
-                                             "dcm2bids.json")
+                                             "dcm2bids.json"),
+                "name": "subject"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
             }
         ]
-        super().add_input_text_boxes(metadata)
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
+        self.add_input_text_boxes()
+        self.add_button_run()
+        sizer = self.create_sizer()
+        self.SetSizer(sizer)
 
     def button_run_on_click(self, event):
-        msg = "This is a test log message"
-        self.log_to_terminal(msg, level="TEST")
+        super().button_run_on_click(event=event, st_function="st_dicom_to_nifti")
+
+
+class RunArgumentErrorST(Exception):
+    """Exception for missing input arguments for CLI call."""
+    pass
+
 
 class TextWithButton:
     def __init__(self, panel, button_label, button_function, default_text=""):
@@ -563,38 +586,42 @@ class TextWithButton:
         self.button_label = button_label
         self.button_function = button_function
         self.default_text = default_text
+        self.textctrl = None
 
     def create(self):
         textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text)
+        self.textctrl = textctrl
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
         if self.button_function == "select_folder":
-            self.button_function = lambda event, ctrl=textctrl: self.select_folder(event, ctrl)
+            self.button_function = lambda event, ctrl=textctrl: select_folder(event, ctrl)
         elif self.button_function == "select_file":
-            self.button_function = lambda event, ctrl=textctrl: self.select_file(event, ctrl)
+            self.button_function = lambda event, ctrl=textctrl: select_file(event, ctrl)
         button.Bind(wx.EVT_BUTTON, self.button_function)
         text_with_button_box.Add(button, 0, wx.ALIGN_LEFT| wx.RIGHT, 10)
         text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT|wx.LEFT, 10)
         return text_with_button_box
 
-    def select_folder(self, event, ctrl):
-        """Select a file folder from system path."""
-        dlg = wx.DirDialog(None, "Choose Directory", __dir_shimmingtoolbox__,
-                           wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
-        if dlg.ShowModal() == wx.ID_OK:
-            folder = dlg.GetPath()
-            ctrl.SetValue(folder)
-            logger.info(f"Folder set to: {folder}")
+def select_folder(event, ctrl):
+    """Select a file folder from system path."""
+    dlg = wx.DirDialog(None, "Choose Directory", __dir_shimmingtoolbox__,
+                       wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
-    def select_file(self, event, ctrl):
-        """Select a file from system path."""
-        dlg = wx.FileDialog(parent=None,
-                            message="Select File",
-                            defaultDir=__dir_shimmingtoolbox__,
-                            style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+    if dlg.ShowModal() == wx.ID_OK:
+        folder = dlg.GetPath()
+        ctrl.SetValue(folder)
+        logger.info(f"Folder set to: {folder}")
 
-        if dlg.ShowModal() == wx.ID_OK:
-            path = dlg.GetPath()
-            ctrl.SetValue(folder)
-            logger.info(f"File set to: {path}")
+
+def select_file(event, ctrl):
+    """Select a file from system path."""
+    dlg = wx.FileDialog(parent=None,
+                        message="Select File",
+                        defaultDir=__dir_shimmingtoolbox__,
+                        style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+
+    if dlg.ShowModal() == wx.ID_OK:
+        path = dlg.GetPath()
+        ctrl.SetValue(folder)
+        logger.info(f"File set to: {path}")
