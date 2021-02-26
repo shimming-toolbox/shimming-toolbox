@@ -16,7 +16,7 @@ st_dicom_to_nifti -input "." -output "../rt_zshim_nifti" -subject "sub-example" 
 cd ../rt_zshim_nifti/sub-example/fmap || exit
 
 # Create fieldmap
-st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.nii.gz" -unwrapper "prelude" -output "sub-example_fieldmap.nii.gz" || exit
+st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.nii.gz" -unwrapper "prelude" -output "sub-example_fieldmap.nii.gz" -gaussian-filter True -sigma 1 || exit
 
 # Mask anatomical image
 st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "sub-example_anat_mask.nii.gz" || exit
