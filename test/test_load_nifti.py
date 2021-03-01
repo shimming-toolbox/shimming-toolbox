@@ -22,63 +22,13 @@ class TestCore(object):
                       [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
                       [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
     _data_volume = np.array([[[[1, 1], [2, 2], [3, 3]], [[4, 4], [5, 5], [6, 6]], [[7, 7], [8, 8], [9, 9]]],
-                            [[[10, 10], [11, 11], [12, 12]], [[13, 13], [14, 14], [15, 15]], [[16, 16], [17, 17], [18, 18]]],
-                            [[[19, 19], [20, 20], [21, 21]], [[22, 22], [23, 23], [24, 24]], [[25, 25], [26, 26], [27, 27]]]])
+                             [[[10, 10], [11, 11], [12, 12]], [[13, 13], [14, 14], [15, 15]],
+                              [[16, 16], [17, 17], [18, 18]]],
+                             [[[19, 19], [20, 20], [21, 21]], [[22, 22], [23, 23], [24, 24]],
+                              [[25, 25], [26, 26], [27, 27]]]])
     _aff = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]])
     _json_phase = {"Modality": "MR",
-                     "ImageComments": "phase",
-                     "MagneticFieldStrength": 3,
-                     "ImagingFrequency": 123.259,
-                     "Manufacturer": "Siemens",
-                     "ManufacturersModelName": "Prisma_fit",
-                     "InstitutionName": "IUGM",
-                     "InstitutionAddress": "",
-                     "DeviceSerialNumber": "167006",
-                     "StationName": "MRC35049",
-                     "BodyPartExamined": "BRAIN",
-                     "PatientPosition": "HFS",
-                     "ProcedureStepDescription": "dev_acdc",
-                     "SoftwareVersions": "syngo_MR_E11",
-                     "MRAcquisitionType": "2D",
-                     "SeriesDescription": "a_gre_DYNshim",
-                     "ProtocolName": "a_gre_DYNshim",
-                     "ScanningSequence": "GR",
-                     "SequenceVariant": "SP",
-                     "SequenceName": "fl2d6",
-                     "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"],
-                     "SeriesNumber": 6,
-                     "AcquisitionTime": "16:21:2.480000",
-                     "AcquisitionNumber": 1,
-                     "SliceThickness": 3,
-                     "SpacingBetweenSlices": 3,
-                     "SAR": 0.00453667,
-                     "EchoNumber": 1,
-                     "EchoTime": 0.0025,
-                     "RepetitionTime": 0.5,
-                     "FlipAngle": 25,
-                     "PartialFourier": 1,
-                     "BaseResolution": 128,
-                     "ShimSetting": [620, -7194, -9127, 77, 28, -20, -10, -23],
-                     "TxRefAmp": 222.944,
-                     "PhaseResolution": 1,
-                     "ReceiveCoilName": "HeadNeck_64",
-                     "ReceiveCoilActiveElements": "HC7;NC1,2",
-                     "PulseSequenceDetails": "%CustomerSeq%_a_gre_DYNshim",
-                     "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
-                     "PercentPhaseFOV": 59.375,
-                     "EchoTrainLength": 6,
-                     "PhaseEncodingSteps": 76,
-                     "AcquisitionMatrixPE": 76,
-                     "ReconMatrixPE": 76,
-                     "PixelBandwidth": 600,
-                     "PhaseEncodingDirection": "j-",
-                     "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
-                     "InPlanePhaseEncodingDirectionDICOM": "COL",
-                     "ConversionSoftware": "dcm2niix",
-                     "ConversionSoftwareVersion": "v1.0.20181125  (JP2:OpenJPEG) GCC9.3.0",
-                     "Dcm2bidsVersion": "2.1.4"}
-    _json_mag = {"Modality": "MR",
-                   "ImageComments": "magnitude",
+                   "ImageComments": "phase",
                    "MagneticFieldStrength": 3,
                    "ImagingFrequency": 123.259,
                    "Manufacturer": "Siemens",
@@ -129,6 +79,115 @@ class TestCore(object):
                    "ConversionSoftware": "dcm2niix",
                    "ConversionSoftwareVersion": "v1.0.20181125  (JP2:OpenJPEG) GCC9.3.0",
                    "Dcm2bidsVersion": "2.1.4"}
+    _json_mag = {"Modality": "MR",
+                 "ImageComments": "magnitude",
+                 "MagneticFieldStrength": 3,
+                 "ImagingFrequency": 123.259,
+                 "Manufacturer": "Siemens",
+                 "ManufacturersModelName": "Prisma_fit",
+                 "InstitutionName": "IUGM",
+                 "InstitutionAddress": "",
+                 "DeviceSerialNumber": "167006",
+                 "StationName": "MRC35049",
+                 "BodyPartExamined": "BRAIN",
+                 "PatientPosition": "HFS",
+                 "ProcedureStepDescription": "dev_acdc",
+                 "SoftwareVersions": "syngo_MR_E11",
+                 "MRAcquisitionType": "2D",
+                 "SeriesDescription": "a_gre_DYNshim",
+                 "ProtocolName": "a_gre_DYNshim",
+                 "ScanningSequence": "GR",
+                 "SequenceVariant": "SP",
+                 "SequenceName": "fl2d6",
+                 "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"],
+                 "SeriesNumber": 6,
+                 "AcquisitionTime": "16:21:2.480000",
+                 "AcquisitionNumber": 1,
+                 "SliceThickness": 3,
+                 "SpacingBetweenSlices": 3,
+                 "SAR": 0.00453667,
+                 "EchoNumber": 1,
+                 "EchoTime": 0.0025,
+                 "RepetitionTime": 0.5,
+                 "FlipAngle": 25,
+                 "PartialFourier": 1,
+                 "BaseResolution": 128,
+                 "ShimSetting": [620, -7194, -9127, 77, 28, -20, -10, -23],
+                 "TxRefAmp": 222.944,
+                 "PhaseResolution": 1,
+                 "ReceiveCoilName": "HeadNeck_64",
+                 "ReceiveCoilActiveElements": "HC7;NC1,2",
+                 "PulseSequenceDetails": "%CustomerSeq%_a_gre_DYNshim",
+                 "ConsistencyInfo": "N4_VE11C_LATEST_20160120",
+                 "PercentPhaseFOV": 59.375,
+                 "EchoTrainLength": 6,
+                 "PhaseEncodingSteps": 76,
+                 "AcquisitionMatrixPE": 76,
+                 "ReconMatrixPE": 76,
+                 "PixelBandwidth": 600,
+                 "PhaseEncodingDirection": "j-",
+                 "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+                 "InPlanePhaseEncodingDirectionDICOM": "COL",
+                 "ConversionSoftware": "dcm2niix",
+                 "ConversionSoftwareVersion": "v1.0.20181125  (JP2:OpenJPEG) GCC9.3.0",
+                 "Dcm2bidsVersion": "2.1.4"}
+
+    _json_b1 = {"Modality": "MR",
+                "MagneticFieldStrength": 7,
+                "ImagingFrequency": 297.197,
+                "Manufacturer": "Siemens",
+                "ManufacturersModelName": "Investigational_Device_7T",
+                "InstitutionName": "Hospital",
+                "InstitutionalDepartmentName": "Department",
+                "InstitutionAddress": "Street StreetNo,City,District,CA,ZIP",
+                "DeviceSerialNumber": "79017",
+                "StationName": "AWP79017",
+                "BodyPartExamined": "BRAIN",
+                "PatientPosition": "HFS",
+                "ProcedureStepDescription": "Development^Dr. Cohen-Adad",
+                "SoftwareVersions": "syngo MR E12",
+                "MRAcquisitionType": "2D",
+                "SeriesDescription": "tfl_rfmap_B1shim_flip20_5mm",
+                "ProtocolName": "tfl_rfmap_B1shim_flip20_5mm",
+                "ScanningSequence": "GR",
+                "SequenceVariant": "SK\\SP",
+                "SequenceName": "tfl2d1_16",
+                "SeriesNumber": 67,
+                "AcquisitionTime": "14:21:12.127500",
+                "AcquisitionNumber": 1,
+                "ImageComments": "flip angle map, TraRefAmpl: 225.0 V",
+                "SliceThickness": 5,
+                "SpacingBetweenSlices": 6,
+                "SAR": 0.0250297,
+                "EchoTime": 0.00148,
+                "RepetitionTime": 4,
+                "FlipAngle": 20,
+                "PartialFourier": 1,
+                "Interpolation2D": 1,
+                "BaseResolution": 32,
+                "ShimSetting": [133, 30, 22, -80, 27, -130, -112, -234],
+                "TxRefAmp": 225,
+                "PhaseResolution": 1,
+                "ReceiveCoilName": "NP11_ACDC_SPINE",
+                "ReceiveCoilActiveElements": "1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H",
+                "PulseSequenceDetails": "%SiemensSeq%\\tfl_rfmap",
+                "ConsistencyInfo": "N4_VE12U_LATEST_20181126",
+                "MultibandAccelerationFactor": 8,
+                "PercentPhaseFOV": 100,
+                "PercentSampling": 100,
+                "PhaseEncodingSteps": 32,
+                "AcquisitionMatrixPE": 32,
+                "ReconMatrixPE": 64,
+                "PixelBandwidth": 450,
+                "DwellTime": 3.48e-05,
+                "PhaseEncodingDirection": "j-",
+                "SliceTiming": [0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0, 0, 0, 0, 0,0,
+                                0, 0],
+                "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+                "InPlanePhaseEncodingDirectionDICOM": "COL",
+                "ConversionSoftware": "dcm2niix",
+                "ConversionSoftwareVersion": "v1.0.20201102",
+                "Dcm2bidsVersion": "2.1.4"}
 
     def setup_method(self):
         """
@@ -174,7 +233,6 @@ class TestCore(object):
         with open(os.path.join(self.data_path_volume, 'dummy_volume.json'), 'w') as json_file:
             self._json_phase['EchoNumber'] = 1
             json.dump(self._json_phase, json_file)
-
 
     def teardown_method(self):
         """
@@ -222,7 +280,8 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
+                                                                       sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_files(self):
@@ -239,7 +298,8 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.data_path)
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
+                                                                       sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_json_missing_fail(self):
@@ -307,7 +367,8 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.data_path_volume)
         assert (len(info) == 1), "Wrong number of info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
+                                                                       sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 2)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_multiple_run(self, monkeypatch):
@@ -332,7 +393,8 @@ class TestCore(object):
         self._json_phase['AcquisitionNumber'] = 1
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
+                                                                       sort_keys=True)), "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
         monkeypatch.setattr('sys.stdin', StringIO('2\n'))
@@ -387,11 +449,18 @@ class TestCore(object):
         fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
         nii, json_info, b1 = read_nii(fname_b1)
 
-        assert b1.shape == (64, 64, 16, 8)
-        assert np.abs(b1).max() <= 180 and np.abs(b1).min() >= 0
-        assert np.angle(b1).max() <= np.pi and np.angle(b1).min() >= -np.pi
+        assert b1.shape == (64, 64, 16, 8), "Wrong rf-map shape"
+        assert np.abs(b1).max() <= 180 and np.abs(b1).min() >= 0, "Magnitude values out of range"
+        assert np.angle(b1).max() <= np.pi and np.angle(b1).min() >= -np.pi, "Phase values out of range"
 
         # Check masking consistency for all coils at each slice
         for i in range(b1.shape[2]):
-            for j in range(b1.shape[3]-1):
-                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j+1] != 0)).any()
+            for j in range(b1.shape[3] - 1):
+                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
+
+        assert [b1[35, 35, 0, 0], b1[35, 35, 6, 7], b1[40, 25, 15, 7]] == [(-4.274539911369111 + 4.599952786001116j),
+                                                                           (-5.8027003257021725 + 2.2042390773527423j),
+                                                                           (-2.1929304691258276 + 1.5241263801971388j)]
+
+        assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1, sort_keys=True)), \
+            "JSON file is not correctly loaded for first RF JSON"
