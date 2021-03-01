@@ -161,7 +161,7 @@ def read_nii(fname_nifti, auto_scale=True):
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
         json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
         image (ndarray): For B0-maps, image contained in the nifti. Siemens phase images are rescaled between 0 and 2pi.
-                         For RF-maps, complex array of dimension (x, y, slice, coil) with phase between -pi and pi.
+        For RF-maps, complex array of dimension (x, y, slice, coil) with phase between -pi and pi.
     """
 
     info = nib.load(fname_nifti)
