@@ -177,7 +177,7 @@ def read_nii(fname_nifti, auto_scale=True):
     image = np.asarray(info.dataobj)
 
     if auto_scale:
-
+        logging.info("Scaling the selected nifti")
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
 
@@ -242,5 +242,9 @@ def read_nii(fname_nifti, auto_scale=True):
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2)) + math.pi
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
+        else:
+            logging.info("Unknown nifti type: No scaling applied")
+    else:
+        logging.info("No scaling applied to selected nifti")
 
     return info, json_data, image
