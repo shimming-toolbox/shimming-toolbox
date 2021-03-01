@@ -197,7 +197,7 @@ def read_nii(fname_nifti, auto_scale=True):
 
             if image.shape[2] != n_slices:
                 raise ValueError("Wrong array dimension: number of slices not matching")
-            if image.shape[3] != n_coils:
+            if image.shape[3] != 2*n_coils:
                 raise ValueError("Wrong array dimension: number of coils not matching")
             # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
             # Get the Transmission amplifier reference amplitude
