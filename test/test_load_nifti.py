@@ -458,9 +458,12 @@ class TestCore(object):
             for j in range(b1.shape[3] - 1):
                 assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
 
-        assert [b1[35, 35, 0, 0], b1[35, 35, 6, 7], b1[40, 25, 15, 7]] == [(-4.274539911369111 + 4.599952786001116j),
-                                                                           (-5.8027003257021725 + 2.2042390773527423j),
-                                                                           (-2.1929304691258276 + 1.5241263801971388j)]
+        test_values = [format(-4.274539911369111 + 4.599952786001116j, '.5f'),
+                       format(-5.8027003257021725 + 2.2042390773527423j, '.5f'),
+                       format(-2.1929304691258276 + 1.5241263801971388j, '.5f')]
+
+        assert [format(b1[35, 35, 0, 0], '.5f'), format(b1[35, 35, 6, 7], '.5f'), format(b1[40, 25, 15, 7], '.5f')] == \
+               test_values
 
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
