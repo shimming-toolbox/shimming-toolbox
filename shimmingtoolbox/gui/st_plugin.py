@@ -60,13 +60,13 @@ class STControlPanel(ctrlpanel.ControlPanel):
         ctrlpanel.ControlPanel.__init__(self, ortho, *args, **kwargs)
 
         my_panel = TabPanel(self)
-        sizer_tabs = wx.BoxSizer(wx.VERTICAL)
-        sizer_tabs.SetMinSize(400, 300)
-        sizer_tabs.Add(my_panel, 0, wx.EXPAND)
+        sizer_inputs = wx.BoxSizer(wx.VERTICAL)
+        sizer_inputs.SetMinSize(400, 300)
+        sizer_inputs.Add(my_panel, 0, wx.EXPAND)
 
         # Set the sizer of the control panel
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(sizer_tabs, wx.EXPAND)
+        sizer.Add(sizer_inputs, wx.EXPAND)
         self.SetSizer(sizer)
 
         # Initialize the variables that are used to track the active image
@@ -244,23 +244,7 @@ class Tab(wx.Panel):
         wx.Panel.__init__(self, parent)
         self.title = title
         self.description = description
-        self.terminal = None
         self.sizer_info = self.create_sizer_info()
-        self.sizer_terminal = self.create_sizer_terminal()
-        self.input_text_boxes = {}
-
-    @property
-    def terminal(self):
-        return self._terminal
-
-    @terminal.setter
-    def terminal(self, terminal):
-        if terminal is None:
-            terminal = wx.TextCtrl(self, wx.ID_ANY, size=(500, 300),
-                                   style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
-            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
-            terminal.SetBackgroundColour(wx.BLACK)
-        self._terminal = terminal
 
     def get_logo(self, scale=0.2):
         """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
@@ -286,12 +270,6 @@ class Tab(wx.Panel):
         url = "https://shimming-toolbox.org/en/latest/"
         webbrowser.open(url)
 
-    def log_to_terminal(self, msg, level=None):
-        if level is None:
-            self.terminal.AppendText(f"{msg}\n")
-        else:
-            self.terminal.AppendText(f"{level}: {msg}\n")
-
     def create_sizer_info(self):
         """Create the left sizer containing generic Shimming Toolbox information."""
         sizer_info = wx.BoxSizer(wx.VERTICAL)
@@ -308,36 +286,71 @@ class Tab(wx.Panel):
         sizer_info.Add(description_text)
         return sizer_info
 
-    def create_sizer_tab(self):
-        """Create the centre sizer containing tab-specific functionality."""
-        sizer_tab = wx.BoxSizer(wx.VERTICAL)
-        sizer_tab.SetMinSize(400, 300)
-        sizer_tab.AddSpacer(10)
-        return sizer_tab
-
-    def create_sizer_terminal(self):
-        """Create the right sizer containing the terminal interface."""
-        sizer_terminal = wx.BoxSizer(wx.VERTICAL)
-        sizer_terminal.AddSpacer(10)
-        sizer_terminal.Add(self.terminal)
-        return sizer_terminal
-
     def create_sizer(self):
         """Create the parent sizer for the tab.
 
         Tab is divided into 3 main sizers:
-            sizer_info | sizer_tab | sizer_terminal
+            sizer_info | sizer_input | sizer_terminal
         """
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.sizer_info)
         sizer.AddSpacer(30)
-        sizer.Add(self.sizer_tab, wx.EXPAND)
+        sizer.Add(self.sizer_input, wx.EXPAND)
         sizer.AddSpacer(30)
         sizer.Add(self.sizer_terminal, wx.EXPAND)
         return sizer
 
+class TerminalComponent:
+    def __init__(self, panel):
+        self.panel = panel
+        self.terminal = None
+        self.sizer = self.create_sizer()
+
+    @property
+    def terminal(self):
+        return self._terminal
+
+    @terminal.setter
+    def terminal(self, terminal):
+        if terminal is None:
+            terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
+                                   style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
+            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+            terminal.SetBackgroundColour(wx.BLACK)
+        self._terminal = terminal
+
+    def create_sizer(self):
+        """Create the right sizer containing the terminal interface."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.AddSpacer(10)
+        sizer.Add(self.terminal)
+        return sizer
+
+    def log_to_terminal(self, msg, level=None):
+        if level is None:
+            self.terminal.AppendText(f"{msg}\n")
+        else:
+            self.terminal.AppendText(f"{level}: {msg}\n")
+
+class InputComponent:
+    def __init__(self, panel, input_text_box_metadata, st_function):
+        self.st_function = st_function
+        self.sizer = self.create_sizer()
+        self.panel = panel
+        self.input_text_boxes = {}
+        self.input_text_box_metadata = input_text_box_metadata
+        self.add_input_text_boxes()
+        self.add_button_run()
+
+    def create_sizer(self):
+        """Create the centre sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.SetMinSize(400, 300)
+        sizer.AddSpacer(10)
+        return sizer
+
     def add_input_text_boxes(self, spacer_size=20):
-        """Add a list of input text boxes (TextWithButton) to the sizer_tab.
+        """Add a list of input text boxes (TextWithButton) to the sizer_input.
 
         Args:
             metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
@@ -356,7 +369,7 @@ class Tab(wx.Panel):
         """
         for twb_dict in self.input_text_box_metadata:
             text_with_button = TextWithButton(
-                panel=self,
+                panel=self.panel,
                 button_label=twb_dict["button_label"],
                 button_function=twb_dict.pop("button_function", self.button_do_something),
                 default_text=twb_dict.pop("default_text", "")
@@ -365,22 +378,22 @@ class Tab(wx.Panel):
 
     def add_input_text_box(self, text_with_button, name, spacer_size=20):
         box = text_with_button.create()
-        self.sizer_tab.Add(box, 0, wx.EXPAND)
-        self.sizer_tab.AddSpacer(spacer_size)
+        self.sizer.Add(box, 0, wx.EXPAND)
+        self.sizer.AddSpacer(spacer_size)
         self.input_text_boxes[name] = text_with_button
 
     def add_button_run(self):
-        button_run = wx.Button(self, -1, label="Run")
+        button_run = wx.Button(self.panel, -1, label="Run")
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
-        self.sizer_tab.Add(button_run, 0, wx.CENTRE)
+        self.sizer.Add(button_run, 0, wx.CENTRE)
 
-    def button_run_on_click(self, event, st_function):
+    def button_run_on_click(self, event):
         try:
-            command, msg = self.get_run_args(st_function)
-            self.log_to_terminal(msg, level="INFO")
+            command, msg = self.get_run_args(self.st_function)
+            self.panel.terminal_component.log_to_terminal(msg, level="INFO")
             subprocess.run(command)
         except Exception as err:
-            self.log_to_terminal(err, level="ERROR")
+            self.panel.terminal_component.log_to_terminal(err, level="ERROR")
 
     def get_run_args(self, st_function):
         msg = f"Running "
@@ -408,21 +421,22 @@ class ShimTab(Tab):
         description = "Shimming Tab description: TODO"
         super().__init__(parent, title, description)
 
-        self.sizer_tab = self.create_sizer_tab()
+        self.sizer_input = self.create_sizer_input()
 
         self.create_choice_box()
 
-        # Create zshim sizer
-        self.input_text_box_metadata = []
-        self.input_text_boxes = {}
+        self.terminal_component = TerminalComponent(self)
+        self.sizer_terminal = self.terminal_component.sizer
+
         sizer_zshim = self.create_sizer_zshim()
-        self.sizer_tab.Add(sizer_zshim, 0, wx.EXPAND)
-        self.pos_zshim = self.sizer_tab.GetItemCount() - 1
+        self.sizer_input.Add(sizer_zshim, 0, wx.EXPAND)
+
+        self.pos_zshim = self.sizer_input.GetItemCount() - 1
 
         # Create second choice sizer
         sizer_default_text = self.create_sizer_other_algo()
-        self.sizer_tab.Add(sizer_default_text, 0, wx.EXPAND)
-        self.pos_nothing = self.sizer_tab.GetItemCount() - 1
+        self.sizer_input.Add(sizer_default_text, 0, wx.EXPAND)
+        self.pos_nothing = self.sizer_input.GetItemCount() - 1
 
         self.parent_sizer = self.create_sizer()
         self.SetSizer(self.parent_sizer)
@@ -437,10 +451,10 @@ class ShimTab(Tab):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection == "RT_ZShim":
-            sizer_item_zshim = self.sizer_tab.GetItem(self.pos_zshim)
+            sizer_item_zshim = self.sizer_input.GetItem(self.pos_zshim)
             sizer_item_zshim.Show(True)
         elif selection == "Nothing":
-            sizer_item_nothing = self.sizer_tab.GetItem(self.pos_nothing)
+            sizer_item_nothing = self.sizer_input.GetItem(self.pos_nothing)
             sizer_item_nothing.Show(True)
         else:
             pass
@@ -450,16 +464,16 @@ class ShimTab(Tab):
 
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
-        sizer = self.sizer_tab.GetItem(self.pos_zshim)
+        sizer = self.sizer_input.GetItem(self.pos_zshim)
         sizer.Show(False)
-        sizer = self.sizer_tab.GetItem(self.pos_nothing)
+        sizer = self.sizer_input.GetItem(self.pos_nothing)
         sizer.Show(False)
 
     def create_choice_box(self):
         self.choice_box = wx.Choice(self, choices=["RT_ZShim", "Nothing"])
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
-        self.sizer_tab.Add(self.choice_box)
-        self.sizer_tab.AddSpacer(10)
+        self.sizer_input.Add(self.choice_box)
+        self.sizer_input.AddSpacer(10)
 
     def create_sizer_other_algo(self):
         sizer_shim_default = wx.BoxSizer(wx.VERTICAL)
@@ -467,8 +481,15 @@ class ShimTab(Tab):
         sizer_shim_default.Add(description_text)
         return sizer_shim_default
 
+    def create_sizer_input(self):
+        """Create the centre sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.SetMinSize(400, 300)
+        sizer.AddSpacer(10)
+        return sizer
+
     def create_sizer_zshim(self, metadata=None):
-        self.input_text_box_metadata = [
+        input_text_box_metadata = [
             {
                 "button_label": "Input Fieldmap",
                 "name": "fmap"
@@ -496,67 +517,15 @@ class ShimTab(Tab):
                 "name": "output"
             }
         ]
-        # Add input buttons
-        sizer_zshim = wx.BoxSizer(wx.VERTICAL)
-        self.add_input_text_boxes(sizer_zshim)
-
-        # Add run button
-        button_run = wx.Button(self, -1, label="Run")
-        button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
-        sizer_zshim.Add(button_run, 0, wx.CENTRE)
-
+        sizer_zshim = InputComponent(self, input_text_box_metadata, "st_realtime_zshim").sizer
         return sizer_zshim
-
-    def add_input_text_boxes(self, sizer, spacer_size=20):
-        """Add a list of input text boxes (TextWithButton) to the sizer_tab.
-
-        Args:
-            metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
-                ``button_label`` and ``button_function``.
-                .. code::
-
-                    {
-                        "button_label": The label to go on the button.
-                        "button_function": the class function (self.myfunc) which will get
-                            called when the button is pressed. If no action is desired, create
-                            a function that is just ``pass``.
-                        "default_text": (optional) The default text to be displayed.
-                    }
-            spacer_size (int): The size of the space to be placed between each input text box.
-
-        """
-        for twb_dict in self.input_text_box_metadata:
-            text_with_button = TextWithButton(
-                panel=self,
-                button_label=twb_dict["button_label"],
-                button_function=twb_dict.pop("button_function", self.button_do_something),
-                default_text=twb_dict.pop("default_text", "")
-            )
-            self.add_input_text_box(sizer, text_with_button, twb_dict.pop("name", "default"))
-
-    def add_input_text_box(self, sizer, text_with_button, name, spacer_size=20):
-        box = text_with_button.create()
-        sizer.Add(box, 0, wx.EXPAND)
-        sizer.AddSpacer(spacer_size)
-        self.input_text_boxes[name] = text_with_button
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
-
-    def button_run_on_click(self, event):
-        super().button_run_on_click(event=event, st_function="st_realtime_zshim")
 
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
-        sizer_tab = self.create_sizer_tab()
-        self.sizer_tab = sizer_tab
-        self.input_text_boxes = {}
-        # TODO: add CLI for echoes (dropdown?)
-        self.input_text_box_metadata = [
+        input_text_box_metadata = [
             {
                 "button_label": "Number of Echoes"
             },
@@ -589,23 +558,19 @@ class FieldMapTab(Tab):
                 "name": "output"
             }
         ]
-        self.add_input_text_boxes()
-        self.add_button_run()
+        self.terminal_component = TerminalComponent(self)
+        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_prepare_fieldmap").sizer
+        self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
-
-    def button_run_on_click(self, event):
-        super().button_run_on_click(event=event, st_function="st_prepare_fieldmap")
+        # TODO: add CLI for echoes (dropdown?)
 
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
         description = "Mask Tab description: TODO"
         super().__init__(parent, title, description)
-        sizer_tab = self.create_sizer_tab()
-        self.sizer_tab = sizer_tab
-        self.input_text_boxes = {}
-        self.input_text_box_metadata = [
+        input_text_box_metadata = [
             {
                 "button_label": "Input",
                 "name": "input"
@@ -622,23 +587,18 @@ class MaskTab(Tab):
                 "name": "output"
             }
         ]
-        self.add_input_text_boxes()
-        self.add_button_run()
+        self.terminal_component = TerminalComponent(self)
+        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
-
-    def button_run_on_click(self, event):
-        super().button_run_on_click(event=event, st_function="st_mask")
 
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
         description = "Dicom to Nifti Tab description: TODO"
         super().__init__(parent, title, description)
-        sizer_tab = self.create_sizer_tab()
-        self.sizer_tab = sizer_tab
-        self.input_text_boxes = {}
-        self.input_text_box_metadata = [
+        input_text_box_metadata = [
             {
                 "button_label": "Input Folder",
                 "button_function": "select_folder",
@@ -663,13 +623,11 @@ class DicomToNiftiTab(Tab):
                 "name": "output"
             }
         ]
-        self.add_input_text_boxes()
-        self.add_button_run()
+        self.terminal_component = TerminalComponent(self)
+        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_dicom_to_nifti").sizer
+        self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
-
-    def button_run_on_click(self, event):
-        super().button_run_on_click(event=event, st_function="st_dicom_to_nifti")
 
 
 class RunArgumentErrorST(Exception):
