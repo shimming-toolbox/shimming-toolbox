@@ -408,31 +408,21 @@ class ShimTab(Tab):
         description = "Shimming Tab description: TODO"
         super().__init__(parent, title, description)
 
-        # Initialize the sizer tab
-        sizer_tab = self.create_sizer_tab()
+        self.sizer_tab = self.create_sizer_tab()
 
-        # Create the choice box
-        self.choice_box = wx.Choice(self, choices=["RT_ZShim", "Nothing"])
-        self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
-        sizer_tab.Add(self.choice_box)
-
-        # Add spacer
-        sizer_tab.AddSpacer(10)
+        self.create_choice_box()
 
         # Create zshim sizer
         self.input_text_box_metadata = []
         self.input_text_boxes = {}
         sizer_zshim = self.create_sizer_zshim()
-        sizer_tab.Add(sizer_zshim, 0, wx.EXPAND)
-        self.pos_zshim = sizer_tab.GetItemCount() - 1
+        self.sizer_tab.Add(sizer_zshim, 0, wx.EXPAND)
+        self.pos_zshim = self.sizer_tab.GetItemCount() - 1
 
         # Create second choice sizer
         sizer_default_text = self.create_sizer_other_algo()
-        sizer_tab.Add(sizer_default_text, 0, wx.EXPAND)
-        self.pos_nothing = sizer_tab.GetItemCount() - 1
-
-        # Set sizer tab
-        self.sizer_tab = sizer_tab
+        self.sizer_tab.Add(sizer_default_text, 0, wx.EXPAND)
+        self.pos_nothing = self.sizer_tab.GetItemCount() - 1
 
         self.parent_sizer = self.create_sizer()
         self.SetSizer(self.parent_sizer)
@@ -464,6 +454,12 @@ class ShimTab(Tab):
         sizer.Show(False)
         sizer = self.sizer_tab.GetItem(self.pos_nothing)
         sizer.Show(False)
+
+    def create_choice_box(self):
+        self.choice_box = wx.Choice(self, choices=["RT_ZShim", "Nothing"])
+        self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
+        self.sizer_tab.Add(self.choice_box)
+        self.sizer_tab.AddSpacer(10)
 
     def create_sizer_other_algo(self):
         sizer_shim_default = wx.BoxSizer(wx.VERTICAL)
