@@ -22,7 +22,7 @@ st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.
 st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "sub-example_anat_mask.nii.gz" || exit
 
 # Shim
-st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../realtime_zshimming_data/PMUresp_signal.resp" -mask "sub-example_anat_mask.nii.gz" -output "." || exit
+st_realtime_zshim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../realtime_zshimming_data/PMUresp_signal.resp" -mask-static "sub-example_anat_mask.nii.gz" -mask-riro "sub-example_anat_mask.nii.gz" -output "." || exit
 # st_realtime_zshim will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap
