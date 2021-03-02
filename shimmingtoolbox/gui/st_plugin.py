@@ -300,6 +300,7 @@ class Tab(wx.Panel):
         sizer.Add(self.sizer_terminal, wx.EXPAND)
         return sizer
 
+
 class TerminalComponent:
     def __init__(self, panel):
         self.panel = panel
@@ -332,6 +333,7 @@ class TerminalComponent:
         else:
             self.terminal.AppendText(f"{level}: {msg}\n")
 
+
 class InputComponent:
     def __init__(self, panel, input_text_box_metadata, st_function):
         self.st_function = st_function
@@ -353,6 +355,7 @@ class InputComponent:
         """Add a list of input text boxes (TextWithButton) to the sizer_input.
 
         Args:
+            TODO: metadata argument does not exist, info is still relevant (uses self.input_text_box_metadata)
             metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
                 ``button_label`` and ``button_function``.
                 .. code::
@@ -678,5 +681,5 @@ def select_file(event, ctrl):
 
     if dlg.ShowModal() == wx.ID_OK:
         path = dlg.GetPath()
-        ctrl.SetValue(folder)
+        ctrl.SetValue(path)
         logger.info(f"File set to: {path}")
