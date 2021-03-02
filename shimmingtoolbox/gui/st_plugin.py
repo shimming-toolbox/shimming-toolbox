@@ -223,7 +223,7 @@ class TabPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent=parent)
         nb = wx.Notebook(self)
-        tab1 = RealTimeZShimTab(nb)
+        tab1 = ShimTab(nb)
         tab2 = FieldMapTab(nb)
         tab3 = MaskTab(nb)
         tab4 = DicomToNiftiTab(nb)
@@ -404,19 +404,74 @@ class Tab(wx.Panel):
 
 class ShimTab(Tab):
     def __init__(self, parent, title="Shim"):
+
         description = "Shimming Tab description: TODO"
         super().__init__(parent, title, description)
+
+        # Initialize the sizer tab
         sizer_tab = self.create_sizer_tab()
-        self.sizer_tab = sizer_tab
+
+        # Create the choice box
+        self.choice_box = wx.Choice(self, choices=["RT_ZShim", "Nothing"])
+        self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
+        sizer_tab.Add(self.choice_box)
+
+        # Add spacer
+        sizer_tab.AddSpacer(10)
+
+        # Create zshim sizer
+        self.input_text_box_metadata = []
         self.input_text_boxes = {}
-        self.add_input_text_boxes()
-        self.add_button_run()
-        sizer = self.create_sizer()
-        self.SetSizer(sizer)
+        sizer_zshim = self.create_sizer_zshim()
+        sizer_tab.Add(sizer_zshim, 0, wx.EXPAND)
+        self.pos_zshim = sizer_tab.GetItemCount() - 1
 
+        # Create second choice sizer
+        sizer_default_text = self.create_sizer_other_algo()
+        sizer_tab.Add(sizer_default_text, 0, wx.EXPAND)
+        self.pos_nothing = sizer_tab.GetItemCount() - 1
 
-class RealTimeZShimTab(ShimTab):
-    def __init__(self, parent, title="Shim"):
+        # Set sizer tab
+        self.sizer_tab = sizer_tab
+
+        self.parent_sizer = self.create_sizer()
+        self.SetSizer(self.parent_sizer)
+
+        # Run on choice to select the default choice from the choice box widget
+        self.on_choice(None)
+
+    def on_choice(self, event):
+        # Get the selection from the choice box widget
+        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+
+        # Unshow everything then show the correct item according to the choice box
+        self.unshow_choice_box_sizers()
+        if selection == "RT_ZShim":
+            sizer_item_zshim = self.sizer_tab.GetItem(self.pos_zshim)
+            sizer_item_zshim.Show(True)
+        elif selection == "Nothing":
+            sizer_item_nothing = self.sizer_tab.GetItem(self.pos_nothing)
+            sizer_item_nothing.Show(True)
+        else:
+            pass
+
+        # Update the window
+        self.Layout()
+
+    def unshow_choice_box_sizers(self):
+        """Set the Show variable to false for all sizers of the choice box widget"""
+        sizer = self.sizer_tab.GetItem(self.pos_zshim)
+        sizer.Show(False)
+        sizer = self.sizer_tab.GetItem(self.pos_nothing)
+        sizer.Show(False)
+
+    def create_sizer_other_algo(self):
+        sizer_shim_default = wx.BoxSizer(wx.VERTICAL)
+        description_text = wx.StaticText(self, id=-1, label="Not implemented")
+        sizer_shim_default.Add(description_text)
+        return sizer_shim_default
+
+    def create_sizer_zshim(self, metadata=None):
         self.input_text_box_metadata = [
             {
                 "button_label": "Input Fieldmap",
@@ -445,7 +500,53 @@ class RealTimeZShimTab(ShimTab):
                 "name": "output"
             }
         ]
-        super().__init__(parent, title)
+        # Add input buttons
+        sizer_zshim = wx.BoxSizer(wx.VERTICAL)
+        self.add_input_text_boxes(sizer_zshim)
+
+        # Add run button
+        button_run = wx.Button(self, -1, label="Run")
+        button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
+        sizer_zshim.Add(button_run, 0, wx.CENTRE)
+
+        return sizer_zshim
+
+    def add_input_text_boxes(self, sizer, spacer_size=20):
+        """Add a list of input text boxes (TextWithButton) to the sizer_tab.
+
+        Args:
+            metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
+                ``button_label`` and ``button_function``.
+                .. code::
+
+                    {
+                        "button_label": The label to go on the button.
+                        "button_function": the class function (self.myfunc) which will get
+                            called when the button is pressed. If no action is desired, create
+                            a function that is just ``pass``.
+                        "default_text": (optional) The default text to be displayed.
+                    }
+            spacer_size (int): The size of the space to be placed between each input text box.
+
+        """
+        for twb_dict in self.input_text_box_metadata:
+            text_with_button = TextWithButton(
+                panel=self,
+                button_label=twb_dict["button_label"],
+                button_function=twb_dict.pop("button_function", self.button_do_something),
+                default_text=twb_dict.pop("default_text", "")
+            )
+            self.add_input_text_box(sizer, text_with_button, twb_dict.pop("name", "default"))
+
+    def add_input_text_box(self, sizer, text_with_button, name, spacer_size=20):
+        box = text_with_button.create()
+        sizer.Add(box, 0, wx.EXPAND)
+        sizer.AddSpacer(spacer_size)
+        self.input_text_boxes[name] = text_with_button
+
+    def button_do_something(self, event):
+        """TODO"""
+        pass
 
     def button_run_on_click(self, event):
         super().button_run_on_click(event=event, st_function="st_realtime_zshim")
