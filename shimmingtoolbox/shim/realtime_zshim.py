@@ -283,11 +283,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
         im = ax.imshow(nii_mask_anat.get_fdata()[:, :, 3])
         fig.colorbar(im)
         ax.set_title("Mask [:, :, 3]")
-<<<<<<< HEAD
         fname_figure = os.path.join(path_output, 'fig_reatime_yzshim_anat.png')
-=======
-        fname_figure = os.path.join(path_output, 'fig_reatime_zshim_anat.png')
->>>>>>> master
         fig.savefig(fname_figure)
 
         # Show Gradient
