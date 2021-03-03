@@ -234,48 +234,7 @@ class Tab(wx.Panel):
     def __init__(self, parent, title, description):
         wx.Panel.__init__(self, parent)
         self.title = title
-        self.description = description
-        self.sizer_info = self.create_sizer_info()
-
-    def get_logo(self, scale=0.2):
-        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
-
-        Retunrs:
-            wx.StaticBitmap: The ShimmingToolbox logo
-        """
-        fname_st_logo = os.path.join(__dir_shimmingtoolbox__, 'docs', 'source', '_static',
-                                     'shimming_toolbox_logo.png')
-
-        png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-        png.SetSize((png.GetWidth()*scale, png.GetHeight()*scale))
-        logo_image = wx.StaticBitmap(
-            parent=self,
-            id=-1,
-            bitmap=png,
-            pos=wx.DefaultPosition
-        )
-        return logo_image
-
-    def documentation_url(self, event):
-        """Redirect ``documentation_button`` to the ``shimming-toolbox`` page."""
-        url = "https://shimming-toolbox.org/en/latest/"
-        webbrowser.open(url)
-
-    def create_sizer_info(self):
-        """Create the left sizer containing generic Shimming Toolbox information."""
-        sizer_info = wx.BoxSizer(wx.VERTICAL)
-
-        st_logo = self.get_logo()
-        sizer_info.Add(st_logo, flag=wx.SHAPED, proportion=1)
-
-        button_documentation = wx.Button(self, label="Documentation",
-                                         size=wx.Size(100,20))
-        button_documentation.Bind(wx.EVT_BUTTON, self.documentation_url)
-        sizer_info.Add(button_documentation, flag=wx.SHAPED, proportion=1)
-
-        description_text = wx.StaticText(self, id=-1, label=self.description)
-        sizer_info.Add(description_text)
-        return sizer_info
+        self.sizer_info = InfoComponent(self, description).sizer
 
     def create_sizer(self):
         """Create the parent sizer for the tab.
@@ -292,38 +251,51 @@ class Tab(wx.Panel):
         return sizer
 
 
-class TerminalComponent:
-    def __init__(self, panel):
+class InfoComponent:
+    def __init__(self, panel, description):
         self.panel = panel
-        self.terminal = None
+        self.description = description
         self.sizer = self.create_sizer()
 
-    @property
-    def terminal(self):
-        return self._terminal
-
-    @terminal.setter
-    def terminal(self, terminal):
-        if terminal is None:
-            terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
-                                   style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
-            # Using black background does not change the slider's colour
-            # terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
-            # terminal.SetBackgroundColour(wx.BLACK)
-        self._terminal = terminal
-
     def create_sizer(self):
-        """Create the right sizer containing the terminal interface."""
+        """Create the left sizer containing generic Shimming Toolbox information."""
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.AddSpacer(10)
-        sizer.Add(self.terminal)
+
+        st_logo = self.get_logo()
+        sizer.Add(st_logo, flag=wx.SHAPED, proportion=1)
+
+        button_documentation = wx.Button(self.panel, label="Documentation",
+                                         size=wx.Size(100, 20))
+        button_documentation.Bind(wx.EVT_BUTTON, self.documentation_url)
+        sizer.Add(button_documentation, flag=wx.SHAPED, proportion=1)
+
+        description_text = wx.StaticText(self.panel, id=-1, label=self.description)
+        sizer.Add(description_text)
         return sizer
 
-    def log_to_terminal(self, msg, level=None):
-        if level is None:
-            self.terminal.AppendText(f"{msg}\n")
-        else:
-            self.terminal.AppendText(f"{level}: {msg}\n")
+    def get_logo(self, scale=0.2):
+        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
+
+        Retunrs:
+            wx.StaticBitmap: The ShimmingToolbox logo
+        """
+        fname_st_logo = os.path.join(__dir_shimmingtoolbox__, 'docs', 'source', '_static',
+                                     'shimming_toolbox_logo.png')
+
+        png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
+        png.SetSize((png.GetWidth()*scale, png.GetHeight()*scale))
+        logo_image = wx.StaticBitmap(
+            parent=self.panel,
+            id=-1,
+            bitmap=png,
+            pos=wx.DefaultPosition
+        )
+        return logo_image
+
+    def documentation_url(self, event):
+        """Redirect ``documentation_button`` to the ``shimming-toolbox`` page."""
+        url = "https://shimming-toolbox.org/en/latest/"
+        webbrowser.open(url)
 
 
 class InputComponent:
@@ -405,6 +377,43 @@ class InputComponent:
     def button_do_something(self, event):
         """TODO"""
         pass
+
+
+class TerminalComponent:
+    def __init__(self, panel):
+        self.panel = panel
+        self.terminal = None
+        self.sizer = self.create_sizer()
+
+    @property
+    def terminal(self):
+        return self._terminal
+
+    @terminal.setter
+    def terminal(self, terminal):
+        if terminal is None:
+            terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
+                                   style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
+            # Using black background does not change the slider's colour
+            # terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
+            #                        style=wx.TE_MULTILINE | wx.TE_READONLY)
+            # terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+            # terminal.SetBackgroundColour(wx.BLACK)
+
+        self._terminal = terminal
+
+    def create_sizer(self):
+        """Create the right sizer containing the terminal interface."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.AddSpacer(10)
+        sizer.Add(self.terminal)
+        return sizer
+
+    def log_to_terminal(self, msg, level=None):
+        if level is None:
+            self.terminal.AppendText(f"{msg}\n")
+        else:
+            self.terminal.AppendText(f"{level}: {msg}\n")
 
 
 class ShimTab(Tab):
