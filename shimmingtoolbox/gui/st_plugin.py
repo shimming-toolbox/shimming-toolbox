@@ -18,6 +18,7 @@ import wx
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as ovLoad
 
+import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import gui_utils
 from shimmingtoolbox.utils import run_subprocess
@@ -32,7 +33,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-VERSION = "0.2.14"
+VERSION = "0.1.1"
 
 
 class STControlPanel(ctrlpanel.ControlPanel):
@@ -51,13 +52,13 @@ class STControlPanel(ctrlpanel.ControlPanel):
         ctrlpanel.ControlPanel.__init__(self, ortho, *args, **kwargs)
 
         my_panel = TabPanel(self)
-        sizer_inputs = wx.BoxSizer(wx.VERTICAL)
-        sizer_inputs.SetMinSize(400, 300)
-        sizer_inputs.Add(my_panel, 0, wx.EXPAND)
+        sizer_tabs = wx.BoxSizer(wx.VERTICAL)
+        sizer_tabs.SetMinSize(400, 300)
+        sizer_tabs.Add(my_panel, 0, wx.EXPAND)
 
         # Set the sizer of the control panel
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(sizer_inputs, wx.EXPAND)
+        sizer.Add(sizer_tabs, wx.EXPAND)
         self.SetSizer(sizer)
 
         # Initialize the variables that are used to track the active image
@@ -82,7 +83,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
 
-        # self.verify_version()
+        self.verify_version()
 
     def load_png_image_from_path(
         self, image_path, is_mask=False, add_to_overlayList=True, colormap="greyscale"
@@ -139,12 +140,11 @@ class STControlPanel(ctrlpanel.ControlPanel):
         return img_overlay
 
     def show_message(self, message, caption="Error"):
-        """
-        This function is used to show a popup message on the FSLeyes interface.
-        :param message: The message to be displayed.
-        :type message: String
-        :param caption: (Optional) The caption of the message box.
-        :type caption: String
+        """Show a popup message on the FSLeyes interface.
+
+        Args:
+            message (str): message to be displayed
+            caption (str): (optional) caption of the message box.
         """
         with wx.MessageDialog(
             self,
@@ -156,18 +156,14 @@ class STControlPanel(ctrlpanel.ControlPanel):
             msg.ShowModal()
 
     def verify_version(self):
-        """
-        This function checks if the plugin version is the same as the one in the AxonDeepSeg directory
-        """
-        st_path = Path(os.path.abspath(AxonDeepSeg.__file__)).parents[0]
-        plugin_path_parts = st_path.parts[:-1]
-        plugin_path = str(Path(*plugin_path_parts))
-        plugin_file = plugin_path + "/st_plugin.py"
+        """Check if the plugin version is the same as the one in the shimming-toolbox directory."""
 
-        # Check if the plugin file exists
+        st_path = Path(os.path.abspath(shimmingtoolbox.__file__)).parents[0]
+        plugin_file = os.path.join(st_path, "gui", "st_plugin.py")
+
         plugin_file_exists = os.path.isfile(plugin_file)
 
-        if plugin_file_exists is False:
+        if not plugin_file_exists:
             return
 
         # Check the version of the plugin
@@ -175,22 +171,23 @@ class STControlPanel(ctrlpanel.ControlPanel):
             plugin_file_lines = plugin_file_reader.readlines()
 
         plugin_file_lines = [x.strip() for x in plugin_file_lines]
-        version_line = 'VERSION = "' + VERSION + '"'
+        version_line = f'VERSION = "{VERSION}"'
         plugin_is_up_to_date = True
         version_found = False
 
         for lines in plugin_file_lines:
-            if (lines.startswith("VERSION = ")):
+            if lines.startswith("VERSION = "):
                 version_found = True
-                if not (lines == version_line):
+                if not lines == version_line:
                     plugin_is_up_to_date = False
 
-        if (version_found is False) or (plugin_is_up_to_date is False):
-            message = (
-                "A more recent version of the AxonDeepSeg plugin was found in your AxonDeepSeg installation folder. "
-                "You will need to replace the current FSLeyes plugin which the new one. "
-                "To proceed, go to: file -> load plugin -> ads_plugin.py. Then, restart FSLeyes."
-            )
+        if version_found is False or plugin_is_up_to_date is False:
+            message = """
+                A more recent version of the ShimmingToolbox plugin was found in your
+                ShimmingToolbox installation folder. You will need to replace the current
+                FSLeyes plugin with the new one.
+                To proceed, go to: File -> Load plugin -> st_plugin.py. Then, restart FSLeyes.
+            """
             self.show_message(message, "Warning")
         return
 
