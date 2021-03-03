@@ -29,15 +29,24 @@ class TestRealtimeZShim(object):
         self.nii_anat = nii_anat
 
         # Set up mask
-        # Cube
+        # static
         nx, ny, nz = nii_anat.shape
         mask = shapes(nii_anat.get_fdata(), 'cube',
                       center_dim1=int(nx / 2),
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
-        self.nii_mask = nii_mask
+        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        self.nii_mask_static = nii_mask_static
+
+        # Riro
+        mask = shapes(nii_anat.get_fdata(), 'cube',
+                      center_dim1=int(nx / 2),
+                      center_dim2=int(ny / 2),
+                      len_dim1=30, len_dim2=30, len_dim3=nz)
+
+        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        self.nii_mask_riro = nii_mask_riro
 
         # Pmu
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -69,7 +78,10 @@ class TestRealtimeZShim(object):
                                                                                   self.nii_anat,
                                                                                   self.pmu,
                                                                                   self.json,
-                                                                                  nii_mask_anat=self.nii_mask)
+                                                                                  nii_mask_anat_static=
+                                                                                  self.nii_mask_static,
+                                                                                  nii_mask_anat_riro=
+                                                                                  self.nii_mask_riro)
         assert np.isclose(static_correction[0], 0.2766538103967352)
         assert np.isclose(riro_correction[0], -0.051144561917725075)
         assert np.isclose(mean_p, 1326.318)
@@ -78,12 +90,11 @@ class TestRealtimeZShim(object):
     def test_output_figure(self):
         """Test realtime_zshim output figures parameter"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(self.nii_fieldmap,
-                                                                                      self.nii_anat,
-                                                                                      self.pmu,
-                                                                                      self.json,
-                                                                                      nii_mask_anat=self.nii_mask,
-                                                                                      path_output=tmp)
+            _, _, _, _ = realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json,
+                                        nii_mask_anat_static=self.nii_mask_static,
+                                        nii_mask_anat_riro=self.nii_mask_riro,
+                                        path_output=tmp)
+
             assert len(os.listdir(tmp)) != 0
 
     # Tests that should throw errors
@@ -121,19 +132,36 @@ class TestRealtimeZShim(object):
         print("\nWrong number of dimensions for anat but does not throw an error.")
         assert False
 
-    def test_wrong_dim_mask(self):
-        """Wrong number of mask dimensions."""
+    def test_wrong_dim_mask_static(self):
+        """Wrong number of static mask dimensions."""
 
-        mask = self.nii_mask.get_fdata()
+        mask = self.nii_mask_static.get_fdata()
         nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
 
         # This should return an error
         try:
-            realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat=nii_mask_2d)
+            realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_static=nii_mask_2d)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
 
         # If there isn't an error, then there is a problem
-        print("\nWrong number of dimensions for mask but does not throw an error.")
+        print("\nWrong number of dimensions for static mask but does not throw an error.")
+        assert False
+
+    def test_wrong_dim_mask_riro(self):
+        """Wrong number of riro mask dimensions."""
+
+        mask = self.nii_mask_riro.get_fdata()
+        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
+
+        # This should return an error
+        try:
+            realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_riro=nii_mask_2d)
+        except RuntimeError:
+            # If an exception occurs, this is the desired behaviour
+            return 0
+
+        # If there isn't an error, then there is a problem
+        print("\nWrong number of dimensions for riro mask but does not throw an error.")
         assert False
