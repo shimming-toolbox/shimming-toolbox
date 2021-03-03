@@ -22,6 +22,7 @@ import fsleyes.actions.loadoverlay as ovLoad
 import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import gui_utils
+from shimmingtoolbox.utils import run_subprocess
 
 import numpy as np
 import webbrowser
@@ -315,9 +316,10 @@ class TerminalComponent:
     def terminal(self, terminal):
         if terminal is None:
             terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
-                                   style = wx.TE_MULTILINE|wx.TE_READONLY|wx.HSCROLL)
-            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
-            terminal.SetBackgroundColour(wx.BLACK)
+                                   style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
+            # Using black background does not change the slider's colour
+            # terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+            # terminal.SetBackgroundColour(wx.BLACK)
         self._terminal = terminal
 
     def create_sizer(self):
@@ -394,23 +396,20 @@ class InputComponent:
         try:
             command, msg = self.get_run_args(self.st_function)
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
-            subprocess.run(command)
+            run_subprocess(command)
         except Exception as err:
             self.panel.terminal_component.log_to_terminal(err, level="ERROR")
 
     def get_run_args(self, st_function):
         msg = f"Running "
-        command = [st_function]
+        command = st_function
         for name, input_text_box in self.input_text_boxes.items():
             arg = input_text_box.textctrl.GetValue()
             if arg == "" or arg is None:
-                raise RunArgumentErrorST(f"""
-                    Argument {name} is missing a value, please enter a valid input
-                    """)
+                raise RunArgumentErrorST(f"Argument {name} is missing a value, please enter a valid input")
             else:
-                command.append(f"-{name}")
-                command.append(arg)
-                msg = msg + f"-{name} {arg}"
+                command += f" -{name} {arg}"
+        msg += command
         return command, msg
 
     def button_do_something(self, event):
