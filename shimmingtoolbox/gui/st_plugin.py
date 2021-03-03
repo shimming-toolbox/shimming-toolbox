@@ -14,12 +14,10 @@ Authors: Alexandre D'Astous, Ainsleigh Hill, Charlotte, Gaspard Cereza, Julien C
 """
 
 import wx
-import wx.lib.agw.hyperlink as hl
 
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as ovLoad
 
-import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox import gui_utils
 from shimmingtoolbox.utils import run_subprocess
@@ -27,17 +25,9 @@ from shimmingtoolbox.utils import run_subprocess
 import numpy as np
 import webbrowser
 import nibabel as nib
-from PIL import Image, ImageDraw, ImageOps
-import scipy.misc
 import os
-import json
-import subprocess
 from pathlib import Path
-import math
-from scipy import ndimage as ndi
-from skimage import measure, morphology, feature
 import tempfile
-import pandas as pd
 import logging
 logger = logging.getLogger(__name__)
 
