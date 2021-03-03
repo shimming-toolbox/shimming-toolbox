@@ -8,37 +8,43 @@ Installation
 First, you will need to make sure ``shimming-toolbox`` is installed using a ``conda``
 environment, as detailed here in the ``Installation`` section.
 
-Next, make sure dcm2niix is installed to the latest version.
-https://github.com/rordenlab/dcm2niix
+Next, make sure ``dcm2niix`` is installed to version `v1.0.20201102 <https://github.com/rordenlab/dcm2niix/releases/tag/v1.0.20201102>`_ or later.
+You could install it via conda:
+
+.. code-block::
+
+   conda install -c conda-forge/label/main dcm2niix
 
 Then navigate to the Shimming Toolbox folder and activate your Shimming Toolbox environment:
 
-```
-cd shimming-toolbox
-conda activate shim_venv
-```
+.. code-block::
+
+   cd shimming-toolbox
+   conda activate shim_venv
 
 Next, install ``wxPython`` using ``conda-forge``:
 
-```
-conda install -c conda-forge/label/cf202003 wxpython
-```
+.. code-block::
+
+   conda install -c conda-forge/label/cf202003 wxpython
 
 Now you can install ``fsleyes`` using ``conda-forge``. ``fsleyes`` downloads a deprecated version of dcm2niix,
 you can remove it, it will use your local version:
 
-```
-yes | conda install -c conda-forge fsleyes=0.33.1
-conda remove --force dcm2niix
-```
+.. code-block::
+
+   yes | conda install -c conda-forge fsleyes=0.34.2
+   yes | conda remove --force dcm2niix
+
 
 Using the Shimming Plugin for FSLeyes
 =====================================
 
 In the command line, type:
 
-```
-fsleyes
-```
+.. code-block::
+
+   fsleyes
+
 
 This will open the ``fsleyes`` application.
