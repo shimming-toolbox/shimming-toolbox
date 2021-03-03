@@ -22,13 +22,17 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Filename of the anatomical image to apply the correction.")
 @click.option('-resp', 'fname_resp', type=click.Path(), required=True,
               help="Siemens respiratory file containing pressure data.")
-@click.option('-mask', 'fname_mask_anat', type=click.Path(), required=False,
-              help="3D nifti file with used to define the spatial region to shim. "
+@click.option('-mask-static', 'fname_mask_anat_static', type=click.Path(), required=False,
+              help="3D nifti file used to define the static spatial region to shim. "
+                   "The coordinate system should be the same as ``anat``'s coordinate system.")
+@click.option('-mask-riro', 'fname_mask_anat_riro', type=click.Path(), required=False,
+              help="3D nifti file used to define the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
+                   "spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_anat, fname_output, verbose=True):
+def realtime_zshim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output, verbose=True):
     """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
     respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
     bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
@@ -42,11 +46,17 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_anat, fnam
     # Load anat
     nii_anat = nib.load(fname_anat)
 
-    # Load anatomical mask
-    if fname_mask_anat is not None:
-        nii_mask_anat = nib.load(fname_mask_anat)
+    # Load static anatomical mask
+    if fname_mask_anat_static is not None:
+        nii_mask_anat_static = nib.load(fname_mask_anat_static)
     else:
-        nii_mask_anat = None
+        nii_mask_anat_static = None
+
+    # Load riro anatomical mask
+    if fname_mask_anat_riro is not None:
+        nii_mask_anat_riro = nib.load(fname_mask_anat_riro)
+    else:
+        nii_mask_anat_riro = None
 
     fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json) as json_file:
@@ -59,8 +69,15 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat, fname_resp, fname_anat, fnam
     if not os.path.exists(fname_output):
         os.makedirs(fname_output)
 
+<<<<<<< HEAD
     static_ycorrection, static_zcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
-                                                                              nii_mask_anat=nii_mask_anat,
+                                                                              nii_mask_anat_static=nii_mask_anat_static,
+                                                                              nii_mask_anat_riro=nii_mask_anat_riro,
+=======
+    static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
+                                                                              nii_mask_anat_static=nii_mask_anat_static,
+                                                                              nii_mask_anat_riro=nii_mask_anat_riro,
+>>>>>>> master
                                                                               path_output=fname_output)
 
     # Write to a text file
