@@ -46,5 +46,5 @@ In the command line, type:
 
    fsleyes
 
-
-This will open the ``fsleyes`` application.
+This will open the ``fsleyes`` application. Once in ``fsleyes``, click on **File** > **Load plugin** and select **st_plugin.py**.
+It will ask if you want to install it permanently: say "yes". Then, quit and reopen ``fsleyes``. The plugin should be accessible via **Settings** > **Ortho view 1** > **Shimming Toolbox**.
