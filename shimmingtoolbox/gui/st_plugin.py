@@ -566,6 +566,70 @@ class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
         description = "Mask Tab description: TODO"
         super().__init__(parent, title, description)
+
+        self.sizer_input = self.create_sizer_input()
+        self.positions = {}
+        self.dropdown_metadata = [
+            {
+                "name": "Threshold",
+                "sizer_function": self.create_sizer_threshold
+            },
+            {
+                "name": "Rectangle",
+                "sizer_function": self.create_sizer_rect
+            },
+            {
+                "name": "Box",
+                "sizer_function": self.create_sizer_box
+            }
+        ]
+        self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
+        self.create_choice_box()
+
+        self.terminal_component = TerminalComponent(self)
+        self.sizer_terminal = self.terminal_component.sizer
+
+        self.create_dropdown_sizers()
+        self.parent_sizer = self.create_sizer()
+        self.SetSizer(self.parent_sizer)
+
+        # Run on choice to select the default choice from the choice box widget
+        self.on_choice(None)
+
+    def create_dropdown_sizers(self):
+        for dropdown_dict in self.dropdown_metadata:
+            sizer = dropdown_dict["sizer_function"]()
+            self.sizer_input.Add(sizer, 0, wx.EXPAND)
+            self.positions[dropdown_dict["name"]] = self.sizer_input.GetItemCount() - 1
+
+    def on_choice(self, event):
+        # Get the selection from the choice box widget
+        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+
+        # Unshow everything then show the correct item according to the choice box
+        self.unshow_choice_box_sizers()
+        if selection in self.positions.keys():
+            sizer_item_threshold = self.sizer_input.GetItem(self.positions[selection])
+            sizer_item_threshold.Show(True)
+        else:
+            pass
+
+        # Update the window
+        self.Layout()
+
+    def unshow_choice_box_sizers(self):
+        """Set the Show variable to false for all sizers of the choice box widget"""
+        for position in self.positions.values():
+            sizer = self.sizer_input.GetItem(position)
+            sizer.Show(False)
+
+    def create_choice_box(self):
+        self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
+        self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
+        self.sizer_input.Add(self.choice_box)
+        self.sizer_input.AddSpacer(10)
+
+    def create_sizer_threshold(self, metadata=None):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
@@ -583,11 +647,63 @@ class MaskTab(Tab):
                 "name": "output"
             }
         ]
-        self.terminal_component = TerminalComponent(self)
-        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_mask").sizer
-        self.sizer_terminal = self.terminal_component.sizer
-        sizer = self.create_sizer()
-        self.SetSizer(sizer)
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        return sizer
+
+    def create_sizer_rect(self):
+        input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "name": "input"
+            },
+            {
+                "button_label": "Size",
+                "name": "size"
+            },
+            {
+                "button_label": "Center",
+                "name": "center"
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
+            }
+        ]
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        return sizer
+
+    def create_sizer_box(self):
+        input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "name": "input"
+            },
+            {
+                "button_label": "Size",
+                "name": "size"
+            },
+            {
+                "button_label": "Center",
+                "name": "center"
+            },
+            {
+                "button_label": "Output Folder",
+                "button_function": "select_folder",
+                "default_text": __dir_shimmingtoolbox__,
+                "name": "output"
+            }
+        ]
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        return sizer
+
+    def create_sizer_input(self):
+        """Create the centre sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.SetMinSize(400, 300)
+        sizer.AddSpacer(10)
+        return sizer
 
 
 class DicomToNiftiTab(Tab):
@@ -649,8 +765,8 @@ class TextWithButton:
         elif self.button_function == "select_file":
             self.button_function = lambda event, ctrl=textctrl: select_file(event, ctrl)
         button.Bind(wx.EVT_BUTTON, self.button_function)
-        text_with_button_box.Add(button, 0, wx.ALIGN_LEFT| wx.RIGHT, 10)
-        text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT|wx.LEFT, 10)
+        text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
+        text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
         return text_with_button_box
 
 
