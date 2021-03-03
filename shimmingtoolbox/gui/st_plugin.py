@@ -316,7 +316,8 @@ class InputComponent:
         """Add a list of input text boxes (TextWithButton) to the sizer_input.
 
         Args:
-            TODO: metadata argument does not exist, info is still relevant (uses self.input_text_box_metadata)
+            TODO: metadata argument does not exist, info is still relevant (uses
+            self.input_text_box_metadata)
             metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
                 ``button_label`` and ``button_function``.
                 .. code::
@@ -390,12 +391,9 @@ class TerminalComponent:
     def terminal(self, terminal):
         if terminal is None:
             terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
-                                   style=wx.TE_MULTILINE | wx.TE_READONLY | wx.HSCROLL)
-            # Using black background does not change the slider's colour
-            # terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 300),
-            #                        style=wx.TE_MULTILINE | wx.TE_READONLY)
-            # terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
-            # terminal.SetBackgroundColour(wx.BLACK)
+                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
+            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+            terminal.SetBackgroundColour(wx.BLACK)
 
         self._terminal = terminal
 
