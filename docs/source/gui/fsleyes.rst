@@ -13,7 +13,7 @@ You could install it via conda:
 
 .. code-block::
 
-   conda install -c conda-forge/label/main dcm2niix
+   yes | conda install -c conda-forge/label/main dcm2niix
 
 Then navigate to the Shimming Toolbox folder and activate your Shimming Toolbox environment:
 
@@ -26,7 +26,7 @@ Next, install ``wxPython`` using ``conda-forge``:
 
 .. code-block::
 
-   conda install -c conda-forge/label/cf202003 wxpython
+   yes | conda install -c conda-forge/label/cf202003 wxpython
 
 Now you can install ``fsleyes`` using ``conda-forge``. ``fsleyes`` downloads a deprecated version of dcm2niix,
 you can remove it, it will use your local version:
