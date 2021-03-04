@@ -337,7 +337,8 @@ class InputComponent:
                 panel=self.panel,
                 button_label=twb_dict["button_label"],
                 button_function=twb_dict.pop("button_function", self.button_do_something),
-                default_text=twb_dict.pop("default_text", "")
+                default_text=twb_dict.pop("default_text", ""),
+                n_text_boxes=twb_dict.pop("n_text_boxes", 1)
             )
             self.add_input_text_box(text_with_button, twb_dict.pop("name", "default"))
 
@@ -361,14 +362,18 @@ class InputComponent:
             self.panel.terminal_component.log_to_terminal(err, level="ERROR")
 
     def get_run_args(self, st_function):
-        msg = f"Running "
+        msg = "Running "
         command = st_function
         for name, input_text_box in self.input_text_boxes.items():
-            arg = input_text_box.textctrl.GetValue()
-            if arg == "" or arg is None:
-                raise RunArgumentErrorST(f"Argument {name} is missing a value, please enter a valid input")
-            else:
-                command += f" -{name} {arg}"
+            command += f" -{name}"
+            for textctrl in input_text_box.textctrl_list:
+                arg = textctrl.GetValue()
+                if arg == "" or arg is None:
+                    raise RunArgumentErrorST(
+                        f"Argument {name} is missing a value, please enter a valid input"
+                    )
+                else:
+                    command += f" {arg}"
         msg += command
         return command, msg
 
@@ -667,7 +672,8 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Center",
-                "name": "center"
+                "name": "center",
+                "n_text_boxes": 2
             },
             {
                 "button_label": "Output Folder",
@@ -691,7 +697,8 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Center",
-                "name": "center"
+                "name": "center",
+                "n_text_boxes": 3
             },
             {
                 "button_label": "Output Folder",
@@ -753,25 +760,30 @@ class RunArgumentErrorST(Exception):
 
 
 class TextWithButton:
-    def __init__(self, panel, button_label, button_function, default_text=""):
+    def __init__(self, panel, button_label, button_function, default_text="",
+                 n_text_boxes=1):
         self.panel = panel
         self.button_label = button_label
         self.button_function = button_function
         self.default_text = default_text
-        self.textctrl = None
+        self.textctrl_list = []
+        self.n_text_boxes = n_text_boxes
 
     def create(self):
-        textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text)
-        self.textctrl = textctrl
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
-        if self.button_function == "select_folder":
-            self.button_function = lambda event, ctrl=textctrl: select_folder(event, ctrl)
-        elif self.button_function == "select_file":
-            self.button_function = lambda event, ctrl=textctrl: select_file(event, ctrl)
-        button.Bind(wx.EVT_BUTTON, self.button_function)
-        text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
-        text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
+
+        for i_text_box in range(0, self.n_text_boxes):
+            textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text)
+            self.textctrl_list.append(textctrl)
+            if i_text_box == 0:
+                if self.button_function == "select_folder":
+                    self.button_function = lambda event, ctrl=textctrl: select_folder(event, ctrl)
+                elif self.button_function == "select_file":
+                    self.button_function = lambda event, ctrl=textctrl: select_file(event, ctrl)
+                button.Bind(wx.EVT_BUTTON, self.button_function)
+                text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
+            text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
         return text_with_button_box
 
 
