@@ -69,15 +69,9 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro,
     if not os.path.exists(fname_output):
         os.makedirs(fname_output)
 
-<<<<<<< HEAD
-    static_ycorrection, static_zcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
+    static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
                                                                               nii_mask_anat_static=nii_mask_anat_static,
                                                                               nii_mask_anat_riro=nii_mask_anat_riro,
-=======
-    static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
-                                                                              nii_mask_anat_static=nii_mask_anat_static,
-                                                                              nii_mask_anat_riro=nii_mask_anat_riro,
->>>>>>> master
                                                                               path_output=fname_output)
 
     # Write to a text file
@@ -97,4 +91,12 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro,
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
-    return fname_ycorrections, fname_zcorrections
+    fname_xcorrections = os.path.join(fname_output, 'xshim_gradients.txt')
+    file_gradients = open(fname_xcorrections, 'w')
+    for i_slice in range(static_xcorrection.shape[-1]):
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_xcorrection[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_xcorrection[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
+    file_gradients.close()
+
+    return fname_xcorrections, fname_ycorrections, fname_zcorrections
