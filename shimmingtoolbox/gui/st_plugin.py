@@ -670,6 +670,7 @@ class MaskTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
+                "button_function": "select_from_overlay",
                 "name": "input"
             },
             {
@@ -694,6 +695,7 @@ class MaskTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
+                "button_function": "select_from_overlay",
                 "name": "input"
             },
             {
