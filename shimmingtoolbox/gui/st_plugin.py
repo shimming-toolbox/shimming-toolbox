@@ -210,6 +210,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
 class TabPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent=parent)
+
         nb = wx.Notebook(self)
         tab1 = ShimTab(nb)
         tab2 = FieldMapTab(nb)
@@ -485,22 +486,27 @@ class ShimTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input Fieldmap",
-                "name": "fmap"
+                "name": "fmap",
+                "button_function": "select_from_overlay"
             },
             {
                 "button_label": "Input Anat",
-                "name": "anat"
+                "name": "anat",
+                "button_function": "select_from_overlay"
             },
             {
                 "button_label": "Input Static Mask",
-                "name": "mask"
+                "name": "mask-static",
+                "button_function": "select_from_overlay"
             },
             {
                 "button_label": "Input RIRO Mask",
-                "name": "mask"
+                "name": "mask-riro",
+                "button_function": "select_from_overlay"
             },
             {
                 "button_label": "Input Respiratory Trace",
+                "button_function": "select_file",
                 "name": "resp"
             },
             {
@@ -536,13 +542,16 @@ class FieldMapTab(Tab):
                 "button_label": "Number of Echoes"
             },
             {
-                "button_label": "Input Echo 1"
+                "button_label": "Input Echo 1",
+                "button_function": "select_from_overlay"
             },
             {
-                "button_label": "Input Echo 2"
+                "button_label": "Input Echo 2",
+                "button_function": "select_from_overlay"
             },
             {
                 "button_label": "Input Magnitude",
+                "button_function": "select_from_overlay",
                 "name": "mag"
             },
             {
@@ -555,6 +564,7 @@ class FieldMapTab(Tab):
             },
             {
                 "button_label": "Input Mask",
+                "button_function": "select_from_overlay",
                 "name": "mask"
             },
             {
@@ -643,6 +653,7 @@ class MaskTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
+                "button_function": "select_from_overlay",
                 "name": "input"
             },
             {
@@ -664,6 +675,7 @@ class MaskTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
+                "button_function": "select_from_overlay",
                 "name": "input"
             },
             {
@@ -689,6 +701,7 @@ class MaskTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Input",
+                "button_function": "select_from_overlay",
                 "name": "input"
             },
             {
@@ -781,6 +794,9 @@ class TextWithButton:
                     self.button_function = lambda event, ctrl=textctrl: select_folder(event, ctrl)
                 elif self.button_function == "select_file":
                     self.button_function = lambda event, ctrl=textctrl: select_file(event, ctrl)
+                elif self.button_function == "select_from_overlay":
+                    self.button_function = lambda event, panel=self.panel, ctrl=textctrl: \
+                        select_from_overlay(event, panel, ctrl)
                 button.Bind(wx.EVT_BUTTON, self.button_function)
                 text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
@@ -809,3 +825,25 @@ def select_file(event, ctrl):
         path = dlg.GetPath()
         ctrl.SetValue(path)
         logger.info(f"File set to: {path}")
+
+
+def select_from_overlay(event, tab, ctrl):
+    """
+    Fetch path to file highlighted in the Overlay list.
+
+    Args:
+        event:
+        tab: Must be a subclass of the Tab class
+        ctrl: wx.TextCtrl
+    """
+
+    # This is messy and wont work if we change any class hierarchy.. using GetTopLevelParent() only works if the panes
+    # is not floating
+    # Get the displayCtx class initialized in STControlPanel
+    window = tab.GetGrandParent().GetParent()
+    selected_overlay = window.displayCtx.getSelectedOverlay()
+    if selected_overlay is not None:
+        filename_path = selected_overlay.dataSource
+        ctrl.SetValue(filename_path)
+    else:
+        tab.terminal_component.log_to_terminal("Import and select an image from the Overlay list", level="INFO")
