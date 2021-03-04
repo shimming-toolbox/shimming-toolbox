@@ -418,27 +418,36 @@ class ShimTab(Tab):
         super().__init__(parent, title, description)
 
         self.sizer_input = self.create_sizer_input()
+        self.positions = {}
+        self.dropdown_metadata = [
+            {
+                "name": "RT_ZShim",
+                "sizer_function": self.create_sizer_zshim
+            },
+            {
+                "name": "Nothing",
+                "sizer_function": self.create_sizer_other_algo
+            }
+        ]
+        self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
 
         self.create_choice_box()
 
         self.terminal_component = TerminalComponent(self)
         self.sizer_terminal = self.terminal_component.sizer
 
-        sizer_zshim = self.create_sizer_zshim()
-        self.sizer_input.Add(sizer_zshim, 0, wx.EXPAND)
-
-        self.pos_zshim = self.sizer_input.GetItemCount() - 1
-
-        # Create second choice sizer
-        sizer_default_text = self.create_sizer_other_algo()
-        self.sizer_input.Add(sizer_default_text, 0, wx.EXPAND)
-        self.pos_nothing = self.sizer_input.GetItemCount() - 1
-
+        self.create_dropdown_sizers()
         self.parent_sizer = self.create_sizer()
         self.SetSizer(self.parent_sizer)
 
         # Run on choice to select the default choice from the choice box widget
         self.on_choice(None)
+
+    def create_dropdown_sizers(self):
+        for dropdown_dict in self.dropdown_metadata:
+            sizer = dropdown_dict["sizer_function"]()
+            self.sizer_input.Add(sizer, 0, wx.EXPAND)
+            self.positions[dropdown_dict["name"]] = self.sizer_input.GetItemCount() - 1
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
@@ -446,12 +455,9 @@ class ShimTab(Tab):
 
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
-        if selection == "RT_ZShim":
-            sizer_item_zshim = self.sizer_input.GetItem(self.pos_zshim)
-            sizer_item_zshim.Show(True)
-        elif selection == "Nothing":
-            sizer_item_nothing = self.sizer_input.GetItem(self.pos_nothing)
-            sizer_item_nothing.Show(True)
+        if selection in self.positions.keys():
+            sizer_item_threshold = self.sizer_input.GetItem(self.positions[selection])
+            sizer_item_threshold.Show(True)
         else:
             pass
 
@@ -460,29 +466,15 @@ class ShimTab(Tab):
 
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
-        sizer = self.sizer_input.GetItem(self.pos_zshim)
-        sizer.Show(False)
-        sizer = self.sizer_input.GetItem(self.pos_nothing)
-        sizer.Show(False)
+        for position in self.positions.values():
+            sizer = self.sizer_input.GetItem(position)
+            sizer.Show(False)
 
     def create_choice_box(self):
-        self.choice_box = wx.Choice(self, choices=["RT_ZShim", "Nothing"])
+        self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
         self.sizer_input.Add(self.choice_box)
         self.sizer_input.AddSpacer(10)
-
-    def create_sizer_other_algo(self):
-        sizer_shim_default = wx.BoxSizer(wx.VERTICAL)
-        description_text = wx.StaticText(self, id=-1, label="Not implemented")
-        sizer_shim_default.Add(description_text)
-        return sizer_shim_default
-
-    def create_sizer_input(self):
-        """Create the centre sizer containing tab-specific functionality."""
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.SetMinSize(400, 300)
-        sizer.AddSpacer(10)
-        return sizer
 
     def create_sizer_zshim(self, metadata=None):
         input_text_box_metadata = [
@@ -513,8 +505,21 @@ class ShimTab(Tab):
                 "name": "output"
             }
         ]
-        sizer_zshim = InputComponent(self, input_text_box_metadata, "st_realtime_zshim").sizer
-        return sizer_zshim
+        sizer = InputComponent(self, input_text_box_metadata, "st_realtime_zshim").sizer
+        return sizer
+
+    def create_sizer_other_algo(self):
+        sizer_shim_default = wx.BoxSizer(wx.VERTICAL)
+        description_text = wx.StaticText(self, id=-1, label="Not implemented")
+        sizer_shim_default.Add(description_text)
+        return sizer_shim_default
+
+    def create_sizer_input(self):
+        """Create the centre sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.SetMinSize(400, 300)
+        sizer.AddSpacer(10)
+        return sizer
 
 
 class FieldMapTab(Tab):
