@@ -85,25 +85,23 @@ class STControlPanel(ctrlpanel.ControlPanel):
 
         self.verify_version()
 
-    def load_png_image_from_path(
-        self, image_path, is_mask=False, add_to_overlayList=True, colormap="greyscale"
-    ):
-        """
-        This function converts a 2D image into a NIfTI image and loads it as an overlay.
+    def load_png_image_from_path(self, image_path, is_mask=False, add_to_overlayList=True,
+                                 colormap="greyscale"):
+        """Converts a 2D image into a NIfTI image and loads it as an overlay.
         The parameter add_to_overlayList allows to display the overlay into FSLeyes.
-        :param image_path: The location of the image, including the name and the .extension
-        :type image_path: string
-        :param is_mask: (optional) Whether or not this is a segmentation mask. It will be treated as a normalads_utils
-        image by default.
-        :type is_mask: bool
-        :param add_to_overlayList: (optional) Whether or not to add the image to the overlay list. If so, the image will
-        be displayed in the application. This parameter is True by default.
-        :type add_to_overlayList: bool
-        :param colormap: (optional) the colormap of image that will be displayed. This parameter is set to greyscale by
-        default.
-        :type colormap: string
-        :return: the FSLeyes overlay corresponding to the loaded image.
-        :rtype: overlay
+
+        Args:
+            image_path (str): The location of the image, including the name and the .extension
+            is_mask (bool): (optional) Whether or not this is a segmentation mask. It will be
+                treated as a normalads_utils
+            add_to_overlayList (bool): (optional) Whether or not to add the image to the overlay
+                list. If so, the image will be displayed in the application. This parameter is
+                True by default.
+            colormap (str): (optional) the colormap of image that will be displayed. This parameter
+                is set to greyscale by default.
+
+        Returns:
+            overlay: the FSLeyes overlay corresponding to the loaded image.
         """
 
         # Open the 2D image
@@ -339,7 +337,8 @@ class InputComponent:
                 button_label=twb_dict["button_label"],
                 button_function=twb_dict.pop("button_function", self.button_do_something),
                 default_text=twb_dict.pop("default_text", ""),
-                n_text_boxes=twb_dict.pop("n_text_boxes", 1)
+                n_text_boxes=twb_dict.pop("n_text_boxes", 1),
+                name=twb_dict.pop("name", "default")
             )
             self.add_input_text_box(text_with_button, twb_dict.pop("name", "default"))
 
@@ -347,6 +346,13 @@ class InputComponent:
         box = text_with_button.create()
         self.sizer.Add(box, 0, wx.EXPAND)
         self.sizer.AddSpacer(spacer_size)
+        self.input_text_boxes[name] = text_with_button
+
+    def insert_input_text_box(self, text_with_button, name, index, last=False, spacer_size=20):
+        box = text_with_button.create()
+        self.sizer.Insert(index=index, sizer=box, flag=wx.EXPAND)
+        if last:
+            self.sizer.InsertSpacer(index=index + 1, size=spacer_size)
         self.input_text_boxes[name] = text_with_button
 
     def add_button_run(self):
@@ -537,17 +543,11 @@ class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
+        self.n_echoes = -1
         input_text_box_metadata = [
             {
-                "button_label": "Number of Echoes"
-            },
-            {
-                "button_label": "Input Echo 1",
-                "button_function": "select_from_overlay"
-            },
-            {
-                "button_label": "Input Echo 2",
-                "button_function": "select_from_overlay"
+                "button_label": "Number of Echoes",
+                "button_function": "add_input_echo_boxes"
             },
             {
                 "button_label": "Input Magnitude",
@@ -575,11 +575,11 @@ class FieldMapTab(Tab):
             }
         ]
         self.terminal_component = TerminalComponent(self)
-        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_prepare_fieldmap").sizer
+        self.input_component = InputComponent(self, input_text_box_metadata, "st_prepare_fieldmap")
+        self.sizer_input = self.input_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
-        # TODO: add CLI for echoes (dropdown?)
 
 
 class MaskTab(Tab):
@@ -767,13 +767,8 @@ class DicomToNiftiTab(Tab):
         self.SetSizer(sizer)
 
 
-class RunArgumentErrorST(Exception):
-    """Exception for missing input arguments for CLI call."""
-    pass
-
-
 class TextWithButton:
-    def __init__(self, panel, button_label, button_function, default_text="",
+    def __init__(self, panel, button_label, button_function, name="default", default_text="",
                  n_text_boxes=1):
         self.panel = panel
         self.button_label = button_label
@@ -781,13 +776,14 @@ class TextWithButton:
         self.default_text = default_text
         self.textctrl_list = []
         self.n_text_boxes = n_text_boxes
+        self.name = name
 
     def create(self):
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
 
         for i_text_box in range(0, self.n_text_boxes):
-            textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text)
+            textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text, name=self.name)
             self.textctrl_list.append(textctrl)
             if i_text_box == 0:
                 if self.button_function == "select_folder":
@@ -797,6 +793,9 @@ class TextWithButton:
                 elif self.button_function == "select_from_overlay":
                     self.button_function = lambda event, panel=self.panel, ctrl=textctrl: \
                         select_from_overlay(event, panel, ctrl)
+                elif self.button_function == "add_input_echo_boxes":
+                    self.button_function = lambda event, panel=self.panel, ctrl=textctrl: \
+                        add_input_echo_boxes(event, panel, ctrl)
                 button.Bind(wx.EVT_BUTTON, self.button_function)
                 text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
@@ -828,13 +827,12 @@ def select_file(event, ctrl):
 
 
 def select_from_overlay(event, tab, ctrl):
-    """
-    Fetch path to file highlighted in the Overlay list.
+    """Fetch path to file highlighted in the Overlay list.
 
     Args:
-        event:
-        tab: Must be a subclass of the Tab class
-        ctrl: wx.TextCtrl
+        event (wx.Event): event passed to a callback or member function.
+        tab (Tab): Must be a subclass of the Tab class
+        ctrl (wx.TextCtrl): the text item.
     """
 
     # This is messy and wont work if we change any class hierarchy.. using GetTopLevelParent() only works if the panes
@@ -846,4 +844,54 @@ def select_from_overlay(event, tab, ctrl):
         filename_path = selected_overlay.dataSource
         ctrl.SetValue(filename_path)
     else:
-        tab.terminal_component.log_to_terminal("Import and select an image from the Overlay list", level="INFO")
+        tab.terminal_component.log_to_terminal(
+            "Import and select an image from the Overlay list",
+            level="INFO"
+        )
+
+
+def add_input_echo_boxes(event, tab, ctrl):
+    """On click of ``Number of Echoes`` button, add ``n_echoes`` ``TextWithButton`` boxes.
+
+    Args:
+        event (wx.Event): when the ``Number of Echoes`` button is clicked.
+        tab (FieldMapTab): tab class instance for ``Field Map``.
+        ctrl (wx.TextCtrl): the text box containing the number of echo boxes to add. Must be an
+            integer > 0.
+    """
+    try:
+        n_echoes = int(ctrl.GetValue())
+        if n_echoes < 1:
+            raise Exception()
+    except Exception:
+        tab.terminal_component.log_to_terminal(
+            "Number of Echoes must be an integer > 0",
+            level="ERROR"
+        )
+        return
+
+    for index in range(0, tab.n_echoes+1):
+        tab.sizer_input.Hide(3)
+        tab.sizer_input.Remove(3)
+        tab.Layout()
+
+    tab.n_echoes = n_echoes
+    for index in range(0, n_echoes):
+        text_with_button = TextWithButton(
+            panel=tab,
+            button_label=f"Input Echo {index + 1}",
+            button_function="select_from_overlay",
+            default_text="",
+            n_text_boxes=1,
+            name=f"input_echo_{index + 1}"
+        )
+        if index == n_echoes-1:
+            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index, True)
+        else:
+            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index)
+    tab.Layout()
+
+
+class RunArgumentErrorST(Exception):
+    """Exception for missing input arguments for CLI call."""
+    pass
