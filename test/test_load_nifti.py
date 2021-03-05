@@ -471,32 +471,6 @@ class TestCore(object):
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1, sort_keys=True)),\
             "JSON file is not correctly loaded for first RF JSON"
 
-    def test_read_nii_b1_without_tags(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
-            self._json_b1_no_shimsetting = self._json_b1.copy()
-            del self._json_b1_no_shimsetting['ShimSetting']
-            json.dump(self._json_b1_no_shimsetting, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_shimsetting.nii")
-        try:
-            read_nii(fname_b1)
-        except ValueError:
-            return 0
-
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
-            self._json_b1_no_slicetiming = self._json_b1.copy()
-            del self._json_b1_no_slicetiming['SliceTiming']
-            json.dump(self._json_b1_no_slicetiming, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_slicetiming.nii")
-        try:
-            read_nii(fname_b1)
-        except ValueError:
-            return 0
-
     def test_read_nii_b1_no_scaling(self):
         fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
         _, _, b1 = read_nii(fname_b1, auto_scale=False)
@@ -504,7 +478,35 @@ class TestCore(object):
         test_values = [87.0, 1890.0, 37.0]
         assert [b1[35, 35, 0, 0], b1[35, 35, 6, 13], b1[40, 25, 15, 7]] == test_values
 
-    def test_read_nii_b1_wrong_dims(self):
+    def test_read_nii_b1_no_shimsetting(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
+            self._json_b1_no_shimsetting = self._json_b1.copy()
+            del self._json_b1_no_shimsetting['ShimSetting']
+            json.dump(self._json_b1_no_shimsetting, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.nii')
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+    def test_read_nii_b1_no_slicetiming(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
+            self._json_b1_no_slicetiming = self._json_b1.copy()
+            del self._json_b1_no_slicetiming['SliceTiming']
+            json.dump(self._json_b1_no_slicetiming, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.nii')
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+    def test_read_nii_b1_wrong_shimsetting(self):
         dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
         nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting'))
         with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting.json'), 'w') as json_file:
@@ -518,10 +520,12 @@ class TestCore(object):
         except ValueError:
             return 0
 
+    def test_read_nii_b1_wrong_slicetiming(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
         nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming'))
         with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming.json'), 'w') as json_file:
             self._json_b1_wrong_slicetiming = self._json_b1.copy()
-            self._json_b1_wrong_shimsetting['SliceTiming'] = str(np.zeros([15]))
+            self._json_b1_wrong_slicetiming['SliceTiming'] = str(np.zeros([15]))
             json.dump(self._json_b1_wrong_slicetiming, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_slicetiming.nii")
