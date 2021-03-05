@@ -335,25 +335,31 @@ class InputComponent:
             text_with_button = TextWithButton(
                 panel=self.panel,
                 button_label=twb_dict["button_label"],
-                button_function=twb_dict.pop("button_function", self.button_do_something),
-                default_text=twb_dict.pop("default_text", ""),
-                n_text_boxes=twb_dict.pop("n_text_boxes", 1),
-                name=twb_dict.pop("name", "default")
+                button_function=twb_dict.get("button_function", self.button_do_something),
+                default_text=twb_dict.get("default_text", ""),
+                n_text_boxes=twb_dict.get("n_text_boxes", 1),
+                name=twb_dict.get("name", "default")
             )
-            self.add_input_text_box(text_with_button, twb_dict.pop("name", "default"))
+            self.add_input_text_box(text_with_button, twb_dict.get("name", "default"))
 
     def add_input_text_box(self, text_with_button, name, spacer_size=20):
         box = text_with_button.create()
         self.sizer.Add(box, 0, wx.EXPAND)
         self.sizer.AddSpacer(spacer_size)
-        self.input_text_boxes[name] = text_with_button
+        if name in self.input_text_boxes.keys():
+            self.input_text_boxes[name].append(text_with_button)
+        else:
+            self.input_text_boxes[name] = [text_with_button]
 
     def insert_input_text_box(self, text_with_button, name, index, last=False, spacer_size=20):
         box = text_with_button.create()
         self.sizer.Insert(index=index, sizer=box, flag=wx.EXPAND)
         if last:
             self.sizer.InsertSpacer(index=index + 1, size=spacer_size)
-        self.input_text_boxes[name] = text_with_button
+        if name in self.input_text_boxes.keys():
+            self.input_text_boxes[name].append(text_with_button)
+        else:
+            self.input_text_boxes[name] = [text_with_button]
 
     def add_button_run(self):
         button_run = wx.Button(self.panel, -1, label="Run")
@@ -371,16 +377,28 @@ class InputComponent:
     def get_run_args(self, st_function):
         msg = "Running "
         command = st_function
-        for name, input_text_box in self.input_text_boxes.items():
+        command_dict = {}
+        for name, input_text_box_list in self.input_text_boxes.items():
+            if name == "no_arg":
+                continue
+            for input_text_box in input_text_box_list:
+                for textctrl in input_text_box.textctrl_list:
+                    arg = textctrl.GetValue()
+                    if arg == "" or arg is None:
+                        raise RunArgumentErrorST(
+                            f"Argument {name} is missing a value, please enter a valid input"
+                        )
+                    else:
+                        if name in command_dict.keys():
+                            command_dict[name].append(arg)
+                        else:
+                            command_dict[name] = [arg]
+
+        print(command_dict)
+        for name, args in command_dict.items():
             command += f" -{name}"
-            for textctrl in input_text_box.textctrl_list:
-                arg = textctrl.GetValue()
-                if arg == "" or arg is None:
-                    raise RunArgumentErrorST(
-                        f"Argument {name} is missing a value, please enter a valid input"
-                    )
-                else:
-                    command += f" {arg}"
+            for arg in args:
+                command += f" {arg}"
         msg += command
         return command, msg
 
@@ -547,7 +565,8 @@ class FieldMapTab(Tab):
         input_text_box_metadata = [
             {
                 "button_label": "Number of Echoes",
-                "button_function": "add_input_echo_boxes"
+                "button_function": "add_input_echo_boxes",
+                "name": "no_arg"
             },
             {
                 "button_label": "Input Magnitude",
@@ -751,7 +770,7 @@ class DicomToNiftiTab(Tab):
                 "default_text": os.path.join(__dir_shimmingtoolbox__,
                                              "config",
                                              "dcm2bids.json"),
-                "name": "subject"
+                "name": "config"
             },
             {
                 "button_label": "Output Folder",
@@ -853,6 +872,16 @@ def select_from_overlay(event, tab, ctrl):
 def add_input_echo_boxes(event, tab, ctrl):
     """On click of ``Number of Echoes`` button, add ``n_echoes`` ``TextWithButton`` boxes.
 
+    For this function, we are assuming the layout of the Field Map Tab is as follows:
+
+        0 - Spacer
+        1 - Number of Echoes TextWithButton sizer
+        2 - Spacer
+        3 - next item, and so on
+
+    First, we check and see how many echo boxes the tab currently has, and remove them all.
+    Next, we add n = n_echoes echo boxes to the tab.
+
     Args:
         event (wx.Event): when the ``Number of Echoes`` button is clicked.
         tab (FieldMapTab): tab class instance for ``Field Map``.
@@ -870,9 +899,10 @@ def add_input_echo_boxes(event, tab, ctrl):
         )
         return
 
+    insert_index = 3
     for index in range(0, tab.n_echoes+1):
-        tab.sizer_input.Hide(3)
-        tab.sizer_input.Remove(3)
+        tab.sizer_input.Hide(insert_index)
+        tab.sizer_input.Remove(insert_index)
         tab.Layout()
 
     tab.n_echoes = n_echoes
@@ -886,9 +916,18 @@ def add_input_echo_boxes(event, tab, ctrl):
             name=f"input_echo_{index + 1}"
         )
         if index == n_echoes-1:
-            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index, True)
+            tab.input_component.insert_input_text_box(
+                text_with_button,
+                "phase",
+                index=insert_index + index,
+                last=True
+            )
         else:
-            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index)
+            tab.input_component.insert_input_text_box(
+                text_with_button,
+                "phase",
+                index=insert_index + index
+            )
     tab.Layout()
 
 
