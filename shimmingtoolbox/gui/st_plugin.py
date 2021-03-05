@@ -561,7 +561,7 @@ class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
-        self.n_echoes = -1
+        self.n_echoes = 0
         input_text_box_metadata = [
             {
                 "button_label": "Number of Echoes",
@@ -879,7 +879,8 @@ def add_input_echo_boxes(event, tab, ctrl):
         2 - Spacer
         3 - next item, and so on
 
-    First, we check and see how many echo boxes the tab currently has, and remove them all.
+    First, we check and see how many echo boxes the tab currently has, and remove any where
+    n current > n update.
     Next, we add n = n_echoes echo boxes to the tab.
 
     Args:
@@ -900,13 +901,12 @@ def add_input_echo_boxes(event, tab, ctrl):
         return
 
     insert_index = 3
-    for index in range(0, tab.n_echoes+1):
-        tab.sizer_input.Hide(insert_index)
-        tab.sizer_input.Remove(insert_index)
-        tab.Layout()
+    if n_echoes < tab.n_echoes:
+        for index in range(tab.n_echoes, n_echoes, -1):
+            tab.sizer_input.Hide(index + 2)
+            tab.sizer_input.Remove(index + 2)
 
-    tab.n_echoes = n_echoes
-    for index in range(0, n_echoes):
+    for index in range(tab.n_echoes, n_echoes):
         text_with_button = TextWithButton(
             panel=tab,
             button_label=f"Input Echo {index + 1}",
@@ -915,19 +915,20 @@ def add_input_echo_boxes(event, tab, ctrl):
             n_text_boxes=1,
             name=f"input_echo_{index + 1}"
         )
-        if index == n_echoes-1:
+        if index + 1 == n_echoes and tab.n_echoes == 0:
             tab.input_component.insert_input_text_box(
                 text_with_button,
                 "phase",
                 index=insert_index + index,
-                last=True
-            )
+                last=True)
         else:
             tab.input_component.insert_input_text_box(
                 text_with_button,
                 "phase",
                 index=insert_index + index
             )
+
+    tab.n_echoes = n_echoes
     tab.Layout()
 
 
