@@ -543,7 +543,7 @@ class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Field Map Tab description: TODO"
         super().__init__(parent, title, description)
-        self.n_echoes = -1
+        self.n_echoes = 0
         input_text_box_metadata = [
             {
                 "button_label": "Number of Echoes",
@@ -870,13 +870,12 @@ def add_input_echo_boxes(event, tab, ctrl):
         )
         return
 
-    for index in range(0, tab.n_echoes+1):
-        tab.sizer_input.Hide(3)
-        tab.sizer_input.Remove(3)
-        tab.Layout()
+    if n_echoes < tab.n_echoes:
+        for index in range(tab.n_echoes, n_echoes, -1):
+            tab.sizer_input.Hide(index + 2)
+            tab.sizer_input.Remove(index + 2)
 
-    tab.n_echoes = n_echoes
-    for index in range(0, n_echoes):
+    for index in range(tab.n_echoes, n_echoes):
         text_with_button = TextWithButton(
             panel=tab,
             button_label=f"Input Echo {index + 1}",
@@ -885,10 +884,12 @@ def add_input_echo_boxes(event, tab, ctrl):
             n_text_boxes=1,
             name=f"input_echo_{index + 1}"
         )
-        if index == n_echoes-1:
-            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index, True)
+        if index + 1 == n_echoes and tab.n_echoes == 0:
+            tab.input_component.insert_input_text_box(text_with_button, "default", index + 3, True)
         else:
-            tab.input_component.insert_input_text_box(text_with_button, "default", 3 + index)
+            tab.input_component.insert_input_text_box(text_with_button, "default", index + 3)
+
+    tab.n_echoes = n_echoes
     tab.Layout()
 
 
