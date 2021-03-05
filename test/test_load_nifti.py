@@ -1,8 +1,6 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import pytest
-import logging
 import shutil
 import os
 import numpy as np
@@ -26,6 +24,7 @@ class TestCore(object):
                               [[16, 16], [17, 17], [18, 18]]],
                              [[[19, 19], [20, 20], [21, 21]], [[22, 22], [23, 23], [24, 24]],
                               [[25, 25], [26, 26], [27, 27]]]])
+    _data_b1 = np.zeros([64, 64, 16, 16])
     _aff = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]])
     _json_phase = {"Modality": "MR",
                    "ImageComments": "phase",
@@ -79,6 +78,7 @@ class TestCore(object):
                    "ConversionSoftware": "dcm2niix",
                    "ConversionSoftwareVersion": "v1.0.20181125  (JP2:OpenJPEG) GCC9.3.0",
                    "Dcm2bidsVersion": "2.1.4"}
+
     _json_mag = {"Modality": "MR",
                  "ImageComments": "magnitude",
                  "MagneticFieldStrength": 3,
@@ -181,8 +181,8 @@ class TestCore(object):
                 "PixelBandwidth": 450,
                 "DwellTime": 3.48e-05,
                 "PhaseEncodingDirection": "j-",
-                "SliceTiming": [0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0, 0, 0, 0, 0,0,
-                                0, 0],
+                "SliceTiming": [0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0.96875, 0, 0, 0, 0, 0,
+                                0, 0, 0],
                 "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
                 "InPlanePhaseEncodingDirectionDICOM": "COL",
                 "ConversionSoftware": "dcm2niix",
@@ -205,12 +205,15 @@ class TestCore(object):
         self.data_path = self.tmp_path / 'test_data'
         self.data_path_2 = self.tmp_path / 'test_data_2'
         self.data_path_volume = self.tmp_path / 'test_data_volume'
-        self.data_path.mkdir()
-        self.data_path_2.mkdir()
-        self.data_path_volume.mkdir()
+        self.data_path_b1 = self.tmp_path / 'test_data_b1'
+        self.data_path.mkdir(exist_ok=True)
+        self.data_path_2.mkdir(exist_ok=True)
+        self.data_path_volume.mkdir(exist_ok=True)
+        self.data_path_b1.mkdir(exist_ok=True)
 
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         dummy_data_volume = nib.nifti1.Nifti1Image(dataobj=self._data_volume, affine=self._aff)
+
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy.nii'))
         with open(os.path.join(self.data_path, 'dummy.json'), 'w') as json_file:
             self._json_phase['EchoNumber'] = 1
@@ -280,8 +283,8 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.tmp_path)
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
-                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)),\
+            "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_files(self):
@@ -296,10 +299,10 @@ class TestCore(object):
         os.remove(os.path.join(self.data_path, "dummy2.nii"))
         os.remove(os.path.join(self.data_path, "dummy2.json"))
         niftis, info, json_info = load_nifti(self.data_path)
-        assert (len(info) == 1), "Wrong number od info data"
+        assert (len(info) == 1), "Wrong number of info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
-                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)),\
+            "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_json_missing_fail(self):
@@ -313,7 +316,7 @@ class TestCore(object):
         except ValueError:
             return 0
 
-        assert (False), "Did not fail with missing JSON file"
+        assert False, "Did not fail with missing JSON file"
 
     def test_load_nifti_multiple_echoes(self, monkeypatch):
         """
@@ -367,8 +370,8 @@ class TestCore(object):
         niftis, info, json_info = load_nifti(self.data_path_volume)
         assert (len(info) == 1), "Wrong number of info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
-                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)),\
+            "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 2)), "Wrong shape for the Nifti output data"
 
     def test_load_nifti_multiple_run(self, monkeypatch):
@@ -393,8 +396,8 @@ class TestCore(object):
         self._json_phase['AcquisitionNumber'] = 1
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
-                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)),\
+            "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
         monkeypatch.setattr('sys.stdin', StringIO('2\n'))
@@ -402,8 +405,8 @@ class TestCore(object):
         self._json_phase['AcquisitionNumber'] = 2
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
-        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase,
-                                                                       sort_keys=True)), "JSON file is not correctly loaded"
+        assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)),\
+            "JSON file is not correctly loaded"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
         self._json_phase['AcquisitionNumber'] = 1
 
@@ -451,19 +454,92 @@ class TestCore(object):
 
         assert b1.shape == (64, 64, 16, 8), "Wrong rf-map shape"
         assert np.abs(b1).max() <= 180 and np.abs(b1).min() >= 0, "Magnitude values out of range"
-        assert np.angle(b1).max() <= np.pi and np.angle(b1).min() >= -np.pi, "Phase values out of range"
+        assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi,\
+            "Phase values out of range"
 
         # Check masking consistency for all coils at each slice
         for i in range(b1.shape[2]):
             for j in range(b1.shape[3] - 1):
                 assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
 
-        test_values = [format(-4.274539911369111 + 4.599952786001116j, '.5f'),
-                       format(-5.8027003257021725 + 2.2042390773527423j, '.5f'),
-                       format(-2.1929304691258276 + 1.5241263801971388j, '.5f')]
+        test_values = [-4.274539911369111 + 4.599952786001116j,
+                       -5.8027003257021725 + 2.2042390773527423j,
+                       -2.1929304691258276 + 1.5241263801971388j]
 
-        assert [format(b1[35, 35, 0, 0], '.5f'), format(b1[35, 35, 6, 7], '.5f'), format(b1[40, 25, 15, 7], '.5f')] == \
-               test_values
+        assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 6, 7], b1[40, 25, 15, 7]], test_values).all()
 
-        assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1, sort_keys=True)), \
+        assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1, sort_keys=True)),\
             "JSON file is not correctly loaded for first RF JSON"
+
+    def test_read_nii_b1_without_tags(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
+            self._json_b1_no_shimsetting = self._json_b1.copy()
+            del self._json_b1_no_shimsetting['ShimSetting']
+            json.dump(self._json_b1_no_shimsetting, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_shimsetting.nii")
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
+            self._json_b1_no_slicetiming = self._json_b1.copy()
+            del self._json_b1_no_slicetiming['SliceTiming']
+            json.dump(self._json_b1_no_slicetiming, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_slicetiming.nii")
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+    def test_read_nii_b1_no_scaling(self):
+        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
+        _, _, b1 = read_nii(fname_b1, auto_scale=False)
+        assert b1.shape == (64, 64, 16, 16), "Wrong rf-map shape"
+        test_values = [87.0, 1890.0, 37.0]
+        assert [b1[35, 35, 0, 0], b1[35, 35, 6, 13], b1[40, 25, 15, 7]] == test_values
+
+    def test_read_nii_b1_wrong_dims(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting.json'), 'w') as json_file:
+            self._json_b1_wrong_shimsetting = self._json_b1.copy()
+            self._json_b1_wrong_shimsetting['ShimSetting'] = str(np.zeros([15]))
+            json.dump(self._json_b1_wrong_shimsetting, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_shimsetting.nii")
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming.json'), 'w') as json_file:
+            self._json_b1_wrong_slicetiming = self._json_b1.copy()
+            self._json_b1_wrong_shimsetting['SliceTiming'] = str(np.zeros([15]))
+            json.dump(self._json_b1_wrong_slicetiming, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_slicetiming.nii")
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
+
+    def test_read_nii_b1_negative_mag(self):
+        data_negative_mag = self._data_b1.copy()
+        data_negative_mag[35, 35, 0, 0] = -1
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=data_negative_mag, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_negative_mag'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_negative_mag.json'), 'w') as json_file:
+            json.dump(self._json_b1, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_negative_mag.nii")
+        try:
+            read_nii(fname_b1)
+        except ValueError:
+            return 0
