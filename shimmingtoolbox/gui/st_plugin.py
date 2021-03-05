@@ -802,6 +802,7 @@ class TextWithButton:
         button = wx.Button(self.panel, -1, label=self.button_label)
 
         for i_text_box in range(0, self.n_text_boxes):
+            text_with_button_box.Add(self.create_info_icon(), 0, wx.ALIGN_LEFT | wx.RIGHT, 7)
             textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text, name=self.name)
             self.textctrl_list.append(textctrl)
             if i_text_box == 0:
@@ -817,8 +818,25 @@ class TextWithButton:
                         add_input_echo_boxes(event, panel, ctrl)
                 button.Bind(wx.EVT_BUTTON, self.button_function)
                 text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
+
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
         return text_with_button_box
+
+    def create_info_icon(self):
+        bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
+        info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'info-icon.png')
+        img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
+        bmp = img.ConvertToBitmap()
+        image = wx.StaticBitmap(self.panel, bitmap=bmp)
+        image.Bind(wx.EVT_MOTION, on_mouse_over)
+        return image
+
+
+def on_mouse_over(event):
+    image = event.GetEventObject()
+    tooltip = wx.ToolTip("Test")
+    tooltip.SetDelay(10)
+    image.SetToolTip(tooltip)
 
 
 def select_folder(event, ctrl):
