@@ -315,9 +315,7 @@ class InputComponent:
         """Add a list of input text boxes (TextWithButton) to the sizer_input.
 
         Args:
-            TODO: metadata argument does not exist, info is still relevant (uses
-            self.input_text_box_metadata)
-            metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
+            self.input_text_box_metadata (list)(dict): A list of dictionaries, where the dictionaries have two keys:
                 ``button_label`` and ``button_function``.
                 .. code::
 
@@ -575,7 +573,8 @@ class FieldMapTab(Tab):
             },
             {
                 "button_label": "Unwrapper",
-                "name": "unwrapper"
+                "name": "unwrapper",
+                "default_text": "prelude",
             },
             {
                 "button_label": "Threshold",
@@ -589,7 +588,7 @@ class FieldMapTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(__dir_shimmingtoolbox__, "fieldmap.nii.gz"),
                 "name": "output"
             }
         ]
@@ -681,13 +680,13 @@ class MaskTab(Tab):
                 "name": "thr"
             },
             {
-                "button_label": "Output Folder",
+                "button_label": "Output File",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
                 "name": "output"
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask threshold").sizer
         return sizer
 
     def create_sizer_rect(self):
@@ -699,7 +698,8 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Size",
-                "name": "size"
+                "name": "size",
+                "n_text_boxes": 2
             },
             {
                 "button_label": "Center",
@@ -709,11 +709,11 @@ class MaskTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
                 "name": "output"
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask rect").sizer
         return sizer
 
     def create_sizer_box(self):
@@ -725,7 +725,8 @@ class MaskTab(Tab):
             },
             {
                 "button_label": "Size",
-                "name": "size"
+                "name": "size",
+                "n_text_boxes": 3
             },
             {
                 "button_label": "Center",
@@ -735,11 +736,11 @@ class MaskTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
                 "name": "output"
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask").sizer
+        sizer = InputComponent(self, input_text_box_metadata, "st_mask box").sizer
         return sizer
 
     def create_sizer_input(self):
@@ -881,7 +882,7 @@ def add_input_echo_boxes(event, tab, ctrl):
 
     First, we check and see how many echo boxes the tab currently has, and remove any where
     n current > n update.
-    Next, we add n = n_echoes echo boxes to the tab.
+    Next, we add n = n update - n current echo boxes to the tab.
 
     Args:
         event (wx.Event): when the ``Number of Echoes`` button is clicked.
