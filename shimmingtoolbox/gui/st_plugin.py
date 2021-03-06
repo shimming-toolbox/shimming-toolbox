@@ -266,6 +266,8 @@ class InfoComponent:
         sizer.Add(button_documentation, flag=wx.SHAPED, proportion=1)
 
         description_text = wx.StaticText(self.panel, id=-1, label=self.description)
+        width = st_logo.Size[0]
+        description_text.Wrap(width)
         sizer.Add(description_text)
         return sizer
 
@@ -443,7 +445,8 @@ class TerminalComponent:
 class ShimTab(Tab):
     def __init__(self, parent, title="Shim"):
 
-        description = "Shimming Tab description: TODO"
+        description = "Perform B0 shimming.\n\n" \
+                      "Select the shimming algorithm from the dropdown list."
         super().__init__(parent, title, description)
 
         self.sizer_input = self.create_sizer_input()
@@ -567,7 +570,9 @@ class ShimTab(Tab):
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
-        description = "Field Map Tab description: TODO"
+        description = "Create a B0 fieldmap.\n\n" \
+                      "Enter the number of echoes then press the `Number of Echoes` button.\n\n" \
+                      "Select the unwrapper from the dropdown list."
         super().__init__(parent, title, description)
         self.n_echoes = 0
         input_text_box_metadata = [
@@ -618,7 +623,8 @@ class FieldMapTab(Tab):
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
-        description = "Mask Tab description: TODO"
+        description = "Create a mask based.\n\n" \
+                      "Select a shape or an algorithm from the dropdown list."
         super().__init__(parent, title, description)
 
         self.sizer_input = self.create_sizer_input()
@@ -786,7 +792,7 @@ class MaskTab(Tab):
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
-        description = "Dicom to Nifti Tab description: TODO"
+        description = "Process dicoms into NIfTI following the BIDS data structure"
         super().__init__(parent, title, description)
         input_text_box_metadata = [
             {
