@@ -336,7 +336,8 @@ class InputComponent:
                 button_function=twb_dict.get("button_function", self.button_do_something),
                 default_text=twb_dict.get("default_text", ""),
                 n_text_boxes=twb_dict.get("n_text_boxes", 1),
-                name=twb_dict.get("name", "default")
+                name=twb_dict.get("name", "default"),
+                info_text=twb_dict.get("info_text", "")
             )
             self.add_input_text_box(text_with_button, twb_dict.get("name", "default"))
 
@@ -509,33 +510,42 @@ class ShimTab(Tab):
             {
                 "button_label": "Input Fieldmap",
                 "name": "fmap",
-                "button_function": "select_from_overlay"
+                "button_function": "select_from_overlay",
+                "info_text": "B0 fieldmap. This should be a 4D file (4th dimension being time)."
             },
             {
                 "button_label": "Input Anat",
                 "name": "anat",
-                "button_function": "select_from_overlay"
+                "button_function": "select_from_overlay",
+                "info_text": "Filename of the anatomical image to apply the correction."
             },
             {
                 "button_label": "Input Static Mask",
                 "name": "mask-static",
-                "button_function": "select_from_overlay"
+                "button_function": "select_from_overlay",
+                "info_text": """3D NIfTI file used to define the static spatial region to shim.
+                    The coordinate system should be the same as anat's coordinate system."""
             },
             {
                 "button_label": "Input RIRO Mask",
                 "name": "mask-riro",
-                "button_function": "select_from_overlay"
+                "button_function": "select_from_overlay",
+                "info_text": """3D NIfTI file used to define the time varying (i.e. RIRO,
+                    Respiration-Induced Resonance Offset) spatial region to shim.
+                    The coordinate system should be the same as anat's coordinate system."""
             },
             {
                 "button_label": "Input Respiratory Trace",
                 "button_function": "select_file",
-                "name": "resp"
+                "name": "resp",
+                "info_text": "Siemens respiratory file containing pressure data."
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": __dir_shimmingtoolbox__,
-                "name": "output"
+                "name": "output",
+                "info_text": "Directory to output gradient text file and figures."
             }
         ]
         sizer = InputComponent(self, input_text_box_metadata, "st_realtime_zshim").sizer
@@ -564,32 +574,38 @@ class FieldMapTab(Tab):
             {
                 "button_label": "Number of Echoes",
                 "button_function": "add_input_echo_boxes",
-                "name": "no_arg"
+                "name": "no_arg",
+                "info_text": "Number of echo NIfTI files to be used. Must be an integer > 0."
             },
             {
                 "button_label": "Input Magnitude",
                 "button_function": "select_from_overlay",
-                "name": "mag"
+                "name": "mag",
+                "info_text": "Input path of mag NIfTI file."
             },
             {
                 "button_label": "Unwrapper",
                 "name": "unwrapper",
                 "default_text": "prelude",
+                "info_text": "Algorithm for unwrapping, default = prelude."
             },
             {
                 "button_label": "Threshold",
-                "name": "threshold"
+                "name": "threshold",
+                "info_text": "Float threshold for masking. Used for: PRELUDE."
             },
             {
                 "button_label": "Input Mask",
                 "button_function": "select_from_overlay",
-                "name": "mask"
+                "name": "mask",
+                "info_text": "Input path for a mask. Used for PRELUDE"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": os.path.join(__dir_shimmingtoolbox__, "fieldmap.nii.gz"),
-                "name": "output"
+                "name": "output",
+                "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'"
             }
         ]
         self.terminal_component = TerminalComponent(self)
@@ -672,18 +688,23 @@ class MaskTab(Tab):
             {
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
-                "name": "input"
+                "name": "input",
+                "info_text": """Input path of the nifti file to mask. Supported extensions are
+                    .nii or .nii.gz."""
             },
             {
                 "button_label": "Threshold",
                 "default_text": "30",
-                "name": "thr"
+                "name": "thr",
+                "info_text": """Integer value to threshold the data: voxels will be set to zero if
+                    their value <= this threshold. Default = 30."""
             },
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
-                "name": "output"
+                "name": "output",
+                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
         sizer = InputComponent(self, input_text_box_metadata, "st_mask threshold").sizer
@@ -694,23 +715,29 @@ class MaskTab(Tab):
             {
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
-                "name": "input"
+                "name": "input",
+                "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 2D or
+                    3D. Supported extensions are .nii or .nii.gz."""
             },
             {
                 "button_label": "Size",
                 "name": "size",
-                "n_text_boxes": 2
+                "n_text_boxes": 2,
+                "info_text": "Length of the side of the box along 1st & 2nd dimension (in pixels)."
             },
             {
                 "button_label": "Center",
                 "name": "center",
-                "n_text_boxes": 2
+                "n_text_boxes": 2,
+                "info_text": """Center of the box along first and second dimension (in pixels).
+                    If no center is provided (None), the middle is used."""
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
-                "name": "output"
+                "name": "output",
+                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
         sizer = InputComponent(self, input_text_box_metadata, "st_mask rect").sizer
@@ -721,23 +748,29 @@ class MaskTab(Tab):
             {
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
-                "name": "input"
+                "name": "input",
+                "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 3D.
+                    Supported extensions are .nii or .nii.gz."""
             },
             {
                 "button_label": "Size",
                 "name": "size",
-                "n_text_boxes": 3
+                "n_text_boxes": 3,
+                "info_text": "Length of side of box along 1st, 2nd, & 3rd dimension (in pixels)."
             },
             {
                 "button_label": "Center",
                 "name": "center",
-                "n_text_boxes": 3
+                "n_text_boxes": 3,
+                "info_text": """Center of the box along 1st, 2nd, & 3rd dimension (in pixels).
+                    If no center is provided (None), the middle is used."""
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
-                "name": "output"
+                "name": "output",
+                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
         sizer = InputComponent(self, input_text_box_metadata, "st_mask box").sizer
@@ -759,11 +792,13 @@ class DicomToNiftiTab(Tab):
             {
                 "button_label": "Input Folder",
                 "button_function": "select_folder",
-                "name": "input"
+                "name": "input",
+                "info_text": "Input path of dicom folder"
             },
             {
                 "button_label": "Subject Name",
-                "name": "subject"
+                "name": "subject",
+                "info_text": "Name of the patient"
             },
             {
                 "button_label": "Config Path",
@@ -771,13 +806,15 @@ class DicomToNiftiTab(Tab):
                 "default_text": os.path.join(__dir_shimmingtoolbox__,
                                              "config",
                                              "dcm2bids.json"),
-                "name": "config"
+                "name": "config",
+                "info_text": "Full file path and name of the BIDS config file"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": __dir_shimmingtoolbox__,
-                "name": "output"
+                "name": "output",
+                "info_text": "Output path for NIfTI files."
             }
         ]
         self.terminal_component = TerminalComponent(self)
@@ -789,7 +826,7 @@ class DicomToNiftiTab(Tab):
 
 class TextWithButton:
     def __init__(self, panel, button_label, button_function, name="default", default_text="",
-                 n_text_boxes=1):
+                 n_text_boxes=1, info_text=""):
         self.panel = panel
         self.button_label = button_label
         self.button_function = button_function
@@ -797,6 +834,7 @@ class TextWithButton:
         self.textctrl_list = []
         self.n_text_boxes = n_text_boxes
         self.name = name
+        self.info_text = info_text
 
     def create(self):
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -828,16 +866,22 @@ class TextWithButton:
         info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'info-icon.png')
         img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
         bmp = img.ConvertToBitmap()
-        image = wx.StaticBitmap(self.panel, bitmap=bmp)
+        image = InfoIcon(self.panel, bitmap=bmp, info_text=self.info_text)
         image.Bind(wx.EVT_MOTION, on_mouse_over)
         return image
 
 
 def on_mouse_over(event):
     image = event.GetEventObject()
-    tooltip = wx.ToolTip("Test")
+    tooltip = wx.ToolTip(image.info_text)
     tooltip.SetDelay(10)
     image.SetToolTip(tooltip)
+
+
+class InfoIcon(wx.StaticBitmap):
+    def __init__(self, panel, bitmap, info_text):
+        self.info_text = info_text
+        super(wx.StaticBitmap, self).__init__(panel, bitmap=bitmap)
 
 
 def select_folder(event, ctrl):
@@ -932,7 +976,8 @@ def add_input_echo_boxes(event, tab, ctrl):
             button_function="select_from_overlay",
             default_text="",
             n_text_boxes=1,
-            name=f"input_echo_{index + 1}"
+            name=f"input_echo_{index + 1}",
+            info_text=f"Input path of phase nifti file {index + 1}"
         )
         if index + 1 == n_echoes and tab.n_echoes == 0:
             tab.input_component.insert_input_text_box(
