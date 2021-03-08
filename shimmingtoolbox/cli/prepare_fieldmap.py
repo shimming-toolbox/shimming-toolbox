@@ -86,7 +86,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
 
     # Save NIFTI
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
-    create_output_dir(fname_output)
+    create_output_dir(fname_output, is_file=True)
     nib.save(nii_fieldmap, fname_output)
 
     # Save json
