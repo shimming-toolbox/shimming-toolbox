@@ -9,6 +9,7 @@ import subprocess
 import shutil
 
 from shimmingtoolbox import __dir_config_dcm2bids__
+from shimmingtoolbox.utils import create_output_dir
 
 
 def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
@@ -25,10 +26,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         raise FileNotFoundError("No dicom path found")
     if not os.path.exists(path_config_dcm2bids):
         raise FileNotFoundError("No dcm2bids config file found")
-    if not os.path.exists(path_nifti):
-        os.makedirs(path_nifti)
-    else:
-        os.makedirs(os.path.join(path_nifti, "nifti_output"))
+    create_output_dir(path_nifti, "nifti_output")
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
