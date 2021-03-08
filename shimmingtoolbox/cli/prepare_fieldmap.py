@@ -6,10 +6,10 @@ import os
 import math
 import nibabel as nib
 import json
-from pathlib import Path
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
+from shimmingtoolbox.utils import create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -97,9 +97,3 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
         json.dump(json_fieldmap, outfile, indent=2)
-
-
-def create_output_dir(fname_output):
-    output_dir = Path(fname_output).name
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)

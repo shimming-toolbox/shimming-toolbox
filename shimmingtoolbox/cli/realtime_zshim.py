@@ -66,7 +66,7 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro,
     # Load PMU
     pmu = PmuResp(fname_resp)
 
-    create_output_dir(fname_output, "zshim_output")
+    create_output_dir(fname_output)
 
     static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
                                                                               nii_mask_anat_static=nii_mask_anat_static,

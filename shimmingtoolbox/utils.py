@@ -7,6 +7,7 @@ import os
 import tqdm
 import subprocess
 import logging
+from pathlib import Path
 
 
 def run_subprocess(cmd):
@@ -103,8 +104,15 @@ def st_progress_bar(*args, **kwargs):
 
 
 def create_output_dir(path_output, output_folder_name="output"):
+    """Given a path, create the directory if it doesn't exist.
 
-    if not os.path.exists(path_output):
-        os.makedirs(path_output)
+    Args:
+        path_output (str): Full path to either a folder or a file.
+        output_folder_name (str): Name of sub-folder.
+    """
+
+    if os.path.isfile(path_output):
+        path_output_folder = os.path.dirname(path_output)
     else:
-        os.makedirs(os.path.join(path_output, output_folder_name))
+        path_output_folder = path_output
+    os.makedirs(path_output_folder)
