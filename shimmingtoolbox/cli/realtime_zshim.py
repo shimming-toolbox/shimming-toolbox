@@ -9,6 +9,7 @@ import json
 
 from shimmingtoolbox.shim.realtime_zshim import realtime_zshim
 from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.utils import create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -65,9 +66,7 @@ def realtime_zshim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro,
     # Load PMU
     pmu = PmuResp(fname_resp)
 
-    # Look if output directory exists, if not, create it
-    if not os.path.exists(fname_output):
-        os.makedirs(fname_output)
+    create_output_dir(fname_output, "zshim_output")
 
     static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(nii_fmap, nii_anat, pmu, json_data,
                                                                               nii_mask_anat_static=nii_mask_anat_static,
