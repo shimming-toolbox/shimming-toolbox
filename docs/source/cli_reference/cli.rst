@@ -16,3 +16,4 @@ The following section outlines the CLI of shimming-toolbox.
 .. click:: shimmingtoolbox.cli.mask:mask_cli
    :prog: mask
    :nested: full
+

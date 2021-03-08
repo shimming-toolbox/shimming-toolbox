@@ -6,8 +6,10 @@ import re
 from click.testing import CliRunner
 import shimmingtoolbox.cli.check_env as st_ce
 
+
 @pytest.mark.dcm2niix
 @pytest.mark.prelude
+@pytest.mark.sct
 def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation):
     runner = CliRunner()
 
@@ -40,6 +42,14 @@ def test_check_dcm2niix_installation():
     assert isinstance(check_dcm2niix_installation_exit, int)
 
 
+def test_check_sct_installation():
+    """Tests that the function returns a bool as expected. it does not depend on sct being
+    installed.
+    """
+    check_sct_installation_exit = st_ce.check_sct_installation()
+    assert isinstance(check_sct_installation_exit, bool)
+
+
 @pytest.mark.prelude
 def test_get_prelude_version(test_prelude_installation):
     """Checks prelude version output for expected structure.
@@ -56,6 +66,15 @@ def test_get_dcm2niix_version(test_dcm2niix_installation):
     dcm2niix_version_info = st_ce.get_dcm2niix_version()
     version_regex = r"Chris.*\nv\d\.\d.\d{8}"
     assert re.search(version_regex, dcm2niix_version_info)
+
+
+@pytest.mark.sct
+def test_get_sct_version(test_sct_installation):
+    """Checks sct version output for expected structure.
+    """
+    sct_version_info = st_ce.get_sct_version()
+    version_regex = r"- version *"
+    assert re.search(version_regex, sct_version_info)
 
 
 def test_get_env_info():
