@@ -8,6 +8,7 @@ import os
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.masking.shapes import shape_cube
+from shimmingtoolbox.utils import create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -41,6 +42,7 @@ def mask_cli():
 def box(fname_input, output, size, center):
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
+    create_output_dir(output)
 
     if len(data.shape) == 3:
         mask_cb = shape_cube(data, size[0], size[1], size[2], center[0], center[1], center[2])  # creation
@@ -79,11 +81,13 @@ def box(fname_input, output, size, center):
 def rect(fname_input, output, size, center):
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
+    create_output_dir(output)
 
     if len(data.shape) == 2:
         mask_sqr = shape_square(data, size[0], size[1], center[0], center[1])  # creation of the rectangle mask
         mask_sqr = mask_sqr.astype(int)
         nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
+
         nib.save(nii_img, output)
         click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
         return output
@@ -121,6 +125,7 @@ def rect(fname_input, output, size, center):
 def threshold(fname_input, output, thr):
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
+    create_output_dir(output)
 
     mask_thr = shimmingtoolbox.masking.threshold.threshold(data, thr)  # creation of the threshold mask
     mask_thr = mask_thr.astype(int)
