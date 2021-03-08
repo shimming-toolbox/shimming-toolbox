@@ -100,3 +100,11 @@ def st_progress_bar(*args, **kwargs):
         kwargs['disable'] = True
 
     return tqdm.tqdm(*args, **kwargs)
+
+
+def create_output_dir(path_output, output_folder_name="output"):
+
+    if not os.path.exists(path_output):
+        os.makedirs(path_output)
+    else:
+        os.makedirs(os.path.join(path_output, output_folder_name))
