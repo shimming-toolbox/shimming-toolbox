@@ -442,7 +442,7 @@ class DropdownComponent:
         return sizer
 
 
-class InputComponent:
+class RunComponent:
     def __init__(self, panel, list_component, st_function):
         self.panel = panel
         self.st_function = st_function
@@ -655,7 +655,7 @@ class ShimTab(Tab):
             }
         ]
         component = Component(self, input_text_box_metadata)
-        sizer = InputComponent(self, [component], "st_realtime_zshim").sizer
+        sizer = RunComponent(self, [component], "st_realtime_zshim").sizer
         return sizer
 
     def create_sizer_other_algo(self):
@@ -741,9 +741,9 @@ class FieldMapTab(Tab):
         self.component_other = Component(self, input_text_box_metadata_other)
         self.dropdown = DropdownComponent(self, dropdown_metadata, [self.component_prelude, self.component_other])
         self.component_output = Component(self, input_text_box_metadata_output)
-        self.input_component = InputComponent(self, [self.component_input, self.dropdown, self.component_output],
+        self.run_component = RunComponent(self, [self.component_input, self.dropdown, self.component_output],
                                               "st_prepare_fieldmap")
-        self.sizer_input = self.input_component.sizer
+        self.sizer_input = self.run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
@@ -842,7 +842,7 @@ class MaskTab(Tab):
             }
         ]
         component = Component(self, input_text_box_metadata)
-        sizer = InputComponent(self, [component], "st_mask threshold").sizer
+        sizer = RunComponent(self, [component], "st_mask threshold").sizer
         return sizer
 
     def create_sizer_rect(self):
@@ -876,7 +876,7 @@ class MaskTab(Tab):
             }
         ]
         component = Component(self, input_text_box_metadata)
-        sizer = InputComponent(self, [component], "st_mask rect").sizer
+        sizer = RunComponent(self, [component], "st_mask rect").sizer
         return sizer
 
     def create_sizer_box(self):
@@ -910,7 +910,7 @@ class MaskTab(Tab):
             }
         ]
         component = Component(self, input_text_box_metadata)
-        sizer = InputComponent(self, [component], "st_mask box").sizer
+        sizer = RunComponent(self, [component], "st_mask box").sizer
         return sizer
 
     def create_sizer_input(self):
@@ -956,7 +956,7 @@ class DicomToNiftiTab(Tab):
         ]
         self.terminal_component = TerminalComponent(self)
         component = Component(self, input_text_box_metadata)
-        self.sizer_input = InputComponent(self, [component], "st_dicom_to_nifti").sizer
+        self.sizer_input = RunComponent(self, [component], "st_dicom_to_nifti").sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
