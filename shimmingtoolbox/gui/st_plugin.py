@@ -296,24 +296,20 @@ class InfoComponent:
         webbrowser.open(url)
 
 
-class InputComponent:
-    def __init__(self, panel, input_text_box_metadata, st_function):
-        self.st_function = st_function
+class Component:
+    def __init__(self, panel, input_text_box_metadata):
         self.sizer = self.create_sizer()
         self.panel = panel
         self.input_text_boxes = {}
         self.input_text_box_metadata = input_text_box_metadata
         self.add_input_text_boxes()
-        self.add_button_run()
 
     def create_sizer(self):
         """Create the centre sizer containing tab-specific functionality."""
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.SetMinSize(400, 300)
-        sizer.AddSpacer(10)
         return sizer
 
-    def add_input_text_boxes(self, spacer_size=20):
+    def add_input_text_boxes(self, spacer_size=10):
         """Add a list of input text boxes (TextWithButton) to the sizer_input.
 
         Args:
@@ -328,6 +324,7 @@ class InputComponent:
                             a function that is just ``pass``.
                         "default_text": (optional) The default text to be displayed.
                     }
+
             spacer_size (int): The size of the space to be placed between each input text box.
 
         """
@@ -343,7 +340,7 @@ class InputComponent:
             )
             self.add_input_text_box(text_with_button, twb_dict.get("name", "default"))
 
-    def add_input_text_box(self, text_with_button, name, spacer_size=20):
+    def add_input_text_box(self, text_with_button, name, spacer_size=10):
         box = text_with_button.create()
         self.sizer.Add(box, 0, wx.EXPAND)
         self.sizer.AddSpacer(spacer_size)
@@ -352,7 +349,7 @@ class InputComponent:
         else:
             self.input_text_boxes[name] = [text_with_button]
 
-    def insert_input_text_box(self, text_with_button, name, index, last=False, spacer_size=20):
+    def insert_input_text_box(self, text_with_button, name, index, last=False, spacer_size=10):
         box = text_with_button.create()
         self.sizer.Insert(index=index, sizer=box, flag=wx.EXPAND)
         if last:
@@ -362,10 +359,111 @@ class InputComponent:
         else:
             self.input_text_boxes[name] = [text_with_button]
 
+    def button_do_something(self, event):
+        """TODO"""
+        pass
+
+
+class DropdownComponent:
+    def __init__(self, panel, dropdown_metadata, list_components):
+        """ Create a dropdown list
+
+        Args:
+            panel: A panel is a window on which controls are placed.
+            dropdown_metadata (list)(dict): A list of dictionaries where the dictionaries have the
+                                            required keys: ``label``, ``option_name``, ``option_value``.
+                .. code::
+
+                    {
+                        "label": The label for the dropdown box
+                        "option_name": The name of the option in the CLI
+                        "option_value": The value linked to the option in the CLI
+                    }
+
+            list_components (list): list of Components
+        """
+        self.panel = panel
+        self.dropdown_metadata = dropdown_metadata
+        self.list_components = list_components
+        self.positions = {}
+        self.input_text_boxes = {}
+        self.sizer = self.create_sizer()
+        self.dropdown_choices = [item["label"] for item in self.dropdown_metadata]
+        self.create_choice_box()
+        self.create_dropdown_sizers()
+        self.on_choice(None)
+
+    def create_dropdown_sizers(self):
+        for index in range(len(self.dropdown_choices)):
+            sizer = self.list_components[index].sizer
+            self.sizer.Add(sizer, 0, wx.EXPAND)
+            self.positions[self.dropdown_choices[index]] = self.sizer.GetItemCount() - 1
+
+    def unshow_choice_box_sizers(self):
+        """Set the Show variable to false for all sizers of the choice box widget"""
+        for position in self.positions.values():
+            sizer = self.sizer.GetItem(position)
+            sizer.Show(False)
+
+    def create_choice_box(self):
+        self.choice_box = wx.Choice(self.panel, choices=self.dropdown_choices)
+        self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
+        self.sizer.Add(self.choice_box)
+        self.sizer.AddSpacer(10)
+
+    def on_choice(self, event):
+        # Get the selection from the choice box widget
+        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+
+        # Unshow everything then show the correct item according to the choice box
+        self.unshow_choice_box_sizers()
+        if selection in self.positions.keys():
+            sizer_item_threshold = self.sizer.GetItem(self.positions[selection])
+            sizer_item_threshold.Show(True)
+        else:
+            pass
+
+        index = self.find_index(selection)
+        self.input_text_boxes = self.list_components[index].input_text_boxes
+        self.input_text_boxes[self.dropdown_metadata[index]["option_name"]] = \
+            [self.dropdown_metadata[index]["option_value"]]
+
+        # Update the window
+        self.panel.Layout()
+
+    def find_index(self, label):
+        for index in range(len(self.dropdown_metadata)):
+            if self.dropdown_metadata[index]["label"] == label:
+                return index
+
+    def create_sizer(self):
+        """Create the a sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        return sizer
+
+
+class InputComponent:
+    def __init__(self, panel, list_component, st_function):
+        self.panel = panel
+        self.st_function = st_function
+        self.list_components = list_component
+        self.sizer = self.create_sizer()
+        self.add_button_run()
+
+    def create_sizer(self):
+        """Create the centre sizer containing tab-specific functionality."""
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.SetMinSize(400, 300)
+        sizer.AddSpacer(10)
+        for component in self.list_components:
+            sizer.Add(component.sizer, 0, wx.EXPAND)
+        return sizer
+
     def add_button_run(self):
         button_run = wx.Button(self.panel, -1, label="Run")
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
         self.sizer.Add(button_run, 0, wx.CENTRE)
+        self.sizer.AddSpacer(10)
 
     def button_run_on_click(self, event):
         try:
@@ -379,21 +477,30 @@ class InputComponent:
         msg = "Running "
         command = st_function
         command_dict = {}
-        for name, input_text_box_list in self.input_text_boxes.items():
-            if name == "no_arg":
-                continue
-            for input_text_box in input_text_box_list:
-                for textctrl in input_text_box.textctrl_list:
-                    arg = textctrl.GetValue()
-                    if arg == "" or arg is None:
-                        raise RunArgumentErrorST(
-                            f"Argument {name} is missing a value, please enter a valid input"
-                        )
-                    else:
+        for component in self.list_components:
+            for name, input_text_box_list in component.input_text_boxes.items():
+                if name == "no_arg":
+                    continue
+                for input_text_box in input_text_box_list:
+                    # Allows to chose from a dropdown
+                    if type(input_text_box) == str:
                         if name in command_dict.keys():
-                            command_dict[name].append(arg)
+                            command_dict[name].append(input_text_box)
                         else:
-                            command_dict[name] = [arg]
+                            command_dict[name] = [input_text_box]
+                    # Normal case where input_text_box is a TextwithButton
+                    else:
+                        for textctrl in input_text_box.textctrl_list:
+                            arg = textctrl.GetValue()
+                            if arg == "" or arg is None:
+                                raise RunArgumentErrorST(
+                                    f"Argument {name} is missing a value, please enter a valid input"
+                                )
+                            else:
+                                if name in command_dict.keys():
+                                    command_dict[name].append(arg)
+                                else:
+                                    command_dict[name] = [arg]
 
         print(command_dict)
         for name, args in command_dict.items():
@@ -402,10 +509,6 @@ class InputComponent:
                 command += f" {arg}"
         msg += command
         return command, msg
-
-    def button_do_something(self, event):
-        """TODO"""
-        pass
 
 
 class TerminalComponent:
@@ -551,7 +654,8 @@ class ShimTab(Tab):
                 "info_text": "Directory to output gradient text file and figures."
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_realtime_zshim").sizer
+        component = Component(self, input_text_box_metadata)
+        sizer = InputComponent(self, [component], "st_realtime_zshim").sizer
         return sizer
 
     def create_sizer_other_algo(self):
@@ -575,7 +679,7 @@ class FieldMapTab(Tab):
                       "Select the unwrapper from the dropdown list."
         super().__init__(parent, title, description)
         self.n_echoes = 0
-        input_text_box_metadata = [
+        input_text_box_metadata_input = [
             {
                 "button_label": "Number of Echoes",
                 "button_function": "add_input_echo_boxes",
@@ -587,13 +691,21 @@ class FieldMapTab(Tab):
                 "button_function": "select_from_overlay",
                 "name": "mag",
                 "info_text": "Input path of mag NIfTI file."
+            }
+        ]
+        dropdown_metadata = [
+            {
+                "label": "prelude",
+                "option_name": "unwrapper",
+                "option_value": "prelude"
             },
             {
-                "button_label": "Unwrapper",
-                "name": "unwrapper",
-                "default_text": "prelude",
-                "info_text": "Algorithm for unwrapping, default = prelude."
-            },
+                "label": "Nothing",
+                "option_name": "unwrapper",
+                "option_value": "QGU"
+            }
+        ]
+        input_text_box_metadata_prelude = [
             {
                 "button_label": "Threshold",
                 "name": "threshold",
@@ -604,7 +716,16 @@ class FieldMapTab(Tab):
                 "button_function": "select_from_overlay",
                 "name": "mask",
                 "info_text": "Input path for a mask. Used for PRELUDE"
-            },
+            }
+        ]
+        input_text_box_metadata_other = [
+            {
+                "button_label": "Other",
+                "name": "other",
+                "info_text": "TODO"
+            }
+        ]
+        input_text_box_metadata_output = [
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
@@ -613,8 +734,15 @@ class FieldMapTab(Tab):
                 "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'"
             }
         ]
+
         self.terminal_component = TerminalComponent(self)
-        self.input_component = InputComponent(self, input_text_box_metadata, "st_prepare_fieldmap")
+        self.component_input = Component(self, input_text_box_metadata_input)
+        self.component_prelude = Component(self, input_text_box_metadata_prelude)
+        self.component_other = Component(self, input_text_box_metadata_other)
+        self.dropdown = DropdownComponent(self, dropdown_metadata, [self.component_prelude, self.component_other])
+        self.component_output = Component(self, input_text_box_metadata_output)
+        self.input_component = InputComponent(self, [self.component_input, self.dropdown, self.component_output],
+                                              "st_prepare_fieldmap")
         self.sizer_input = self.input_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
@@ -713,7 +841,8 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask threshold").sizer
+        component = Component(self, input_text_box_metadata)
+        sizer = InputComponent(self, [component], "st_mask threshold").sizer
         return sizer
 
     def create_sizer_rect(self):
@@ -746,7 +875,8 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask rect").sizer
+        component = Component(self, input_text_box_metadata)
+        sizer = InputComponent(self, [component], "st_mask rect").sizer
         return sizer
 
     def create_sizer_box(self):
@@ -779,7 +909,8 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        sizer = InputComponent(self, input_text_box_metadata, "st_mask box").sizer
+        component = Component(self, input_text_box_metadata)
+        sizer = InputComponent(self, [component], "st_mask box").sizer
         return sizer
 
     def create_sizer_input(self):
@@ -824,7 +955,8 @@ class DicomToNiftiTab(Tab):
             }
         ]
         self.terminal_component = TerminalComponent(self)
-        self.sizer_input = InputComponent(self, input_text_box_metadata, "st_dicom_to_nifti").sizer
+        component = Component(self, input_text_box_metadata)
+        self.sizer_input = InputComponent(self, [component], "st_dicom_to_nifti").sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
@@ -861,6 +993,7 @@ class TextWithButton:
                 elif self.button_function == "add_input_echo_boxes":
                     self.button_function = lambda event, panel=self.panel, ctrl=textctrl: \
                         add_input_echo_boxes(event, panel, ctrl)
+                    textctrl.Bind(wx.EVT_TEXT, self.button_function)
                 button.Bind(wx.EVT_BUTTON, self.button_function)
                 text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
 
@@ -941,12 +1074,11 @@ def select_from_overlay(event, tab, ctrl):
 def add_input_echo_boxes(event, tab, ctrl):
     """On click of ``Number of Echoes`` button, add ``n_echoes`` ``TextWithButton`` boxes.
 
-    For this function, we are assuming the layout of the Field Map Tab is as follows:
+    For this function, we are assuming the layout of the Component input is as follows:
 
-        0 - Spacer
-        1 - Number of Echoes TextWithButton sizer
-        2 - Spacer
-        3 - next item, and so on
+        0 - Number of Echoes TextWithButton sizer
+        1 - Spacer
+        2 - next item, and so on
 
     First, we check and see how many echo boxes the tab currently has, and remove any where
     n current > n update.
@@ -958,6 +1090,7 @@ def add_input_echo_boxes(event, tab, ctrl):
         ctrl (wx.TextCtrl): the text box containing the number of echo boxes to add. Must be an
             integer > 0.
     """
+
     try:
         n_echoes = int(ctrl.GetValue())
         if n_echoes < 1:
@@ -969,11 +1102,11 @@ def add_input_echo_boxes(event, tab, ctrl):
         )
         return
 
-    insert_index = 3
+    insert_index = 2
     if n_echoes < tab.n_echoes:
         for index in range(tab.n_echoes, n_echoes, -1):
-            tab.sizer_input.Hide(index + 2)
-            tab.sizer_input.Remove(index + 2)
+            tab.component_input.sizer.Hide(index + 1)
+            tab.component_input.sizer.Remove(index + 1)
 
     for index in range(tab.n_echoes, n_echoes):
         text_with_button = TextWithButton(
@@ -986,13 +1119,13 @@ def add_input_echo_boxes(event, tab, ctrl):
             info_text=f"Input path of phase nifti file {index + 1}"
         )
         if index + 1 == n_echoes and tab.n_echoes == 0:
-            tab.input_component.insert_input_text_box(
+            tab.component_input.insert_input_text_box(
                 text_with_button,
                 "phase",
                 index=insert_index + index,
                 last=True)
         else:
-            tab.input_component.insert_input_text_box(
+            tab.component_input.insert_input_text_box(
                 text_with_button,
                 "phase",
                 index=insert_index + index
