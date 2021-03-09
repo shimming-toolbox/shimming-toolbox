@@ -247,9 +247,17 @@ class Tab(wx.Panel):
         return sizer
 
 
-class InfoComponent:
-    def __init__(self, panel, description):
+class Component:
+    def __init__(self, panel):
         self.panel = panel
+
+    def create_sizer(self):
+        pass
+
+
+class InfoComponent(Component):
+    def __init__(self, panel, description):
+        super().__init__(panel)
         self.description = description
         self.sizer = self.create_sizer()
 
@@ -296,10 +304,10 @@ class InfoComponent:
         webbrowser.open(url)
 
 
-class Component:
+class InputComponent(Component):
     def __init__(self, panel, input_text_box_metadata):
+        super().__init__(panel)
         self.sizer = self.create_sizer()
-        self.panel = panel
         self.input_text_boxes = {}
         self.input_text_box_metadata = input_text_box_metadata
         self.add_input_text_boxes()
@@ -364,7 +372,7 @@ class Component:
         pass
 
 
-class DropdownComponent:
+class DropdownComponent(Component):
     def __init__(self, panel, dropdown_metadata, list_components):
         """ Create a dropdown list
 
@@ -380,9 +388,9 @@ class DropdownComponent:
                         "option_value": The value linked to the option in the CLI
                     }
 
-            list_components (list): list of Components
+            list_components (list): list of InputComponents
         """
-        self.panel = panel
+        super().__init__(panel)
         self.dropdown_metadata = dropdown_metadata
         self.list_components = list_components
         self.positions = {}
@@ -442,9 +450,9 @@ class DropdownComponent:
         return sizer
 
 
-class RunComponent:
+class RunComponent(Component):
     def __init__(self, panel, list_component, st_function):
-        self.panel = panel
+        super().__init__(panel)
         self.st_function = st_function
         self.list_components = list_component
         self.sizer = self.create_sizer()
@@ -511,9 +519,9 @@ class RunComponent:
         return command, msg
 
 
-class TerminalComponent:
+class TerminalComponent(Component):
     def __init__(self, panel):
-        self.panel = panel
+        super().__init__(panel)
         self.terminal = None
         self.sizer = self.create_sizer()
 
@@ -654,7 +662,7 @@ class ShimTab(Tab):
                 "info_text": "Directory to output gradient text file and figures."
             }
         ]
-        component = Component(self, input_text_box_metadata)
+        component = InputComponent(self, input_text_box_metadata)
         sizer = RunComponent(self, [component], "st_realtime_zshim").sizer
         return sizer
 
@@ -736,11 +744,11 @@ class FieldMapTab(Tab):
         ]
 
         self.terminal_component = TerminalComponent(self)
-        self.component_input = Component(self, input_text_box_metadata_input)
-        self.component_prelude = Component(self, input_text_box_metadata_prelude)
-        self.component_other = Component(self, input_text_box_metadata_other)
+        self.component_input = InputComponent(self, input_text_box_metadata_input)
+        self.component_prelude = InputComponent(self, input_text_box_metadata_prelude)
+        self.component_other = InputComponent(self, input_text_box_metadata_other)
         self.dropdown = DropdownComponent(self, dropdown_metadata, [self.component_prelude, self.component_other])
-        self.component_output = Component(self, input_text_box_metadata_output)
+        self.component_output = InputComponent(self, input_text_box_metadata_output)
         self.run_component = RunComponent(self, [self.component_input, self.dropdown, self.component_output],
                                           "st_prepare_fieldmap")
         self.sizer_input = self.run_component.sizer
@@ -841,7 +849,7 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        component = Component(self, input_text_box_metadata)
+        component = InputComponent(self, input_text_box_metadata)
         sizer = RunComponent(self, [component], "st_mask threshold").sizer
         return sizer
 
@@ -875,7 +883,7 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        component = Component(self, input_text_box_metadata)
+        component = InputComponent(self, input_text_box_metadata)
         sizer = RunComponent(self, [component], "st_mask rect").sizer
         return sizer
 
@@ -909,7 +917,7 @@ class MaskTab(Tab):
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
         ]
-        component = Component(self, input_text_box_metadata)
+        component = InputComponent(self, input_text_box_metadata)
         sizer = RunComponent(self, [component], "st_mask box").sizer
         return sizer
 
@@ -955,7 +963,7 @@ class DicomToNiftiTab(Tab):
             }
         ]
         self.terminal_component = TerminalComponent(self)
-        component = Component(self, input_text_box_metadata)
+        component = InputComponent(self, input_text_box_metadata)
         self.sizer_input = RunComponent(self, [component], "st_dicom_to_nifti").sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
