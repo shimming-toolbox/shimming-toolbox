@@ -742,7 +742,7 @@ class FieldMapTab(Tab):
         self.dropdown = DropdownComponent(self, dropdown_metadata, [self.component_prelude, self.component_other])
         self.component_output = Component(self, input_text_box_metadata_output)
         self.run_component = RunComponent(self, [self.component_input, self.dropdown, self.component_output],
-                                              "st_prepare_fieldmap")
+                                          "st_prepare_fieldmap")
         self.sizer_input = self.run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
