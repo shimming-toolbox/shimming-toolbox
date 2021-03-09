@@ -249,8 +249,9 @@ class Tab(wx.Panel):
 
 
 class Component:
-    def __init__(self, panel):
+    def __init__(self, panel, list_components=[]):
         self.panel = panel
+        self.list_components = list_components
 
     @abc.abstractmethod
     def create_sizer(self):
@@ -381,13 +382,13 @@ class InputComponent(Component):
 
 
 class DropdownComponent(Component):
-    def __init__(self, panel, dropdown_metadata, list_components):
+    def __init__(self, panel, dropdown_metadata, list_components=[]):
         """ Create a dropdown list
 
         Args:
             panel: A panel is a window on which controls are placed.
             dropdown_metadata (list)(dict): A list of dictionaries where the dictionaries have the
-                                            required keys: ``label``, ``option_name``, ``option_value``.
+                required keys: ``label``, ``option_name``, ``option_value``.
                 .. code::
 
                     {
@@ -398,9 +399,8 @@ class DropdownComponent(Component):
 
             list_components (list): list of InputComponents
         """
-        super().__init__(panel)
+        super().__init__(panel, list_components)
         self.dropdown_metadata = dropdown_metadata
-        self.list_components = list_components
         self.positions = {}
         self.input_text_boxes = {}
         self.sizer = self.create_sizer()
@@ -459,10 +459,9 @@ class DropdownComponent(Component):
 
 
 class RunComponent(Component):
-    def __init__(self, panel, list_component, st_function):
-        super().__init__(panel)
+    def __init__(self, panel, st_function, list_components=[]):
+        super().__init__(panel, list_components)
         self.st_function = st_function
-        self.list_components = list_component
         self.sizer = self.create_sizer()
         self.add_button_run()
 
@@ -528,8 +527,8 @@ class RunComponent(Component):
 
 
 class TerminalComponent(Component):
-    def __init__(self, panel):
-        super().__init__(panel)
+    def __init__(self, panel, list_components=[]):
+        super().__init__(panel, list_components)
         self.terminal = None
         self.sizer = self.create_sizer()
 
@@ -671,7 +670,12 @@ class ShimTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
-        sizer = RunComponent(self, [component], "st_realtime_zshim").sizer
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_realtime_zshim"
+        )
+        sizer = run_component.sizer
         return sizer
 
     def create_sizer_other_algo(self):
@@ -751,14 +755,33 @@ class FieldMapTab(Tab):
             }
         ]
 
-        self.terminal_component = TerminalComponent(self)
-        self.component_input = InputComponent(self, input_text_box_metadata_input)
-        self.component_prelude = InputComponent(self, input_text_box_metadata_prelude)
-        self.component_other = InputComponent(self, input_text_box_metadata_other)
-        self.dropdown = DropdownComponent(self, dropdown_metadata, [self.component_prelude, self.component_other])
-        self.component_output = InputComponent(self, input_text_box_metadata_output)
-        self.run_component = RunComponent(self, [self.component_input, self.dropdown, self.component_output],
-                                          "st_prepare_fieldmap")
+        self.terminal_component = TerminalComponent(panel=self)
+        self.component_input = InputComponent(
+            panel=self,
+            input_text_box_metadata=input_text_box_metadata_input
+        )
+        self.component_prelude = InputComponent(
+            panel=self,
+            input_text_box_metadata=input_text_box_metadata_prelude
+        )
+        self.component_other = InputComponent(
+            panel=self,
+            input_text_box_metadata=input_text_box_metadata_other
+        )
+        self.dropdown = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_metadata,
+            list_components=[self.component_prelude, self.component_other]
+        )
+        self.component_output = InputComponent(
+            panel=self,
+            input_text_box_metadata=input_text_box_metadata_output
+        )
+        self.run_component = RunComponent(
+            panel=self,
+            list_components=[self.component_input, self.dropdown, self.component_output],
+            st_function="st_prepare_fieldmap"
+        )
         self.sizer_input = self.run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
@@ -858,7 +881,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
-        sizer = RunComponent(self, [component], "st_mask threshold").sizer
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask threshold"
+        )
+        sizer = run_component.sizer
         return sizer
 
     def create_sizer_rect(self):
@@ -892,7 +920,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
-        sizer = RunComponent(self, [component], "st_mask rect").sizer
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask rect"
+        )
+        sizer = run_component.sizer
         return sizer
 
     def create_sizer_box(self):
@@ -926,7 +959,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
-        sizer = RunComponent(self, [component], "st_mask box").sizer
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask box"
+        )
+        sizer = run_component.sizer
         return sizer
 
     def create_sizer_input(self):
@@ -972,7 +1010,12 @@ class DicomToNiftiTab(Tab):
         ]
         self.terminal_component = TerminalComponent(self)
         component = InputComponent(self, input_text_box_metadata)
-        self.sizer_input = RunComponent(self, [component], "st_dicom_to_nifti").sizer
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_dicom_to_nifti"
+        )
+        self.sizer_input = run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
@@ -1072,8 +1115,8 @@ def select_from_overlay(event, tab, ctrl):
         ctrl (wx.TextCtrl): the text item.
     """
 
-    # This is messy and wont work if we change any class hierarchy.. using GetTopLevelParent() only works if the panes
-    # is not floating
+    # This is messy and wont work if we change any class hierarchy.. using GetTopLevelParent() only
+    # works if the pane is not floating
     # Get the displayCtx class initialized in STControlPanel
     window = tab.GetGrandParent().GetParent()
     selected_overlay = window.displayCtx.getSelectedOverlay()
