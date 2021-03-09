@@ -21,6 +21,7 @@ import fsleyes.actions.loadoverlay as ovLoad
 import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox.utils import run_subprocess
+from shimmingtoolbox import gui_utils
 
 import numpy as np
 import webbrowser
