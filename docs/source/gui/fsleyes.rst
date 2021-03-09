@@ -36,6 +36,13 @@ you can remove it, it will use your local version:
    yes | conda install -c conda-forge fsleyes=0.34.2
    yes | conda remove --force dcm2niix
 
+To check if this worked, you can run:
+
+.. code-block::
+
+    dcm2niix --version
+
+It should show the latest version of ``dcm2niix``.
 
 Using the Shimming Plugin for FSLeyes
 =====================================
@@ -46,5 +53,8 @@ In the command line, type:
 
    fsleyes
 
-This will open the ``fsleyes`` application. Once in ``fsleyes``, click on **File** > **Load plugin** and select **st_plugin.py**.
-It will ask if you want to install it permanently: say "yes". Then, quit and reopen ``fsleyes``. The plugin should be accessible via **Settings** > **Ortho view 1** > **Shimming Toolbox**.
+This will open the ``fsleyes`` application. Once in ``fsleyes``, click on
+**File** > **Load plugin** and select **shimmingtoolbox/gui/st_plugin.py**.
+
+It will ask if you want to install it permanently: say **Yes**. Then, quit and reopen ``fsleyes``.
+The plugin should be accessible via **Settings** > **Ortho View 1** > **Shimming Toolbox**.
