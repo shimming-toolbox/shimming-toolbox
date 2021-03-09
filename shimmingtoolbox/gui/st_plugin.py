@@ -28,6 +28,7 @@ import webbrowser
 import nibabel as nib
 import os
 from pathlib import Path
+import abc
 import tempfile
 import logging
 logger = logging.getLogger(__name__)
@@ -251,8 +252,15 @@ class Component:
     def __init__(self, panel):
         self.panel = panel
 
+    @abc.abstractmethod
     def create_sizer(self):
-        pass
+        raise NotImplementedError
+
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'create_sizer') and
+                callable(subclass.create_sizer) or
+                NotImplemented)
 
 
 class InfoComponent(Component):
