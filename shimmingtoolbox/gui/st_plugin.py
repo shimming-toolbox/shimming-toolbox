@@ -20,7 +20,6 @@ import fsleyes.actions.loadoverlay as ovLoad
 
 import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
-from shimmingtoolbox import gui_utils
 from shimmingtoolbox.utils import run_subprocess
 
 import numpy as np
