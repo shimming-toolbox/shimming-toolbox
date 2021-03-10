@@ -485,8 +485,10 @@ class RunComponent(Component):
             command, msg = self.get_run_args(self.st_function)
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
             run_subprocess(command)
+            msg = f"Run {self.st_function} completed successfully"
+            self.panel.terminal_component.log_to_terminal(msg, level="INFO")
         except Exception as err:
-            self.panel.terminal_component.log_to_terminal(err, level="ERROR")
+            self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
     def get_run_args(self, st_function):
         msg = "Running "
@@ -517,7 +519,6 @@ class RunComponent(Component):
                                 else:
                                     command_dict[name] = [arg]
 
-        print(command_dict)
         for name, args in command_dict.items():
             command += f" -{name}"
             for arg in args:
