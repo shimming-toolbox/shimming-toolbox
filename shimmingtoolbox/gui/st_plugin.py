@@ -1004,7 +1004,7 @@ class DicomToNiftiTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(__dir_shimmingtoolbox__, "output_dicom_to_nifti"),
                 "name": "output",
                 "info_text": "Output path for NIfTI files."
             }
