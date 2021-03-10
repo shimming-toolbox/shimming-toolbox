@@ -7,18 +7,26 @@ import os
 import tqdm
 import subprocess
 import logging
-from pathlib import Path
 
 
 def run_subprocess(cmd):
-    """
-    Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
 
     Args:
         cmd (string): full command to be run on the command line
     """
-    logging.debug('{}'.format(cmd))
-    subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, text=True, check=True)
+    logging.debug(f'{cmd}')
+    try:
+        subprocess.run(
+            cmd.split(' '),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
+        raise Exception(msg)
 
 
 def add_suffix(fname, suffix):
