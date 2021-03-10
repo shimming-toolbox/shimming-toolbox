@@ -180,58 +180,7 @@ def read_nii(fname_nifti, auto_scale=True):
         logging.info("Scaling the selected nifti")
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
-
-            if 'ShimSetting' in json_data:
-                pass
-            else:
-                raise ValueError("Missing json tag: 'ShimSetting'")
-
-            n_coils = len(json_data['ShimSetting'])
-
-            if 'SliceTiming' in json_data:
-                pass
-            else:
-                raise ValueError("Missing json tag: 'SliceTiming'")
-
-            n_slices = len(json_data['SliceTiming'])
-
-            if image.shape[2] != n_slices:
-                raise ValueError("Wrong array dimension: number of slices not matching")
-            if image.shape[3] != 2*n_coils:
-                raise ValueError("Wrong array dimension: number of coils not matching")
-            # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
-            # Get the Transmission amplifier reference amplitude
-            amplifier_voltage = json_data['TxRefAmp']  # [V]
-            socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
-            # Magnitude values are stored in the first half of the 4th dimension
-            b1_mag = image[:, :, :, :image.shape[3] // 2] / 10  # Siemens magnitude values are stored in degrees x10
-
-            if b1_mag.min() < 0:
-                raise ValueError("Unexpected negative magnitude values")
-
-            # Scale magnitude in nT/V
-            b1_mag[b1_mag > 180] = 180  # Values higher than 180 degrees are due to noise
-            b1_mag = (b1_mag / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
-
-            # Scale the phase between [-pi, pi]
-            # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
-            b1_phase = image[:, :, :, image.shape[3] // 2:]  # [248 - 3848]
-            # Remove potential out of range zeros (set them as null phase = 2048)
-            b1_phase[b1_phase == 0] = 2048
-            b1_phase = (b1_phase - 2048) * np.pi / 1800  # [-pi pi]
-
-            # Reorder data shuffled by dm2niix
-            mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
-            phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
-            for i in range(n_coils):
-                mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
-                phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-
-            # Compute complex B1 maps
-            image = np.zeros_like(b1_mag).astype(complex)
-            for i in range(n_coils):
-                image[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)] * \
-                                    np.exp(1j * phase_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)])
+            image = scale_tfl_b1(image, json_data)
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
@@ -248,3 +197,57 @@ def read_nii(fname_nifti, auto_scale=True):
         logging.info("No scaling applied to selected nifti")
 
     return info, json_data, image
+
+def scale_tfl_b1(image, json_data):
+    if 'ShimSetting' in json_data:
+        pass
+    else:
+        raise ValueError("Missing json tag: 'ShimSetting'")
+
+    n_coils = len(json_data['ShimSetting'])
+
+    if 'SliceTiming' in json_data:
+        pass
+    else:
+        raise ValueError("Missing json tag: 'SliceTiming'")
+
+    n_slices = len(json_data['SliceTiming'])
+
+    if image.shape[2] != n_slices:
+        raise ValueError("Wrong array dimension: number of slices not matching")
+    if image.shape[3] != 2 * n_coils:
+        raise ValueError("Wrong array dimension: number of coils not matching")
+    # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
+    # Get the Transmission amplifier reference amplitude
+    amplifier_voltage = json_data['TxRefAmp']  # [V]
+    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
+    # Magnitude values are stored in the first half of the 4th dimension
+    b1_mag = image[:, :, :, :image.shape[3] // 2] / 10  # Siemens magnitude values are stored in degrees x10
+
+    if b1_mag.min() < 0:
+        raise ValueError("Unexpected negative magnitude values")
+
+    # Scale magnitude in nT/V
+    b1_mag[b1_mag > 180] = 180  # Values higher than 180 degrees are due to noise
+    b1_mag = (b1_mag / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
+
+    # Scale the phase between [-pi, pi]
+    # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
+    b1_phase = image[:, :, :, image.shape[3] // 2:]  # [248 - 3848]
+    # Remove potential out of range zeros (set them as null phase = 2048)
+    b1_phase[b1_phase == 0] = 2048
+    b1_phase = (b1_phase - 2048) * np.pi / 1800  # [-pi pi]
+
+    # Reorder data shuffled by dm2niix
+    mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
+    phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
+    for i in range(n_coils):
+        mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
+        phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
+
+    # Compute complex B1 maps
+    image = np.zeros_like(b1_mag).astype(complex)
+    for i in range(n_coils):
+        image[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)] * \
+                            np.exp(1j * phase_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)])
+    return image
