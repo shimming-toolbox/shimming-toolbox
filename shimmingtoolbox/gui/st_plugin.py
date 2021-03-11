@@ -665,7 +665,10 @@ class ShimTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": __dir_shimmingtoolbox__,
+                "default_text": os.path.join(
+                    __dir_shimmingtoolbox__,
+                    "output_rt_zshim"
+                ),
                 "name": "output",
                 "info_text": "Directory to output gradient text file and figures."
             }
