@@ -379,6 +379,9 @@ class InputComponent(Component):
         else:
             self.input_text_boxes[name] = [text_with_button]
 
+    def remove_last_input_text_box(self, name):
+        self.input_text_boxes[name].pop(-1)
+
     def button_do_something(self, event):
         """TODO"""
         pass
@@ -735,13 +738,8 @@ class FieldMapTab(Tab):
                 "button_label": "Number of Echoes",
                 "button_function": "add_input_echo_boxes",
                 "name": "no_arg",
-                "info_text": "Number of echo NIfTI files to be used. Must be an integer > 0."
-            },
-            {
-                "button_label": "Input Magnitude",
-                "button_function": "select_from_overlay",
-                "name": "mag",
-                "info_text": "Input path of mag NIfTI file."
+                "info_text": "Number of echo NIfTI files to be used. Must be an integer > 0.",
+                "required": True
             }
         ]
         dropdown_metadata = [
@@ -757,6 +755,13 @@ class FieldMapTab(Tab):
             }
         ]
         input_text_box_metadata_prelude = [
+            {
+                "button_label": "Input Magnitude",
+                "button_function": "select_from_overlay",
+                "name": "mag",
+                "info_text": "Input path of mag NIfTI file.",
+                "required": True
+            },
             {
                 "button_label": "Threshold",
                 "name": "threshold",
@@ -785,7 +790,8 @@ class FieldMapTab(Tab):
                     "output_fieldmap",
                     "fieldmap.nii.gz"),
                 "name": "output",
-                "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'"
+                "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'",
+                "required": True
             }
         ]
 
@@ -1219,7 +1225,7 @@ def add_input_echo_boxes(event, tab, ctrl):
         ctrl (wx.TextCtrl): the text box containing the number of echo boxes to add. Must be an
             integer > 0.
     """
-
+    option_name = "arg"
     try:
         n_echoes = int(ctrl.GetValue())
         if n_echoes < 1:
@@ -1236,6 +1242,7 @@ def add_input_echo_boxes(event, tab, ctrl):
         for index in range(tab.n_echoes, n_echoes, -1):
             tab.component_input.sizer.Hide(index + 1)
             tab.component_input.sizer.Remove(index + 1)
+            tab.component_input.remove_last_input_text_box(option_name)
 
     for index in range(tab.n_echoes, n_echoes):
         text_with_button = TextWithButton(
@@ -1245,18 +1252,19 @@ def add_input_echo_boxes(event, tab, ctrl):
             default_text="",
             n_text_boxes=1,
             name=f"input_echo_{index + 1}",
-            info_text=f"Input path of phase nifti file {index + 1}"
+            info_text=f"Input path of phase nifti file {index + 1}",
+            required=True
         )
         if index + 1 == n_echoes and tab.n_echoes == 0:
             tab.component_input.insert_input_text_box(
                 text_with_button,
-                "arg",
+                option_name,
                 index=insert_index + index,
                 last=True)
         else:
             tab.component_input.insert_input_text_box(
                 text_with_button,
-                "arg",
+                option_name,
                 index=insert_index + index
             )
 
