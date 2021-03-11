@@ -527,9 +527,10 @@ class RunComponent(Component):
                         for textctrl in input_text_box.textctrl_list:
                             arg = textctrl.GetValue()
                             if arg == "" or arg is None:
-                                raise RunArgumentErrorST(
-                                    f"Argument {name} is missing a value, please enter a valid input"
-                                )
+                                if input_text_box.required is True:
+                                    raise RunArgumentErrorST(
+                                        f"Argument {name} is missing a value, please enter a valid input"
+                                    )
                             else:
                                 # Case where the option name is set to arg, this handles it as if it were an argument
                                 if name == "arg":
