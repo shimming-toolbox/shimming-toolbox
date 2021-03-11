@@ -384,7 +384,7 @@ class InputComponent(Component):
 
 
 class DropdownComponent(Component):
-    def __init__(self, panel, dropdown_metadata, list_components=[]):
+    def __init__(self, panel, dropdown_metadata, name, list_components=[], info_text=""):
         """ Create a dropdown list
 
         Args:
@@ -399,10 +399,14 @@ class DropdownComponent(Component):
                         "option_value": The value linked to the option in the CLI
                     }
 
+            name (str): Label of the button describing the dropdown
             list_components (list): list of InputComponents
+            info_text (str): Help message when hovering the "i"
         """
         super().__init__(panel, list_components)
         self.dropdown_metadata = dropdown_metadata
+        self.name = name
+        self.info_text = info_text
         self.positions = {}
         self.input_text_boxes = {}
         self.sizer = self.create_sizer()
@@ -426,7 +430,12 @@ class DropdownComponent(Component):
     def create_choice_box(self):
         self.choice_box = wx.Choice(self.panel, choices=self.dropdown_choices)
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
-        self.sizer.Add(self.choice_box)
+        button = wx.Button(self.panel, -1, label=self.name)
+        self.choice_box_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.choice_box_sizer.Add(create_info_icon(self.panel, self.info_text), 0, wx.ALIGN_LEFT | wx.RIGHT, 7)
+        self.choice_box_sizer.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
+        self.choice_box_sizer.Add(self.choice_box)
+        self.sizer.Add(self.choice_box_sizer)
         self.sizer.AddSpacer(10)
 
     def on_choice(self, event):
@@ -783,7 +792,9 @@ class FieldMapTab(Tab):
         self.dropdown = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_metadata,
-            list_components=[self.component_prelude, self.component_other]
+            list_components=[self.component_prelude, self.component_other],
+            name="Unwrapper",
+            info_text="Algorithm for unwrapping"
         )
         self.component_output = InputComponent(
             panel=self,
@@ -1070,7 +1081,7 @@ class TextWithButton:
         button = wx.Button(self.panel, -1, label=self.button_label)
 
         for i_text_box in range(0, self.n_text_boxes):
-            text_with_button_box.Add(self.create_info_icon(), 0, wx.ALIGN_LEFT | wx.RIGHT, 7)
+            text_with_button_box.Add(create_info_icon(self.panel, self.info_text), 0, wx.ALIGN_LEFT | wx.RIGHT, 7)
             textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text, name=self.name)
             self.textctrl_list.append(textctrl)
             if i_text_box == 0:
@@ -1096,15 +1107,6 @@ class TextWithButton:
 
         return text_with_button_box
 
-    def create_info_icon(self):
-        bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-        info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'info-icon.png')
-        img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
-        bmp = img.ConvertToBitmap()
-        image = InfoIcon(self.panel, bitmap=bmp, info_text=self.info_text)
-        image.Bind(wx.EVT_MOTION, on_mouse_over)
-        return image
-
     def create_asterisk_icon(self):
         bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
         info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'asterisk.png')
@@ -1112,6 +1114,16 @@ class TextWithButton:
         bmp = img.ConvertToBitmap()
         image = wx.StaticBitmap(self.panel, bitmap=bmp)
         return image
+
+
+def create_info_icon(panel, info_text=""):
+    bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
+    info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'info-icon.png')
+    img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
+    bmp = img.ConvertToBitmap()
+    image = InfoIcon(panel, bitmap=bmp, info_text=info_text)
+    image.Bind(wx.EVT_MOTION, on_mouse_over)
+    return image
 
 
 def on_mouse_over(event):
