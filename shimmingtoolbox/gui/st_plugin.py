@@ -238,12 +238,12 @@ class Tab(wx.Panel):
         """Create the parent sizer for the tab.
 
         Tab is divided into 3 main sizers:
-            sizer_info | sizer_input | sizer_terminal
+            sizer_info | sizer_run | sizer_terminal
         """
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.sizer_info)
         sizer.AddSpacer(30)
-        sizer.Add(self.sizer_input, wx.EXPAND)
+        sizer.Add(self.sizer_run, wx.EXPAND)
         sizer.AddSpacer(30)
         sizer.Add(self.sizer_terminal, wx.EXPAND)
         return sizer
@@ -596,7 +596,7 @@ class ShimTab(Tab):
                       "Select the shimming algorithm from the dropdown list."
         super().__init__(parent, title, description)
 
-        self.sizer_input = self.create_sizer_input()
+        self.sizer_run = self.create_sizer_run()
         self.positions = {}
         self.dropdown_metadata = [
             {
@@ -625,8 +625,8 @@ class ShimTab(Tab):
     def create_dropdown_sizers(self):
         for dropdown_dict in self.dropdown_metadata:
             sizer = dropdown_dict["sizer_function"]()
-            self.sizer_input.Add(sizer, 0, wx.EXPAND)
-            self.positions[dropdown_dict["name"]] = self.sizer_input.GetItemCount() - 1
+            self.sizer_run.Add(sizer, 0, wx.EXPAND)
+            self.positions[dropdown_dict["name"]] = self.sizer_run.GetItemCount() - 1
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
@@ -635,7 +635,7 @@ class ShimTab(Tab):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection in self.positions.keys():
-            sizer_item_threshold = self.sizer_input.GetItem(self.positions[selection])
+            sizer_item_threshold = self.sizer_run.GetItem(self.positions[selection])
             sizer_item_threshold.Show(True)
         else:
             pass
@@ -646,14 +646,14 @@ class ShimTab(Tab):
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
         for position in self.positions.values():
-            sizer = self.sizer_input.GetItem(position)
+            sizer = self.sizer_run.GetItem(position)
             sizer.Show(False)
 
     def create_choice_box(self):
         self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
-        self.sizer_input.Add(self.choice_box)
-        self.sizer_input.AddSpacer(10)
+        self.sizer_run.Add(self.choice_box)
+        self.sizer_run.AddSpacer(10)
 
     def create_sizer_zshim(self, metadata=None):
         input_text_box_metadata = [
@@ -719,7 +719,7 @@ class ShimTab(Tab):
         sizer_shim_default.Add(description_text)
         return sizer_shim_default
 
-    def create_sizer_input(self):
+    def create_sizer_run(self):
         """Create the centre sizer containing tab-specific functionality."""
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.SetMinSize(400, 300)
@@ -825,7 +825,7 @@ class FieldMapTab(Tab):
             list_components=[self.component_input, self.dropdown, self.component_output],
             st_function="st_prepare_fieldmap"
         )
-        self.sizer_input = self.run_component.sizer
+        self.sizer_run = self.run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
@@ -837,7 +837,7 @@ class MaskTab(Tab):
                       "Select a shape or an algorithm from the dropdown list."
         super().__init__(parent, title, description)
 
-        self.sizer_input = self.create_sizer_input()
+        self.sizer_run = self.create_sizer_run()
         self.positions = {}
         self.dropdown_metadata = [
             {
@@ -869,8 +869,8 @@ class MaskTab(Tab):
     def create_dropdown_sizers(self):
         for dropdown_dict in self.dropdown_metadata:
             sizer = dropdown_dict["sizer_function"]()
-            self.sizer_input.Add(sizer, 0, wx.EXPAND)
-            self.positions[dropdown_dict["name"]] = self.sizer_input.GetItemCount() - 1
+            self.sizer_run.Add(sizer, 0, wx.EXPAND)
+            self.positions[dropdown_dict["name"]] = self.sizer_run.GetItemCount() - 1
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
@@ -879,8 +879,10 @@ class MaskTab(Tab):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection in self.positions.keys():
-            sizer_item_threshold = self.sizer_input.GetItem(self.positions[selection])
-            sizer_item_threshold.Show(True)
+            print(selection)
+            sizer_item = self.sizer_run.GetItem(self.positions[selection])
+            print(sizer_item)
+            sizer_item.Show(True)
         else:
             pass
 
@@ -890,14 +892,14 @@ class MaskTab(Tab):
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
         for position in self.positions.values():
-            sizer = self.sizer_input.GetItem(position)
+            sizer = self.sizer_run.GetItem(position)
             sizer.Show(False)
 
     def create_choice_box(self):
         self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
-        self.sizer_input.Add(self.choice_box)
-        self.sizer_input.AddSpacer(10)
+        self.sizer_run.Add(self.choice_box)
+        self.sizer_run.AddSpacer(10)
 
     def create_sizer_threshold(self, metadata=None):
         input_text_box_metadata = [
@@ -1027,7 +1029,7 @@ class MaskTab(Tab):
         sizer = run_component.sizer
         return sizer
 
-    def create_sizer_input(self):
+    def create_sizer_run(self):
         """Create the centre sizer containing tab-specific functionality."""
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.SetMinSize(400, 300)
@@ -1077,7 +1079,7 @@ class DicomToNiftiTab(Tab):
             list_components=[component],
             st_function="st_dicom_to_nifti"
         )
-        self.sizer_input = run_component.sizer
+        self.sizer_run = run_component.sizer
         self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
@@ -1122,18 +1124,19 @@ class TextWithButton:
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
             if self.required:
                 text_with_button_box.Add(
-                    self.create_asterisk_icon(), 0, wx.ALIGN_RIGHT | wx.RIGHT, 7
+                    create_asterisk_icon(self.panel), 0, wx.ALIGN_RIGHT | wx.RIGHT, 7
                 )
 
         return text_with_button_box
 
-    def create_asterisk_icon(self):
-        bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-        info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'asterisk.png')
-        img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
-        bmp = img.ConvertToBitmap()
-        image = wx.StaticBitmap(self.panel, bitmap=bmp)
-        return image
+
+def create_asterisk_icon(panel):
+    bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
+    info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'asterisk.png')
+    img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
+    bmp = img.ConvertToBitmap()
+    image = wx.StaticBitmap(panel, bitmap=bmp)
+    return image
 
 
 def create_info_icon(panel, info_text=""):
