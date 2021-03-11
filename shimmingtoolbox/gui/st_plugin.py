@@ -353,7 +353,8 @@ class InputComponent(Component):
                 default_text=twb_dict.get("default_text", ""),
                 n_text_boxes=twb_dict.get("n_text_boxes", 1),
                 name=twb_dict.get("name", "default"),
-                info_text=twb_dict.get("info_text", "")
+                info_text=twb_dict.get("info_text", ""),
+                required=twb_dict.get("required", False)
             )
             self.add_input_text_box(text_with_button, twb_dict.get("name", "default"))
 
@@ -633,13 +634,15 @@ class ShimTab(Tab):
                 "button_label": "Input Fieldmap",
                 "name": "fmap",
                 "button_function": "select_from_overlay",
-                "info_text": "B0 fieldmap. This should be a 4D file (4th dimension being time)."
+                "info_text": "B0 fieldmap. This should be a 4D file (4th dimension being time).",
+                "required": True
             },
             {
                 "button_label": "Input Anat",
                 "name": "anat",
                 "button_function": "select_from_overlay",
-                "info_text": "Filename of the anatomical image to apply the correction."
+                "info_text": "Filename of the anatomical image to apply the correction.",
+                "required": True
             },
             {
                 "button_label": "Input Static Mask",
@@ -660,7 +663,8 @@ class ShimTab(Tab):
                 "button_label": "Input Respiratory Trace",
                 "button_function": "select_file",
                 "name": "resp",
-                "info_text": "Siemens respiratory file containing pressure data."
+                "info_text": "Siemens respiratory file containing pressure data.",
+                "required": True
             },
             {
                 "button_label": "Output Folder",
@@ -870,7 +874,8 @@ class MaskTab(Tab):
                 "button_function": "select_from_overlay",
                 "name": "input",
                 "info_text": """Input path of the nifti file to mask. Supported extensions are
-                    .nii or .nii.gz."""
+                    .nii or .nii.gz.""",
+                "required": True
             },
             {
                 "button_label": "Threshold",
@@ -907,13 +912,15 @@ class MaskTab(Tab):
                 "button_function": "select_from_overlay",
                 "name": "input",
                 "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 2D or
-                    3D. Supported extensions are .nii or .nii.gz."""
+                    3D. Supported extensions are .nii or .nii.gz.""",
+                "required": True
             },
             {
                 "button_label": "Size",
                 "name": "size",
                 "n_text_boxes": 2,
-                "info_text": "Length of the side of the box along 1st & 2nd dimension (in pixels)."
+                "info_text": "Length of the side of the box along 1st & 2nd dimension (in pixels).",
+                "required": True
             },
             {
                 "button_label": "Center",
@@ -950,13 +957,15 @@ class MaskTab(Tab):
                 "button_function": "select_from_overlay",
                 "name": "input",
                 "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 3D.
-                    Supported extensions are .nii or .nii.gz."""
+                    Supported extensions are .nii or .nii.gz.""",
+                "required": True
             },
             {
                 "button_label": "Size",
                 "name": "size",
                 "n_text_boxes": 3,
-                "info_text": "Length of side of box along 1st, 2nd, & 3rd dimension (in pixels)."
+                "info_text": "Length of side of box along 1st, 2nd, & 3rd dimension (in pixels).",
+                "required": True
             },
             {
                 "button_label": "Center",
@@ -1003,12 +1012,14 @@ class DicomToNiftiTab(Tab):
                 "button_label": "Input Folder",
                 "button_function": "select_folder",
                 "name": "input",
-                "info_text": "Input path of dicom folder"
+                "info_text": "Input path of dicom folder",
+                "required": True
             },
             {
                 "button_label": "Subject Name",
                 "name": "subject",
-                "info_text": "Name of the patient"
+                "info_text": "Name of the patient",
+                "required": True
             },
             {
                 "button_label": "Config Path",
@@ -1042,7 +1053,7 @@ class DicomToNiftiTab(Tab):
 
 class TextWithButton:
     def __init__(self, panel, button_label, button_function, name="default", default_text="",
-                 n_text_boxes=1, info_text=""):
+                 n_text_boxes=1, info_text="", required=False):
         self.panel = panel
         self.button_label = button_label
         self.button_function = button_function
@@ -1051,6 +1062,7 @@ class TextWithButton:
         self.n_text_boxes = n_text_boxes
         self.name = name
         self.info_text = info_text
+        self.required = required
 
     def create(self):
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
@@ -1076,6 +1088,11 @@ class TextWithButton:
                 text_with_button_box.Add(button, 0, wx.ALIGN_LEFT | wx.RIGHT, 10)
 
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
+            if self.required:
+                text_with_button_box.Add(
+                    self.create_asterisk_icon(), 0, wx.ALIGN_RIGHT | wx.RIGHT, 7
+                )
+
         return text_with_button_box
 
     def create_info_icon(self):
@@ -1085,6 +1102,14 @@ class TextWithButton:
         bmp = img.ConvertToBitmap()
         image = InfoIcon(self.panel, bitmap=bmp, info_text=self.info_text)
         image.Bind(wx.EVT_MOTION, on_mouse_over)
+        return image
+
+    def create_asterisk_icon(self):
+        bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
+        info_icon = os.path.join(__dir_shimmingtoolbox__, 'shimmingtoolbox', 'gui', 'asterisk.png')
+        img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
+        bmp = img.ConvertToBitmap()
+        image = wx.StaticBitmap(self.panel, bitmap=bmp)
         return image
 
 
