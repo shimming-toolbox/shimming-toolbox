@@ -33,15 +33,8 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
     accommodates 4D phase inputs, where the 4th dimension represents the time, in case multiple
     field maps are acquired across time for the purpose of real-time shimming experiments.
 
-    Args:
-        phase: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
-        mag: TODO
-        unwrapper: TODO
-        output: TODO
-        mask: TODO
-        threshold (float): TODO
-        gaussian_filter (bool): TODO
-        sigma: TODO
+    PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
+
     """
 
     # Import phase
