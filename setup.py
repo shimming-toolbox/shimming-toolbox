@@ -44,8 +44,6 @@ setup(
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
-        # "openpyxl",
-        "pandas",
         "pillow~=8.0",
         "dataclasses",
         "raven",

@@ -21,7 +21,6 @@ import fsleyes.actions.loadoverlay as ovLoad
 import shimmingtoolbox
 from shimmingtoolbox import __dir_shimmingtoolbox__
 from shimmingtoolbox.utils import run_subprocess
-from shimmingtoolbox import gui_utils
 
 import numpy as np
 import webbrowser
@@ -31,6 +30,8 @@ from pathlib import Path
 import abc
 import tempfile
 import logging
+import imageio
+
 logger = logging.getLogger(__name__)
 
 
@@ -1241,3 +1242,23 @@ def add_input_echo_boxes(event, tab, ctrl):
 class RunArgumentErrorST(Exception):
     """Exception for missing input arguments for CLI call."""
     pass
+
+
+def imread(filename, bitdepth=8):
+    """Read image and convert it to desired bitdepth without truncation."""
+    if 'tif' in str(filename):
+        raw_img = imageio.imread(filename, format='tiff-pil')
+        if len(raw_img.shape) > 2:
+            raw_img = imageio.imread(filename, format='tiff-pil', as_gray=True)
+    else:
+        raw_img = imageio.imread(filename)
+        if len(raw_img.shape) > 2:
+            raw_img = imageio.imread(filename, as_gray=True)
+
+    img = imageio.core.image_as_uint(raw_img, bitdepth=bitdepth)
+    return img
+
+
+def imwrite(filename, img, format='png'):
+    """Write image."""
+    imageio.imwrite(filename, img, format=format)
