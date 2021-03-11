@@ -876,7 +876,11 @@ class MaskTab(Tab):
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
-                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
+                "default_text": os.path.join(
+                    __dir_shimmingtoolbox__,
+                    "output_mask_threshold",
+                    "mask.nii.gz"
+                ),
                 "name": "output",
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
@@ -915,7 +919,11 @@ class MaskTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
+                "default_text": os.path.join(
+                    __dir_shimmingtoolbox__,
+                    "output_mask_rect",
+                    "mask.nii.gz"
+                ),
                 "name": "output",
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
@@ -954,7 +962,11 @@ class MaskTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": os.path.join(__dir_shimmingtoolbox__, "mask.nii.gz"),
+                "default_text": os.path.join(
+                    __dir_shimmingtoolbox__,
+                    "output_mask_box",
+                    "mask.nii.gz"
+                ),
                 "name": "output",
                 "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
             }
