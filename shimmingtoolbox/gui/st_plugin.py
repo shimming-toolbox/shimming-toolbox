@@ -750,7 +750,10 @@ class FieldMapTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": os.path.join(__dir_shimmingtoolbox__, "fieldmap.nii.gz"),
+                "default_text": os.path.join(
+                    __dir_shimmingtoolbox__,
+                    "output_fieldmap",
+                    "fieldmap.nii.gz"),
                 "name": "output",
                 "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'"
             }
