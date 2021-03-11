@@ -341,6 +341,7 @@ class InputComponent(Component):
                             called when the button is pressed. If no action is desired, create
                             a function that is just ``pass``.
                         "default_text": (optional) The default text to be displayed.
+                        "name" : Option name in the CLI, use "arg" as the name for an argument.
                     }
 
             spacer_size (int): The size of the space to be placed between each input text box.
@@ -504,7 +505,9 @@ class RunComponent(Component):
     def get_run_args(self, st_function):
         msg = "Running "
         command = st_function
-        command_dict = {}
+        # Init arguments and options
+        command_list_arguments = []
+        command_dict_options = {}
         for component in self.list_components:
             for name, input_text_box_list in component.input_text_boxes.items():
                 if name == "no_arg":
@@ -512,10 +515,10 @@ class RunComponent(Component):
                 for input_text_box in input_text_box_list:
                     # Allows to chose from a dropdown
                     if type(input_text_box) == str:
-                        if name in command_dict.keys():
-                            command_dict[name].append(input_text_box)
+                        if name in command_dict_options.keys():
+                            command_dict_options[name].append(input_text_box)
                         else:
-                            command_dict[name] = [input_text_box]
+                            command_dict_options[name] = [input_text_box]
                     # Normal case where input_text_box is a TextwithButton
                     else:
                         for textctrl in input_text_box.textctrl_list:
@@ -525,12 +528,22 @@ class RunComponent(Component):
                                     f"Argument {name} is missing a value, please enter a valid input"
                                 )
                             else:
-                                if name in command_dict.keys():
-                                    command_dict[name].append(arg)
+                                # Case where the option name is set to arg, this handles it as if it were an argument
+                                if name == "arg":
+                                    command_list_arguments.append(arg)
+                                # Normal options
                                 else:
-                                    command_dict[name] = [arg]
+                                    if name in command_dict_options.keys():
+                                        command_dict_options[name].append(arg)
+                                    else:
+                                        command_dict_options[name] = [arg]
 
-        for name, args in command_dict.items():
+        # Arguments don't need "-"
+        for arg in command_list_arguments:
+            command += f" {arg}"
+
+        # Handles options
+        for name, args in command_dict_options.items():
             command += f" -{name}"
             for arg in args:
                 command += f" {arg}"
@@ -1237,13 +1250,13 @@ def add_input_echo_boxes(event, tab, ctrl):
         if index + 1 == n_echoes and tab.n_echoes == 0:
             tab.component_input.insert_input_text_box(
                 text_with_button,
-                "phase",
+                "arg",
                 index=insert_index + index,
                 last=True)
         else:
             tab.component_input.insert_input_text_box(
                 text_with_button,
-                "phase",
+                "arg",
                 index=insert_index + index
             )
 
