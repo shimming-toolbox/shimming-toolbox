@@ -107,7 +107,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
         """
 
         # Open the 2D image
-        img_png2D = gui_utils.imread(image_path)
+        img_png2D = read_image(image_path)
 
         if is_mask is True:
             img_png2D = img_png2D // params.intensity['binary']  # Segmentation masks should be binary
@@ -888,6 +888,7 @@ class MaskTab(Tab):
 
         # Update the window
         self.Layout()
+        self.GetParent().Layout()
 
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
@@ -1086,6 +1087,29 @@ class DicomToNiftiTab(Tab):
 
 
 class TextWithButton:
+    """Creates a button with an input text box.
+
+    wx.BoxSizer:
+
+        InfoIcon(wx.StaticBitmap) - info icon
+        wx.Button - clickable input button
+        [wx.TextCtrl] - input text box(es)
+        wx.StaticBitmap - asterisk icon
+
+    Attributes:
+
+        panel: TODO
+        button_label (str): label to be put on the button.
+        button_function: function which gets called when the button is clicked on.
+        default_text (str): (optional) default text to be displayed in the input text box.
+        textctrl_list (list wx.TextCtrl): list of input text boxes, can be more than one in a row.
+        n_text_boxes (int): number of input text boxes to create.
+        name (str): TODO
+        info_text (str): text to be displayed when hovering over the info icon; should describe
+            what the button/input is for.
+        required (bool): if this input is required or not. If True, a red asterisk will be
+            placed next to the input text box to indicate this.
+    """
     def __init__(self, panel, button_label, button_function, name="default", default_text="",
                  n_text_boxes=1, info_text="", required=False):
         self.panel = panel
@@ -1145,11 +1169,11 @@ def create_info_icon(panel, info_text=""):
     img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
     bmp = img.ConvertToBitmap()
     image = InfoIcon(panel, bitmap=bmp, info_text=info_text)
-    image.Bind(wx.EVT_MOTION, on_mouse_over)
+    image.Bind(wx.EVT_MOTION, on_info_icon_mouse_over)
     return image
 
 
-def on_mouse_over(event):
+def on_info_icon_mouse_over(event):
     image = event.GetEventObject()
     tooltip = wx.ToolTip(image.info_text)
     tooltip.SetDelay(10)
@@ -1281,21 +1305,21 @@ class RunArgumentErrorST(Exception):
     pass
 
 
-def imread(filename, bitdepth=8):
+def read_image(filename, bitdepth=8):
     """Read image and convert it to desired bitdepth without truncation."""
     if 'tif' in str(filename):
-        raw_img = imageio.imread(filename, format='tiff-pil')
+        raw_img = imageio.read_image(filename, format='tiff-pil')
         if len(raw_img.shape) > 2:
-            raw_img = imageio.imread(filename, format='tiff-pil', as_gray=True)
+            raw_img = imageio.read_image(filename, format='tiff-pil', as_gray=True)
     else:
-        raw_img = imageio.imread(filename)
+        raw_img = imageio.read_image(filename)
         if len(raw_img.shape) > 2:
-            raw_img = imageio.imread(filename, as_gray=True)
+            raw_img = imageio.read_image(filename, as_gray=True)
 
     img = imageio.core.image_as_uint(raw_img, bitdepth=bitdepth)
     return img
 
 
-def imwrite(filename, img, format='png'):
+def write_image(filename, img, format='png'):
     """Write image."""
-    imageio.imwrite(filename, img, format=format)
+    imageio.write_image(filename, img, format=format)
