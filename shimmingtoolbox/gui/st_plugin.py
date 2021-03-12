@@ -34,7 +34,6 @@ import imageio
 
 logger = logging.getLogger(__name__)
 
-
 VERSION = "0.1.1"
 
 
@@ -635,8 +634,8 @@ class ShimTab(Tab):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection in self.positions.keys():
-            sizer_item_threshold = self.sizer_run.GetItem(self.positions[selection])
-            sizer_item_threshold.Show(True)
+            sizer_item = self.sizer_run.GetItem(self.positions[selection])
+            sizer_item.Show(True)
         else:
             pass
 
@@ -646,8 +645,8 @@ class ShimTab(Tab):
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
         for position in self.positions.values():
-            sizer = self.sizer_run.GetItem(position)
-            sizer.Show(False)
+            sizer_item = self.sizer_run.GetItem(position)
+            sizer_item.Show(False)
 
     def create_choice_box(self):
         self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
@@ -1125,9 +1124,10 @@ class TextWithButton:
     def create(self):
         text_with_button_box = wx.BoxSizer(wx.HORIZONTAL)
         button = wx.Button(self.panel, -1, label=self.button_label)
-
+        text_with_button_box.Add(
+            create_info_icon(self.panel, self.info_text), 0, wx.ALIGN_LEFT | wx.RIGHT, 7
+        )
         for i_text_box in range(0, self.n_text_boxes):
-            text_with_button_box.Add(create_info_icon(self.panel, self.info_text), 0, wx.ALIGN_LEFT | wx.RIGHT, 7)
             textctrl = wx.TextCtrl(parent=self.panel, value=self.default_text, name=self.name)
             self.textctrl_list.append(textctrl)
             if i_text_box == 0:
