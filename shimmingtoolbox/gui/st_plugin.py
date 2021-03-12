@@ -18,9 +18,6 @@ import wx
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as ovLoad
 
-import shimmingtoolbox
-from shimmingtoolbox import __dir_shimmingtoolbox__
-from shimmingtoolbox.utils import run_subprocess
 
 import numpy as np
 import webbrowser
@@ -31,7 +28,9 @@ import abc
 import tempfile
 import logging
 import imageio
+import subprocess
 
+__dir_shimmingtoolbox__ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 logger = logging.getLogger(__name__)
 
 VERSION = "0.1.1"
@@ -157,7 +156,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
     def verify_version(self):
         """Check if the plugin version is the same as the one in the shimming-toolbox directory."""
 
-        st_path = Path(os.path.abspath(shimmingtoolbox.__file__)).parents[0]
+        st_path = os.path.realpath(__file__)
         plugin_file = os.path.join(st_path, "gui", "st_plugin.py")
 
         plugin_file_exists = os.path.isfile(plugin_file)
@@ -478,6 +477,7 @@ class RunComponent(Component):
         self.st_function = st_function
         self.sizer = self.create_sizer()
         self.add_button_run()
+        self.output = ""
 
     def create_sizer(self):
         """Create the centre sizer containing tab-specific functionality."""
@@ -501,8 +501,20 @@ class RunComponent(Component):
             run_subprocess(command)
             msg = f"Run {self.st_function} completed successfully"
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
+            self.send_output_to_overlay()
         except Exception as err:
             self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
+
+    def send_output_to_overlay(self):
+        if os.path.isfile(self.output):
+            try:
+                # Load the NIfTI image as an overlay
+                img_overlay = ovLoad.loadOverlays(paths=[self.output], inmem=True, blocking=True)[0]
+                # # Display the overlay
+                window = self.panel.GetGrandParent().GetParent()
+                window.overlayList.append(img_overlay)
+            except Exception as err:
+                self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
     def get_run_args(self, st_function):
         msg = "Running "
@@ -536,6 +548,8 @@ class RunComponent(Component):
                                     command_list_arguments.append(arg)
                                 # Normal options
                                 else:
+                                    if name == "output":
+                                        self.output = arg
                                     if name in command_dict_options.keys():
                                         command_dict_options[name].append(arg)
                                     else:
@@ -783,7 +797,7 @@ class FieldMapTab(Tab):
         ]
         input_text_box_metadata_output = [
             {
-                "button_label": "Output Folder",
+                "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(
                     __dir_shimmingtoolbox__,
@@ -878,9 +892,7 @@ class MaskTab(Tab):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection in self.positions.keys():
-            print(selection)
             sizer_item = self.sizer_run.GetItem(self.positions[selection])
-            print(sizer_item)
             sizer_item.Show(True)
         else:
             pass
@@ -1323,3 +1335,24 @@ def read_image(filename, bitdepth=8):
 def write_image(filename, img, format='png'):
     """Write image."""
     imageio.write_image(filename, img, format=format)
+
+
+# TODO: find a better way to include this as it is defined in utils as well
+def run_subprocess(cmd):
+    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+
+    Args:
+        cmd (string): full command to be run on the command line
+    """
+    logging.debug(f'{cmd}')
+    try:
+        subprocess.run(
+            cmd.split(' '),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
+        raise Exception(msg)
