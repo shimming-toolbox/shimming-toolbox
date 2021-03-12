@@ -18,10 +18,6 @@ import wx
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as ovLoad
 
-import shimmingtoolbox
-from shimmingtoolbox import __dir_shimmingtoolbox__
-from shimmingtoolbox.utils import run_subprocess
-
 import numpy as np
 import webbrowser
 import nibabel as nib
@@ -31,7 +27,9 @@ import abc
 import tempfile
 import logging
 import imageio
+import subprocess
 
+__dir_shimmingtoolbox__ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 logger = logging.getLogger(__name__)
 
 
@@ -158,7 +156,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
     def verify_version(self):
         """Check if the plugin version is the same as the one in the shimming-toolbox directory."""
 
-        st_path = Path(os.path.abspath(shimmingtoolbox.__file__)).parents[0]
+        st_path = os.path.realpath(__file__)
         plugin_file = os.path.join(st_path, "gui", "st_plugin.py")
 
         plugin_file_exists = os.path.isfile(plugin_file)
@@ -1323,3 +1321,24 @@ def read_image(filename, bitdepth=8):
 def write_image(filename, img, format='png'):
     """Write image."""
     imageio.write_image(filename, img, format=format)
+
+
+# TODO: find a better way to include this as it is defined in utils as well
+def run_subprocess(cmd):
+    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+
+    Args:
+        cmd (string): full command to be run on the command line
+    """
+    logging.debug(f'{cmd}')
+    try:
+        subprocess.run(
+            cmd.split(' '),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
+        raise Exception(msg)
