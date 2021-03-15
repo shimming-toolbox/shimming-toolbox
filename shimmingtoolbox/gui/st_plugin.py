@@ -23,7 +23,6 @@ import numpy as np
 import webbrowser
 import nibabel as nib
 import os
-from pathlib import Path
 import abc
 import tempfile
 import logging
@@ -1329,7 +1328,7 @@ def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overla
 
     # Convert image data into a NIfTI image
     # Note: PIL and NiBabel use different axis conventions, so some array manipulation has to be done.
-    # TODO: save in the FOV
+    # TODO: save in the FOV of the current overlay
     nii_img = nib.Nifti1Image(
         np.rot90(img_png2d, k=1, axes=(1, 0)), np.eye(4)
     )
