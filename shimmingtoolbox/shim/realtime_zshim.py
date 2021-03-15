@@ -133,6 +133,8 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=No
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
                                  -gradient.reshape(-1, gradient.shape[-1]).T)
+    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+    # between scans. This allows to compare results between scans.
     riro = reg.coef_.reshape(gradient.shape[:-1]) * pressure_rms
     static = reg.intercept_.reshape(gradient.shape[:-1])
 
