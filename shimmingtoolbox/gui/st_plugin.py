@@ -660,7 +660,8 @@ class ShimTab(Tab):
             list_components=[component],
             st_function="st_realtime_zshim",
             special_output=[
-                os.path.join(path_output, "fig_realtime_zshim_riro_static.png")
+                os.path.join(path_output, "fig_resampled_riro.nii.gz"),
+                os.path.join(path_output, "fig_resampled_static.nii.gz")
             ]
         )
         sizer = run_component.sizer
