@@ -193,7 +193,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
     # Get the number of dimensions
     nii_input = nib.load(fname_input)
     ndim = nii_input.ndim
-    # If 4d, last dimension is time, average last dim for better SNT
+    # If 4d, last dimension is time, average last dim for better SNR
     if ndim == 4:
         input_3d = np.mean(nii_input.get_fdata(), 3)
         nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
