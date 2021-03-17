@@ -17,22 +17,28 @@ def b1_shim(b1_maps, mask):
         numpy.ndarray: Optimized shimming weights.
 
     """
+    if b1_maps.ndim == 4:
+        pass
+    else:
+        raise ValueError("Unexpected negative magnitude values")
 
     x, y, n_slices, n_coils = b1_maps.shape
     b1_roi = np.reshape(b1_maps, [x*y*n_slices, n_coils])[np.reshape(mask, x*y*n_slices), :]
 
     # TODO: add possibility to input CP coefficients
-    weights_init = np.concatenate((np.ones(n_coils), np.zeros(n_coils)))
+    weights_init = np.concatenate((np.ones(n_coils)/np.linalg.norm(np.ones(n_coils)), np.linspace(0, 2*np.pi-2*np.pi/n_coils, n_coils)))
 
-    print(f'Coefficient of variation before shimming: {cov(combine_maps(b1_roi, vector_to_complex(weights_init)))}')
+    print(f"Coefficient of variation before shimming: {cov(combine_maps(b1_roi, vector_to_complex(weights_init)))}")
+
+    bounds = np.concatenate((n_coils*[(0, 1)], n_coils*[(-np.pi, np.pi)]))
 
     def cost(weights):
         return cov(combine_maps(b1_roi, vector_to_complex(weights)))
 
-    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
-
-    print(f'Shim coefficient: {shim_weights}')
-    print(f'Coefficient of variation after shimming: {cov(combine_maps(b1_roi, shim_weights))}')
+    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, bounds=bounds).x)
+    shim_weights = shim_weights/np.linalg.norm(shim_weights)
+    print(f"Shim coefficient: {shim_weights}")
+    print(f"Coefficient of variation after shimming: {cov(combine_maps(b1_roi, shim_weights))}")
     return shim_weights
 
 
@@ -75,4 +81,4 @@ def vector_to_complex(weights):
         numpy.ndarray: 1D complex array of length n_coils.
 
     """
-    return weights[:len(weights)//2] + 1j * weights[len(weights)//2:]
+    return weights[:len(weights)//2] * np.exp(1j * weights[len(weights)//2:])
