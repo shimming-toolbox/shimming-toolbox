@@ -23,7 +23,6 @@ import numpy as np
 import webbrowser
 import nibabel as nib
 import os
-from pathlib import Path
 import abc
 import tempfile
 import logging
@@ -66,76 +65,10 @@ class STControlPanel(ctrlpanel.ControlPanel):
         self.image_dir_path = []
         self.most_recent_watershed_mask_name = None
 
-        # # Toggle off the X and Y canvas
-        # oopts = ortho.sceneOpts
-        # oopts.showXCanvas = False
-        # oopts.showYCanvas = False
-        #
-        # # Toggle off the cursor
-        # oopts.showCursor = False
-        #
-        # # Toggle off the radiological orientation
-        # self.displayCtx.radioOrientation = False
-        #
-        # # Invert the Y display
-        # self.frame.viewPanels[0].frame.viewPanels[0].getZCanvas().opts.invertY = True
-
         # Create a temporary directory that will hold the NIfTI files
         self.st_temp_dir = tempfile.TemporaryDirectory()
 
         self.verify_version()
-
-    def load_png_image_from_path(self, image_path, is_mask=False, add_to_overlayList=True,
-                                 colormap="greyscale"):
-        """Converts a 2D image into a NIfTI image and loads it as an overlay.
-        The parameter add_to_overlayList allows to display the overlay into FSLeyes.
-
-        Args:
-            image_path (str): The location of the image, including the name and the .extension
-            is_mask (bool): (optional) Whether or not this is a segmentation mask. It will be
-                treated as a normalads_utils
-            add_to_overlayList (bool): (optional) Whether or not to add the image to the overlay
-                list. If so, the image will be displayed in the application. This parameter is
-                True by default.
-            colormap (str): (optional) the colormap of image that will be displayed. This parameter
-                is set to greyscale by default.
-
-        Returns:
-            overlay: the FSLeyes overlay corresponding to the loaded image.
-        """
-
-        # Open the 2D image
-        img_png2D = read_image(image_path)
-
-        if is_mask is True:
-            img_png2D = img_png2D // params.intensity['binary']  # Segmentation masks should be binary
-
-        # Flip the image on the Y axis so that the morphometrics file shows the right coordinates
-        img_png2D = np.flipud(img_png2D)
-
-        # Convert image data into a NIfTI image
-        # Note: PIL and NiBabel use different axis conventions, so some array manipulation has to be done.
-        img_NIfTI = nib.Nifti1Image(
-            np.rot90(img_png2D, k=1, axes=(1, 0)), np.eye(4)
-        )
-
-        # Save the NIfTI image in a temporary directory
-        img_name = os.path.basename(image_path)
-        out_file = self.st_temp_dir.name + "/" + img_name[:-3] + "nii.gz"
-        nib.save(img_NIfTI, out_file)
-
-        # Load the NIfTI image as an overlay
-        img_overlay = ovLoad.loadOverlays(paths=[out_file], inmem=True, blocking=True)[
-            0
-        ]
-
-        # Display the overlay
-        if add_to_overlayList is True:
-            self.overlayList.append(img_overlay)
-            opts = self.displayCtx.getOpts(img_overlay)
-            opts.cmap = colormap
-
-        return img_overlay
 
     def show_message(self, message, caption="Error"):
         """Show a popup message on the FSLeyes interface.
@@ -472,12 +405,12 @@ class DropdownComponent(Component):
 
 
 class RunComponent(Component):
-    def __init__(self, panel, st_function, list_components=[]):
+    def __init__(self, panel, st_function, list_components=[], special_output=[]):
         super().__init__(panel, list_components)
         self.st_function = st_function
         self.sizer = self.create_sizer()
         self.add_button_run()
-        self.output = ""
+        self.outputs = special_output
 
     def create_sizer(self):
         """Create the centre sizer containing tab-specific functionality."""
@@ -506,15 +439,19 @@ class RunComponent(Component):
             self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
     def send_output_to_overlay(self):
-        if os.path.isfile(self.output):
-            try:
-                # Load the NIfTI image as an overlay
-                img_overlay = ovLoad.loadOverlays(paths=[self.output], inmem=True, blocking=True)[0]
-                # # Display the overlay
-                window = self.panel.GetGrandParent().GetParent()
-                window.overlayList.append(img_overlay)
-            except Exception as err:
-                self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
+        for i_file in self.outputs:
+            if os.path.isfile(i_file):
+                try:
+                    # Display the overlay
+                    window = self.panel.GetGrandParent().GetParent()
+                    if i_file[-4:] == ".png":
+                        load_png_image_from_path(window, i_file, colormap="greyscale")
+                    elif i_file[-7:] == ".nii.gz" or i_file[-4:] == ".nii":
+                        # Load the NIfTI image as an overlay
+                        img_overlay = ovLoad.loadOverlays(paths=[i_file], inmem=True, blocking=True)[0]
+                        window.overlayList.append(img_overlay)
+                except Exception as err:
+                    self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
     def get_run_args(self, st_function):
         msg = "Running "
@@ -549,7 +486,7 @@ class RunComponent(Component):
                                 # Normal options
                                 else:
                                     if name == "output":
-                                        self.output = arg
+                                        self.outputs.append(arg)
                                     if name in command_dict_options.keys():
                                         command_dict_options[name].append(arg)
                                     else:
@@ -669,6 +606,7 @@ class ShimTab(Tab):
         self.sizer_run.AddSpacer(10)
 
     def create_sizer_zshim(self, metadata=None):
+        path_output = os.path.join(__dir_shimmingtoolbox__, "output_rt_zshim")
         input_text_box_metadata = [
             {
                 "button_label": "Input Fieldmap",
@@ -709,19 +647,21 @@ class ShimTab(Tab):
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
-                "default_text": os.path.join(
-                    __dir_shimmingtoolbox__,
-                    "output_rt_zshim"
-                ),
+                "default_text": path_output,
                 "name": "output",
                 "info_text": "Directory to output gradient text file and figures."
             }
         ]
+
         component = InputComponent(self, input_text_box_metadata)
         run_component = RunComponent(
             panel=self,
             list_components=[component],
-            st_function="st_realtime_zshim"
+            st_function="st_realtime_zshim",
+            special_output=[
+                os.path.join(path_output, "fig_resampled_riro.nii.gz"),
+                os.path.join(path_output, "fig_resampled_static.nii.gz")
+            ]
         )
         sizer = run_component.sizer
         return sizer
@@ -1320,13 +1260,13 @@ class RunArgumentErrorST(Exception):
 def read_image(filename, bitdepth=8):
     """Read image and convert it to desired bitdepth without truncation."""
     if 'tif' in str(filename):
-        raw_img = imageio.read_image(filename, format='tiff-pil')
+        raw_img = imageio.imread(filename, format='tiff-pil')
         if len(raw_img.shape) > 2:
-            raw_img = imageio.read_image(filename, format='tiff-pil', as_gray=True)
+            raw_img = imageio.imread(filename, format='tiff-pil', as_gray=True)
     else:
-        raw_img = imageio.read_image(filename)
+        raw_img = imageio.imread(filename)
         if len(raw_img.shape) > 2:
-            raw_img = imageio.read_image(filename, as_gray=True)
+            raw_img = imageio.imread(filename, as_gray=True)
 
     img = imageio.core.image_as_uint(raw_img, bitdepth=bitdepth)
     return img
@@ -1334,7 +1274,7 @@ def read_image(filename, bitdepth=8):
 
 def write_image(filename, img, format='png'):
     """Write image."""
-    imageio.write_image(filename, img, format=format)
+    imageio.imwrite(filename, img, format=format)
 
 
 # TODO: find a better way to include this as it is defined in utils as well
@@ -1356,3 +1296,56 @@ def run_subprocess(cmd):
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
         raise Exception(msg)
+
+
+def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overlayList=True,
+                             colormap="greyscale"):
+    """Converts a 2D image into a NIfTI image and loads it as an overlay.
+    The parameter add_to_overlayList allows to display the overlay into FSLeyes.
+
+    Args:
+        image_path (str): The location of the image, including the name and the .extension
+        is_mask (bool): (optional) Whether or not this is a segmentation mask. It will be
+            treated as a normalads_utils
+        add_to_overlayList (bool): (optional) Whether or not to add the image to the overlay
+            list. If so, the image will be displayed in the application. This parameter is
+            True by default.
+        colormap (str): (optional) the colormap of image that will be displayed. This parameter
+            is set to greyscale by default.
+
+    Returns:
+        overlay: the FSLeyes overlay corresponding to the loaded image.
+    """
+
+    # Open the 2D image
+    img_png2d = read_image(image_path)
+
+    if is_mask is True:
+        img_png2d = img_png2d // np.iinfo(np.uint8).max  # Segmentation masks should be binary
+
+    # Flip the image on the Y axis so that the morphometrics file shows the right coordinates
+    img_png2d = np.flipud(img_png2d)
+
+    # Convert image data into a NIfTI image
+    # Note: PIL and NiBabel use different axis conventions, so some array manipulation has to be done.
+    # TODO: save in the FOV of the current overlay
+    nii_img = nib.Nifti1Image(
+        np.rot90(img_png2d, k=1, axes=(1, 0)), np.eye(4)
+    )
+
+    # Save the NIfTI image in a temporary directory
+    fname_out = image_path[:-3] + "nii.gz"
+    nib.save(nii_img, fname_out)
+
+    # Load the NIfTI image as an overlay
+    img_overlay = ovLoad.loadOverlays(paths=[fname_out], inmem=True, blocking=True)[
+        0
+    ]
+
+    # Display the overlay
+    if add_to_overlayList is True:
+        fsl_panel.overlayList.append(img_overlay)
+        opts = fsl_panel.displayCtx.getOpts(img_overlay)
+        opts.cmap = colormap
+
+    return img_overlay
