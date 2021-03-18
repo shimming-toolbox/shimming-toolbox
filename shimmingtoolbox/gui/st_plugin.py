@@ -410,7 +410,8 @@ class RunComponent(Component):
         self.st_function = st_function
         self.sizer = self.create_sizer()
         self.add_button_run()
-        self.outputs = special_output
+        self.special_output = special_output
+        self.outputs = special_output.copy()
 
     def create_sizer(self):
         """Create the centre sizer containing tab-specific functionality."""
@@ -452,6 +453,9 @@ class RunComponent(Component):
                         window.overlayList.append(img_overlay)
                 except Exception as err:
                     self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
+
+        self.outputs.clear()
+        self.outputs = self.special_output.copy()
 
     def get_run_args(self, st_function):
         msg = "Running "
