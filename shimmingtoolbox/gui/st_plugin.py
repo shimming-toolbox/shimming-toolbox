@@ -154,6 +154,9 @@ class TabPanel(wx.Panel):
         nb.AddPage(tab3, tab3.title)
         nb.AddPage(tab4, tab4.title)
 
+        # Set to the Shim tab
+        nb.SetSelection(3)
+
         sizer = wx.BoxSizer()
         sizer.Add(nb, 1, wx.EXPAND)
         self.SetSizer(sizer)
