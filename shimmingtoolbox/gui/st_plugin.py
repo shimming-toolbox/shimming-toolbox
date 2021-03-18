@@ -16,7 +16,7 @@ Authors: Alexandre D'Astous, Ainsleigh Hill, Charlotte, Gaspard Cereza, Julien C
 import wx
 
 import fsleyes.controls.controlpanel as ctrlpanel
-import fsleyes.actions.loadoverlay as ovLoad
+import fsleyes.actions.loadoverlay as loadoverlay
 
 
 import numpy as np
@@ -221,10 +221,10 @@ class InfoComponent(Component):
         return sizer
 
     def get_logo(self, scale=0.2):
-        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx bitmap image.
+        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx.Bitmap image.
 
         Retunrs:
-            wx.StaticBitmap: The ShimmingToolbox logo
+            wx.StaticBitmap: The ``ShimmingToolbox`` logo
         """
         fname_st_logo = os.path.join(__dir_shimmingtoolbox__, 'docs', 'source', '_static',
                                      'shimming_toolbox_logo.png')
@@ -323,7 +323,7 @@ class DropdownComponent(Component):
         """ Create a dropdown list
 
         Args:
-            panel: A panel is a window on which controls are placed.
+            panel (wx.Panel): A panel is a window on which controls are placed.
             dropdown_metadata (list)(dict): A list of dictionaries where the dictionaries have the
                 required keys: ``label``, ``option_name``, ``option_value``.
                 .. code::
@@ -336,7 +336,7 @@ class DropdownComponent(Component):
 
             name (str): Label of the button describing the dropdown
             list_components (list): list of InputComponents
-            info_text (str): Help message when hovering the "i"
+            info_text (str): Info message displayed when hovering over the "i" icon.
         """
         super().__init__(panel, list_components)
         self.dropdown_metadata = dropdown_metadata
@@ -405,12 +405,21 @@ class DropdownComponent(Component):
 
 
 class RunComponent(Component):
-    def __init__(self, panel, st_function, list_components=[], special_output=[]):
+    """Component which contains input and run button.
+
+    Attributes:
+        panel (wx.Panel): TODO.
+        st_function (str): Name of the ``Shimming Toolbox`` CLI function to be called.
+        list_components (list of Component): list of subcomponents to be added.
+        output_paths (list of str): file or folder paths containing output from ``st_function``.
+
+    """
+    def __init__(self, panel, st_function, list_components=[], output_paths=[]):
         super().__init__(panel, list_components)
         self.st_function = st_function
         self.sizer = self.create_sizer()
         self.add_button_run()
-        self.outputs = special_output
+        self.output_paths = output_paths
 
     def create_sizer(self):
         """Create the centre sizer containing tab-specific functionality."""
@@ -422,12 +431,20 @@ class RunComponent(Component):
         return sizer
 
     def add_button_run(self):
+        """Add the run button which will call the ``Shimming Toolbox`` CLI."""
         button_run = wx.Button(self.panel, -1, label="Run")
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
         self.sizer.Add(button_run, 0, wx.CENTRE)
         self.sizer.AddSpacer(10)
 
     def button_run_on_click(self, event):
+        """Function called when the ``Run`` button is clicked.
+
+        1. Calls the relevant ``Shimming Toolbox`` CLI command (``st_function``)
+        2. Logs the output to the terminal in the GUI.
+        3. Sends the output files to the overlay list if applicable.
+
+        """
         try:
             command, msg = self.get_run_args(self.st_function)
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
@@ -439,16 +456,19 @@ class RunComponent(Component):
             self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
     def send_output_to_overlay(self):
-        for i_file in self.outputs:
-            if os.path.isfile(i_file):
+        for output_path in self.output_paths:
+            if os.path.isfile(output_path):
                 try:
                     # Display the overlay
                     window = self.panel.GetGrandParent().GetParent()
-                    if i_file[-4:] == ".png":
-                        load_png_image_from_path(window, i_file, colormap="greyscale")
-                    elif i_file[-7:] == ".nii.gz" or i_file[-4:] == ".nii":
+                    if output_path[-4:] == ".png":
+                        load_png_image_from_path(window, output_path, colormap="greyscale")
+                    elif output_path[-7:] == ".nii.gz" or output_path[-4:] == ".nii":
                         # Load the NIfTI image as an overlay
-                        img_overlay = ovLoad.loadOverlays(paths=[i_file], inmem=True, blocking=True)[0]
+                        img_overlay = loadoverlay.loadOverlays(
+                            paths=[output_path],
+                            inmem=True,
+                            blocking=True)[0]
                         window.overlayList.append(img_overlay)
                 except Exception as err:
                     self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
@@ -456,7 +476,7 @@ class RunComponent(Component):
     def get_run_args(self, st_function):
         msg = "Running "
         command = st_function
-        # Init arguments and options
+
         command_list_arguments = []
         command_dict_options = {}
         for component in self.list_components:
@@ -477,7 +497,8 @@ class RunComponent(Component):
                             if arg == "" or arg is None:
                                 if input_text_box.required is True:
                                     raise RunArgumentErrorST(
-                                        f"Argument {name} is missing a value, please enter a valid input"
+                                        f"""Argument {name} is missing a value, please enter a
+                                            valid input"""
                                     )
                             else:
                                 # Case where the option name is set to arg, this handles it as if it were an argument
@@ -486,7 +507,7 @@ class RunComponent(Component):
                                 # Normal options
                                 else:
                                     if name == "output":
-                                        self.outputs.append(arg)
+                                        self.output_paths.append(arg)
                                     if name in command_dict_options.keys():
                                         command_dict_options[name].append(arg)
                                     else:
@@ -658,7 +679,7 @@ class ShimTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_realtime_zshim",
-            special_output=[
+            output_paths=[
                 os.path.join(path_output, "fig_resampled_riro.nii.gz"),
                 os.path.join(path_output, "fig_resampled_static.nii.gz")
             ]
@@ -871,7 +892,7 @@ class MaskTab(Tab):
                     their value <= this threshold. Default = 30."""
             },
             {
-                "button_label": "Output File",
+                "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": os.path.join(
                     __dir_shimmingtoolbox__,
@@ -1300,8 +1321,9 @@ def run_subprocess(cmd):
 
 def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overlayList=True,
                              colormap="greyscale"):
-    """Converts a 2D image into a NIfTI image and loads it as an overlay.
-    The parameter add_to_overlayList allows to display the overlay into FSLeyes.
+    """Convert a 2D image into a NIfTI image and load it as an overlay.
+
+    The parameter ``add_to_overlayList`` enables displaying the overlay in FSLeyes.
 
     Args:
         image_path (str): The location of the image, including the name and the .extension
@@ -1338,9 +1360,7 @@ def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overla
     nib.save(nii_img, fname_out)
 
     # Load the NIfTI image as an overlay
-    img_overlay = ovLoad.loadOverlays(paths=[fname_out], inmem=True, blocking=True)[
-        0
-    ]
+    img_overlay = loadoverlay.loadOverlays(paths=[fname_out], inmem=True, blocking=True)[0]
 
     # Display the overlay
     if add_to_overlayList is True:
