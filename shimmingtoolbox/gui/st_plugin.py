@@ -896,7 +896,7 @@ class MaskTab(Tab):
                     their value <= this threshold. Default = 30."""
             },
             {
-                "button_label": "Output Folder",
+                "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(
                     __dir_shimmingtoolbox__,
@@ -941,7 +941,7 @@ class MaskTab(Tab):
                     If no center is provided (None), the middle is used."""
             },
             {
-                "button_label": "Output Folder",
+                "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(
                     __dir_shimmingtoolbox__,
@@ -986,7 +986,7 @@ class MaskTab(Tab):
                     If no center is provided (None), the middle is used."""
             },
             {
-                "button_label": "Output Folder",
+                "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(
                     __dir_shimmingtoolbox__,
