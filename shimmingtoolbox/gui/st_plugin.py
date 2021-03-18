@@ -683,13 +683,13 @@ class ShimTab(Tab):
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Field Map"):
         description = "Create a B0 fieldmap.\n\n" \
-                      "Enter the number of phases then press the `Number of Phases` button.\n\n" \
+                      "Enter the Number of Echoes then press the `Number of Echoes` button.\n\n" \
                       "Select the unwrapper from the dropdown list."
         super().__init__(parent, title, description)
-        self.n_phases = 0
+        self.n_echoes = 0
         input_text_box_metadata_input = [
             {
-                "button_label": "Number of Phases",
+                "button_label": "Number of Echoes",
                 "button_function": "add_input_phase_boxes",
                 "name": "no_arg",
                 "info_text": "Number of phase NIfTI files to be used. Must be an integer > 0.",
@@ -1187,11 +1187,11 @@ def select_from_overlay(event, tab, ctrl):
 
 
 def add_input_phase_boxes(event, tab, ctrl):
-    """On click of ``Number of Phases`` button, add ``n_phases`` ``TextWithButton`` boxes.
+    """On click of ``Number of Echoes`` button, add ``n_echoes`` ``TextWithButton`` boxes.
 
     For this function, we are assuming the layout of the Component input is as follows:
 
-        0 - Number of Phases TextWithButton sizer
+        0 - Number of Echoes TextWithButton sizer
         1 - Spacer
         2 - next item, and so on
 
@@ -1200,31 +1200,31 @@ def add_input_phase_boxes(event, tab, ctrl):
     Next, we add n = n update - n current phase boxes to the tab.
 
     Args:
-        event (wx.Event): when the ``Number of Phases`` button is clicked.
+        event (wx.Event): when the ``Number of Echoes`` button is clicked.
         tab (FieldMapTab): tab class instance for ``Field Map``.
         ctrl (wx.TextCtrl): the text box containing the number of phase boxes to add. Must be an
             integer > 0.
     """
     option_name = "arg"
     try:
-        n_phases = int(ctrl.GetValue())
-        if n_phases < 1:
+        n_echoes = int(ctrl.GetValue())
+        if n_echoes < 1:
             raise Exception()
     except Exception:
         tab.terminal_component.log_to_terminal(
-            "Number of Phases must be an integer > 0",
+            "Number of Echoes must be an integer > 0",
             level="ERROR"
         )
         return
 
     insert_index = 2
-    if n_phases < tab.n_phases:
-        for index in range(tab.n_phases, n_phases, -1):
+    if n_echoes < tab.n_echoes:
+        for index in range(tab.n_echoes, n_echoes, -1):
             tab.component_input.sizer.Hide(index + 1)
             tab.component_input.sizer.Remove(index + 1)
             tab.component_input.remove_last_input_text_box(option_name)
 
-    for index in range(tab.n_phases, n_phases):
+    for index in range(tab.n_echoes, n_echoes):
         text_with_button = TextWithButton(
             panel=tab,
             button_label=f"Input Phase {index + 1}",
@@ -1235,7 +1235,7 @@ def add_input_phase_boxes(event, tab, ctrl):
             info_text=f"Input path of phase nifti file {index + 1}",
             required=True
         )
-        if index + 1 == n_phases and tab.n_phases == 0:
+        if index + 1 == n_echoes and tab.n_echoes == 0:
             tab.component_input.insert_input_text_box(
                 text_with_button,
                 option_name,
@@ -1248,7 +1248,7 @@ def add_input_phase_boxes(event, tab, ctrl):
                 index=insert_index + index
             )
 
-    tab.n_phases = n_phases
+    tab.n_echoes = n_echoes
     tab.Layout()
 
 
