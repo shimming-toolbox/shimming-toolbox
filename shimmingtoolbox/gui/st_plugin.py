@@ -453,6 +453,8 @@ class RunComponent(Component):
             msg = f"Run {self.st_function} completed successfully"
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
             self.send_output_to_overlay()
+            self.output_paths.clear()
+            self.output_paths = self.output_paths_original.copy()
         except Exception as err:
             self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
@@ -473,9 +475,6 @@ class RunComponent(Component):
                         window.overlayList.append(img_overlay)
                 except Exception as err:
                     self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
-
-        self.output_paths.clear()
-        self.output_paths = self.output_paths_original.copy()
 
     def get_run_args(self, st_function):
         msg = "Running "
