@@ -210,10 +210,10 @@ class TabPanel(wx.Panel):
         super().__init__(parent=parent)
 
         nb = wx.Notebook(self)
-        tab1 = ShimTab(nb)
+        tab1 = DicomToNiftiTab(nb)
         tab2 = FieldMapTab(nb)
         tab3 = MaskTab(nb)
-        tab4 = DicomToNiftiTab(nb)
+        tab4 = ShimTab(nb)
 
         # Add the windows to tabs and name them.
         nb.AddPage(tab1, tab1.title)
