@@ -25,7 +25,7 @@ def b1_shim(b1_maps, mask):
     if b1_maps.shape[:-1] == mask.shape:
         pass
     else:
-        raise ValueError("Mask and maps dimension do not match")
+        raise ValueError("Mask and maps dimensions not matching")
 
     x, y, n_slices, n_coils = b1_maps.shape
     b1_roi = np.reshape(b1_maps, [x*y*n_slices, n_coils])[np.reshape(mask, x*y*n_slices), :]

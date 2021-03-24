@@ -25,5 +25,5 @@ def test_b1_shim_wrong_ndim():
 
 
 def test_b1_shim_wrong_mask_shape():
-    with pytest.raises(ValueError, match=r"Mask and maps dimension do not match"):
+    with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching"):
         b1_shim(b1_maps, mask[:-1, :, :])
