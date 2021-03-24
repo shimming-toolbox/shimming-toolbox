@@ -7,7 +7,7 @@ import scipy.optimize
 
 def b1_shim(b1_maps, mask):
     """
-    Computes optimized shim weights that minimize the coefficient of variation of the B1 field in the masked region.
+    Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
     Args:
         b1_maps (numpy.ndarray): 4D array (x, y, slice, coil) corresponding to the measured B1 field.
@@ -21,6 +21,11 @@ def b1_shim(b1_maps, mask):
         pass
     else:
         raise ValueError("Unexpected negative magnitude values")
+
+    if b1_maps.shape[:-1] == mask.shape:
+        pass
+    else:
+        raise ValueError("Mask and maps dimension do not match")
 
     x, y, n_slices, n_coils = b1_maps.shape
     b1_roi = np.reshape(b1_maps, [x*y*n_slices, n_coils])[np.reshape(mask, x*y*n_slices), :]

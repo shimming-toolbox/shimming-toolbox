@@ -21,4 +21,9 @@ def test_b1_shim():
 
 def test_b1_shim_wrong_ndim():
     with pytest.raises(ValueError, match=r"Unexpected negative magnitude values"):
-        shim_weights = b1_shim(b1_maps[:, :, :, 0], mask)
+        b1_shim(b1_maps[:, :, :, 0], mask)
+
+
+def test_b1_shim_wrong_mask_shape():
+    with pytest.raises(ValueError, match=r"Mask and maps dimension do not match"):
+        b1_shim(b1_maps, mask[:-1, :, :])

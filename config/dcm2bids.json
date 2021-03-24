@@ -224,7 +224,7 @@
             "dataType": "rfmap",
             "modalityLabel": "TB1map",
             "criteria": {
-                "SequenceName": "tfl2d1_16"
+                "SequenceName": "*tfl2d1_16"
             }
         }
     ]
