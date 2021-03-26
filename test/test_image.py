@@ -35,3 +35,8 @@ class TestImageConcat(object):
         pixdim = 0.2
         out = concat_data(self.list_nii, 2, pixdim=pixdim)
         assert np.all(np.isclose(out.header['pixdim'], [-1, 2.1875, 2.1875, 0.2, 1, 0, 0, 0]))
+
+    def test_concat_100(self):
+        """Use a list of more than 100 files"""
+        out = concat_data(self.list_nii * 34, 4)
+        assert out.shape == self.list_nii[0].shape + (1, len(self.list_nii) * 34)  # (128, 68, 20, 1, 3)
