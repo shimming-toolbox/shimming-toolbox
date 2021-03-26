@@ -19,8 +19,6 @@ def concat_data(list_nii: ListNii, axis, pixdim=None):
     Returns:
         ListNii: concatenated image
     """
-    # WARNING: calling concat_data in python instead of in command line causes a non-understood issue (results are
-    # different with both options) from numpy import concatenate, expand_dims
 
     dat_list = []
     data_concat_list = []
@@ -57,11 +55,6 @@ def concat_data(list_nii: ListNii, axis, pixdim=None):
         cur_pixdim = list_nii[0].header['pixdim']
         cur_pixdim[axis + 1] = pixdim
         nii_out.header['pixdim'] = cur_pixdim
-
-    # TODO: the line below fails because .dim is immutable. We should find a solution to update dim accordingly
-    #  because as of now, this field contains wrong values (in this case, the dimension should be changed). Also
-    #  see mean()
-    # im_out.dim = im_out.data.shape[:dim] + (1,) + im_out.data.shape[dim:]
 
     return nii_out
 
