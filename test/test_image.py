@@ -9,7 +9,7 @@ from shimmingtoolbox.image import concat_data
 from shimmingtoolbox import __dir_testing__
 
 
-class TestPrepareFieldmap(object):
+class TestImageConcat(object):
 
     def setup(self):
         path_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat')
@@ -35,6 +35,3 @@ class TestPrepareFieldmap(object):
         pixdim = 0.2
         out = concat_data(self.list_nii, 2, pixdim=pixdim)
         assert np.all(np.isclose(out.header['pixdim'], [-1, 2.1875, 2.1875, 0.2, 1, 0, 0, 0]))
-
-    def test_concat_squeeze(self):
-        pass

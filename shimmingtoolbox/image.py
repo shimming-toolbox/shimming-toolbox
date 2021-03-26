@@ -3,12 +3,12 @@
 
 import numpy as np
 import nibabel as nib
-from typing import Tuple
+from typing import List
 
-ListNii = Tuple[nib.Nifti1Image]
+ListNii = List[nib.Nifti1Image]
 
 
-def concat_data(list_nii: ListNii, dim, pixdim=None, squeeze_data=False):
+def concat_data(list_nii: ListNii, dim, pixdim=None):
     """
     Concatenate data
 
@@ -16,7 +16,6 @@ def concat_data(list_nii: ListNii, dim, pixdim=None, squeeze_data=False):
         list_nii: list of Nifti1Image
         dim: dimension: 0, 1, 2, 3.
         pixdim: pixel resolution to join to image header
-        squeeze_data: bool: if True, remove the last dim if it is a singleton.
     Returns:
         ListNii: concatenated image
     """
@@ -51,15 +50,8 @@ def concat_data(list_nii: ListNii, dim, pixdim=None, squeeze_data=False):
     else:
         data_concat = np.concatenate(dat_list, axis=dim)
 
-    if squeeze_data and data_concat.shape[dim] == 1:
-        # remove the last dim if it is a singleton.
-        im_out = data_concat.reshape(
-            tuple([x for (idx_shape, x) in enumerate(data_concat.shape) if idx_shape != dim]))
-    else:
-        im_out = data_concat
-
     im_in_first = list_nii[0]
-    nii_out = nib.Nifti1Image(im_out, im_in_first.affine, im_in_first.header)
+    nii_out = nib.Nifti1Image(data_concat, im_in_first.affine, im_in_first.header)
 
     if pixdim is not None:
         cur_pixdim = list_nii[0].header['pixdim']
