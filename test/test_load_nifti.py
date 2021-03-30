@@ -1,12 +1,13 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import shutil
-import os
-import numpy as np
-import nibabel as nib
 import json
+import nibabel as nib
+import numpy as np
 import math
+import os
+import pytest
+import shutil
 
 from io import StringIO
 from pathlib import Path
@@ -478,34 +479,6 @@ class TestCore(object):
         test_values = [87.0, 1890.0, 37.0]
         assert [b1[35, 35, 0, 0], b1[35, 35, 6, 13], b1[40, 25, 15, 7]] == test_values
 
-    def test_read_nii_b1_no_shimsetting(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
-            self._json_b1_no_shimsetting = self._json_b1.copy()
-            del self._json_b1_no_shimsetting['ShimSetting']
-            json.dump(self._json_b1_no_shimsetting, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.nii')
-        try:
-            read_nii(fname_b1)
-        except ValueError:
-            return 0
-
-    def test_read_nii_b1_no_slicetiming(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
-            self._json_b1_no_slicetiming = self._json_b1.copy()
-            del self._json_b1_no_slicetiming['SliceTiming']
-            json.dump(self._json_b1_no_slicetiming, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.nii')
-        try:
-            read_nii(fname_b1)
-        except ValueError:
-            return 0
-
     def test_read_nii_b1_wrong_shimsetting(self):
         dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
         nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting'))
@@ -515,10 +488,20 @@ class TestCore(object):
             json.dump(self._json_b1_wrong_shimsetting, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_shimsetting.nii")
-        try:
+        with pytest.raises(ValueError, match="Wrong array dimension: number of coils not matching"):
             read_nii(fname_b1)
-        except ValueError:
-            return 0
+
+    def test_read_nii_b1_no_shimsetting(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
+            self._json_b1_no_shimsetting = self._json_b1.copy()
+            del self._json_b1_no_shimsetting['ShimSetting']
+            json.dump(self._json_b1_no_shimsetting, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.nii')
+        with pytest.raises(ValueError, match="Missing json tag: 'ShimSetting'"):
+            read_nii(fname_b1)
 
     def test_read_nii_b1_wrong_slicetiming(self):
         dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
@@ -529,10 +512,20 @@ class TestCore(object):
             json.dump(self._json_b1_wrong_slicetiming, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_slicetiming.nii")
-        try:
+        with pytest.raises(ValueError, match="Wrong array dimension: number of slices not matching"):
             read_nii(fname_b1)
-        except ValueError:
-            return 0
+
+    def test_read_nii_b1_no_slicetiming(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
+            self._json_b1_no_slicetiming = self._json_b1.copy()
+            del self._json_b1_no_slicetiming['SliceTiming']
+            json.dump(self._json_b1_no_slicetiming, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_slicetiming.nii")
+        with pytest.raises(UserWarning, match="Missing json tag: 'SliceTiming', slices number cannot be checked."):
+            read_nii(fname_b1)
 
     def test_read_nii_b1_negative_mag(self):
         data_negative_mag = self._data_b1.copy()
@@ -543,7 +536,5 @@ class TestCore(object):
             json.dump(self._json_b1, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_negative_mag.nii")
-        try:
+        with pytest.raises(ValueError, match="Unexpected negative magnitude values"):
             read_nii(fname_b1)
-        except ValueError:
-            return 0

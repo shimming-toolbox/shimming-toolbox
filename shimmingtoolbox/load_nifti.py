@@ -198,25 +198,22 @@ def read_nii(fname_nifti, auto_scale=True):
 
     return info, json_data, image
 
+
 def scale_tfl_b1(image, json_data):
     if 'ShimSetting' in json_data:
-        pass
+        n_coils = len(json_data['ShimSetting'])
+        if image.shape[3] != 2 * n_coils:
+            raise ValueError("Wrong array dimension: number of coils not matching")
     else:
         raise ValueError("Missing json tag: 'ShimSetting'")
 
-    n_coils = len(json_data['ShimSetting'])
-
     if 'SliceTiming' in json_data:
-        pass
+        n_slices = len(json_data['SliceTiming'])
+        if image.shape[2] != n_slices:
+            raise ValueError("Wrong array dimension: number of slices not matching")
     else:
-        raise ValueError("Missing json tag: 'SliceTiming'")
+        raise UserWarning("Missing json tag: 'SliceTiming', slices number cannot be checked.")
 
-    n_slices = len(json_data['SliceTiming'])
-
-    if image.shape[2] != n_slices:
-        raise ValueError("Wrong array dimension: number of slices not matching")
-    if image.shape[3] != 2 * n_coils:
-        raise ValueError("Wrong array dimension: number of coils not matching")
     # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
     # Get the Transmission amplifier reference amplitude
     amplifier_voltage = json_data['TxRefAmp']  # [V]
