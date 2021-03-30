@@ -20,12 +20,12 @@ def b1_shim(b1_maps, mask):
     if b1_maps.ndim == 4:
         pass
     else:
-        raise ValueError("Unexpected negative magnitude values")
+        raise ValueError("Unexpected negative magnitude values.")
 
     if b1_maps.shape[:-1] == mask.shape:
         pass
     else:
-        raise ValueError("Mask and maps dimensions not matching")
+        raise ValueError("Mask and maps dimensions not matching.")
 
     x, y, n_slices, n_coils = b1_maps.shape
     b1_roi = np.reshape(b1_maps, [x*y*n_slices, n_coils])[np.reshape(mask, x*y*n_slices), :]
@@ -58,6 +58,11 @@ def combine_maps(b1_maps, weights):
     Returns:
 
     """
+    if b1_maps.shape[-1] == len(weights):
+        pass
+    else:
+        raise ValueError("The number of shim weights does not match the number of coils.")
+
     return abs(np.sum(np.multiply(b1_maps, weights), b1_maps.ndim-1))
 
 
@@ -86,4 +91,8 @@ def vector_to_complex(weights):
         numpy.ndarray: 1D complex array of length n_coils.
 
     """
+    if len(weights) % 2 == 0:
+        pass
+    else:
+        raise ValueError("The vector must have an even number of elements.")
     return weights[:len(weights)//2] * np.exp(1j * weights[len(weights)//2:])
