@@ -31,12 +31,10 @@ def mean(fname_input, fname_output, axis):
     # Find index
     dim_list = AXES
     index = dim_list.index(axis)
-
     if len(nii_input.shape) < index:
         raise IndexError(f"Axis: {axis} is out of bound for array of length: {len(nii_input.shape)}")
 
     # Calculate the average
-
     avg = np.mean(nii_input.get_fdata(), axis=index)
 
     # Create nibabel output
