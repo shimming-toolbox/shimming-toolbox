@@ -252,24 +252,16 @@ class TestCore(object):
         Assert fails without existing path
         :return:
         """
-        try:
+        with pytest.raises(RuntimeError, match="Not an existing NIFTI path"):
             load_nifti("dummy")
-        except RuntimeError:
-            return 0
-
-        assert False, "Did not fail if no valid path given"
 
     def test_load_nifti_mix_file_types_fail(self):
         """
         Assert fails if folder and files in path
         :return:
         """
-        try:
+        with pytest.raises(RuntimeError, match="Directories and files in input path"):
             load_nifti(self.toolbox_path)
-        except:
-            return 0
-
-        assert False, "Did not fail with folder and files in the same path"
 
     def test_load_nifti_folders(self, monkeypatch):
         """
@@ -312,12 +304,8 @@ class TestCore(object):
         :return:
         """
         os.remove(os.path.join(self.data_path, "dummy.json"))
-        try:
+        with pytest.raises(OSError, match="Missing json file"):
             load_nifti(self.data_path)
-        except ValueError:
-            return 0
-
-        assert False, "Did not fail with missing JSON file"
 
     def test_load_nifti_multiple_echoes(self, monkeypatch):
         """
@@ -500,7 +488,7 @@ class TestCore(object):
             json.dump(self._json_b1_no_shimsetting, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.nii')
-        with pytest.raises(ValueError, match="Missing json tag: 'ShimSetting'"):
+        with pytest.raises(KeyError, match="Missing json tag: 'ShimSetting'"):
             read_nii(fname_b1)
 
     def test_read_nii_b1_wrong_slicetiming(self):

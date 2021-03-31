@@ -171,7 +171,7 @@ def read_nii(fname_nifti, auto_scale=True):
     if os.path.isfile(json_path):
         json_data = json.load(open(json_path))
     else:
-        raise ValueError("Missing json file")
+        raise OSError("Missing json file")
 
     # Store nifti image in a numpy array
     image = np.asarray(info.dataobj)
@@ -187,7 +187,7 @@ def read_nii(fname_nifti, auto_scale=True):
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             # Bootstrap
-            if image.min() < 0:
+            if np.amin(image) < 0:
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2)) + math.pi
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
@@ -205,7 +205,7 @@ def scale_tfl_b1(image, json_data):
         if image.shape[3] != 2 * n_coils:
             raise ValueError("Wrong array dimension: number of coils not matching")
     else:
-        raise ValueError("Missing json tag: 'ShimSetting'")
+        raise KeyError("Missing json tag: 'ShimSetting'")
 
     if 'SliceTiming' in json_data:
         n_slices = len(json_data['SliceTiming'])
