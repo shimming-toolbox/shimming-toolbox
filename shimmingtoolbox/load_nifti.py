@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 import json
 import math
+import warnings
 
 from shimmingtoolbox.utils import iso_times_to_ms
 
@@ -212,7 +213,8 @@ def scale_tfl_b1(image, json_data):
         if image.shape[2] != n_slices:
             raise ValueError("Wrong array dimension: number of slices not matching")
     else:
-        raise UserWarning("Missing json tag: 'SliceTiming', slices number cannot be checked.")
+        warnings.warn("Missing json tag: 'SliceTiming', slices number cannot be checked.")
+        n_slices = image.shape[2]
 
     # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
     # Get the Transmission amplifier reference amplitude

@@ -512,7 +512,7 @@ class TestCore(object):
             json.dump(self._json_b1_no_slicetiming, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_slicetiming.nii")
-        with pytest.raises(UserWarning, match="Missing json tag: 'SliceTiming', slices number cannot be checked."):
+        with pytest.warns(UserWarning, match="Missing json tag: 'SliceTiming', slices number cannot be checked."):
             read_nii(fname_b1)
 
     def test_read_nii_b1_negative_mag(self):
