@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 import json
 import math
+import warnings
 
 from shimmingtoolbox.utils import iso_times_to_ms
 
@@ -171,7 +172,7 @@ def read_nii(fname_nifti, auto_scale=True):
     if os.path.isfile(json_path):
         json_data = json.load(open(json_path))
     else:
-        raise ValueError("Missing json file")
+        raise OSError("Missing json file")
 
     # Store nifti image in a numpy array
     image = np.asarray(info.dataobj)
@@ -187,7 +188,7 @@ def read_nii(fname_nifti, auto_scale=True):
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             # Bootstrap
-            if image.min() < 0:
+            if np.amin(image) < 0:
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2)) + math.pi
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
@@ -198,25 +199,23 @@ def read_nii(fname_nifti, auto_scale=True):
 
     return info, json_data, image
 
+
 def scale_tfl_b1(image, json_data):
     if 'ShimSetting' in json_data:
-        pass
+        n_coils = len(json_data['ShimSetting'])
+        if image.shape[3] != 2 * n_coils:
+            raise ValueError("Wrong array dimension: number of coils not matching")
     else:
-        raise ValueError("Missing json tag: 'ShimSetting'")
-
-    n_coils = len(json_data['ShimSetting'])
+        raise KeyError("Missing json tag: 'ShimSetting'")
 
     if 'SliceTiming' in json_data:
-        pass
+        n_slices = len(json_data['SliceTiming'])
+        if image.shape[2] != n_slices:
+            raise ValueError("Wrong array dimension: number of slices not matching")
     else:
-        raise ValueError("Missing json tag: 'SliceTiming'")
+        warnings.warn("Missing json tag: 'SliceTiming', slices number cannot be checked.")
+        n_slices = image.shape[2]
 
-    n_slices = len(json_data['SliceTiming'])
-
-    if image.shape[2] != n_slices:
-        raise ValueError("Wrong array dimension: number of slices not matching")
-    if image.shape[3] != 2 * n_coils:
-        raise ValueError("Wrong array dimension: number of coils not matching")
     # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
     # Get the Transmission amplifier reference amplitude
     amplifier_voltage = json_data['TxRefAmp']  # [V]
