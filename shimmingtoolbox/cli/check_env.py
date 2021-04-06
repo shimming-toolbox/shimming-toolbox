@@ -80,6 +80,11 @@ def check_dependencies():
         print_fail()
         print(f"Error {dcm2niix_exit_code}: dcm2niix is not installed or not in your PATH.")
 
+    # SCT
+    sct_check_msg = check_name.format("Spinal Cord Toolbox")
+    print_line(sct_check_msg)
+    check_sct_installation()
+
     return
 
 
@@ -106,6 +111,28 @@ def check_dcm2niix_installation() -> int:
         int: Exit code. 0 on success, nonzero on failure.
     """
     return subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def check_sct_installation() -> int:
+    """Checks that ``SCT`` is installed.
+
+    This function calls ``which sct_check_dependencies`` and checks the exit code to verify
+    that ``sct`` is installed.
+
+    Returns:
+        bool: True if sct is installed, False if not.
+    """
+    try:
+        subprocess.check_call(['which', 'sct_check_dependencies'], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + get_sct_version().replace("\n", "\n    "))
+        return True
 
 
 def get_prelude_version() -> str:
@@ -146,6 +173,25 @@ def get_dcm2niix_version() -> str:
     # accordingly:
     assert dcm2niix_version.returncode != 0
     version_output: str = dcm2niix_version.stdout.rstrip()
+    return version_output
+
+
+def get_sct_version() -> str:
+    """Gets the ``sct`` installation version.
+
+    This function calls ``sct_check_dependencies -short`` and captures the output to
+    obtain the installation version.
+
+    Returns:
+        str: Version of the ``SCT`` installation.
+    """
+    # `sct_check_dependencies -short` returns
+    sct_version: str = subprocess.run(["sct_check_dependencies", "-short"], capture_output=True, encoding="utf-8")
+    if sct_version.returncode != 0:
+        raise subprocess.CalledProcessError("Error while getting SCT's version")
+    version_output: str = sct_version.stdout.rstrip()
+    version_output = version_output.split("\n\n")[2].split("\n")[1]
+
     return version_output
 
 
