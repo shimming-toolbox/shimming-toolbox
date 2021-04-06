@@ -160,6 +160,7 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=No
         nii_resampled_static = resample_from_to(nii_static, nii_anat)
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
 
+
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
     resampled_xstatic_vox, resampled_ystatic_vox, resampled_zstatic_vox = phys_to_vox_gradient(resampled_static[0], resampled_static[1], resampled_static[2],
                                                       nii_anat.affine)
