@@ -13,7 +13,10 @@ from hashlib import md5
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.cli.download_data import download_data
-from shimmingtoolbox.cli.check_env import check_dcm2niix_installation, check_prelude_installation
+from shimmingtoolbox.cli.check_env import check_dcm2niix_installation
+from shimmingtoolbox.cli.check_env import check_prelude_installation
+from shimmingtoolbox.cli.check_env import check_sct_installation
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,12 @@ def test_dcm2niix_installation():
     # note that check_dcm2niix_installation() returns 0 on success, so it must
     # be negated for the assertion.
     assert not check_dcm2niix_installation()
+    return
+
+
+@pytest.fixture(params=[pytest.param(0, marks=pytest.mark.sct)])
+def test_sct_installation():
+    assert check_sct_installation()
     return
 
 
