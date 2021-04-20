@@ -6,7 +6,7 @@ import scipy.optimize
 import warnings
 
 
-def b1_shim(b1_maps, mask, cp_weights=None):
+def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
@@ -25,17 +25,18 @@ def b1_shim(b1_maps, mask, cp_weights=None):
         raise ValueError("Unexpected negative magnitude values.")
 
     if b1_maps.shape[:-1] == mask.shape:
-        b1_roi = np.reshape(b1_maps, [x * y * n_slices, n_coils])[np.reshape(mask, x * y * n_slices), :]
+        b1_roi = np.reshape(b1_maps * mask[:, :, :, np.newaxis], [x * y * n_slices, n_coils])
+        b1_roi = b1_roi[b1_roi[:, 0] != 0, :]
     else:
         raise ValueError("Mask and maps dimensions not matching.")
 
     if cp_weights:
         if len(cp_weights) == b1_maps.shape[-1]:
-            if np.isclose(np.linalg.norm(cp_weights), 1):
+            if np.isclose(np.linalg.norm(cp_weights), 1, rtol=0.0001):
                 weights_init = complex_to_vector(cp_weights)
             else:
                 warnings.warn("Normalizing the CP mode weights.")
-                weights_init = complex_to_vector(cp_weights/np.linalg.norm(cp_weights))
+                weights_init = complex_to_vector(cp_weights / np.linalg.norm(cp_weights))
         else:
             raise ValueError("CP mode and maps dimensions not matching.")
     else:
@@ -44,17 +45,20 @@ def b1_shim(b1_maps, mask, cp_weights=None):
         weights_init = np.concatenate((np.ones(n_coils) / np.linalg.norm(np.ones(n_coils)),
                                        np.linspace(0, 2 * np.pi - 2 * np.pi / n_coils, n_coils)))
 
-    print(f"Coefficient of variation before shimming: {cov(combine_maps(b1_roi, vector_to_complex(weights_init)))}")
+    # Bounds for the optimization
+    bounds = np.concatenate((n_coils * [(0, None)], n_coils * [(-np.pi, np.pi)]))
 
-    bounds = np.concatenate((n_coils * [(0, 1)], n_coils * [(-np.pi, np.pi)]))
+    # # SAR constraint
+    # sar_limit = SED * np.max(np.real(vector_to_complex(weights_init) @ vop.T @ vector_to_complex(weights_init)).T)
+    # cons = ({'type': 'ineq', 'fun': lambda weights: np.max(np.real(np.matmul(vector_to_complex(weights), np.matmul(vop.T, vector_to_complex(
+    #                                                                                    weights)).T)))})
 
     def cost(weights):
         return cov(combine_maps(b1_roi, vector_to_complex(weights)))
 
     shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, bounds=bounds).x)
     shim_weights = shim_weights / np.linalg.norm(shim_weights)
-    print(f"Shim coefficient: {shim_weights}")
-    print(f"Coefficient of variation after shimming: {cov(combine_maps(b1_roi, shim_weights))}")
+
     return shim_weights
 
 
