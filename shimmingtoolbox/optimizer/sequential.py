@@ -4,27 +4,38 @@
 import numpy as np
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
+from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 
 
-def sequential_zslice(unshimmed, coil: Coil, full_mask, z_slices):
+def sequential_zslice(unshimmed, coil: Coil, full_mask, z_slices, method='least_squares'):
     """
-    Performs shimming slice by slice using shimmingtoolbox.optimizer.LsqOptimizer
+    Performs shimming slice by slice using one of the supported optimizers
 
     Args:
         unshimmed (numpy.ndarray): 3D B0 map
         coil (Coil): Coil sensitivity profile as defined in coils.siemens_basis.siemens_basis()
         full_mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
         z_slices (numpy.ndarray): 1D array containing z slices to shim
-
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
     Returns:
         numpy.ndarray: Coefficients to enter in the Syngo console (this might change in the future)
                        (coils.size x z_slices.size)
 
     """
+
+    supported_optimizer = {
+        'least_squares': LsqOptimizer,
+        'pseudo_inverse': Optimizer
+    }
+
+    if method in supported_optimizer:
+        optimizer = supported_optimizer[method](coil)
+    else:
+        raise KeyError(f"Method: {method} is not part of the supported optimizers")
+
     z_slices.reshape(z_slices.size)
     currents = np.zeros((z_slices.size, coil.profiles.shape[3]))
-    optimizer = LsqOptimizer(coil)
     for i in range(z_slices.size):
         mask = np.full_like(full_mask, fill_value=False)
         z = z_slices[i]
