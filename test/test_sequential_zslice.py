@@ -63,27 +63,63 @@ class TestSequentialZSlice(object):
 
         # Optimize
         z_slices = np.array(range(self.sph_coil.z))
-        currents = sequential_zslice(self.unshimmed, self.sph_coil, self.mask, z_slices)
+        currents = sequential_zslice(self.unshimmed, [self.sph_coil], self.mask, z_slices)
 
         # Calculate theoretical shimmed map
         shimmed = self.unshimmed + np.sum(currents * self.sph_coil.profiles, axis=3, keepdims=False)
 
         for i_slice in z_slices:
-            assert(np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice])) <
-                   np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice])))
+            sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
+            sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
+            print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
+            assert sum_shimmed < sum_unshimmed
 
     def test_zslice_pseudo(self):
 
         # Optimize
         z_slices = np.array(range(self.sph_coil.z))
-        currents = sequential_zslice(self.unshimmed, self.sph_coil, self.mask, z_slices, method='pseudo_inverse')
+        currents = sequential_zslice(self.unshimmed, [self.sph_coil], self.mask, z_slices, method='pseudo_inverse')
 
         # Calculate theoretical shimmed map
         shimmed = self.unshimmed + np.sum(currents * self.sph_coil.profiles, axis=3, keepdims=False)
 
         for i_slice in z_slices:
-            assert(np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice])) <
-                   np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice])))
+            sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
+            sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
+            print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
+            assert sum_shimmed < sum_unshimmed
+
+    def test_zslice_2_coils_lsq(self):
+        # TODO: Test with multiple coils using 2 different coils
+        # Optimize
+        z_slices = np.array(range(self.sph_coil.z))
+        currents = sequential_zslice(self.unshimmed, [self.sph_coil, self.sph_coil], self.mask, z_slices)
+
+        # Calculate theoretical shimmed map
+        shimmed = self.unshimmed + np.sum(currents * np.concatenate([self.sph_coil.profiles, self.sph_coil.profiles],
+                                                                    axis=3), axis=3, keepdims=False)
+
+        for i_slice in z_slices:
+            sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
+            sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
+            print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
+            assert sum_shimmed < sum_unshimmed
+
+    def test_zslice_2_coils_pseudo(self):
+        # TODO: Test with multiple coils using 2 different coils
+        # Optimize
+        z_slices = np.array(range(self.sph_coil.z))
+        currents = sequential_zslice(self.unshimmed, [self.sph_coil, self.sph_coil], self.mask, z_slices,
+                                     method='pseudo_inverse')
+
+        # Calculate theoretical shimmed map
+        shimmed = self.unshimmed + np.sum(currents * np.concatenate([self.sph_coil.profiles, self.sph_coil.profiles],
+                                                                    axis=3), axis=3, keepdims=False)
+
+        for i_slice in z_slices:
+            sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
+            sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
+            print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
+            assert sum_shimmed < sum_unshimmed
 
     # TODO: Test with a custom coil profile
-#     TODO: Test with multiple coils
