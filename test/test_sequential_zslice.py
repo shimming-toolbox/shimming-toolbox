@@ -59,7 +59,7 @@ class TestSequentialZSlice(object):
         full_mask = shapes(unshimmed, 'cube', len_dim1=40, len_dim2=40, len_dim3=nz)
         self.mask = full_mask
 
-    def test_zslice(self):
+    def test_zslice_lsq(self):
 
         # Optimize
         z_slices = np.array(range(self.sph_coil.z))
@@ -72,6 +72,18 @@ class TestSequentialZSlice(object):
             assert(np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice])) <
                    np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice])))
 
-    # TODO: Test basic optimizer (Add available optimizer in sequencer?)
+    def test_zslice_pseudo(self):
+
+        # Optimize
+        z_slices = np.array(range(self.sph_coil.z))
+        currents = sequential_zslice(self.unshimmed, self.sph_coil, self.mask, z_slices, method='pseudo_inverse')
+
+        # Calculate theoretical shimmed map
+        shimmed = self.unshimmed + np.sum(currents * self.sph_coil.profiles, axis=3, keepdims=False)
+
+        for i_slice in z_slices:
+            assert(np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice])) <
+                   np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice])))
+
     # TODO: Test with a custom coil profile
 #     TODO: Test with multiple coils
