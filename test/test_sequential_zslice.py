@@ -123,3 +123,5 @@ class TestSequentialZSlice(object):
             assert sum_shimmed < sum_unshimmed
 
     # TODO: Test with a custom coil profile
+    # TODO: Coils need to have the same shape, but also the same affine transfo, or resample into
+    #  the same affine transfo
