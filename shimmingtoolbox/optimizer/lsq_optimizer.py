@@ -26,12 +26,13 @@ class LsqOptimizer(Optimizer):
 
         return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
 
-    def optimize(self, unshimmed, mask):
+    def optimize(self, unshimmed, affine, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
             unshimmed (numpy.ndarray): 3D B0 map
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
         Returns:
             numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
@@ -39,10 +40,10 @@ class LsqOptimizer(Optimizer):
         """
 
         # Check for sizing errors
-        self._check_sizing(unshimmed, mask)
+        self._check_sizing(unshimmed, affine, mask)
 
         # Define coil profiles
-        coil_profiles, bounds = self.concat_coils()
+        coil_profiles, bounds = self.merge_coils(unshimmed, affine)
         n_channels = coil_profiles.shape[3]
 
         mask_vec = mask.reshape((-1,))

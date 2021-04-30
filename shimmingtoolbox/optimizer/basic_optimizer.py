@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import nibabel as nib
 import scipy.linalg
 import logging
 from typing import List
 
 from shimmingtoolbox.coils.coil import Coil
+from shimmingtoolbox.coils.coordinates import resample_from_to
 
 ListCoil = List[Coil]
 
@@ -18,35 +20,37 @@ class Optimizer(object):
     For basic optimizer, uses unbounded pseudo-inverse.
 
     Attributes:
-        coil (Coil): Coil object containing the coil profiles and related constraints
+        coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
     """
 
-    def __init__(self, list_coil: ListCoil):
+    def __init__(self, coils: ListCoil):
         """
-        Initializes X, Y, Z, N and coils according to input coil_profiles
+        Initializes coils according to input list of Coil
 
         Args:
-            coil (ListCoil): List of Coil objects containing the coil profiles and related constraints
+            coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
         """
         # Logging
         self.logger = logging.getLogger()
         logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
 
-        self.list_coil = list_coil
+        self.coils = coils
 
-    def optimize(self, unshimmed, mask):
+    def optimize(self, unshimmed, affine, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
-            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization -- 0 indicates unused. Nust be
+                                  the same shape as unshimmed
         """
         # Check for sizing errors
-        self._check_sizing(unshimmed, mask)
+        self._check_sizing(unshimmed, affine, mask)
 
         # Define coil profiles
-        coil_profiles, _ = self.concat_coils()
+        coil_profiles, _ = self.merge_coils(unshimmed, affine)
 
         # Optimize
         mask_vec = mask.reshape((-1,))
@@ -62,12 +66,26 @@ class Optimizer(object):
 
         return output
 
-    def concat_coils(self):
-        """ Uses the list of coil profiles to return a concatenated list of coil profiles"""
+    def merge_coils(self, unshimmed, affine):
+        """
+        Uses the list of coil profiles to return a resampled concatenated list of coil profiles matching the
+        unshimmed image. Bounds are also concatenated and returned.
+        """
+
         coil_profiles_list = []
         bounds = []
-        for a_coil in self.list_coil:
-            coil_profiles_list.append(a_coil.profiles)
+
+        # Define the nibabel unshimmed array
+        nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
+
+        for a_coil in self.coils:
+            nii_coil = nib.Nifti1Image(a_coil.profile, a_coil.affine)
+
+            # Resample a coil on the unshimmed image
+            resampled_coil = resample_from_to(nii_coil, nii_unshimmed).get_fdata()
+
+            # Concat coils and bounds
+            coil_profiles_list.append(resampled_coil)
             for a_bound in a_coil.coef_channel_minmax:
                 bounds.append(a_bound)
 
@@ -75,27 +93,25 @@ class Optimizer(object):
 
         return coil_profiles, bounds
 
-    def _check_sizing(self, unshimmed, mask):
+    def _check_sizing(self, unshimmed, affine, mask):
         """
         Helper function to check array sizing
 
         Args:
-            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
-            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization -- 0 indicates unused. Must be
+                                  the same shape as unshimmed
         """
-        # Check dimensions of coil profiles
-        coil_shape = self.list_coil[0].profiles.shape
-        for i in range(1, len(self.list_coil)):
-            if coil_shape != self.list_coil[i].profiles.shape:
-                raise ValueError("Dimension of coil profiles are not the same")
 
+        # Check dimenssions of affine
+        if affine.shape != (4, 4):
+            raise ValueError("Shape of affine matrix should be 4x4")
+
+        # Check dimensions of unshimmed map, mask annd make sure they are the same shape
         if unshimmed.ndim != 3:
-            raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (X, Y, Z)")
+            raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
         if mask.ndim != 3:
-            raise ValueError(f"Mask has {mask.ndim} dimensions, expected 3 (X, Y, Z)")
-        if unshimmed.shape != (coil_shape[0], coil_shape[1], coil_shape[2]):
-            raise ValueError("XYZ mismatch -- Coils: {self.coil.profiles.shape}, Unshimmed: {unshimmed.shape}")
-
-        if mask.shape != (coil_shape[0], coil_shape[1], coil_shape[2]):
-            raise ValueError(f"Mask with shape: {mask.shape} expected to have the same shape as the coil profiles with"
-                             f" shape: {coil_shape}")
+            raise ValueError(f"Mask has {mask.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
+        if mask.shape != unshimmed.shape:
+            raise ValueError(f"Mask with shape: {mask.shape} expected to have the same shape as the unshimmed image"
+                             f" with shape: {unshimmed.shape}")
