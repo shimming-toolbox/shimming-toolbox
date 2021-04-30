@@ -11,14 +11,15 @@ from shimmingtoolbox.coils.coil import Coil
 ListCoil = List[Coil]
 
 
-def sequential_zslice(unshimmed, list_coil: ListCoil, full_mask, z_slices, method='least_squares'):
+def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method='least_squares'):
     """
     Performs shimming slice by slice using one of the supported optimizers
 
     Args:
         unshimmed (numpy.ndarray): 3D B0 map
-        list_coil (ListCoil): Coil sensitivity profile as defined in coils.siemens_basis.siemens_basis()
-        full_mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
+        affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+        coils (ListCoil): List of Coils containing the coil profiles
+        mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
         z_slices (numpy.ndarray): 1D array containing z slices to shim
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
     Returns:
@@ -33,21 +34,21 @@ def sequential_zslice(unshimmed, list_coil: ListCoil, full_mask, z_slices, metho
     }
 
     if method in supported_optimizer:
-        optimizer = supported_optimizer[method](list_coil)
+        optimizer = supported_optimizer[method](coils)
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
     # Count number of channels
     n_channels = 0
-    for i in range(len(list_coil)):
-        n_channels += list_coil[i].profiles.shape[3]
+    for i in range(len(coils)):
+        n_channels += coils[i].profile.shape[3]
 
     z_slices.reshape(z_slices.size)
     currents = np.zeros((z_slices.size, n_channels))
     for i in range(z_slices.size):
-        mask = np.full_like(full_mask, fill_value=False)
+        sliced_mask = np.full_like(mask, fill_value=False)
         z = z_slices[i]
-        mask[:, :, z:z+1] = full_mask[:, :, z:z+1]
-        currents[i, :] = optimizer.optimize(unshimmed, mask)
+        sliced_mask[:, :, z:z+1] = mask[:, :, z:z+1]
+        currents[i, :] = optimizer.optimize(unshimmed, affine, sliced_mask)
 
     return currents
