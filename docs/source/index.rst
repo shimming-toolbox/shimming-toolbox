@@ -13,9 +13,38 @@ such as
 `static <https://onlinelibrary.wiley.com/doi/full/10.1002/mrm.25587>`__
 and `real-time <https://doi.org/10.1002/mrm.27089>`__ shimming for use
 with standard manufacturer-supplied gradient/shim coils or with custom
-"multi-coil" arrays.
+"multi-coil" arrays. The toolbox provides useful set of command line tools as
+well as a fsleyes plugin dedicated to make shimming more accessible and more
+reproducible.
+
+Insert image of the overview
+
+Features
+________
+
+* Convert Dicoms to NIfTI
+* Process phase images into fieldmaps
+
+  * Available unwrappers: Prelude
+  
+* Create masks: Geometric, BET, SCT (Add sources)
+* Perform shimming using different techniques: SH, multi-coil and gradient shimming
+
+Installation
+____________
+
+See Installation section (link)
+
+
+Usage
+_____
+
+Add code block
+
+
 
 .. toctree::
+   :hidden:
    :maxdepth: 4
    :glob:
    :caption: Contents:
