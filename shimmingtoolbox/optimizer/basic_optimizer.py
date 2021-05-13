@@ -23,12 +23,14 @@ class Optimizer(object):
         coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
     """
 
-    def __init__(self, coils: ListCoil):
+    def __init__(self, coils: ListCoil, unshimmed, affine):
         """
         Initializes coils according to input list of Coil
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
         # Logging
         self.logger = logging.getLogger()
@@ -36,7 +38,22 @@ class Optimizer(object):
 
         self.coils = coils
 
-    def optimize(self, unshimmed, affine, mask):
+        # Check dimensions of unshimmed map, mask annd make sure they are the same shape
+        if unshimmed.ndim != 3:
+            raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
+        self.unshimmed = unshimmed
+
+        # Check dimensions of affine
+        if affine.shape != (4, 4):
+            raise ValueError("Shape of affine matrix should be 4x4")
+        self.unshimmed_affine = affine
+
+        # Define coil profiles
+        merged_coils, merged_bounds = self.merge_coils(unshimmed, affine)
+        self.merged_coils = merged_coils
+        self.merged_bounds = merged_bounds
+
+    def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
@@ -47,10 +64,7 @@ class Optimizer(object):
                                   the same shape as unshimmed
         """
         # Check for sizing errors
-        self._check_sizing(unshimmed, affine, mask)
-
-        # Define coil profiles
-        coil_profiles, _ = self.merge_coils(unshimmed, affine)
+        self._check_sizing(mask)
 
         # Optimize
         mask_vec = mask.reshape((-1,))
@@ -58,9 +72,9 @@ class Optimizer(object):
         # Simple pseudo-inverse optimization
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(coil_profiles, axes=(3, 0, 1, 2)),
-                              (coil_profiles.shape[3], -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(unshimmed, (-1,))[mask_vec != 0]  # mV'
+        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+                              (self.merged_coils.shape[3], -1)).T[mask_vec != 0, :]  # masked points x N
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
 
         output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
 
@@ -78,22 +92,22 @@ class Optimizer(object):
         # Define the nibabel unshimmed array
         nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
 
-        for a_coil in self.coils:
-            nii_coil = nib.Nifti1Image(a_coil.profile, a_coil.affine)
+        for coil in self.coils:
+            nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
 
             # Resample a coil on the unshimmed image
             resampled_coil = resample_from_to(nii_coil, nii_unshimmed).get_fdata()
 
             # Concat coils and bounds
             coil_profiles_list.append(resampled_coil)
-            for a_bound in a_coil.coef_channel_minmax:
+            for a_bound in coil.coef_channel_minmax:
                 bounds.append(a_bound)
 
         coil_profiles = np.concatenate(coil_profiles_list, axis=3)
 
         return coil_profiles, bounds
 
-    def _check_sizing(self, unshimmed, affine, mask):
+    def _check_sizing(self, mask):
         """
         Helper function to check array sizing
 
@@ -103,15 +117,8 @@ class Optimizer(object):
                                   the same shape as unshimmed
         """
 
-        # Check dimenssions of affine
-        if affine.shape != (4, 4):
-            raise ValueError("Shape of affine matrix should be 4x4")
-
-        # Check dimensions of unshimmed map, mask annd make sure they are the same shape
-        if unshimmed.ndim != 3:
-            raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
         if mask.ndim != 3:
             raise ValueError(f"Mask has {mask.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
-        if mask.shape != unshimmed.shape:
+        if mask.shape != self.unshimmed.shape:
             raise ValueError(f"Mask with shape: {mask.shape} expected to have the same shape as the unshimmed image"
-                             f" with shape: {unshimmed.shape}")
+                             f" with shape: {self.unshimmed.shape}")

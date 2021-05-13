@@ -26,7 +26,7 @@ class LsqOptimizer(Optimizer):
 
         return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
 
-    def optimize(self, unshimmed, affine, mask):
+    def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
@@ -40,26 +40,25 @@ class LsqOptimizer(Optimizer):
         """
 
         # Check for sizing errors
-        self._check_sizing(unshimmed, affine, mask)
+        self._check_sizing(mask)
 
         # Define coil profiles
-        coil_profiles, bounds = self.merge_coils(unshimmed, affine)
-        n_channels = coil_profiles.shape[3]
+        n_channels = self.merged_coils.shape[3]
 
         mask_vec = mask.reshape((-1,))
 
         # Simple pseudo-inverse optimization
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(coil_profiles, axes=(3, 0, 1, 2)),
+        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
                               (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(unshimmed, (-1,))[mask_vec != 0]  # mV'
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
 
         # Set up output currents and optimize
         currents_0 = np.zeros(n_channels)
         currents_sp = opt.least_squares(self._residuals, currents_0,
                                         args=(unshimmed_vec, coil_mat),
-                                        bounds=np.array(bounds).T)
+                                        bounds=np.array(self.merged_bounds).T)
 
         currents = currents_sp.x
 

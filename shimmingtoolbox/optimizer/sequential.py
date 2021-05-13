@@ -34,14 +34,12 @@ def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method
     }
 
     if method in supported_optimizer:
-        optimizer = supported_optimizer[method](coils)
+        optimizer = supported_optimizer[method](coils, unshimmed, affine)
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
     # Count number of channels
-    n_channels = 0
-    for i in range(len(coils)):
-        n_channels += coils[i].profile.shape[3]
+    n_channels = optimizer.merged_coils.shape[3]
 
     z_slices.reshape(z_slices.size)
     currents = np.zeros((z_slices.size, n_channels))
@@ -49,6 +47,6 @@ def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method
         sliced_mask = np.full_like(mask, fill_value=False)
         z = z_slices[i]
         sliced_mask[:, :, z:z+1] = mask[:, :, z:z+1]
-        currents[i, :] = optimizer.optimize(unshimmed, affine, sliced_mask)
+        currents[i, :] = optimizer.optimize(sliced_mask)
 
     return currents
