@@ -7,6 +7,7 @@ from nibabel.affines import apply_affine
 import math
 import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
+import multiprocessing as mp
 
 
 def generate_meshgrid(dim, affine):
@@ -168,14 +169,37 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
     elif from_img.ndim == 4:
         nt = from_img.shape[3]
         resampled_4d = np.zeros(nii_to_vox_map.shape + (nt,))
+
+        # Create inputs for multiprocessing
+        inputs = []
         for it in range(from_img.shape[3]):
             nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
-            nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
-                                                    out_class=out_class)
-            resampled_4d[..., it] = nii_resampled_3d.get_fdata()
+            inputs.append((nii_from_img_3d, nii_to_vox_map, order, mode, cval, out_class))
+
+        # Speed things up with multiprocessing
+        cpus = mp.cpu_count()
+        if cpus == 1:
+            # Can remove the multiprocessing as it only slows things down for 1 core
+            pool = mp.Pool(cpus)
+            output = pool.starmap(_resample_3d, inputs)
+        else:
+            pool = mp.Pool(cpus - 1)
+            output = pool.starmap(_resample_3d, inputs)
+
+        # Recombine 4d array
+        for it in range(from_img.shape[3]):
+            resampled_4d[..., it] = output[it]
+
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine)
 
     else:
         raise NotImplementedError("Dimensions of input can only be 2D, 3D or 4D")
 
     return nii_resampled
+
+
+def _resample_3d(nii_3d, nii_to_vox_map, order, mode, cval, out_class):
+
+    nii_resampled_3d = nib_resample_from_to(nii_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
+                                            out_class=out_class)
+    return nii_resampled_3d.get_fdata()
