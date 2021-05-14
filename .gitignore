@@ -1,0 +1,8 @@
+*.egg-info
+*.DS_Store
+*__pycache__
+build/
+dist/
+.vagrant/
+dcm2bids.json
+output_*
