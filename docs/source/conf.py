@@ -84,7 +84,7 @@ html_theme_options = {
     "display_version": False,
     "navigation_depth": 4,
 }
-html_logo = "_static/shimming_toolbox_logo.png"
+html_logo = "https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/logo/shimming_toolbox_logo.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
