@@ -34,11 +34,11 @@ Insert image of the overview
 Features
 ________
 
-* Built-in DICOM to NIFTI conversion
-* Supports masking of spinal cord
-* Supports the usage and creation of custom coil profiles
-* Supports different shimming approaches: spherical harmonics, multi-coil, gradient shimming, dynamic, realtime
-* Built using freely available software tools: `SCT <https://spinalcordtoolbox.com/en/latest/>`__, `FSL-prelude <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29>`__, `dcm2niix <https://github.com/rordenlab/dcm2niix>`__, `dcm2bids <https://github.com/UNFmontreal/Dcm2Bids>`__
+* Built-in DICOM to NIfTI conversion
+* Masking tools for the brain and spinal cord
+* Supports the creation and usage of a variety of coil profiles: Spherical harmonics, shim-only arrays, "AC-DC" multi-coil, etc.
+* Supports different shimming scenarios: dynamic (slicewise), realtime (shim modulation with respiration), gradient z-shimming, two-region shimming (e.g., fat and brain)
+* Powered by freely available software tools: `FSL-prelude <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29>`__, `SCT <https://spinalcordtoolbox.com/en/latest/>`__, `dcm2niix <https://github.com/rordenlab/dcm2niix>`__, `dcm2bids <https://github.com/UNFmontreal/Dcm2Bids>`__
 
 Installation
 ____________
@@ -77,4 +77,4 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 
 **2. Graphical User Interface (FSLeyes)**
 
-``Shimming Toolbox`` also provides a GUI via an FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__ for more information.
+``shimming-toolbox`` also features a graphical user interface (GUI) via a FSLeyes plugin. See the `plugin's installation page <https://shimming-toolbox.org/en/latest/getting_started/installation_gui.html>`__ for more information.
