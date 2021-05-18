@@ -34,7 +34,7 @@ Insert image of the overview
 Features
 ________
 
-* Inbuilt DICOM to NIFTI conversion
+* Built-in DICOM to NIFTI conversion
 * Supports masking of spinal cord
 * Supports the usage and creation of custom coil profiles
 * Supports different shimming approaches: spherical harmonics, multi-coil, gradient shimming, dynamic, realtime
@@ -48,9 +48,9 @@ See the :ref:`installation` page.
 Usage
 _____
 
-**1. Command line**
+**1. Command Line**
 
-Shimming-Toolbox's primary way to be used is through the command line. For example:
+The primary way to use ``Shimming Toolbox`` is through the command line. For example:
 
 .. code-block:: console
 
@@ -77,4 +77,4 @@ Shimming-Toolbox's primary way to be used is through the command line. For examp
 
 **2. Graphical User Interface (FSLeyes)**
 
-Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__ for installation.
+``Shimming Toolbox`` also provides a GUI via an FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__ for more information.

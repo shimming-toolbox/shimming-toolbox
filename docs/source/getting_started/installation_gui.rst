@@ -1,3 +1,5 @@
+.. _installation_gui:
+
 *************************
 Installing FSLeyes Plugin
 *************************
