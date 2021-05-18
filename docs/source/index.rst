@@ -1,7 +1,7 @@
 Welcome to shimming-toolbox!
 ============================
 
-.. figure:: ./_static/shimming_toolbox_logo.png
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/logo/shimming_toolbox_logo.png
    :alt: logo
 
 .. NOTE ::
