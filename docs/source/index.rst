@@ -15,7 +15,8 @@
    :hidden:
    :caption: Getting Started
 
-   getting_started/installation.rst
+   getting_started/installation_st.rst
+   getting_started/installation_gui.rst
    getting_started/getting_started.rst
    getting_started/help.rst
 

@@ -1,8 +1,9 @@
 .. _installation:
 
-************
-Installation
-************
+***************************
+Installing Shimming Toolbox
+***************************
+
 
 Currently, we only support ``Mac`` and ``Linux`` operating systems. We would like to support
 ``Windows`` in the future, but that option is not available at this time.
@@ -11,5 +12,5 @@ Currently, we only support ``Mac`` and ``Linux`` operating systems. We would lik
   :glob:
   :maxdepth: 1
 
-  installation/mac
-  installation/linux
+  installation_st/mac
+  installation_st/linux
