@@ -26,7 +26,7 @@ such as
 and `real-time <https://doi.org/10.1002/mrm.27089>`__ shimming for use
 with standard manufacturer-supplied gradient/shim coils or with custom
 "multi-coil" arrays. The toolbox provides useful set of command line tools as
-well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__
+well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__
 dedicated to make shimming more accessible and more reproducible.
 
 Insert image of the overview
@@ -34,14 +34,11 @@ Insert image of the overview
 Features
 ________
 
-* Convert Dicoms to NIfTI
-* Process phase images into fieldmaps
-
-  * Available unwrappers: Prelude
-
-* Create masks: Geometric, `SCT <https://spinalcordtoolbox.com/en/latest/>`__
-* Create custom coil profiles
-* Perform shimming using different techniques: SH, custom multi-coil and gradient shimming
+* Inbuilt DICOM to NIFTI conversion
+* Supports masking of spinal cord
+* Supports the usage and creation of custom coil profiles
+* Supports different shimming approaches: spherical harmonics, multi-coil, gradient shimming, dynamic, realtime
+* Built using freely available software tools: `SCT <https://spinalcordtoolbox.com/en/latest/>`__, `FSL-prelude <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29>`__, `dcm2niix <https://github.com/rordenlab/dcm2niix>`__, `dcm2bids <https://github.com/UNFmontreal/Dcm2Bids>`__
 
 Installation
 ____________
@@ -74,10 +71,10 @@ Shimming-Toolbox's primary way to be used is through the command line. For examp
   -threshold FLOAT      Threshold for masking. Used for: PRELUDE
   -h, --help            Show this message and exit.
 
-**2. Multi-command pipeline**
+.. admonition:: Note
 
-To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
+  To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
 
-**3. Graphical User Interface (FSLeyes)**
+**2. Graphical User Interface (FSLeyes)**
 
-Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__ for installation.
+Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__ for installation.
