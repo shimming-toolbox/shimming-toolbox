@@ -3,6 +3,7 @@
 
 .. toctree::
    :maxdepth: 4
+   :hidden:
    :glob:
    :caption: Overview
 
@@ -11,6 +12,7 @@
 
 .. toctree::
    :maxdepth: 4
+   :hidden:
    :glob:
    :caption: Getting Started
 
@@ -20,6 +22,7 @@
 
 .. toctree::
    :maxdepth: 4
+   :hidden:
    :glob:
    :caption: Developer Section
 
@@ -29,6 +32,7 @@
 
 .. toctree::
    :maxdepth: 4
+   :hidden:
    :glob:
    :caption: Hardware
 
@@ -37,6 +41,7 @@
 
 .. toctree::
    :maxdepth: 4
+   :hidden:
    :glob:
    :caption: About
 
