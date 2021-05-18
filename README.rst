@@ -74,10 +74,10 @@ Shimming-Toolbox's primary way to be used is through the command line. For examp
   -threshold FLOAT      Threshold for masking. Used for: PRELUDE
   -h, --help            Show this message and exit.
 
-**2. Multi-command pipeline**
+.. admonition:: Note
 
-To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
+  To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
 
-**3. Graphical User Interface (FSLeyes)**
+**2. Graphical User Interface (FSLeyes)**
 
-Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__ for installation.
+Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__ for installation.
