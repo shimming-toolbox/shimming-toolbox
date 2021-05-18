@@ -89,12 +89,14 @@ html_theme_options = {
     "display_version": False,
     "navigation_depth": 4,
 }
-html_logo = "_static/shimming_toolbox_logo.png"
+html_logo = "_static/img/shimming_toolbox_logo.png"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+
+html_css_files = ['css/custom.css']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
