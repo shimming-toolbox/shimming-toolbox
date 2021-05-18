@@ -28,7 +28,8 @@ ________
   * Available unwrappers: Prelude
 
 * Create masks: Geometric, `SCT <https://spinalcordtoolbox.com/en/latest/>`__
-* Perform shimming using different techniques: SH, multi-coil and gradient shimming
+* Create custom coil profiles
+* Perform shimming using different techniques: SH, custom multi-coil and gradient shimming
 
 Installation
 ____________
@@ -38,8 +39,36 @@ See the :ref:`installation` page.
 Usage
 _____
 
-Add usage
+**1. Command line**
 
+Shimming-Toolbox's primary way to be used is through the command line. For example:
+
+.. code-block:: console
+
+  $ st_prepare_fieldmap -help
+
+  Usage: st_prepare_fieldmap [OPTIONS] PHASE...
+
+  Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case multiple fieldmaps are acquired across time for the purpose of real-time shimming experiments.
+
+  phase: Input path of phase nifti file(s), in ascending order: echo1,
+  echo2, etc.
+
+  Options:
+  -mag PATH             Input path of mag nifti file
+  -unwrapper [prelude]  Algorithm for unwrapping
+  -output PATH          Output filename for the fieldmap, supported types : '.nii', '.nii.gz'
+  -mask PATH            Input path for a mask. Used for PRELUDE
+  -threshold FLOAT      Threshold for masking. Used for: PRELUDE
+  -h, --help            Show this message and exit.
+
+**2. Multi-command pipeline**
+
+To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
+
+**3. Graphical User Interface (FSLeyes)**
+
+Shimming Toolbox provides a GUI via a FSLeyes plugin. See the `plugin's Github page <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__ for installation.
 
 
 .. toctree::
