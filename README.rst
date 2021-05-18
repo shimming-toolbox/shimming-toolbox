@@ -34,14 +34,11 @@ Insert image of the overview
 Features
 ________
 
-* Convert Dicoms to NIfTI
-* Process phase images into fieldmaps
-
-  * Available unwrappers: Prelude
-
-* Create masks: Geometric, `SCT <https://spinalcordtoolbox.com/en/latest/>`__
-* Create custom coil profiles
-* Perform shimming using different techniques: SH, custom multi-coil and gradient shimming
+* Inbuilt DICOM to NIFTI conversion
+* Supports masking of spinal cord
+* Supports the usage and creation of custom coil profiles
+* Supports different shimming approaches: spherical harmonics, multi-coil, gradient shimming, dynamic, realtime
+* Built using freely available software tools: `SCT <https://spinalcordtoolbox.com/en/latest/>`__, `FSL-prelude <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29>`__, `dcm2niix <https://github.com/rordenlab/dcm2niix>`__, `dcm2bids <https://github.com/UNFmontreal/Dcm2Bids>`__
 
 Installation
 ____________
