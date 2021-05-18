@@ -1,3 +1,5 @@
+.. _installation:
+
 Installation
 ============
 
@@ -139,12 +141,24 @@ To switch back to your default environment, run:
 shimming-toolbox
 ----------------
 
+Ensure that you have `dcm2niix <https://github.com/rordenlab/dcm2niix>`__ >= v1.0.20201102. installed on your system.
+
+You will also need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__.
+
+User version
+~~~~~~~~~~~~
+
+To install shimming-toolbox
+
+.. code:: bash
+
+   pip install shimmingtoolbox@git+https://github.com/shimming-toolbox/shimming-toolbox
+
+Depending on your system, you may need to prefix this command with `sudo` (for a global install),
+or write it with `install --user` (for a user-local install) in order to be allowed to install it.
+
 Development version
 ~~~~~~~~~~~~~~~~~~~
-
-Ensure that you have ``dcm2niix`` >= v1.0.20201102 installed on your system.
-
-You will also need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ using Python 2.
 
 To install the development version of shimming-toolbox, clone
 shimming-toolbox's repository (you will need to have Git installed on
