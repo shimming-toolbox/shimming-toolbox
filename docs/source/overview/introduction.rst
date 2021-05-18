@@ -9,7 +9,7 @@ _______
 MRIs rely on magnetic fields to produce signals and make images. The main
 magnetic field (B0) and the RF field (B1) need to be as homogeneous as
 possible to ensure good image quality. If not, this can lead to reduced
-signal, reduced SNR and artefacts. The act of homogenizing those fields
+signal, reduced SNR and artifacts. The act of homogenizing those fields
 is called shimming. Many techniques have been developed over the years
 that push the limits of active shimming.
 
