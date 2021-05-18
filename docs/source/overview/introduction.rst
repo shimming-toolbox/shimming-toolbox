@@ -6,18 +6,18 @@ Introduction
 Context
 _______
 
-MRIs rely on magnetic fields to produce signals and make images. The main
-magnetic field (B0) and the RF field (B1) need to be as homogeneous as
-possible to ensure good image quality. If not, this can lead to reduced
-signal, reduced SNR and artifacts. The act of homogenizing those fields
-is called shimming. Many techniques have been developed over the years
-that push the limits of active shimming.
+Inhomogeneities of the main magnetic field (B0) can lead to image artefacts and
+signal loss in MRI. Correcting for these inhomogeneities and producing a flat,
+homogeneous field is called "shimming". When such shimming is done during the
+acquisition of MRI images, it is referred to as "active shimming". Many
+techniques have been developed for active shimming over the years, pushing the
+limits of hardware and software.
 
 Goals of the Shimming-Toolbox
 _____________________________
 
-The shimming toolbox aims to facilitate shimming by providing a suite of
-software solutions, such as realtime shimming (using custom shim coils)
-and realtime z-shimming. The shimming toolbox can process B0scans and
-decompose them into a SH or non-orthogonal (custom) basis, allowing
-researchers to extract the necessary shim parameters.
+We developed the Shimming Toolbox to facilitate the deployment of these
+techniques, such as realtime shimming using custom coils, or
+realtime z-shimming. Using the Toolbox, B0 maps can be calculated and decomposed
+onto a spherical harmonic, or custom non-orthogonal basis, and the shim
+parameters necessary to create a flat B0 field can be calculated.
