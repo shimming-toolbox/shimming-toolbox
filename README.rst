@@ -26,7 +26,7 @@ such as
 and `real-time <https://doi.org/10.1002/mrm.27089>`__ shimming for use
 with standard manufacturer-supplied gradient/shim coils or with custom
 "multi-coil" arrays. The toolbox provides useful set of command line tools as
-well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__
+well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__
 dedicated to make shimming more accessible and more reproducible.
 
 Insert image of the overview
