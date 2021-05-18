@@ -72,7 +72,7 @@ You will also need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslIn
 4. Install from GitHub
 ----------------------
 
-To install the development version of shimming-toolbox, clone
+To install shimming-toolbox, clone
 shimming-toolbox's repository (you will need to have Git installed on
 your system):
 

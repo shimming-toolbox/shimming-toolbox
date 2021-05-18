@@ -1,7 +1,7 @@
 .. _installation:
 
 ***************************
-Installing Shimming Toolbox
+Installing shimming-toolbox
 ***************************
 
 

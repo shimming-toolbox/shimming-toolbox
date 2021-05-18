@@ -50,11 +50,11 @@ _____
 
 **1. Command Line**
 
-The primary way to use ``Shimming Toolbox`` is through the command line. For example:
+The primary way to use ``shimming-toolbox`` is through the command line. For example:
 
 .. code-block:: console
 
-  $ st_prepare_fieldmap -help
+  $ st_prepare_fieldmap --help
 
   Usage: st_prepare_fieldmap [OPTIONS] PHASE...
 
