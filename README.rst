@@ -86,4 +86,4 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
   :alt: Overview
-  :width: 800
+  :width: 1000
