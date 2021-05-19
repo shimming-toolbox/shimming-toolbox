@@ -29,7 +29,8 @@ with standard manufacturer-supplied gradient/shim coils or with custom
 well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__
 dedicated to make shimming more accessible and more reproducible.
 
-Insert image of the overview
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/overview/overview.gif
+  :alt: Overview
 
 Features
 ________
