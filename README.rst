@@ -45,7 +45,7 @@ ________
 Installation
 ____________
 
-See the :ref:`installation` page.
+See the `Installing shimming-toolbox <https://shimming-toolbox.org/en/latest/getting_started/installation_st.html>`__ page.
 
 Usage
 _____
