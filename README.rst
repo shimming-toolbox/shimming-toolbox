@@ -31,6 +31,7 @@ dedicated to make shimming more accessible and more reproducible.
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/overview/overview.gif
   :alt: Overview
+  :width: 1000
 
 Features
 ________
@@ -59,7 +60,10 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 
   Usage: st_prepare_fieldmap [OPTIONS] PHASE...
 
-  Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case multiple fieldmaps are acquired across time for the purpose of real-time shimming experiments.
+  Creates fieldmap (in Hz) from phase images. This function accommodates multiple
+  echoes (2 or more) and phase difference. This function also accommodates 4D phase
+  inputs, where the 4th dimension represents the time, in case multiple fieldmaps are
+  acquired across time for the purpose of real-time shimming experiments.
 
   phase: Input path of phase nifti file(s), in ascending order: echo1,
   echo2, etc.
