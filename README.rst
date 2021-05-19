@@ -83,3 +83,7 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 **2. Graphical User Interface (FSLeyes)**
 
 ``shimming-toolbox`` also features a graphical user interface (GUI) via a FSLeyes plugin. See the `plugin's installation page <https://shimming-toolbox.org/en/latest/getting_started/installation_gui.html>`__ for more information.
+
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
+  :alt: Overview
+  :width: 800

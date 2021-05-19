@@ -4,6 +4,10 @@
 Installing FSLeyes Plugin
 *************************
 
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
+  :alt: Overview
+  :width: 1000
+
 `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__ is a neuroimaging viewer, created
 as part of the `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/>`__ software package. We have created a `plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__ for ``Shimming Toolbox`` to
 integrate with ``FSLeyes``, which means that our software can be loaded and used with their
