@@ -31,12 +31,11 @@ class LsqOptimizer(Optimizer):
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (numpy.ndarray): 3D B0 map
-            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+
         Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
-                           (coils.size)
+            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                           The shape of the array returned has shape corresponding to the total number of channels
         """
 
         # Check for sizing errors

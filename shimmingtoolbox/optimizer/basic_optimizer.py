@@ -21,6 +21,12 @@ class Optimizer(object):
 
     Attributes:
         coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
+        unshimmed (numpy.ndarray): 3d array of unshimmed volume
+        unshimmed_affine (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+        merged_coils (numpy.ndarray): 4d array containing all coil profiles resampled onto the target unshimmed array
+                                      concatenated on the 4th dimension. See self.merge_coils() for more details
+        merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
+                              bound for merged_coils[..., 3]
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine):
@@ -30,7 +36,7 @@ class Optimizer(object):
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
         # Logging
         self.logger = logging.getLogger()
@@ -38,7 +44,7 @@ class Optimizer(object):
 
         self.coils = coils
 
-        # Check dimensions of unshimmed map, mask annd make sure they are the same shape
+        # Check dimensions of unshimmed map
         if unshimmed.ndim != 3:
             raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
         self.unshimmed = unshimmed
@@ -58,10 +64,12 @@ class Optimizer(object):
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            mask (numpy.ndarray): 3d array of integers marking volume for optimization -- 0 indicates unused. Nust be
-                                  the same shape as unshimmed
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                                  unshimmed
+
+        Returns:
+            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                           The shape of the array returned has shape corresponding to the total number of channels
         """
         # Check for sizing errors
         self._check_sizing(mask)
@@ -84,6 +92,10 @@ class Optimizer(object):
         """
         Uses the list of coil profiles to return a resampled concatenated list of coil profiles matching the
         unshimmed image. Bounds are also concatenated and returned.
+
+        Args:
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
 
         coil_profiles_list = []
@@ -112,9 +124,8 @@ class Optimizer(object):
         Helper function to check array sizing
 
         Args:
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            mask (numpy.ndarray): 3d array of integers marking volume for optimization -- 0 indicates unused. Must be
-                                  the same shape as unshimmed
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                                  unshimmed
         """
 
         if mask.ndim != 3:

@@ -28,7 +28,7 @@ class TestSequentialZSlice(object):
         phase_e1 = phase_meas1[:, :, 0, 0]
         phase_e2 = phase_meas1[:, :, 0, 1]
         b0_map = (phase_e2 - phase_e1) / (te[1] - te[0])
-        nz = 60  # Must be multiple of 3
+        nz = 3  # Must be multiple of 3
 
         # Construct synthetic field map based on a manipulation of model_obj across slices
         unshimmed = np.zeros([num_vox, num_vox, nz])
@@ -160,33 +160,33 @@ class TestSequentialZSlice(object):
     #         assert sum_shimmed < sum_unshimmed
     # TODO: Test with a custom coil profile
 
-    def test_huge_matrix(self):
-        coils = [self.sph_coil, self.sph_coil, self.sph_coil, self.sph_coil]
-
-        coil_profiles_list = []
-        bounds = []
-
-        for coil in coils:
-
-            # Concat coils and bounds
-            coil_profiles_list.append(coil.profile)
-            for a_bound in coil.coef_channel_minmax:
-                bounds.append(a_bound)
-
-        coil_profiles = np.concatenate(coil_profiles_list, axis=3)
-        constraints = self.constraints
-        constraints['coef_channel_minmax'] = bounds
-        huge_coil = Coil(coil_profiles, self.sph_coil.affine, constraints)
-
-        z_slices = np.array(range(self.unshimmed.shape[2]))
-        currents = sequential_zslice(self.unshimmed, self.un_affine, [huge_coil], self.mask, z_slices)
-
-        # Calculate theoretical shimmed map
-        opt = Optimizer(coils, self.unshimmed, self.un_affine)
-        shimmed = self.unshimmed + np.sum(currents * opt.merged_coils, axis=3, keepdims=False)
-
-        for i_slice in z_slices:
-            sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
-            sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
-            print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
-            assert sum_shimmed <= sum_unshimmed
+    # def test_huge_matrix(self):
+    #     coils = [self.sph_coil, self.sph_coil, self.sph_coil, self.sph_coil]
+    #
+    #     coil_profiles_list = []
+    #     bounds = []
+    #
+    #     for coil in coils:
+    #
+    #         # Concat coils and bounds
+    #         coil_profiles_list.append(coil.profile)
+    #         for a_bound in coil.coef_channel_minmax:
+    #             bounds.append(a_bound)
+    #
+    #     coil_profiles = np.concatenate(coil_profiles_list, axis=3)
+    #     constraints = self.constraints
+    #     constraints['coef_channel_minmax'] = bounds
+    #     huge_coil = Coil(coil_profiles, self.sph_coil.affine, constraints)
+    #
+    #     z_slices = np.array(range(self.unshimmed.shape[2]))
+    #     currents = sequential_zslice(self.unshimmed, self.un_affine, [huge_coil], self.mask, z_slices)
+    #
+    #     # Calculate theoretical shimmed map
+    #     opt = Optimizer(coils, self.unshimmed, self.un_affine)
+    #     shimmed = self.unshimmed + np.sum(currents * opt.merged_coils, axis=3, keepdims=False)
+    #
+    #     for i_slice in z_slices:
+    #         sum_shimmed = np.sum(np.abs(self.mask[:, :, i_slice] * shimmed[:, :, i_slice]))
+    #         sum_unshimmed = np.sum(np.abs(self.mask[:, :, i_slice] * self.unshimmed[:, :, i_slice]))
+    #         print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: {currents[i_slice, :]}")
+    #         assert sum_shimmed <= sum_unshimmed

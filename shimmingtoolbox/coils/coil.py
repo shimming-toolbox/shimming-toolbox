@@ -9,10 +9,10 @@ class Coil(object):
     Coil profile object that stores coil profiles and there constraints
 
     Attributes:
-        dim (tuple int): Dimension along specific axis. dim:0,1,2 are spatial axes, while dim:3 corresponds to the coil
-                         channel.
+        dim (tuple int): Dimension along specific axis. dim: 0,1,2 are spatial axes, while dim: 3 corresponds to the
+                         coil channel.
         profile (numpy.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
-        affine (np.ndarray): 4x4 array containing the affine transformation for the coil profiles
+        affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (list): Contains the maximum coefficient for each channel
     """

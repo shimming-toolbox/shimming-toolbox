@@ -24,7 +24,7 @@ def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
     Returns:
         numpy.ndarray: Coefficients to enter in the Syngo console (this might change in the future)
-                       (coils.size x z_slices.size)
+                       (channels x z_slices.size)
 
     """
 
