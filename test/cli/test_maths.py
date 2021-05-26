@@ -45,7 +45,6 @@ def test_mean_axis_out_of_bound():
         try:
             runner.invoke(maths_cli, ['mean',
                                       '--input', fname_input,
-                                      '--axis', '3',
                                       '--output', fname_output], catch_exceptions=False)
         except IndexError:
             # Expected behaviour

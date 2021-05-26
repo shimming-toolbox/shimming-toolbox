@@ -20,9 +20,10 @@ def image_cli():
 @image_cli.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('input', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'concat.nii.gz'),
-              help="Output filename, supported extensions: .nii, .nii.gz")
-@click.option('--axis', type=click.Choice(AXES), required=True, help="Dimension of the array to concatenate")
-@click.option('--pixdim', type=click.FLOAT, required=False, help="Pixel resolution to join to image header")
+              show_default=True, help="Output filename, supported extensions: .nii, .nii.gz")
+@click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
+              help="Dimension of the array to concatenate")
+@click.option('--pixdim', type=click.FLOAT, help="Pixel resolution to join to image header")
 def concat(input, axis, fname_output, pixdim):
     """Concatenate NIfTIs along the specified dimension
 

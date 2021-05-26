@@ -23,6 +23,10 @@ class TestImageConcat(object):
             nii_phase = nib.load(list_fname[i_file])
             self.list_nii.append(nii_phase)
 
+    def test_concat_dim_def(self):
+        out = concat_data(self.list_nii)
+        assert out.shape == self.list_nii[0].shape + (len(self.list_nii),)  # (128, 68, 20, 3)
+
     def test_concat_dim_4(self):
         out = concat_data(self.list_nii, 4)
         assert out.shape == self.list_nii[0].shape + (1, len(self.list_nii))  # (128, 68, 20, 1, 3)
