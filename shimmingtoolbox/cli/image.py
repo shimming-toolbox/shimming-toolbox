@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*
+# -*- coding: utf-8 -*-
 
 import click
 import os
@@ -25,9 +25,9 @@ def image_cli():
               help="Dimension of the array to concatenate")
 @click.option('--pixdim', type=click.FLOAT, help="Pixel resolution to join to image header")
 def concat(input, axis, fname_output, pixdim):
-    """Concatenate NIfTIs along the specified dimension
+    """Concatenate NIfTIs along the specified dimension.
 
-    input: Input paths for the files to concatenate. Separate the files by a space.
+    input: Input paths of the files to concatenate. Separate the files by a space.
     """
     # Create nii list
     list_nii = []

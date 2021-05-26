@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*
+# -*- coding: utf-8 -*-
 
 import click
 import os
@@ -27,7 +27,7 @@ def maths_cli():
 @click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
               help="Axis of the array to calculate the average  [default: ./input_mean.nii.gz]")
 def mean(fname_input, fname_output, axis):
-    """Average data across dimension."""
+    """Average NIfTI data across dimension."""
 
     # Load input
     nii_input = nib.load(fname_input)
@@ -36,7 +36,7 @@ def mean(fname_input, fname_output, axis):
     dim_list = AXES
     index = dim_list.index(axis)
     if len(nii_input.shape) < index:
-        raise IndexError(f"Axis: {axis} is out of bound for array of length: {len(nii_input.shape)}")
+        raise IndexError(f"Axis: {axis} is out of bounds for array of length: {len(nii_input.shape)}")
 
     # Calculate the average
     avg = np.mean(nii_input.get_fdata(), axis=index)
