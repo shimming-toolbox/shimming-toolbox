@@ -8,13 +8,13 @@ import nibabel as nib
 import numpy as np
 
 from click.testing import CliRunner
-from shimmingtoolbox.cli.realtime_zshim import realtime_zshim_cli
+from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
 
-def test_cli_realtime_zshim():
-    """Test CLI for performing realtime zshimming experiments"""
+def test_cli_realtime_shim():
+    """Test CLI for performing realtime shimming experiments"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
@@ -55,10 +55,10 @@ def test_cli_realtime_zshim():
         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
 
         # Specify output for text file and figures
-        path_output = os.path.join(tmp, 'test_realtime_zshim')
+        path_output = os.path.join(tmp, 'test_realtime_shim')
 
         # Run the CLI
-        result = runner.invoke(realtime_zshim_cli, ['-fmap', fname_fieldmap,
+        result = runner.invoke(realtime_shim_cli, ['-fmap', fname_fieldmap,
                                                     '-mask-static', fname_mask_static,
                                                     '-mask-riro', fname_mask_riro,
                                                     '-output', path_output,

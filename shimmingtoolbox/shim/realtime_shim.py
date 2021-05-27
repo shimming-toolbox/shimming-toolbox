@@ -297,7 +297,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
         ax.legend()
         ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-        fname_figure = os.path.join(path_output, 'fig_realtime_yzshim_pmu_vs_B0.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_pmu_vs_B0.png')
         fig.savefig(fname_figure)
 
         # Show anatomical image and masks
@@ -314,7 +314,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         im = ax.imshow(nii_mask_anat_riro.get_fdata()[:, :, 3])
         fig.colorbar(im)
         ax.set_title("Mask [:, :, 3]")
-        fname_figure = os.path.join(path_output, 'fig_reatime_yzshim_anat_mask.png')
+        fname_figure = os.path.join(path_output, 'fig_reatime_xyzshim_anat_mask.png')
         fig.savefig(fname_figure)
 
         # Show Gradient
@@ -323,7 +323,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         im = ax.imshow(gradient[2][:, :, 0, 0])
         fig.colorbar(im)
         ax.set_title("Z Gradient [:, :, 0, 0]")
-        fname_figure = os.path.join(path_output, 'fig_realtime_yzshim_zgradient.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_zgradient.png')
         fig.savefig(fname_figure)
 
         fig = Figure(figsize=(10, 10))
@@ -331,7 +331,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         im = ax.imshow(gradient[1][:, :, 0, 0])
         fig.colorbar(im)
         ax.set_title("Y Gradient [:, :, 0, 0]")
-        fname_figure = os.path.join(path_output, 'fig_realtime_yzshim_ygradient.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_ygradient.png')
         fig.savefig(fname_figure)
 
         fig = Figure(figsize=(10, 10))
@@ -351,7 +351,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * (riro_zcorrection / pressure_rms),
                 label='Riro z-correction')
         ax.set_title("Riro z-correction evolution through slices")
-        fname_figure = os.path.join(path_output, 'fig_realtime_yzshim_zcorrection_slice.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_zcorrection_slice.png')
         fig.savefig(fname_figure)
 
         fig = Figure(figsize=(10, 10))
@@ -362,7 +362,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * (riro_ycorrection / pressure_rms),
                 label='Riro y-correction')
         ax.set_title("Riro y-correction evolution through slices")
-        fname_figure = os.path.join(path_output, 'fig_realtime_yzshim_ycorrection_slice.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_ycorrection_slice.png')
         fig.savefig(fname_figure)
 
         fig = Figure(figsize=(10, 10))
