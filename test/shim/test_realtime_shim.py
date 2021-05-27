@@ -67,8 +67,8 @@ class TestRealtimeShim(object):
                                                                                   self.nii_anat,
                                                                                   self.pmu,
                                                                                   self.json)
-        assert np.isclose(static_correction[0], 0.1291926595061463,)
-        assert np.isclose(riro_correction[0], -0.00802980555042238)
+        assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
+        assert np.isclose(riro_zcorrection[0], -0.00802980555042238)
         assert np.isclose(mean_p, 1326.3179660207873)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
