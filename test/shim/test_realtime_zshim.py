@@ -63,7 +63,7 @@ class TestRealtimeShim(object):
 
     def test_default(self):
         """Test realtime_shim default parameters"""
-        static_correction, riro_correction, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+        static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
                                                                                   self.nii_anat,
                                                                                   self.pmu,
                                                                                   self.json)
@@ -74,7 +74,7 @@ class TestRealtimeShim(object):
 
     def test_mask(self):
         """Test realtime_shim mask parameter"""
-        static_correction, riro_correction, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+        static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
                                                                                   self.nii_anat,
                                                                                   self.pmu,
                                                                                   self.json,
@@ -82,8 +82,8 @@ class TestRealtimeShim(object):
                                                                                   self.nii_mask_static,
                                                                                   nii_mask_anat_riro=
                                                                                   self.nii_mask_riro)
-        assert np.isclose(static_correction[0], 0.2766538103967352)
-        assert np.isclose(riro_correction[0], -0.051144561917725075)
+        assert np.isclose(static_zcorrection[0], 0.2766538103967352)
+        assert np.isclose(riro_zcorrection[0], -0.051144561917725075)
         assert np.isclose(mean_p, 1326.318)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
