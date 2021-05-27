@@ -16,7 +16,7 @@ from shimmingtoolbox.coils.coordinates import phys_gradient
 from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
 
 
-def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=None, nii_mask_anat_static=None,
+def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=None, nii_mask_anat_static=None,
                    path_output=None):
     """ This function will generate static and dynamic (due to respiration) Gz components based on a fieldmap time
     series and respiratory trace information obtained from Siemens bellows  (PMUresp_signal.resp). An additional
