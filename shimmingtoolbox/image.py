@@ -8,7 +8,7 @@ from typing import List
 ListNii = List[nib.Nifti1Image]
 
 
-def concat_data(list_nii: ListNii, axis, pixdim=None):
+def concat_data(list_nii: ListNii, axis=3, pixdim=None):
     """
     Concatenate data
 
