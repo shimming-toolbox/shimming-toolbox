@@ -32,16 +32,16 @@ class TestSequentialZSlice(object):
 
         # Construct synthetic field map based on a manipulation of model_obj across slices
         unshimmed = np.zeros([num_vox, num_vox, nz])
-        for i_n in range(nz):
-            unshimmed[:, :, i_n] = b0_map
-            unshimmed[:, :, i_n] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
-            unshimmed[:, :, i_n] = unshimmed[:, :, 0] ** 2
+        for i_n in range(nz//3):
+            unshimmed[:, :, 3 * i_n] = b0_map
+            unshimmed[:, :, (3 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
+            unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
         self.unshimmed = unshimmed
         self.un_affine = np.array([[0., 0., 3., -3.61445999],
                                    [-2.91667008, 0., 0., 101.76699829],
                                    [0., 2.91667008, 0., -129.85464478],
                                    [0., 0., 0., 1.]])
-        # self.un_affine = np.eye(4) * 2
+        # self.un_affine = np.eye(4)
         # self.un_affine[3, 3] = 1
 
         # Set up spherical harmonics coil profile
