@@ -17,7 +17,7 @@ from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
 
 
 def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=None, nii_mask_anat_static=None,
-                   path_output=None):
+                  path_output=None):
     """ This function will generate static and dynamic (due to respiration) Gz components based on a fieldmap time
     series and respiratory trace information obtained from Siemens bellows  (PMUresp_signal.resp). An additional
     multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resample the static and dynamic Gz
@@ -145,26 +145,28 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         nii_resampled_static = resample_from_to(nii_static, nii_anat)
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
 
-
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
-    resampled_xstatic_vox, resampled_ystatic_vox, resampled_zstatic_vox = phys_to_vox_gradient(resampled_static[0], resampled_static[1], resampled_static[2],
-                                                      nii_anat.affine)
+    resampled_xstatic_vox, resampled_ystatic_vox, resampled_zstatic_vox = phys_to_vox_gradient(resampled_static[0],
+                                                                                               resampled_static[1],
+                                                                                               resampled_static[2],
+                                                                                               nii_anat.affine)
+
     nii_resampled_zstatic_vox = nib.Nifti1Image(resampled_zstatic_vox, nii_anat.affine)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zstatic_vox * nii_mask_anat_static.get_fdata(),
-                                                  nii_resampled_zstatic_vox.affine)
+                                                   nii_resampled_zstatic_vox.affine)
     nii_resampled_ystatic_vox = nib.Nifti1Image(resampled_ystatic_vox, nii_anat.affine)
     nii_resampled_ystatic_masked = nib.Nifti1Image(resampled_ystatic_vox * nii_mask_anat_static.get_fdata(),
-                                                  nii_resampled_ystatic_vox.affine)
+                                                   nii_resampled_ystatic_vox.affine)
     nii_resampled_xstatic_vox = nib.Nifti1Image(resampled_xstatic_vox, nii_anat.affine)
     nii_resampled_xstatic_masked = nib.Nifti1Image(resampled_xstatic_vox * nii_mask_anat_static.get_fdata(),
-                                                  nii_resampled_xstatic_vox.affine)                                              
+                                                   nii_resampled_xstatic_vox.affine)
 
     if is_outputting_figures:
         nib.save(nii_resampled_zstatic_masked, os.path.join(path_output, 'fig_resampled_zstatic.nii.gz'))
-        nib.save(nii_resampled_ystatic_masked, os.path.join(path_output, 'fig_resampled_ystatic.nii.gz')) 
-        nib.save(nii_resampled_xstatic_masked, os.path.join(path_output, 'fig_resampled_xstatic.nii.gz'))    
+        nib.save(nii_resampled_ystatic_masked, os.path.join(path_output, 'fig_resampled_ystatic.nii.gz'))
+        nib.save(nii_resampled_xstatic_masked, os.path.join(path_output, 'fig_resampled_xstatic.nii.gz'))
 
-    # Resample riro to target anatomical image
+        # Resample riro to target anatomical image
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
         nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
@@ -172,18 +174,20 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
 
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
-    resampled_xriro_vox, resampled_yriro_vox, resampled_zriro_vox = phys_to_vox_gradient(resampled_riro[0], resampled_riro[1], resampled_riro[2],
-                                                    nii_anat.affine)
+    resampled_xriro_vox, resampled_yriro_vox, resampled_zriro_vox = phys_to_vox_gradient(resampled_riro[0],
+                                                                                         resampled_riro[1],
+                                                                                         resampled_riro[2],
+                                                                                         nii_anat.affine)
 
     nii_resampled_zriro_vox = nib.Nifti1Image(resampled_zriro_vox, nii_anat.affine)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                  nii_resampled_zriro_vox.affine)                                                 
+                                                   nii_resampled_zriro_vox.affine)
     nii_resampled_yriro_vox = nib.Nifti1Image(resampled_yriro_vox, nii_anat.affine)
     nii_resampled_ystatic_masked = nib.Nifti1Image(resampled_yriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                  nii_resampled_yriro_vox.affine)
+                                                   nii_resampled_yriro_vox.affine)
     nii_resampled_xriro_vox = nib.Nifti1Image(resampled_xriro_vox, nii_anat.affine)
     nii_resampled_xstatic_masked = nib.Nifti1Image(resampled_xriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                  nii_resampled_xriro_vox.affine)                                              
+                                                   nii_resampled_xriro_vox.affine)
 
     if is_outputting_figures:
         nib.save(nii_resampled_zstatic_masked, os.path.join(path_output, 'fig_resampled_zriro.nii.gz'))
@@ -198,32 +202,31 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     riro_zcorrection = np.zeros([n_slices])
     riro_ycorrection = np.zeros([n_slices])
     riro_xcorrection = np.zeros([n_slices])
-    
+
     for i_slice in range(n_slices):
+        # Calculate static correction
         ma_zstatic_anat = np.ma.array(resampled_zstatic_vox[..., i_slice],
-                                     mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
+                                      mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
         static_zcorrection[i_slice] = np.ma.mean(ma_zstatic_anat)
-
         ma_ystatic_anat = np.ma.array(resampled_ystatic_vox[..., i_slice],
-                                     mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
+                                      mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
         static_ycorrection[i_slice] = np.ma.mean(ma_ystatic_anat)
-
         ma_xstatic_anat = np.ma.array(resampled_xstatic_vox[..., i_slice],
-                                     mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
+                                      mask=nii_mask_anat_static.get_fdata()[..., i_slice] == False)
         static_xcorrection[i_slice] = np.ma.mean(ma_xstatic_anat)
 
+        # Calculate riro correction
         ma_zriro_anat = np.ma.array(resampled_zriro_vox[..., i_slice],
-                                   mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
+                                    mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
         riro_zcorrection[i_slice] = np.ma.mean(ma_zriro_anat)
-
         ma_yriro_anat = np.ma.array(resampled_yriro_vox[..., i_slice],
-                                   mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
+                                    mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
         riro_ycorrection[i_slice] = np.ma.mean(ma_yriro_anat)
-
         ma_xriro_anat = np.ma.array(resampled_xriro_vox[..., i_slice],
-                                   mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
+                                    mask=nii_mask_anat_riro.get_fdata()[..., i_slice] == False)
         riro_xcorrection[i_slice] = np.ma.mean(ma_xriro_anat)
 
+    # Remove nans and set to zero. nans can occur when the slice is not in the ROI
     static_zcorrection[np.isnan(static_zcorrection)] = 0.
     static_ycorrection[np.isnan(static_ycorrection)] = 0.
     static_xcorrection[np.isnan(static_xcorrection)] = 0.
@@ -339,7 +342,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         im = ax.imshow(gradient[0][:, :, 0, 0])
         fig.colorbar(im)
         ax.set_title("X Gradient [:, :, 0, 0]")
-        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_ygradient.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_xgradient.png')
         fig.savefig(fname_figure)
 
         # Show evolution of coefficients
@@ -370,10 +373,12 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         ax.plot(range(n_slices), static_xcorrection, label='Static x-correction')
         ax.set_title("Static x-correction evolution through slices")
         ax = fig.add_subplot(2, 1, 2)
-        ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * (riro_ycorrection / pressure_rms),
+        ax.plot(range(n_slices), (acq_pressures.max() - mean_p) * (riro_xcorrection / pressure_rms),
                 label='Riro x-correction')
         ax.set_title("Riro x-correction evolution through slices")
-        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_ycorrection_slice.png')
+        fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_xcorrection_slice.png')
         fig.savefig(fname_figure)
 
-    return static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms
+    return static_xcorrection, static_ycorrection, static_zcorrection,\
+        riro_xcorrection, riro_ycorrection, riro_zcorrection,\
+        mean_p, pressure_rms

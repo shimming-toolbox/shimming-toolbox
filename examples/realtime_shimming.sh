@@ -11,7 +11,7 @@
 # Go inside input path
 cd "$1" || exit
 
-# dcm2bids -d . -o rt_zshim_nifti -p sub-example -c ../../config/dcm2bids.json
+# dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
 st_dicom_to_nifti -input "." -output "../rt_shim_nifti" -subject "sub-example" || exit
 cd ../rt_shim_nifti/sub-example/fmap || exit
 

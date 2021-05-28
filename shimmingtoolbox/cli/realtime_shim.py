@@ -32,7 +32,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
 @click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output, verbose=True):
+def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output,
+                      verbose=True):
     """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
     respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
     bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
@@ -69,10 +70,12 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     if not os.path.exists(fname_output):
         os.makedirs(fname_output)
 
-    static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_shim(nii_fmap, nii_anat, pmu, json_data,
-                                                                              nii_mask_anat_static=nii_mask_anat_static,
-                                                                              nii_mask_anat_riro=nii_mask_anat_riro,
-                                                                              path_output=fname_output)
+    static_xcorrection, static_ycorrection, static_zcorrection, \
+        riro_xcorrection, riro_ycorrection, riro_zcorrection, \
+        mean_p, pressure_rms = realtime_shim(nii_fmap, nii_anat, pmu, json_data,
+                                             nii_mask_anat_static=nii_mask_anat_static,
+                                             nii_mask_anat_riro=nii_mask_anat_riro,
+                                             path_output=fname_output)
 
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')

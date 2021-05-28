@@ -63,10 +63,13 @@ class TestRealtimeShim(object):
 
     def test_default(self):
         """Test realtime_shim default parameters"""
-        static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
-                                                                                  self.nii_anat,
-                                                                                  self.pmu,
-                                                                                  self.json)
+        static_xcorrection, static_ycorrection, static_zcorrection,\
+            riro_xcorrection, riro_ycorrection, riro_zcorrection,\
+            mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+                                                 self.nii_anat,
+                                                 self.pmu,
+                                                 self.json)
+
         assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
         assert np.isclose(riro_zcorrection[0], -0.00802980555042238)
         assert np.isclose(mean_p, 1326.3179660207873)
@@ -74,14 +77,15 @@ class TestRealtimeShim(object):
 
     def test_mask(self):
         """Test realtime_shim mask parameter"""
-        static_xcorrection, static_ycorrection, static_zcorrection, riro_xcorrection, riro_ycorrection, riro_zcorrection, mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
-                                                                                  self.nii_anat,
-                                                                                  self.pmu,
-                                                                                  self.json,
-                                                                                  nii_mask_anat_static=
-                                                                                  self.nii_mask_static,
-                                                                                  nii_mask_anat_riro=
-                                                                                  self.nii_mask_riro)
+        static_xcorrection, static_ycorrection, static_zcorrection,\
+            riro_xcorrection, riro_ycorrection, riro_zcorrection,\
+            mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+                                                 self.nii_anat,
+                                                 self.pmu,
+                                                 self.json,
+                                                 nii_mask_anat_static=self.nii_mask_static,
+                                                 nii_mask_anat_riro=self.nii_mask_riro)
+
         assert np.isclose(static_zcorrection[0], 0.2766538103967352)
         assert np.isclose(riro_zcorrection[0], -0.051144561917725075)
         assert np.isclose(mean_p, 1326.318)
@@ -90,10 +94,10 @@ class TestRealtimeShim(object):
     def test_output_figure(self):
         """Test realtime_shim output figures parameter"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            _, _, _, _ = realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json,
-                                        nii_mask_anat_static=self.nii_mask_static,
-                                        nii_mask_anat_riro=self.nii_mask_riro,
-                                        path_output=tmp)
+            realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json,
+                          nii_mask_anat_static=self.nii_mask_static,
+                          nii_mask_anat_riro=self.nii_mask_riro,
+                          path_output=tmp)
 
             assert len(os.listdir(tmp)) != 0
 
