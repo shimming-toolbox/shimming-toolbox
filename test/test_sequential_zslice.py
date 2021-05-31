@@ -20,14 +20,14 @@ class TestSequentialZSlice(object):
         # Set up unshimmed fieldmap
         num_vox = 100
         model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
-        model_obj.generate_deltaB0('linear', [0.05, 0.01])
+        model_obj.generate_deltaB0('linear', [0.0, 20])
         tr = 0.025  # in s
         te = [0.004, 0.008]  # in s
         model_obj.simulate_measurement(tr, te)
         phase_meas1 = model_obj.get_phase()
         phase_e1 = phase_meas1[:, :, 0, 0]
         phase_e2 = phase_meas1[:, :, 0, 1]
-        b0_map = (phase_e2 - phase_e1) / (te[1] - te[0])
+        b0_map = ((phase_e2 - phase_e1) / (te[1] - te[0])) / (2 * np.pi)
         nz = 3  # Must be multiple of 3
 
         # Construct synthetic field map based on a manipulation of model_obj across slices
@@ -37,28 +37,26 @@ class TestSequentialZSlice(object):
             unshimmed[:, :, (3 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
             unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
         self.unshimmed = unshimmed
-        self.un_affine = np.array([[0., 0., 3., -3.61445999],
-                                   [-2.91667008, 0., 0., 101.76699829],
-                                   [0., 2.91667008, 0., -129.85464478],
+        self.un_affine = np.array([[0., 0., 3., 0],
+                                   [-2.91667008, 0., 0., 0],
+                                   [0., 2.91667008, 0., 0],
                                    [0., 0., 0., 1.]])
-        # self.un_affine = np.eye(4)
-        # self.un_affine[3, 3] = 1
 
         # Set up spherical harmonics coil profile
-        affine = np.eye(4) * 4
+        affine = np.eye(4)
         affine[3, 3] = 1
         x, y, z = generate_meshgrid((150, 150, nz), affine)
         profiles = siemens_basis(x, y, z)
 
         # Set up bounds for output currents
-        max_coef = 5000
-        min_coef = -5000
+        max_coef = 1000
+        min_coef = -1000
         bounds = []
         for _ in range(profiles.shape[3]):
             bounds.append((min_coef, max_coef))
 
         self.constraints = {
-            "coef_sum_max": 8000,
+            "coef_sum_max": 2000,
             "coef_channel_minmax": bounds
         }
 
