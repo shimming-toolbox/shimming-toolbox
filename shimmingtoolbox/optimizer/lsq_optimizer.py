@@ -24,7 +24,7 @@ class LsqOptimizer(Optimizer):
         if unshimmed_vec.shape[0] != coil_mat.shape[0]:
             ValueError(f"Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape} arrays do not align on axis 0")
 
-        return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
+        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))
 
     def optimize(self, mask):
         """
@@ -46,18 +46,35 @@ class LsqOptimizer(Optimizer):
 
         mask_vec = mask.reshape((-1,))
 
-        # Simple pseudo-inverse optimization
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
         coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
                               (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
 
-        # Set up output currents and optimize
+        def _apply_sum_constraint(inputs, indexes, coef_sum_max):
+            # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
+            return -1 * (np.sum(np.abs(inputs[indexes])) - coef_sum_max)
+
+        # Set up constraints for max current for each coils
+        constraints = []
+        start_index = 0
+        for i_coil in range(len(self.coils)):
+            coil = self.coils[i_coil]
+            end_index = start_index + coil.profile.shape[3]
+            constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
+                                'args': (range(start_index, end_index), coil.coef_sum_max)})
+            start_index = end_index
+
+        # Set up output currents
         currents_0 = np.zeros(n_channels)
-        currents_sp = opt.least_squares(self._residuals, currents_0,
-                                        args=(unshimmed_vec, coil_mat),
-                                        bounds=np.array(self.merged_bounds).T)
+
+        # Optimize
+        currents_sp = opt.minimize(self._residuals, currents_0,
+                                   args=(unshimmed_vec, coil_mat),
+                                   method='SLSQP',
+                                   bounds=self.merged_bounds,
+                                   constraints=constraints)
 
         currents = currents_sp.x
 
