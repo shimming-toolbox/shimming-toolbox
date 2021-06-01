@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import pytest
 
+import pytest
 import re
 from click.testing import CliRunner
+import os
+
 import shimmingtoolbox.cli.check_env as st_ce
 
 
@@ -22,6 +24,34 @@ def test_dump_env_info():
 
     result = runner.invoke(st_ce.dump_env_info)
     assert result.exit_code == 0
+
+
+def test_check_installation_errors():
+    """Tests that the function returns False as expected
+    """
+    my_env = os.environ.copy()
+    paths = my_env['PATH']
+
+    def remove_a_path(paths: str, keyword):
+        pos = paths.find(keyword)
+        last_index = paths.find(':', pos)
+        if last_index == -1:
+            last_index = len(paths)
+        first_index = paths.rfind(':', 0, pos)
+        if first_index == -1:
+            return paths[0:0] + paths[last_index + 1:len(paths)]
+
+        return paths[0:first_index] + paths[last_index:len(paths)]
+
+    keywords = ('/dcm2niix/', '/fsl/', '/spinalcordtoolbox/')
+    for keyword in keywords:
+        paths = remove_a_path(paths, keyword)
+
+    runner = CliRunner(env={'PATH': paths})
+
+    result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
+    assert result.exit_code == 0
+    assert result.stdout.count('FAIL') == 3
 
 
 def test_check_prelude_installation():
