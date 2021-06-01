@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from typing import Tuple
 
 
 class Coil(object):
@@ -9,30 +10,32 @@ class Coil(object):
     Coil profile object that stores coil profiles and there constraints
 
     Attributes:
-        dim (tuple int): Dimension along specific axis. dim: 0,1,2 are spatial axes, while dim: 3 corresponds to the
-                         coil channel.
-        profile (numpy.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
+        dim (Tuple[int]): Dimension along specific axis. dim: 0,1,2 are spatial axes, while dim: 3 corresponds to the
+                          coil channel.
+        profile (np.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
         affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (list): Contains the maximum coefficient for each channel
     """
 
     def __init__(self, profile, affine, constraints):
-        """
+        """ Initialize Coil
 
         Args:
             profile (np.ndarray): Coil profile (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
-            affine (np.ndarray): 4x4 array containing the affine transformation for the coil profiles
+            affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
             constraints (dict): dict containing the constraints for the coil profiles. Required keys:
                 coef_sum_max (float): Contains the maximum value for the sum of the coefficients
-                coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. None
-                                         is used to specify no bound.
-                Example:
-                    constraints = {
-                        "coef_sum_max": 40,
-                            # 8 channel coil
-                        "coef_channel_minmax": [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)]
-                    }
+                coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. None is used to specify
+                no bound.
+
+        Examples:
+            >>> # Example of constraints
+            >>> constraints = {
+            >>>     'coef_sum_max': 40,
+            >>>     # 8 channel coil
+            >>>     'coef_channel_minmax': [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)]
+            >>> }
         """
 
         self.dim = (np.nan,) * 4

@@ -30,6 +30,12 @@ ___________________
 .. automodule:: shimmingtoolbox.coils.spherical_harmonics
     :members:
 
+coil
+____
+.. automodule:: shimmingtoolbox.coils.coil
+    :members:
+    :special-members: __init__
+
 numerical_model
 ---------------
 

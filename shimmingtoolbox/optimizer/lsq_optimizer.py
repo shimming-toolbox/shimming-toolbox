@@ -61,7 +61,7 @@ class LsqOptimizer(Optimizer):
         start_index = 0
         for i_coil in range(len(self.coils)):
             coil = self.coils[i_coil]
-            end_index = start_index + coil.profile.shape[3]
+            end_index = start_index + coil.dim[3]
             constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
                                 'args': (range(start_index, end_index), coil.coef_sum_max)})
             start_index = end_index
