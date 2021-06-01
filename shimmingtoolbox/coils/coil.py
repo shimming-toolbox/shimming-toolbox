@@ -25,17 +25,19 @@ class Coil(object):
             profile (np.ndarray): Coil profile (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
             affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
             constraints (dict): dict containing the constraints for the coil profiles. Required keys:
-                coef_sum_max (float): Contains the maximum value for the sum of the coefficients
-                coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. None is used to specify
-                no bound.
 
-        Examples:
-            >>> # Example of constraints
-            >>> constraints = {
-            >>>     'coef_sum_max': 40,
-            >>>     # 8 channel coil
-            >>>     'coef_channel_minmax': [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)]
-            >>> }
+                * coef_sum_max (float): Contains the maximum value for the sum of the coefficients
+                * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. None is used to specify
+                  no bound.
+
+                ::
+
+                    # Example
+                    constraints = {
+                        'coef_sum_max': 40,
+                        # 8 channel coil
+                        'coef_channel_minmax': [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)]
+                    }
         """
 
         self.dim = (np.nan,) * 4

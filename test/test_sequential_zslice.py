@@ -2,15 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import nibabel as nib
-import os
 
 from shimmingtoolbox.optimizer.sequential import sequential_zslice
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.coils.coil import Coil
-from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
