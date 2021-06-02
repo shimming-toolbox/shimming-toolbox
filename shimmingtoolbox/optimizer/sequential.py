@@ -23,11 +23,31 @@ def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method
         z_slices (numpy.ndarray): 1D array containing z slices to shim
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
     Returns:
-        numpy.ndarray: Coefficients to enter in the Syngo console (this might change in the future)
-                       (channels x z_slices.size)
-
+        numpy.ndarray: Coefficients to shim (channels x z_slices.size)
     """
 
+    # Select and initialize the optimizer
+    optimizer = select_optimizer(method, unshimmed, affine, coils)
+
+    # Optimize slice by slice
+    currents = optimize_slicewise(optimizer, mask, z_slices)
+
+    return currents
+
+
+def select_optimizer(method, unshimmed, affine, coils: ListCoil):
+    """
+    Select and initialize the optimizer
+
+    Args:
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
+        unshimmed (numpy.ndarray): 3D B0 map
+        affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+        coils (ListCoil): List of Coils containing the coil profiles
+
+    Returns:
+        Optimizer: Initialized Optimizer object
+    """
     supported_optimizer = {
         'least_squares': LsqOptimizer,
         'pseudo_inverse': Optimizer
@@ -38,6 +58,21 @@ def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
+    return optimizer
+
+
+def optimize_slicewise(optimizer: Optimizer, mask, z_slices):
+    """
+        Shim slicewise in the specified ROI
+
+    Args:
+        optimizer (Optimizer): Initialized Optimizer object
+        mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
+        z_slices (numpy.ndarray): 1D array containing z slices to shim
+
+    Returns:
+        numpy.ndarray: Coefficients to shim (channels x z_slices.size)
+    """
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
 
