@@ -78,7 +78,7 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 
 .. admonition:: Note
 
-  To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_zshimming.sh>`__ script is provided.
+  To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_shimming.sh>`__ script is provided.
 
 **2. Graphical User Interface (FSLeyes)**
 

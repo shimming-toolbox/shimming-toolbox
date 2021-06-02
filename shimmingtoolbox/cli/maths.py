@@ -8,7 +8,6 @@ import numpy as np
 
 from shimmingtoolbox.utils import add_suffix
 
-
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 AXES = ['0', '1', '2', '3', '4']
 
