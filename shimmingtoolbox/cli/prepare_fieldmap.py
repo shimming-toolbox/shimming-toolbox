@@ -9,7 +9,6 @@ import json
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
-from shimmingtoolbox.utils import create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -79,7 +78,6 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, fname_mask, 
 
     # Save NIFTI
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
-    create_output_dir(fname_output, is_file=True)
     nib.save(nii_fieldmap, fname_output)
 
     # Save json

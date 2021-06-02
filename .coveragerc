@@ -1,5 +1,5 @@
-[run]
-omit = */shimmingtoolbox/gui/*
+# [run]
+# omit =
 
-[report]
-omit = */shimmingtoolbox/gui/*
+# [report]
+# omit =
