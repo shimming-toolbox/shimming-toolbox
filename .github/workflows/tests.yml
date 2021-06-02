@@ -83,6 +83,9 @@ jobs:
           cd ../../spinalcordtoolbox
           ./install_sct -y
 
+      - name: Set path for SCT
+        run: echo "$HOME/work/spinalcordtoolbox/bin" >> $GITHUB_PATH
+
       - name: prelude macOS
         if: contains(matrix.os, 'macos')
         run: |

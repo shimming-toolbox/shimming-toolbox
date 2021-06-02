@@ -1,4 +1,4 @@
-License and warranty
+License and Warranty
 ====================
 
 This software is distributed under the following
