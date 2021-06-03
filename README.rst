@@ -77,8 +77,19 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
   -h, --help            Show this message and exit.
 
 .. admonition:: Note
-
   To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_shimming.sh>`__ script is provided.
+
+ The different commands of Shimming Toolbox are :
+	st_download_data
+        st_realtime_shim
+        st_mask
+        st_dicom_to_nifti
+        st_prepare_fieldmap
+        st_check_dependencies
+        st_dump_env_info
+        st_image
+        st_maths
+A simple -h with the different commands will reveal their usage in more detail. For specific command like "st_mask box", the details will be in "st_mask box -h"
 
 **2. Graphical User Interface (FSLeyes)**
 
