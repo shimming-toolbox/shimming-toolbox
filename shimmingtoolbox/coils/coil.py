@@ -13,7 +13,8 @@ class Coil(object):
         dim (Tuple[int]): Dimension along specific axis. dim: 0,1,2 are spatial axes, while dim: 3 corresponds to the
                           coil channel.
         profile (np.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
-        affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
+        affine (np.ndarray): 4x4 array containing the affine transformation associated with the NIfTI file of the coil
+                             profile. This transformation relates to the physical coordinates of the scanner (qform).
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (list): Contains the maximum coefficient for each channel
     """
