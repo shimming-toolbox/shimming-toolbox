@@ -14,7 +14,7 @@ from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 class TestSequentialZSlice(object):
     def setup(self):
-        # Set up unshimmed fieldmap
+        # Set up 2-dimensional unshimmed fieldmaps
         num_vox = 100
         model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
         model_obj.generate_deltaB0('linear', [0.0, 20])
@@ -25,9 +25,11 @@ class TestSequentialZSlice(object):
         phase_e1 = phase_meas1[:, :, 0, 0]
         phase_e2 = phase_meas1[:, :, 0, 1]
         b0_map = ((phase_e2 - phase_e1) / (te[1] - te[0])) / (2 * np.pi)
-        nz = 3  # Must be multiple of 3
 
-        # Construct synthetic field map based on a manipulation of model_obj across slices
+        # Construct a 3-dimensional synthetic field map by stacking different z-slices along the 3rd dimension. Each
+        # slice is subjected to a manipulation of model_obj across slices (e.g. rotation, squared) in order to test
+        # various shim configurations.
+        nz = 3  # Must be multiple of 3
         unshimmed = np.zeros([num_vox, num_vox, nz])
         for i_n in range(nz // 3):
             unshimmed[:, :, 3 * i_n] = b0_map
