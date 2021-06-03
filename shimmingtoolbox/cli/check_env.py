@@ -57,28 +57,12 @@ def check_dependencies():
     # Prelude
     prelude_check_msg = check_name.format("prelude")
     print_line(prelude_check_msg)
-    # 0 indicates prelude is installed.
-    prelude_exit_code: int = check_prelude_installation()
-    # negating condition because 0 indicates prelude is installed.
-    if not prelude_exit_code:
-        print_ok()
-        print("    " + get_prelude_version().replace("\n", "\n    "))
-    else:
-        print_fail()
-        print(f"Error {prelude_exit_code}: prelude is not installed or not in your PATH.")
+    check_prelude_installation()
 
     # dcm2niix
     dcm2niix_check_msg = check_name.format("dcm2niix")
     print_line(dcm2niix_check_msg)
-    # 0 indicates dcm2niix is installed.
-    dcm2niix_exit_code: int = check_dcm2niix_installation()
-    # negating condition because 0 indicates dcm2niix is installed.
-    if not dcm2niix_exit_code:
-        print_ok()
-        print("    " + get_dcm2niix_version().replace("\n", "\n    "))
-    else:
-        print_fail()
-        print(f"Error {dcm2niix_exit_code}: dcm2niix is not installed or not in your PATH.")
+    check_dcm2niix_installation()
 
     # SCT
     sct_check_msg = check_name.format("Spinal Cord Toolbox")
@@ -88,43 +72,57 @@ def check_dependencies():
     return
 
 
-def check_prelude_installation() -> int:
+def check_prelude_installation():
     """Checks that ``prelude`` is installed.
 
-    This function calls ``which prelude`` and checks the exit code to verify
-    that ``prelude`` is installed.
+    This function calls ``which prelude`` and checks the exit code to verify that ``prelude`` is installed.
 
     Returns:
-        int: Exit code. 0 on success, nonzero on failure.
+        bool: True if prelude is installed, False if not.
     """
+    try:
+        subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: prelude is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + get_prelude_version().replace("\n", "\n    "))
+        return True
 
-    return subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-
-def check_dcm2niix_installation() -> int:
+def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
 
-    This function calls ``which dcm2niix`` and checks the exit code to verify
-    that ``dcm2niix`` is installed.
+    This function calls ``which dcm2niix`` and checks the exit code to verify that ``dcm2niix`` is installed.
 
     Returns:
-        int: Exit code. 0 on success, nonzero on failure.
+        bool: True if dcm2niix is installed, False if not.
     """
-    return subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL,
+                              stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: dcm2niix is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + get_dcm2niix_version().replace("\n", "\n    "))
+        return True
 
 
-def check_sct_installation() -> int:
+def check_sct_installation():
     """Checks that ``SCT`` is installed.
 
-    This function calls ``which sct_check_dependencies`` and checks the exit code to verify
-    that ``sct`` is installed.
+    This function calls ``which sct_check_dependencies`` and checks the exit code to verify that ``sct`` is installed.
 
     Returns:
         bool: True if sct is installed, False if not.
     """
     try:
-        subprocess.check_call(['which', 'sct_check_dependencies'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
+        subprocess.check_call(['which', 'sct_check_dependencies'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print_fail()
         print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
@@ -153,7 +151,7 @@ def get_prelude_version() -> str:
     # we're capturing stderr instead of stdout
     help_output: str = prelude_help.stderr.rstrip()
     # remove beginning newline and drop help info to keep version info
-    version: str = help_output.split("\n\n")[0].replace("\n","", 1)
+    version: str = help_output.split("\n\n")[0].replace("\n", "", 1)
     return version
 
 

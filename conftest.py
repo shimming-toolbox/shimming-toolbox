@@ -39,17 +39,13 @@ def test_data_path_fixture():
 
 @pytest.fixture(params=[pytest.param(0, marks=pytest.mark.prelude)])
 def test_prelude_installation():
-    # note that check_prelude_installation() returns 0 on success, so it must
-    # be negated for the assertion.
-    assert not check_prelude_installation()
+    assert check_prelude_installation()
     return
 
 
 @pytest.fixture(params=[pytest.param(0, marks=pytest.mark.dcm2niix)])
 def test_dcm2niix_installation():
-    # note that check_dcm2niix_installation() returns 0 on success, so it must
-    # be negated for the assertion.
-    assert not check_dcm2niix_installation()
+    assert check_dcm2niix_installation()
     return
 
 
