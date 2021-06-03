@@ -90,6 +90,7 @@ The different commands of Shimming Toolbox are :
  - st_dump_env_info
  - st_image
  - st_maths
+ 
 A simple -h with the different commands will reveal their usage in more detail. For specific command like "st_mask box", the details will be in "st_mask box -h"
 
 **2. Graphical User Interface (FSLeyes)**
