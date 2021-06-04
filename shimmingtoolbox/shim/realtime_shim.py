@@ -38,10 +38,16 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                            provided.
 
     Returns:
-        numpy.ndarray: 1D array of the static_correction. The correction is in mT/m for each slice.
-        numpy.ndarray: 1D array of the dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
-        float: Average pressure of the pmu
-        float: RMS of the pmu pressure
+        (tuple): tuple containing:
+
+            * numpy.ndarray: 1D array of the x static_correction. The correction is in mT/m for each slice.
+            * numpy.ndarray: 1D array of the y static_correction. The correction is in mT/m for each slice.
+            * numpy.ndarray: 1D array of the z static_correction. The correction is in mT/m for each slice.
+            * numpy.ndarray: 1D array of the x dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
+            * numpy.ndarray: 1D array of the y dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
+            * numpy.ndarray: 1D array of the z dynamic riro_correction. The correction is in (mT/m)*rms_pressure for each slice.
+            * float: Average pressure of the pmu
+            * float: RMS of the pmu pressure
     """
 
     # Set up output of figures
