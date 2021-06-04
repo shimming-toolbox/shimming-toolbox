@@ -58,12 +58,12 @@ def test_cli_realtime_shim():
         path_output = os.path.join(tmp, 'test_realtime_shim')
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['-fmap', fname_fieldmap,
-                                                   '-mask-static', fname_mask_static,
-                                                   '-mask-riro', fname_mask_riro,
-                                                   '-output', path_output,
-                                                   '-resp', fname_resp,
-                                                   '-anat', fname_anat],
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--mask-static', fname_mask_static,
+                                                   '--mask-riro', fname_mask_riro,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat],
                                catch_exceptions=False)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0

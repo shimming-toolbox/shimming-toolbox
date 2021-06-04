@@ -22,7 +22,7 @@ def test_cli_prepare_fieldmap_1_echo():
                                  'sub-example_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', fname_output],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -41,8 +41,8 @@ def test_cli_prepare_fieldmap_2_echos():
 
         fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '-mag', fname_mag,
-                                                      '-output', fname_output], catch_exceptions=False)
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag,
+                                                      '--output', fname_output], catch_exceptions=False)
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
@@ -58,7 +58,7 @@ def test_cli_prepare_fieldmap_default_output():
 
     fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 
-    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '-mag', fname_mag],
+    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag],
                            catch_exceptions=False)
 
     assert result.exit_code == 0
@@ -79,8 +79,8 @@ def test_cli_prepare_fieldmap_gaussian():
                                  'sub-example_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output,
-                                                      '-gaussian-filter', 'True', '-sigma', 1],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', fname_output,
+                                                      '--gaussian-filter', 'True', '--sigma', 1],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
