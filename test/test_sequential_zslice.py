@@ -84,6 +84,7 @@ affine = np.eye(4) * 0.75
 affine[3, 3] = 1
 coil2 = create_coil(150, 120, nz + 10, create_constraints(500, 1500), affine)
 
+
 @pytest.mark.parametrize(
     "unshimmed,un_affine,sph_coil,sph_coil2,mask", [(
         a_unshimmed,
