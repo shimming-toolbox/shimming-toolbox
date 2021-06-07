@@ -4,6 +4,11 @@
 import numpy as np
 from typing import Tuple
 
+required_constraints = [
+    "coef_channel_minmax",
+    "coef_sum_max"
+]
+
 
 class Coil(object):
     """
@@ -15,6 +20,7 @@ class Coil(object):
         profile (np.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
         affine (np.ndarray): 4x4 array containing the affine transformation associated with the NIfTI file of the coil
                              profile. This transformation relates to the physical coordinates of the scanner (qform).
+        required_constraints (list): List containing the required keys for ``constraints``
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (list): Contains the maximum coefficient for each channel
     """
@@ -45,6 +51,7 @@ class Coil(object):
 
         self.dim = (np.nan,) * 4
         self.profile = profile
+        self.required_constraints = required_constraints
 
         if affine.shape != (4, 4):
             raise ValueError("Shape of affine matrix should be 4x4")
@@ -67,11 +74,7 @@ class Coil(object):
     def load_constraints(self, constraints):
         """Loads the constraints named in required_constraints as attribute to this class"""
 
-        required_constraints = [
-            "coef_channel_minmax",
-            "coef_sum_max"
-        ]
-
+        # global `required_constraints`
         for key_name in required_constraints:
             if key_name in constraints:
 

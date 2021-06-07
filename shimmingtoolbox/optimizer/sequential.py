@@ -10,6 +10,11 @@ from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
 
+supported_optimizers = {
+    'least_squares': LsqOptimizer,
+    'pseudo_inverse': Optimizer
+}
+
 
 def sequential_zslice(unshimmed, affine, coils: ListCoil, mask, z_slices, method='least_squares'):
     """
@@ -48,13 +53,10 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
     Returns:
         Optimizer: Initialized Optimizer object
     """
-    supported_optimizer = {
-        'least_squares': LsqOptimizer,
-        'pseudo_inverse': Optimizer
-    }
 
-    if method in supported_optimizer:
-        optimizer = supported_optimizer[method](coils, unshimmed, affine)
+    # global supported_optimizers
+    if method in supported_optimizers:
+        optimizer = supported_optimizers[method](coils, unshimmed, affine)
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
