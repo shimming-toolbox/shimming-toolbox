@@ -33,9 +33,10 @@ class Coil(object):
             affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
             constraints (dict): dict containing the constraints for the coil profiles. Required keys:
 
-                * coef_sum_max (float): Contains the maximum value for the sum of the coefficients
-                * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. None is used to specify
-                  no bound.
+                * coef_sum_max (float): Contains the maximum value for the sum of the coefficients. None is used to
+                  specify no bounds
+                * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
+                  used to specify no bounds.
 
         Examples:
 
@@ -78,10 +79,24 @@ class Coil(object):
         for key_name in required_constraints:
             if key_name in constraints:
 
-                if key_name == "coef_channel_max":
-                    if len(constraints[key_name]) != self.dim[3]:
+                if key_name == "coef_channel_minmax":
+                    if len(constraints["coef_channel_minmax"]) != self.dim[3]:
                         raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
                                          f"{self.dim[3]}")
+
+                    for i_channel in range(self.dim[3]):
+                        if constraints["coef_channel_minmax"][i_channel] is None:
+                            constraints["coef_channel_minmax"][i_channel] = (-np.inf, np.inf)
+                        if constraints["coef_channel_minmax"][i_channel][0] is None:
+                            constraints["coef_channel_minmax"][i_channel] = \
+                                (-np.inf, constraints["coef_channel_minmax"][i_channel][1])
+                        if constraints["coef_channel_minmax"][i_channel][1] is None:
+                            constraints["coef_channel_minmax"][i_channel] = \
+                                (constraints["coef_channel_minmax"][i_channel][0], np.inf)
+
+                if key_name == "coef_sum_max":
+                    if constraints["coef_sum_max"] is None:
+                        constraints["coef_sum_max"] = np.inf
 
                 setattr(self, key_name, constraints[key_name])
             else:

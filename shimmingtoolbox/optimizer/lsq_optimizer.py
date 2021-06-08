@@ -62,8 +62,9 @@ class LsqOptimizer(Optimizer):
         for i_coil in range(len(self.coils)):
             coil = self.coils[i_coil]
             end_index = start_index + coil.dim[3]
-            constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
-                                'args': (range(start_index, end_index), coil.coef_sum_max)})
+            if coil.coef_sum_max != np.inf:
+                constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
+                                    'args': (range(start_index, end_index), coil.coef_sum_max)})
             start_index = end_index
 
         # Set up output currents
@@ -74,7 +75,11 @@ class LsqOptimizer(Optimizer):
                                    args=(unshimmed_vec, coil_mat),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
-                                   constraints=constraints)
+                                   constraints=tuple(constraints),
+                                   options={'maxiter': 500})
+
+        if not currents_sp.success:
+            raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
 
         currents = currents_sp.x
 
