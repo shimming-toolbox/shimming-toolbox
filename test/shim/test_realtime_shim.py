@@ -11,10 +11,10 @@ import tempfile
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.realtime_zshim import realtime_zshim
+from shimmingtoolbox.shim.realtime_shim import realtime_shim
 
 
-class TestRealtimeZShim(object):
+class TestRealtimeShim(object):
     def setup(self):
         # Fieldmap
         fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
@@ -62,38 +62,42 @@ class TestRealtimeZShim(object):
         self.json = json_data
 
     def test_default(self):
-        """Test realtime_zshim default parameters"""
-        static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(self.nii_fieldmap,
-                                                                                  self.nii_anat,
-                                                                                  self.pmu,
-                                                                                  self.json)
-        assert np.isclose(static_correction[0], 0.1291926595061463,)
-        assert np.isclose(riro_correction[0], -0.00802980555042238)
+        """Test realtime_shim default parameters"""
+        static_xcorrection, static_ycorrection, static_zcorrection,\
+            riro_xcorrection, riro_ycorrection, riro_zcorrection,\
+            mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+                                                 self.nii_anat,
+                                                 self.pmu,
+                                                 self.json)
+
+        assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
+        assert np.isclose(riro_zcorrection[0], -0.00802980555042238)
         assert np.isclose(mean_p, 1326.3179660207873)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
     def test_mask(self):
-        """Test realtime_zshim mask parameter"""
-        static_correction, riro_correction, mean_p, pressure_rms = realtime_zshim(self.nii_fieldmap,
-                                                                                  self.nii_anat,
-                                                                                  self.pmu,
-                                                                                  self.json,
-                                                                                  nii_mask_anat_static=
-                                                                                  self.nii_mask_static,
-                                                                                  nii_mask_anat_riro=
-                                                                                  self.nii_mask_riro)
-        assert np.isclose(static_correction[0], 0.2766538103967352)
-        assert np.isclose(riro_correction[0], -0.051144561917725075)
+        """Test realtime_shim mask parameter"""
+        static_xcorrection, static_ycorrection, static_zcorrection,\
+            riro_xcorrection, riro_ycorrection, riro_zcorrection,\
+            mean_p, pressure_rms = realtime_shim(self.nii_fieldmap,
+                                                 self.nii_anat,
+                                                 self.pmu,
+                                                 self.json,
+                                                 nii_mask_anat_static=self.nii_mask_static,
+                                                 nii_mask_anat_riro=self.nii_mask_riro)
+
+        assert np.isclose(static_zcorrection[0], 0.2766538103967352)
+        assert np.isclose(riro_zcorrection[0], -0.051144561917725075)
         assert np.isclose(mean_p, 1326.318)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
     def test_output_figure(self):
-        """Test realtime_zshim output figures parameter"""
+        """Test realtime_shim output figures parameter"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            _, _, _, _ = realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json,
-                                        nii_mask_anat_static=self.nii_mask_static,
-                                        nii_mask_anat_riro=self.nii_mask_riro,
-                                        path_output=tmp)
+            realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json,
+                          nii_mask_anat_static=self.nii_mask_static,
+                          nii_mask_anat_riro=self.nii_mask_riro,
+                          path_output=tmp)
 
             assert len(os.listdir(tmp)) != 0
 
@@ -106,7 +110,7 @@ class TestRealtimeZShim(object):
 
         # This should return an error
         try:
-            realtime_zshim(nii_fieldmap_3d, self.nii_anat, self.pmu, self.json)
+            realtime_shim(nii_fieldmap_3d, self.nii_anat, self.pmu, self.json)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -123,7 +127,7 @@ class TestRealtimeZShim(object):
 
         # This should return an error
         try:
-            realtime_zshim(self.nii_fieldmap, nii_anat_2d, self.pmu, self.json)
+            realtime_shim(self.nii_fieldmap, nii_anat_2d, self.pmu, self.json)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -140,7 +144,7 @@ class TestRealtimeZShim(object):
 
         # This should return an error
         try:
-            realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_static=nii_mask_2d)
+            realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_static=nii_mask_2d)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0
@@ -157,7 +161,7 @@ class TestRealtimeZShim(object):
 
         # This should return an error
         try:
-            realtime_zshim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_riro=nii_mask_2d)
+            realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_riro=nii_mask_2d)
         except RuntimeError:
             # If an exception occurs, this is the desired behaviour
             return 0

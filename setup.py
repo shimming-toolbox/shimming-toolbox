@@ -4,7 +4,7 @@ from os import path
 # Get the directory where this current file is saved
 here = path.abspath(path.dirname(__file__))
 
-with open(path.join(here, "README.md"), encoding="utf-8") as f:
+with open(path.join(here, "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
@@ -20,12 +20,14 @@ setup(
     entry_points={
         'console_scripts': [
             "st_download_data=shimmingtoolbox.cli.download_data:download_data",
-            "st_realtime_zshim=shimmingtoolbox.cli.realtime_zshim:realtime_zshim_cli",
+            "st_realtime_shim=shimmingtoolbox.cli.realtime_shim:realtime_shim_cli",
             "st_mask=shimmingtoolbox.cli.mask:mask_cli",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
             "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
+            "st_image=shimmingtoolbox.cli.image:image_cli",
+            "st_maths=shimmingtoolbox.cli.maths:maths_cli"
         ]
     },
     packages=find_packages(exclude=["docs"]),
