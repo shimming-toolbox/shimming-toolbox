@@ -57,8 +57,17 @@ Shim
     .. automodule:: shimmingtoolbox.shim.realtime_shim
         :members:
 
+.. automodule:: shimmingtoolbox.optimizer.sequential
+   :members:
+
 Optimizer
 ---------
+
+.. automodule:: shimmingtoolbox.optimizer.basic_optimizer
+   :members:
+
+.. automodule:: shimmingtoolbox.optimizer.lsq_optimizer
+   :members:
 
 Image manipulation
 ------------------
