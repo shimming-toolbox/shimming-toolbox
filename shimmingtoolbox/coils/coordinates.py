@@ -144,7 +144,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
     Args:
         nii_from_img (nibabel.Nifti1Image): Nibabel object with 2D, 3D or 4D array. The 4d case will be treated as a
                                             timeseries.
-        nii_to_vox_map (nibabel.Nifti1Image):
+        nii_to_vox_map (nibabel.Nifti1Image): Nibabel object with
         order (int): Refer to nibabel.processing.resample_from_to
         mode (str): Refer to nibabel.processing.resample_from_to
         cval (scalar): Refer to nibabel.processing.resample_from_to
@@ -170,25 +170,30 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         nt = from_img.shape[3]
         resampled_4d = np.zeros(nii_to_vox_map.shape + (nt,))
 
-        # Create inputs for multiprocessing
-        inputs = []
-        for it in range(from_img.shape[3]):
+        # # Speed things up with multiprocessing.
+        # There seems to be a long lasting bug with MacOs Catalina on python 3.7: https://bugs.python.org/issue33725
+        # Multiprocessing is commented out until if we decide to drop support for python 3.7
+
+        # cpus = mp.cpu_count()
+        # if cpus == 1:
+        for it in range(nt):
             nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
-            inputs.append((nii_from_img_3d, nii_to_vox_map, order, mode, cval, out_class))
-
-        # Speed things up with multiprocessing
-        cpus = mp.cpu_count()
-        if cpus == 1:
-            # Can remove the multiprocessing as it only slows things down for 1 core
-            pool = mp.Pool(cpus)
-            output = pool.starmap(_resample_3d, inputs)
-        else:
-            pool = mp.Pool(cpus - 1)
-            output = pool.starmap(_resample_3d, inputs)
-
-        # Recombine 4d array
-        for it in range(from_img.shape[3]):
-            resampled_4d[..., it] = output[it]
+            nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
+                                                    cval=cval, out_class=out_class)
+            resampled_4d[..., it] = nii_resampled_3d.get_fdata()
+        # else:
+        #     # Create inputs for multiprocessing
+        #     inputs = []
+        #     for it in range(nt):
+        #         nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
+        #         inputs.append((nii_from_img_3d, nii_to_vox_map, order, mode, cval, out_class))
+        #
+        #     with mp.Pool(cpus - 1) as pool:
+        #         output = pool.starmap(_resample_3d, inputs)
+        #
+        #     # Recombine 4d array
+        #     for it in range(from_img.shape[3]):
+        #         resampled_4d[..., it] = output[it]
 
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine)
 
