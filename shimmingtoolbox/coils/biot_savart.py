@@ -23,7 +23,7 @@ def biot_savart(centers, normals, radii, segment_numbers, fov_min, fov_max, fov_
         fov_n (tuple): Integer number of points for each dimension (x, y, z) in mm
 
     Returns:
-        numpy.ndarray: (|X|, |Y|, |Z|, |centers|) coil profiles of magnetic field z-component in Hz/A -- (X, Y, Z, Channel)
+        numpy.ndarray: (X, Y, Z, centers) coil profiles of magnetic field z-component in Hz/A -- (X, Y, Z, Channel)
 
     """
     ranges = []

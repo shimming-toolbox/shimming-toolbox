@@ -4,45 +4,83 @@ API Reference
 
 The following section outlines the API of shimming-toolbox.
 
+.. contents::
+   :local:
+   :depth: 1
+..
 
-unwrap
-------
+Fieldmapping
+------------
+
+.. Error while importing skimage
+    .. automodule:: shimmingtoolbox.prepare_fieldmap
+        :members:
+
+.. automodule:: shimmingtoolbox.unwrap.unwrap_phase
+   :members:
 
 .. automodule:: shimmingtoolbox.unwrap.prelude
    :members:
 
-masking
+Masking
 -------
 
 .. automodule:: shimmingtoolbox.masking.shapes
     :members:
 
-coils
------
-
-siemens_basis
-_____________
-.. automodule:: shimmingtoolbox.coils.siemens_basis
+.. automodule:: shimmingtoolbox.masking.threshold
     :members:
 
-spherical_harmonics
-___________________
+Coils
+-----
+
 .. automodule:: shimmingtoolbox.coils.spherical_harmonics
     :members:
 
-numerical_model
+.. automodule:: shimmingtoolbox.coils.siemens_basis
+    :members:
+
+.. automodule:: shimmingtoolbox.coils.coordinates
+    :members:
+
+.. automodule:: shimmingtoolbox.coils.biot_savart
+   :members:
+
+Shim
+----
+
+.. Error while importing sklearn and skimage
+    .. automodule:: shimmingtoolbox.shim.realtime_shim
+        :members:
+
+Optimizer
+---------
+
+Image manipulation
+------------------
+
+.. automodule:: shimmingtoolbox.image
+   :members:
+
+Numerical_model
 ---------------
 
 .. automodule:: shimmingtoolbox.simulate.numerical_model
    :members:
 
-misc
-----
+Miscellaneous
+-------------
+
+.. automodule:: shimmingtoolbox.dicom_to_nifti
+   :members:
+
+.. automodule:: shimmingtoolbox.load_nifti
+   :members:
 
 .. automodule:: shimmingtoolbox.download
    :members:
 
-.. automodule:: shimmingtoolbox.load_nifti
+.. automodule:: shimmingtoolbox.pmu
    :members:
 
 .. automodule:: shimmingtoolbox.utils

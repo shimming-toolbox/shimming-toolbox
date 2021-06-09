@@ -19,9 +19,9 @@ def maths_cli():
 
 
 @maths_cli.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--input', 'fname_input', type=click.Path(exists=True), required=True,
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
               help="Input filename, supported extensions: .nii, .nii.gz")
-@click.option('--output', 'fname_output', type=click.Path(), default=None,
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
               help="Output filename, supported extensions: .nii, .nii.gz")
 @click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
               help="Axis of the array to calculate the average  [default: ./input_mean.nii.gz]")
