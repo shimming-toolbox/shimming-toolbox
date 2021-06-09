@@ -77,10 +77,10 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
   -h, --help            Show this message and exit.
 
 .. admonition:: Note
+
   To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_shimming.sh>`__ script is provided.
 
 The different commands of Shimming Toolbox can be found in the `CLI Reference page <https://shimming-toolbox.org/en/latest/cli_reference/cli.html>`__.
- 
 
 **2. Graphical User Interface (FSLeyes)**
 
