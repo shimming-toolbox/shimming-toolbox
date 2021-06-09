@@ -171,8 +171,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         resampled_4d = np.zeros(nii_to_vox_map.shape + (nt,))
 
         # Speed things up with multiprocessing.
-        # There seems to be a long lasting bug with MacOs Catalina on python 3.7: https://bugs.python.org/issue33725
-        # Multiprocessing is commented out until if we decide to drop support for python 3.7
+
         mp.set_start_method('spawn', force=True)
         cpus = mp.cpu_count()
         if cpus == 1:
