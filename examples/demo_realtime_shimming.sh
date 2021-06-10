@@ -13,17 +13,17 @@ st_download_data testing_data
 cd testing_data/realtime_zshimming_data || exit
 
 # dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti -input "." -output "../rt_shim_nifti" -subject "sub-example" || exit
+st_dicom_to_nifti --input "." --output "../rt_shim_nifti" --subject "sub-example" || exit
 cd ../rt_shim_nifti/sub-example/fmap || exit
 
 # Create fieldmap
-st_prepare_fieldmap "sub-example_phasediff.nii.gz" -mag "sub-example_magnitude1.nii.gz" -unwrapper "prelude" -output "sub-example_fieldmap.nii.gz" -gaussian-filter True -sigma 1 || exit
+st_prepare_fieldmap "sub-example_phasediff.nii.gz" --mag "sub-example_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-example_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
 
 # Mask anatomical image
-st_mask box -input "../anat/sub-example_unshimmed_e1.nii.gz" -size 15 15 20 -output "sub-example_anat_mask.nii.gz" || exit
+st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 15 15 20 --output "sub-example_anat_mask.nii.gz" || exit
 
 # Shim
-st_realtime_shim -fmap "sub-example_fieldmap.nii.gz" -anat "../anat/sub-example_unshimmed_e1.nii.gz" -resp "../../../realtime_zshimming_data/PMUresp_signal.resp" -mask-static "sub-example_anat_mask.nii.gz" -mask-riro "sub-example_anat_mask.nii.gz" -output "." || exit
+st_realtime_shim --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../realtime_zshimming_data/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --output "." || exit
 # st_realtime_shim will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap

@@ -58,7 +58,7 @@ jobs:
         run: |
           curl -JLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip
           unzip -o dcm2niix_lnx.zip
-          sudo install dcm2nii* /usr/bin/
+          sudo install dcm2nii* /usr/local/bin/
 
       - name: Spinal Cord Toolbox clone
         run: |

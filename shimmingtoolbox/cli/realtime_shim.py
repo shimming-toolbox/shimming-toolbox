@@ -17,24 +17,22 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(
     context_settings=CONTEXT_SETTINGS,
 )
-@click.option('-fmap', 'fname_fmap', required=True, type=click.Path(),
+@click.option('--fmap', 'fname_fmap', required=True, type=click.Path(),
               help="B0 fieldmap. This should be a 4d file (4th dimension being time")
-@click.option('-anat', 'fname_anat', type=click.Path(), required=True,
+@click.option('--anat', 'fname_anat', type=click.Path(), required=True,
               help="Filename of the anatomical image to apply the correction.")
-@click.option('-resp', 'fname_resp', type=click.Path(), required=True,
+@click.option('--resp', 'fname_resp', type=click.Path(), required=True,
               help="Siemens respiratory file containing pressure data.")
-@click.option('-mask-static', 'fname_mask_anat_static', type=click.Path(), required=False,
+@click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(), required=False,
               help="3D nifti file used to define the static spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('-mask-riro', 'fname_mask_anat_riro', type=click.Path(), required=False,
+@click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(), required=False,
               help="3D nifti file used to define the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('-output', 'fname_output', type=click.Path(), default=os.curdir,
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
-@click.option("-verbose", is_flag=True, help="Be more verbose.")
-def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output,
-                      verbose=True):
+def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
     """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
     respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
     bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
