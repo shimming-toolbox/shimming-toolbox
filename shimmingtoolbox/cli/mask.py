@@ -86,6 +86,7 @@ def rect(fname_input, output, size, center):
         mask_sqr = shape_square(data, size[0], size[1], center[0], center[1])  # creation of the rectangle mask
         mask_sqr = mask_sqr.astype(int)
         nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
+
         nib.save(nii_img, output)
         click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
         return output

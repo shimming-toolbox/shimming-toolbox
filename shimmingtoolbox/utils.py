@@ -10,14 +10,23 @@ import logging
 
 
 def run_subprocess(cmd):
-    """
-    Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
 
     Args:
         cmd (string): full command to be run on the command line
     """
-    logging.debug('{}'.format(cmd))
-    subprocess.run(cmd.split(' '), stdout=subprocess.PIPE, text=True, check=True)
+    logging.debug(f'{cmd}')
+    try:
+        subprocess.run(
+            cmd.split(' '),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as err:
+        msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
+        raise Exception(msg)
 
 
 def add_suffix(fname, suffix):
@@ -100,3 +109,20 @@ def st_progress_bar(*args, **kwargs):
         kwargs['disable'] = True
 
     return tqdm.tqdm(*args, **kwargs)
+
+
+def create_output_dir(path_output, is_file=False, output_folder_name="output"):
+    """Given a path, create the directory if it doesn't exist.
+
+    Args:
+        path_output (str): Full path to either a folder or a file.
+        is_file (bool): True if the ``path_output`` is for a file, else False.
+        output_folder_name (str): Name of sub-folder.
+    """
+
+    if is_file:
+        path_output_folder = os.path.dirname(path_output)
+    else:
+        path_output_folder = path_output
+    if not os.path.exists(path_output_folder):
+        os.makedirs(path_output_folder)

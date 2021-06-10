@@ -46,6 +46,9 @@ setup(
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
+        "pillow~=8.0",
+        "dataclasses",
+        "raven",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
