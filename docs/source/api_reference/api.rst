@@ -34,6 +34,10 @@ Masking
 Coils
 -----
 
+.. automodule:: shimmingtoolbox.coils.coil
+    :members:
+    :special-members: __init__
+
 .. automodule:: shimmingtoolbox.coils.spherical_harmonics
     :members:
 
@@ -53,8 +57,21 @@ Shim
     .. automodule:: shimmingtoolbox.shim.realtime_shim
         :members:
 
+.. automodule:: shimmingtoolbox.optimizer.sequential
+   :members:
+
 Optimizer
 ---------
+
+.. automodule:: shimmingtoolbox.optimizer.basic_optimizer
+   :members:
+   :special-members: __init__
+
+.. automodule:: shimmingtoolbox.optimizer.lsq_optimizer
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+   :inherited-members:
 
 Image manipulation
 ------------------
@@ -62,7 +79,7 @@ Image manipulation
 .. automodule:: shimmingtoolbox.image
    :members:
 
-Numerical_model
+Numerical model
 ---------------
 
 .. automodule:: shimmingtoolbox.simulate.numerical_model

@@ -2,8 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import nibabel as nib
 import scipy.linalg
 import logging
+from typing import List
+
+from shimmingtoolbox.coils.coil import Coil
+from shimmingtoolbox.coils.coordinates import resample_from_to
+
+ListCoil = List[Coil]
 
 
 class Optimizer(object):
@@ -13,110 +20,116 @@ class Optimizer(object):
     For basic optimizer, uses unbounded pseudo-inverse.
 
     Attributes:
-        X (int): Amount of pixels in the X direction
-        Y (int): Amount of pixels in the Y direction
-        Z (int): Amount of pixels in the Z direction
-        N (int): Amount of channels in the coil profile
-        coils (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
+        coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
+        unshimmed (numpy.ndarray): 3d array of unshimmed volume
+        unshimmed_affine (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+        merged_coils (numpy.ndarray): 4d array containing all coil profiles resampled onto the target unshimmed array
+                                      concatenated on the 4th dimension. See self.merge_coils() for more details
+        merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
+                              bound for merged_coils[..., 3]
     """
 
-    def __init__(self, coil_profiles=None):
+    def __init__(self, coils: ListCoil, unshimmed, affine):
         """
-        Initializes X, Y, Z, N and coils according to input coil_profiles
+        Initializes coils according to input list of Coil
 
         Args:
-            coil_profiles (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
+            coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
         # Logging
         self.logger = logging.getLogger()
         logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
 
-        # Load coil profiles (X, Y, Z, N) if given
-        if coil_profiles is None:
-            self.X = 0
-            self.Y = 0
-            self.Z = 0
-            self.N = 0
-            self.coils = None
-        else:
-            self.load_coil_profiles(coil_profiles)
+        self.coils = coils
 
-    # Load coil profiles and check dimensions
-    def load_coil_profiles(self, coil_profiles):
-        """
-        Load new coil profiles into Optimizer
+        # Check dimensions of unshimmed map
+        if unshimmed.ndim != 3:
+            raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
+        self.unshimmed = unshimmed
 
-        Args:
-            coil_profiles (numpy.ndarray): (X, Y, Z, N) 4d array of N 3d coil profiles
-        """
-        self._error_if(coil_profiles.ndim != 4,
-                       f"Coil profile has {coil_profiles.ndim} dimensions, expected 4 (X, Y, Z, N)")
-        self.X, self.Y, self.Z, self.N = coil_profiles.shape
-        self.coils = coil_profiles
+        # Check dimensions of affine
+        if affine.shape != (4, 4):
+            raise ValueError("Shape of affine matrix should be 4x4")
+        self.unshimmed_affine = affine
 
-    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
+        # Define coil profiles
+        merged_coils, merged_bounds = self.merge_coils(unshimmed, affine)
+        self.merged_coils = merged_coils
+        self.merged_bounds = merged_bounds
+
+    def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
-            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
-            mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
-            bounds (list): List of ``(min, max)`` pairs for each coil channels. UNUSED in pseudo-inverse
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                                  unshimmed
+
+        Returns:
+            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                           The shape of the array returned has shape corresponding to the total number of channels
         """
         # Check for sizing errors
-        self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
+        self._check_sizing(mask)
 
-        # Set up output currents and optimize
-        output = np.zeros(self.N)
-
-        mask_range = tuple([slice(mask_origin[i], mask_origin[i] + mask.shape[i]) for i in range(3)])
+        # Optimize
         mask_vec = mask.reshape((-1,))
 
         # Simple pseudo-inverse optimization
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)),
-                                (self.N, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(unshimmed[mask_range], (-1,))[mask_vec != 0] # mV'
+        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+                              (self.merged_coils.shape[3], -1)).T[mask_vec != 0, :]  # masked points x N
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
 
         output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
 
         return output
 
-    def _check_sizing(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
+    def merge_coils(self, unshimmed, affine):
+        """
+        Uses the list of coil profiles to return a resampled concatenated list of coil profiles matching the
+        unshimmed image. Bounds are also concatenated and returned.
+
+        Args:
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+        """
+
+        coil_profiles_list = []
+        bounds = []
+
+        # Define the nibabel unshimmed array
+        nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
+
+        for coil in self.coils:
+            nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
+
+            # Resample a coil on the unshimmed image
+            resampled_coil = resample_from_to(nii_coil, nii_unshimmed).get_fdata()
+
+            # Concat coils and bounds
+            coil_profiles_list.append(resampled_coil)
+            for a_bound in coil.coef_channel_minmax:
+                bounds.append(a_bound)
+
+        coil_profiles = np.concatenate(coil_profiles_list, axis=3)
+
+        return coil_profiles, bounds
+
+    def _check_sizing(self, mask):
         """
         Helper function to check array sizing
 
         Args:
-            unshimmed (numpy.ndarray): (X, Y, Z) 3d array of unshimmed volume
-            mask (numpy.ndarray): (X, Y, Z) 3d array of integers marking volume for optimization -- 0 indicates unused
-            mask_origin (tuple): Origin of mask if mask volume does not cover unshimmed volume
-            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
-               is used to specify no bound.
+            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                                  unshimmed
         """
-        self._error_if(self.coils is None, "No loaded coil profiles!")
-        self._error_if(unshimmed.ndim != 3,
-                       f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (X, Y, Z)")
-        self._error_if(mask.ndim != 3, f"Mask has {mask.ndim} dimensions, expected 3 (X, Y, Z)")
-        self._error_if(unshimmed.shape != (self.X, self.Y, self.Z),
-                       f"XYZ mismatch -- Coils: {self.coils.shape}, Unshimmed: {unshimmed.shape}")
-        for i in range(3):
-            self._error_if(mask.shape[i] + mask_origin[i] > (self.X, self.Y, self.Z)[i],
-                           f"Mask (shape: {mask.shape}, origin: {mask_origin}) goes out of bounds (coil shape: "
-                           f"{(self.X, self.Y, self.Z)}")
-        if bounds is not None:
-            self._error_if(len(bounds) != self.N, f"Bounds should have the same number of (min, max)"
-                                                                     f" tuples as coil channels")
 
-    def _error_if(self, err_condition, message):
-        """
-        Helper function throwing errors
-
-        Args:
-            err_condition (bool): Condition to throw error on
-            message (string): Message to log and throw
-        """
-        if err_condition:
-            self.logger.error(message)
-            raise RuntimeError(message)
+        if mask.ndim != 3:
+            raise ValueError(f"Mask has {mask.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
+        if mask.shape != self.unshimmed.shape:
+            raise ValueError(f"Mask with shape: {mask.shape} expected to have the same shape as the unshimmed image"
+                             f" with shape: {self.unshimmed.shape}")
