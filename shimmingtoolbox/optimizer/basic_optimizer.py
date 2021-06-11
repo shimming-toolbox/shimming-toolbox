@@ -43,21 +43,32 @@ class Optimizer(object):
         logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
 
         self.coils = coils
+        self.unshimmed = np.array([])
+        self.unshimmed_affine = []
+        self.merged_coils = []
+        self.merged_bounds = []
+        self.set_unshimmed(unshimmed, affine)
 
+    def set_unshimmed(self, unshimmed, affine):
+        """ Set the unshimmed array to a new array. Resamples coil profiles accordingly.
+
+        Args:
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine: (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+        """
         # Check dimensions of unshimmed map
         if unshimmed.ndim != 3:
             raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
-        self.unshimmed = unshimmed
 
         # Check dimensions of affine
         if affine.shape != (4, 4):
             raise ValueError("Shape of affine matrix should be 4x4")
-        self.unshimmed_affine = affine
 
-        # Define coil profiles
-        merged_coils, merged_bounds = self.merge_coils(unshimmed, affine)
-        self.merged_coils = merged_coils
-        self.merged_bounds = merged_bounds
+        # Define coil profiles if unshimmed or affine is different than previously
+        if (self.unshimmed.shape != unshimmed.shape) or not np.all(self.unshimmed_affine == affine):
+            self.merged_coils, self.merged_bounds = self.merge_coils(unshimmed, affine)
+            self.unshimmed = unshimmed
+            self.unshimmed_affine = affine
 
     def optimize(self, mask):
         """
