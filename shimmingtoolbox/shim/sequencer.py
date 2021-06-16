@@ -3,10 +3,13 @@
 
 import numpy as np
 from typing import List
+from sklearn.linear_model import LinearRegression
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
+from shimmingtoolbox.load_nifti import get_acquisition_times
+from shimmingtoolbox.pmu import PmuResp
 
 ListCoil = List[Coil]
 
@@ -27,6 +30,7 @@ def shim_sequencer(unshimmed, affine, coils: ListCoil, mask, slices, method='lea
         mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
         slices (list): 1D array containing tuples of z slices to shim
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
+
     Returns:
         numpy.ndarray: Coefficients to shim (len(slices) x channels)
     """
@@ -38,6 +42,64 @@ def shim_sequencer(unshimmed, affine, coils: ListCoil, mask, slices, method='lea
     currents = optimize(optimizer, mask, slices)
 
     return currents
+
+
+def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: ListCoil, static_mask, riro_mask, slices,
+                                opt_method='least_squares'):
+    """
+    Performs shimming slice by slice using one of the supported optimizers
+
+    Args:
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
+                                            timeseries.
+        json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
+                          timestamps).
+        pmu (PmuResp): Filename of the file of the respiratory trace.
+        coils (ListCoil): List of Coils containing the coil profiles
+        static_mask (numpy.ndarray): 3D mask used for the optimizer to shim the region for the static component.
+        riro_mask (numpy.ndarray): 3D mask used for the optimizer to shim the region for the static component.
+        slices (list): 1D array containing tuples of z slices to shim
+        opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
+
+    Returns:
+        (tuple): tuple containing:
+
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels)
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels)
+
+    """
+
+    # Make sure fieldmap has the appropriate dimensions
+    fieldmap = nii_fieldmap.get_fdata()
+    affine = nii_fieldmap.affine
+    if fieldmap.ndim != 4:
+        raise RuntimeError("fmap must be 4d (x, y, z, t)")
+
+    # Fetch PMU timing
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
+    # TODO: deal with saturation
+    # fit PMU and fieldmap values
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+
+    # regularization --> static, riro
+    # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
+    mean_p = np.mean(acq_pressures)
+    pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
+    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, fieldmap.reshape(-1, fieldmap.shape[-1]).T)
+    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+    # between scans. This allows to compare results between scans.
+    static = reg.intercept_.reshape(fieldmap.shape[:-1])
+    riro = reg.coef_.reshape(fieldmap.shape[:-1]) * pressure_rms  # [hz/unit_pressure] * rms_pressure
+
+    # Static shim
+    optimizer = select_optimizer(opt_method, static, affine, coils)
+    currents_static = optimize(optimizer, static_mask, slices)
+
+    # Riro shim
+    optimizer.set_unshimmed(riro, affine)
+    currents_riro = optimize(optimizer, riro_mask, slices)  # riro
+
+    return currents_static, currents_riro
 
 
 def select_optimizer(method, unshimmed, affine, coils: ListCoil):
@@ -65,7 +127,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
 
 def optimize(optimizer: Optimizer, mask, slices):
     """
-        Shim slicewise in the specified ROI
+        Optimize in the specified ROI according to a specified Optimizer and specified slices
 
     Args:
         optimizer (Optimizer): Initialized Optimizer object

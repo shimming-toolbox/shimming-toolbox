@@ -67,8 +67,9 @@ class Optimizer(object):
         # Define coil profiles if unshimmed or affine is different than previously
         if (self.unshimmed.shape != unshimmed.shape) or not np.all(self.unshimmed_affine == affine):
             self.merged_coils, self.merged_bounds = self.merge_coils(unshimmed, affine)
-            self.unshimmed = unshimmed
-            self.unshimmed_affine = affine
+
+        self.unshimmed = unshimmed
+        self.unshimmed_affine = affine
 
     def optimize(self, mask):
         """

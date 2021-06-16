@@ -12,6 +12,15 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
+import os
+import nibabel as nib
+import json
+
+from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
+from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.load_nifti import get_acquisition_times
+
 
 def create_unshimmed():
     # Set up 2-dimensional unshimmed fieldmaps
@@ -64,7 +73,7 @@ def create_coil(n_x, n_y, n_z, constraints, coil_affine):
     profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
 
     # Define coil1
-    coil = Coil(profiles, coil_affine, constraints)
+    coil = Coil(profiles[..., :8], coil_affine, constraints)
     return coil
 
 
@@ -183,3 +192,116 @@ def assert_results(coil, unshimmed, un_affine, currents, mask, z_slices):
         sum_unshimmed = np.sum(np.abs(mask[:, :, z_slices[i_shim]] * unshimmed[:, :, z_slices[i_shim]]))
         print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: \n{currents[i_shim, :]}")
         assert sum_shimmed < sum_unshimmed
+
+
+def test_realtime_sequencer():
+    # Fieldmap
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    nii_fieldmap = nib.load(fname_fieldmap)
+    unshimmed = nii_fieldmap.get_fdata()
+    # Create affine closer to isocenter
+    new_affine = np.eye(4)
+    new_affine[:3, :3] = nii_fieldmap.affine[:3, :3]
+    nii_fieldmap = nib.Nifti1Image(unshimmed, new_affine, header=nii_fieldmap.header)
+    unshimmed = nii_fieldmap.get_fdata()
+
+    # fake = create_unshimmed()
+    # # fake_temp = np.zeros([100, 100, 3, 3])
+    # # for i_temp in range(3):
+    # #     fake_temp[..., i_temp] = fake
+    # fake_temp = np.zeros([100, 100, 3, 4])
+    # fake_temp[..., 0] = fake + 10
+    # fake_temp[..., 1] = fake
+    # fake_temp[..., 2] = fake - 10
+    # fake_temp[..., 3] = fake
+    # nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
+    # unshimmed = nii_fieldmap.get_fdata()
+
+    # Set up mask
+    # static
+    nx, ny, nz, _ = nii_fieldmap.shape
+    static_mask = shapes(unshimmed[..., 0], 'cube',
+                         center_dim1=int(nx / 2),
+                         center_dim2=int(ny / 2),
+                         len_dim1=30, len_dim2=30, len_dim3=nz)
+
+    # Riro
+    riro_mask = shapes(unshimmed[..., 0], 'cube',
+                       center_dim1=int(nx / 2),
+                       center_dim2=int(ny / 2),
+                       len_dim1=30, len_dim2=30, len_dim3=nz)
+
+    # Pmu
+    fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_resp)
+
+    # Path for json file
+    fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                              'sub-example_magnitude1.json')
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    # Create Coil
+    coil_affine = np.eye(4) * 3
+    coil_affine[:3, 3] = nii_fieldmap.affine[:3, 3] - 2
+    coil_affine[3, 3] = 1
+    coil = create_coil(150, 150, nz + 10, create_constraints(1000, -1000, 2000), coil_affine)
+
+    def define_slices(n_slices: int, factor: int):
+
+        if n_slices <= 0:
+            return [tuple()]
+
+        slices = []
+        n_shims = n_slices // factor
+        leftover = n_slices % factor
+
+        for i_shim in range(n_shims):
+            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
+
+        if leftover != 0:
+            slices.append(tuple(range(n_shims * factor, n_slices)))
+
+        return slices
+
+    slices = define_slices(unshimmed.shape[2], 1)
+
+    static_current, riro_current = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices)
+
+    print(f"\nSlices: {slices}"
+          f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
+          f"Coil affine:\n{coil_affine}\n"
+          f"Static currents:\n{static_current}\n"
+          f"Riro currents:\n{riro_current}\n")
+
+    # Calculate theoretical shimmed map
+    # Calc pressure
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    mean_p = np.mean(acq_pressures)
+    pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
+
+    # shim
+    opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
+    shimmed = np.zeros_like(unshimmed)
+    for i_shim in range(len(slices)):
+        correction_static = np.sum(static_current[i_shim] *
+                                   opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
+        for i_t in range(nii_fieldmap.shape[3]):
+            correction_riro = (np.sum(riro_current[i_shim] *
+                                      opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]] / pressure_rms)\
+                              * (acq_pressures[i_t] - mean_p)
+            shimmed[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static \
+                                                # + correction_riro
+
+            sum_shimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed[:, :, slices[i_shim], i_t]))
+            sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
+            print(f"\ni_shim: {i_shim}, t: {i_t}"
+                  f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, "
+                  f"Static currents:\n{static_current}\n"
+                  f"Riro currents:\n{riro_current}\n")
+            # assert sum_shimmed < sum_unshimmed
+
+# Problem with solving for rms of riro, we should solve for double the rms or something like that so that we dont bust
+# out the bounds
