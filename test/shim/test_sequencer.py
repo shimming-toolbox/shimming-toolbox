@@ -15,6 +15,7 @@ from shimmingtoolbox.coils.coordinates import generate_meshgrid
 import os
 import nibabel as nib
 import json
+from matplotlib.figure import Figure
 
 from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
 from shimmingtoolbox import __dir_testing__
@@ -222,15 +223,15 @@ def test_realtime_sequencer():
     # static
     nx, ny, nz, _ = nii_fieldmap.shape
     static_mask = shapes(unshimmed[..., 0], 'cube',
-                         center_dim1=int(nx / 2),
-                         center_dim2=int(ny / 2),
-                         len_dim1=30, len_dim2=30, len_dim3=nz)
+                         center_dim1=int(nx / 2) - 6,
+                         center_dim2=int(ny / 2) - 5,
+                         len_dim1=20, len_dim2=20, len_dim3=nz)
 
     # Riro
     riro_mask = shapes(unshimmed[..., 0], 'cube',
-                       center_dim1=int(nx / 2),
-                       center_dim2=int(ny / 2),
-                       len_dim1=30, len_dim2=30, len_dim3=nz)
+                       center_dim1=int(nx / 2) - 6,
+                       center_dim2=int(ny / 2) - 5,
+                       len_dim1=20, len_dim2=20, len_dim3=nz)
 
     # Pmu
     fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -267,7 +268,7 @@ def test_realtime_sequencer():
 
     slices = define_slices(unshimmed.shape[2], 1)
 
-    static_current, riro_current = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices)
+    static_current, riro_current = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices, opt_method='pseudo_inverse')
 
     print(f"\nSlices: {slices}"
           f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
@@ -285,6 +286,8 @@ def test_realtime_sequencer():
     # shim
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
     shimmed = np.zeros_like(unshimmed)
+    masked_shim = np.zeros_like(unshimmed)
+    masked_unshimmed = np.zeros_like(unshimmed)
     for i_shim in range(len(slices)):
         correction_static = np.sum(static_current[i_shim] *
                                    opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
@@ -293,7 +296,7 @@ def test_realtime_sequencer():
                                       opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]] / pressure_rms)\
                               * (acq_pressures[i_t] - mean_p)
             shimmed[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static \
-                                                # + correction_riro
+                                                + correction_riro
 
             sum_shimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed[:, :, slices[i_shim], i_t]))
             sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
@@ -301,7 +304,41 @@ def test_realtime_sequencer():
                   f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, "
                   f"Static currents:\n{static_current}\n"
                   f"Riro currents:\n{riro_current}\n")
-            # assert sum_shimmed < sum_unshimmed
+            assert sum_shimmed < sum_unshimmed
 
-# Problem with solving for rms of riro, we should solve for double the rms or something like that so that we dont bust
-# out the bounds
+    DEBUG = False
+    if DEBUG:
+        for i_t in range(nii_fieldmap.shape[3]):
+            masked_shim[..., i_t] = riro_mask * shimmed[:, :, :, i_t]
+            masked_unshimmed[..., i_t] = riro_mask * unshimmed[:, :, :, i_t]
+
+        # Plot Static and RIRO
+        i_t = 0
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(2, 2, 1)
+        im = ax.imshow(np.rot90(masked_shim[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("masked_shim")
+        ax = fig.add_subplot(2, 2, 2)
+        im = ax.imshow(np.rot90(masked_unshimmed[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("masked_unshimmed")
+
+        ax = fig.add_subplot(2, 2, 3)
+        im = ax.imshow(np.rot90(shimmed[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("shimmed")
+        ax = fig.add_subplot(2, 2, 4)
+        im = ax.imshow(np.rot90(unshimmed[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("unshimmed")
+
+        fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
+        fig.savefig(fname_figure)
+
+    # Todo:
+    # Bound problem, we currently solve for the bounds independently from riro. Which means when we shime there is a
+    # possibility to use maxed out bounds for riro and maxed out bounds for static so double the bounds since they are
+    # used at the same time.
+    # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
+    # than the rms. We should solve for the max difference just in case.
