@@ -342,3 +342,13 @@ def test_realtime_sequencer():
     # used at the same time.
     # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
     # than the rms. We should solve for the max difference just in case.
+    # What we could do:
+    #                   Change the bounds before so that there is a ratio between the bounds for riro and static
+    #                   (bounds and max)
+    #
+    #                   Change the bounds after only if there is a problem with
+    #                       sum of total currents or
+    #                       sum of idevidual channels..
+    #                   i dont think this is the best idea
+    #
+    #                   Change the bounds of riro after solving for static to be the remaining of what static uses
