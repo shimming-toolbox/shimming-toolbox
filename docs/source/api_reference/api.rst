@@ -56,9 +56,9 @@ Shim
 .. Error while importing sklearn and skimage
     .. automodule:: shimmingtoolbox.shim.realtime_shim
         :members:
-
-.. automodule:: shimmingtoolbox.optimizer.sequential
-   :members:
+.. Error while importing sklearn (Linear Regression)
+    .. automodule:: shimmingtoolbox.shim.sequencer
+       :members:
 
 Optimizer
 ---------
