@@ -145,7 +145,24 @@ class TestSequencer(object):
 
         assert_results([coil], unshimmed, un_affine, currents, mask, z_slices)
 
-    def test_shim_sequencer_different_slices(self, unshimmed, un_affine, sph_coil, sph_coil2, mask):
+    def test_shim_sequencer_slab_slices(self, unshimmed, un_affine, sph_coil, sph_coil2, mask):
+        """Test for slices arranged as a slab"""
+        # Optimize
+        z_slices = [(0, 1, 2)]
+        currents = shim_sequencer(unshimmed, un_affine, [sph_coil], mask, z_slices, method='least_squares')
+
+        assert_results([sph_coil], unshimmed, un_affine, currents, mask, z_slices)
+
+    def test_shim_sequencer_dynamic_slices(self, unshimmed, un_affine, sph_coil, sph_coil2, mask):
+        """Test for slices arranged for dynamic shimming"""
+        # Optimize
+        z_slices = [(0,), (1,), (2,)]
+        currents = shim_sequencer(unshimmed, un_affine, [sph_coil], mask, z_slices, method='least_squares')
+
+        assert_results([sph_coil], unshimmed, un_affine, currents, mask, z_slices)
+
+    def test_shim_sequencer_multi_slices(self, unshimmed, un_affine, sph_coil, sph_coil2, mask):
+        """Test for slices arranged for multi slice"""
         # Optimize
         z_slices = [(0, 2), (1,)]
         currents = shim_sequencer(unshimmed, un_affine, [sph_coil], mask, z_slices, method='least_squares')
