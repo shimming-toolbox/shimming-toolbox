@@ -283,7 +283,12 @@ def test_realtime_sequencer():
 
     slices = define_slices(unshimmed.shape[2], 1)
 
-    currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices, opt_method='pseudo_inverse')
+    # currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+    #                                                                     static_mask, riro_mask, slices,
+    #                                                                     opt_method='least_squares')
+    currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+                                                                        static_mask, riro_mask, slices,
+                                                                        opt_method='pseudo_inverse')
     currents_riro_rms = currents_riro * p_rms
 
     print(f"\nSlices: {slices}"
@@ -301,56 +306,72 @@ def test_realtime_sequencer():
 
     # shim
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
-    shimmed = np.zeros_like(unshimmed)
-    masked_shim = np.zeros_like(unshimmed)
+    shimmed_static_riro = np.zeros_like(unshimmed)
+    shimmed_static = np.zeros_like(unshimmed)
+    masked_shim_static_riro = np.zeros_like(unshimmed)
+    masked_shim_static = np.zeros_like(unshimmed)
     masked_unshimmed = np.zeros_like(unshimmed)
-    shim_trace = []
+    shim_trace_static_riro = []
+    shim_trace_static = []
     unshimmed_trace = []
     for i_shim in range(len(slices)):
+        # Calculate static correction
         correction_static = np.sum(currents_static[i_shim] *
                                    opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
+
         riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
         for i_t in range(nii_fieldmap.shape[3]):
             correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
-            shimmed[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static\
-                                                + correction_riro
+            shimmed_static[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static
+            shimmed_static_riro[..., slices[i_shim], i_t] = shimmed_static[..., slices[i_shim], i_t] + correction_riro
 
-            sum_shimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed[:, :, slices[i_shim], i_t]))
+            sum_shimmed_static = np.sum(np.abs(static_mask[:, :, slices[i_shim]] * shimmed_static[:, :, slices[i_shim], i_t]))
+            sum_shimmed_static_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_static_riro[:, :, slices[i_shim], i_t]))
             sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
             print(f"\ni_shim: {i_shim}, t: {i_t}"
-                  f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, "
+                  f"\nshimmed: {sum_shimmed_static_riro}, unshimmed: {sum_unshimmed}, "
                   f"Static currents:\n{currents_static}\n"
                   f"Riro currents:\n{currents_riro}\n")
 
-            shim_trace.append(sum_shimmed)
+            shim_trace_static.append(sum_shimmed_static)
+            shim_trace_static_riro.append(sum_shimmed_static_riro)
             unshimmed_trace.append(sum_unshimmed)
 
-            assert sum_shimmed < sum_unshimmed
+            assert sum_shimmed_static_riro < sum_unshimmed
 
-    DEBUG = False
+    DEBUG = True
     if DEBUG:
         n_t = nii_fieldmap.shape[3]
         for i_t in range(n_t):
-            masked_shim[..., i_t] = riro_mask * shimmed[:, :, :, i_t]
+            masked_shim_static[..., i_t] = riro_mask * shimmed_static[:, :, :, i_t]
+            masked_shim_static_riro[..., i_t] = riro_mask * shimmed_static_riro[:, :, :, i_t]
             masked_unshimmed[..., i_t] = riro_mask * unshimmed[:, :, :, i_t]
 
         # Plot Static and RIRO
         i_t = 0
         fig = Figure(figsize=(10, 10))
-        ax = fig.add_subplot(2, 2, 1)
-        im = ax.imshow(np.rot90(masked_shim[..., 0, i_t]))
+        ax = fig.add_subplot(2, 3, 1)
+        im = ax.imshow(np.rot90(masked_shim_static_riro[..., 0, i_t]))
         fig.colorbar(im)
-        ax.set_title("masked_shim")
-        ax = fig.add_subplot(2, 2, 2)
+        ax.set_title("masked_shim static + riro")
+        ax = fig.add_subplot(2, 3, 2)
+        im = ax.imshow(np.rot90(masked_shim_static[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("masked_shim static")
+        ax = fig.add_subplot(2, 3, 3)
         im = ax.imshow(np.rot90(masked_unshimmed[..., 0, i_t]))
         fig.colorbar(im)
         ax.set_title("masked_unshimmed")
 
-        ax = fig.add_subplot(2, 2, 3)
-        im = ax.imshow(np.rot90(shimmed[..., 0, i_t]))
+        ax = fig.add_subplot(2, 3, 4)
+        im = ax.imshow(np.rot90(shimmed_static_riro[..., 0, i_t]))
         fig.colorbar(im)
-        ax.set_title("shimmed")
-        ax = fig.add_subplot(2, 2, 4)
+        ax.set_title("shim static + riro")
+        ax = fig.add_subplot(2, 3, 5)
+        im = ax.imshow(np.rot90(shimmed_static[..., 0, i_t]))
+        fig.colorbar(im)
+        ax.set_title("shim static")
+        ax = fig.add_subplot(2, 3, 6)
         im = ax.imshow(np.rot90(unshimmed[..., 0, i_t]))
         fig.colorbar(im)
         ax.set_title("unshimmed")
@@ -360,7 +381,8 @@ def test_realtime_sequencer():
         # plot shimmed and unshimmed trace
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
-        ax.plot(shim_trace, label='shimmed')
+        ax.plot(shim_trace_static_riro, label='shimmed static + riro')
+        ax.plot(shim_trace_static, label='shimmed static')
         ax.plot(unshimmed_trace, label='unshimmed')
         ax.legend()
         ax.set_ylim(0, max(unshimmed_trace))
@@ -395,8 +417,6 @@ def test_realtime_sequencer():
     # Use same affine for coil and for defining siemens basis
 
     # Sequencer mentions Hz but they don't have to be
-
-    # Change default value of optimization to be halfway between the bounds
 
     # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
     # than the rms. We should solve for the max difference just in case.
