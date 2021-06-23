@@ -71,6 +71,17 @@ class Optimizer(object):
         self.unshimmed = unshimmed
         self.unshimmed_affine = affine
 
+    def set_merged_bounds(self, merged_bounds):
+        """
+        Changes the default bounds set in the coil profile
+
+        Args:
+            merged_bounds: Concatenated coil profile bounds
+        """
+        if len(self.merged_bounds != len(merged_bounds)):
+            raise IndexError(f"Size of merged bounds must match the number of total channel: {len(self.merged_bounds)}")
+        self.merged_bounds = merged_bounds
+
     def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
@@ -111,7 +122,6 @@ class Optimizer(object):
         """
 
         coil_profiles_list = []
-        bounds = []
 
         # Define the nibabel unshimmed array
         nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
@@ -121,15 +131,23 @@ class Optimizer(object):
 
             # Resample a coil on the unshimmed image
             resampled_coil = resample_from_to(nii_coil, nii_unshimmed).get_fdata()
-
-            # Concat coils and bounds
             coil_profiles_list.append(resampled_coil)
-            for a_bound in coil.coef_channel_minmax:
-                bounds.append(a_bound)
 
         coil_profiles = np.concatenate(coil_profiles_list, axis=3)
 
+        bounds = self.merge_bounds(self.coils)
+
         return coil_profiles, bounds
+
+    def merge_bounds(self, coils):
+
+        bounds = []
+        for coil in coils:
+            # Concat coils and bounds
+            for a_bound in coil.coef_channel_minmax:
+                bounds.append(a_bound)
+
+        return bounds
 
     def _check_sizing(self, mask):
         """
