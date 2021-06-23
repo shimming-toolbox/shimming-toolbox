@@ -47,7 +47,7 @@ def shim_sequencer(unshimmed, affine, coils: ListCoil, mask, slices, method='lea
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: ListCoil, static_mask, riro_mask, slices,
                                 opt_method='least_squares'):
     """
-    Performs shimming slice by slice using one of the supported optimizers
+    Performs realtime shimming using one of the supported optimizers and an external respiratory trace
 
     Args:
         nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
@@ -64,9 +64,10 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     Returns:
         (tuple): tuple containing:
 
-            * numpy.ndarray: Static coefficients to shim (len(slices) x channels)
-            * numpy.ndarray: Static coefficients to shim (len(slices) x channels)
-
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) [hz]
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) [hz/unit_pressure]
+            * float: Root mean squared of the pressure. This is provided to compare results between scans, multiply the
+                     riro coefficients by rms of the pressure to do so.
     """
 
     # Make sure fieldmap has the appropriate dimensions
@@ -86,20 +87,29 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, fieldmap.reshape(-1, fieldmap.shape[-1]).T)
-    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
-    # between scans. This allows to compare results between scans.
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
-    riro = reg.coef_.reshape(fieldmap.shape[:-1]) * pressure_rms  # [hz/unit_pressure] * rms_pressure
+    riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [hz/unit_pressure]
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine, coils)
     currents_static = optimize(optimizer, static_mask, slices)
 
     # Riro shim
-    optimizer.set_unshimmed(riro, affine)
-    currents_riro = optimize(optimizer, riro_mask, slices)  # riro
+    # We multiply by the max offset so that the bounds take effect on the maximum value that the pressure probe can
+    # acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes "riro(i_vox) * max_offset" which is the
+    # maximum shim we will have. We solve for that to make sure the coils can support it. The units of riro * max_offset
+    # are: [hz]
+    max_offset = max(4095 - mean_p, mean_p)
+    optimizer.set_unshimmed(riro * max_offset, affine)
+    currents_max_riro = optimize(optimizer, riro_mask, slices)
+    # Once the currents are solved, we divide by max_offset to return to units of [hz/unit_pressure]
+    currents_riro = currents_max_riro / max_offset
 
-    return currents_static, currents_riro
+    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+    # between scans. This allows to compare results between scans.
+    currents_riro_rms = currents_riro * pressure_rms  # [hz/unit_pressure] * rms_pressure
+
+    return currents_static, currents_riro, pressure_rms
 
 
 def select_optimizer(method, unshimmed, affine, coils: ListCoil):

@@ -261,9 +261,7 @@ def test_realtime_sequencer():
         json_data = json.load(json_file)
 
     # Create Coil
-    coil_affine = np.eye(4) * 3
-    coil_affine[:3, 3] = nii_fieldmap.affine[:3, 3] - 2
-    coil_affine[3, 3] = 1
+    coil_affine = new_affine
     coil = create_coil(150, 150, nz + 10, create_constraints(1000, -1000, 2000), coil_affine)
 
     def define_slices(n_slices: int, factor: int):
@@ -285,13 +283,14 @@ def test_realtime_sequencer():
 
     slices = define_slices(unshimmed.shape[2], 1)
 
-    static_current, riro_current = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices, opt_method='pseudo_inverse')
+    currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil], static_mask, riro_mask, slices, opt_method='pseudo_inverse')
+    currents_riro_rms = currents_riro * p_rms
 
     print(f"\nSlices: {slices}"
           f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
           f"Coil affine:\n{coil_affine}\n"
-          f"Static currents:\n{static_current}\n"
-          f"Riro currents:\n{riro_current}\n")
+          f"Static currents:\n{currents_static}\n"
+          f"Riro currents * p_rms:\n{currents_riro_rms}\n")
 
     # Calculate theoretical shimmed map
     # Calc pressure
@@ -305,27 +304,33 @@ def test_realtime_sequencer():
     shimmed = np.zeros_like(unshimmed)
     masked_shim = np.zeros_like(unshimmed)
     masked_unshimmed = np.zeros_like(unshimmed)
+    shim_trace = []
+    unshimmed_trace = []
     for i_shim in range(len(slices)):
-        correction_static = np.sum(static_current[i_shim] *
+        correction_static = np.sum(currents_static[i_shim] *
                                    opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
+        riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
         for i_t in range(nii_fieldmap.shape[3]):
-            correction_riro = (np.sum(riro_current[i_shim] *
-                                      opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]] / pressure_rms)\
-                              * (acq_pressures[i_t] - mean_p)
-            shimmed[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static \
+            correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
+            shimmed[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static\
                                                 + correction_riro
 
             sum_shimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed[:, :, slices[i_shim], i_t]))
             sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
             print(f"\ni_shim: {i_shim}, t: {i_t}"
                   f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, "
-                  f"Static currents:\n{static_current}\n"
-                  f"Riro currents:\n{riro_current}\n")
+                  f"Static currents:\n{currents_static}\n"
+                  f"Riro currents:\n{currents_riro}\n")
+
+            shim_trace.append(sum_shimmed)
+            unshimmed_trace.append(sum_unshimmed)
+
             assert sum_shimmed < sum_unshimmed
 
     DEBUG = False
     if DEBUG:
-        for i_t in range(nii_fieldmap.shape[3]):
+        n_t = nii_fieldmap.shape[3]
+        for i_t in range(n_t):
             masked_shim[..., i_t] = riro_mask * shimmed[:, :, :, i_t]
             masked_unshimmed[..., i_t] = riro_mask * unshimmed[:, :, :, i_t]
 
@@ -349,14 +354,36 @@ def test_realtime_sequencer():
         im = ax.imshow(np.rot90(unshimmed[..., 0, i_t]))
         fig.colorbar(im)
         ax.set_title("unshimmed")
-
         fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
 
+        # plot shimmed and unshimmed trace
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.plot(shim_trace, label='shimmed')
+        ax.plot(unshimmed_trace, label='unshimmed')
+        ax.legend()
+        ax.set_ylim(0, max(unshimmed_trace))
+        ax.set_title("Unshimmed vs shimmed values")
+        fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed_riro.png')
+        fig.savefig(fname_figure)
+
+        # Save fieldmap
+        fname_fieldmap_2 = os.path.join(os.curdir, 'fig_fieldmap.nii.gz')
+        nib.save(nii_fieldmap, fname_fieldmap_2)
+
+        # Save coil profiles as nifti
+        fname_coil = os.path.join(os.curdir, 'fig_coil_orig.nii.gz')
+        nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
+        nib.save(nii_coil, fname_coil)
+
+        # save resampled coil profiles
+        fname_coil_res = os.path.join(os.curdir, 'fig_coil_resampled.nii.gz')
+        nii_coil = nib.Nifti1Image(opt.merged_coils, opt.unshimmed_affine)
+        nib.save(nii_coil, fname_coil_res)
+
     # Todo:
-    # Bound problem, we currently solve for the bounds independently from riro. Which means when we shime there is a
-    # possibility to use maxed out bounds for riro and maxed out bounds for static so double the bounds since they are
-    # used at the same time.
+    # Use same affine for coil and for defining siemens basis
     # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
     # than the rms. We should solve for the max difference just in case.
     # What we could do:
@@ -365,7 +392,7 @@ def test_realtime_sequencer():
     #
     #                   Change the bounds after only if there is a problem with
     #                       sum of total currents or
-    #                       sum of idevidual channels..
+    #                       sum of indevidual channels..
     #                   i dont think this is the best idea
     #
     #                   Change the bounds of riro after solving for static to be the remaining of what static uses
