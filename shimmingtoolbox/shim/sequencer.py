@@ -94,6 +94,9 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     optimizer = select_optimizer(opt_method, static, affine, coils)
     currents_static = optimize(optimizer, static_mask, slices)
 
+    # Use the currents to define a list of new bounds for the riro optimization
+    bounds = new_bounds_from_currents(currents_static, optimizer.merged_bounds)
+
     # Riro shim
     # We multiply by the max offset so that the bounds take effect on the maximum value that the pressure probe can
     # acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes "riro(i_vox) * max_offset" which is the
@@ -101,7 +104,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     # are: [Hz]
     max_offset = max(4095 - mean_p, mean_p)
     optimizer.set_unshimmed(riro * max_offset, affine)
-    currents_max_riro = optimize(optimizer, riro_mask, slices)
+    currents_max_riro = optimize(optimizer, riro_mask, slices, shimwise_bounds=bounds)
     # Once the currents are solved, we divide by max_offset to return to units of [Hz/unit_pressure]
     currents_riro = currents_max_riro / max_offset
 
@@ -110,6 +113,28 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     currents_riro_rms = currents_riro * pressure_rms  # [Hz/unit_pressure] * rms_pressure
 
     return currents_static, currents_riro, pressure_rms
+
+
+def new_bounds_from_currents(currents, old_bounds):
+    """
+
+    Args:
+        currents: (n_shims x n_channels)
+        old_bounds: (n_channels)
+
+    Returns:
+        list:
+    """
+
+    new_bounds = []
+    for i_shim in range(currents.shape[0]):
+        shim_bound = []
+        for i_channel in range(len(old_bounds)):
+            a_bound = old_bounds[i_channel] - currents[i_shim, i_channel]
+            shim_bound.append(tuple(a_bound))
+        new_bounds.append(shim_bound)
+
+    return new_bounds
 
 
 def select_optimizer(method, unshimmed, affine, coils: ListCoil):
@@ -135,7 +160,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
     return optimizer
 
 
-def optimize(optimizer: Optimizer, mask, slices):
+def optimize(optimizer: Optimizer, mask, slices, shimwise_bounds=None):
     """
         Optimize in the specified ROI according to a specified Optimizer and specified slices
 
@@ -143,6 +168,7 @@ def optimize(optimizer: Optimizer, mask, slices):
         optimizer (Optimizer): Initialized Optimizer object
         mask (numpy.ndarray): 3D mask used for the optimizer (only consider voxels with non-zero values).
         slices (list): 1D array containing tuples of z slices to shim
+        shimwise_bounds (list): list (n shims) of list (n channels) of tuples (min_coef, max_coef)
 
     Returns:
         numpy.ndarray: Coefficients to shim (len(slices) x channels)
@@ -154,6 +180,8 @@ def optimize(optimizer: Optimizer, mask, slices):
     for i in range(n_shims):
         sliced_mask = np.full_like(mask, fill_value=False)
         sliced_mask[:, :, slices[i]] = mask[:, :, slices[i]]
+        if shimwise_bounds is not None:
+            optimizer.set_merged_bounds(shimwise_bounds[i])
         currents[i, :] = optimizer.optimize(sliced_mask)
 
     return currents

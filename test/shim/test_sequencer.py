@@ -396,6 +396,8 @@ def test_realtime_sequencer():
 
     # Sequencer mentions Hz but they don't have to be
 
+    # Change default value of optimization to be halfway between the bounds
+
     # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
     # than the rms. We should solve for the max difference just in case.
     # What we could do:
