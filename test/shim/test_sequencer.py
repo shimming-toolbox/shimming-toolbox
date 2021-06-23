@@ -368,6 +368,15 @@ def test_realtime_sequencer():
         fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed_riro.png')
         fig.savefig(fname_figure)
 
+        fig = Figure(figsize=(10, 10))
+        ax = fig.add_subplot(111)
+        ax.plot(acq_pressures, label='pressures')
+        ax.legend()
+        ax.set_ylim(0, 4095)
+        ax.set_title("Pressures vs time points")
+        fname_figure = os.path.join(os.curdir, 'fig_trace_pressures.png')
+        fig.savefig(fname_figure)
+
         # Save fieldmap
         fname_fieldmap_2 = os.path.join(os.curdir, 'fig_fieldmap.nii.gz')
         nib.save(nii_fieldmap, fname_fieldmap_2)
@@ -384,6 +393,9 @@ def test_realtime_sequencer():
 
     # Todo:
     # Use same affine for coil and for defining siemens basis
+
+    # Sequencer mentions Hz but they don't have to be
+
     # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
     # than the rms. We should solve for the max difference just in case.
     # What we could do:
@@ -392,7 +404,7 @@ def test_realtime_sequencer():
     #
     #                   Change the bounds after only if there is a problem with
     #                       sum of total currents or
-    #                       sum of indevidual channels..
+    #                       sum of individual channels..
     #                   i dont think this is the best idea
     #
     #                   Change the bounds of riro after solving for static to be the remaining of what static uses
