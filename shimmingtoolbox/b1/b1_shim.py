@@ -43,7 +43,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False
         # TODO: add function to compute CP coefficients
         # Approximation of a circular polarisation to initialize the optimization
         weights_init = np.concatenate((np.ones(n_coils) / np.linalg.norm(np.ones(n_coils)),
-                                       np.linspace(0, 2 * np.pi - 2 * np.pi / n_coils, n_coils)))
+                                       np.arange(0, 2 * np.pi, 2 * np.pi/n_coils)))
 
     # Bounds for the optimization
     bounds = np.concatenate((n_coils * [(0, None)], n_coils * [(-np.pi, np.pi)]))
@@ -67,7 +67,7 @@ def combine_maps(b1_maps, weights):
     Combines the B1 field distribution of several coils into one map representing the total B1 field magnitude.
 
     Args:
-        b1_maps (numpy.ndarray): Measured B1 field for different coils. Last dimension must correspond to n_coils.
+        b1_maps (numpy.ndarray): Complex B1 field for different coils. Last dimension must correspond to n_coils.
         weights (numpy.ndarray): 1D complex array of length n_coils.
 
     Returns:
@@ -92,7 +92,7 @@ def cov(array):
         float: Coefficient of variation of the input array (standard deviation/mean).
 
     """
-    return np.std(array) / np.mean(array)
+    return array.std() / array.mean()
 
 
 def vector_to_complex(weights):
