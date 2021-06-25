@@ -159,7 +159,12 @@ class Optimizer(object):
         """
         current_0 = []
         for bounds in self.merged_bounds:
-            current_0.append(np.mean(bounds))
+            avg = np.mean(bounds)
+
+            if np.isnan(avg):
+                current_0.append(0)
+            else:
+                current_0.append(avg)
 
         return np.array(current_0)
 

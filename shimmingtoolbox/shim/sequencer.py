@@ -104,7 +104,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     # are: [Hz]
     max_offset = max(4095 - mean_p, mean_p)
     optimizer.set_unshimmed(riro * max_offset, affine)
-    currents_max_riro = optimize(optimizer, riro_mask, slices, shimwise_bounds=bounds)
+    # currents_max_riro = optimize(optimizer, riro_mask, slices, shimwise_bounds=bounds)
+    currents_max_riro = optimize(optimizer, riro_mask, slices)
     # Once the currents are solved, we divide by max_offset to return to units of [Hz/unit_pressure]
     currents_riro = currents_max_riro / max_offset
 
