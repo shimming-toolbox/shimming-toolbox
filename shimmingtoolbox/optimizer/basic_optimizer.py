@@ -50,7 +50,8 @@ class Optimizer(object):
         self.set_unshimmed(unshimmed, affine)
 
     def set_unshimmed(self, unshimmed, affine):
-        """ Set the unshimmed array to a new array. Resamples coil profiles accordingly.
+        """
+        Set the unshimmed array to a new array. Resamples coil profiles accordingly.
 
         Args:
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
@@ -135,14 +136,20 @@ class Optimizer(object):
 
         coil_profiles = np.concatenate(coil_profiles_list, axis=3)
 
-        bounds = self.merge_bounds(self.coils)
+        bounds = self.merge_bounds()
 
         return coil_profiles, bounds
 
-    def merge_bounds(self, coils):
+    def merge_bounds(self):
+        """
+        Merge the coil profile bounds into a single array.
+
+        Returns:
+            list: list of bounds corresponding to each merged coils
+        """
 
         bounds = []
-        for coil in coils:
+        for coil in self.coils:
             # Concat coils and bounds
             for a_bound in coil.coef_channel_minmax:
                 bounds.append(a_bound)

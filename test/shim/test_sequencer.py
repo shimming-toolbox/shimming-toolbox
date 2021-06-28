@@ -21,6 +21,7 @@ from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
+from shimmingtoolbox.shim.sequencer import define_slices
 
 
 def create_unshimmed():
@@ -264,31 +265,14 @@ def test_realtime_sequencer():
     coil_affine = new_affine
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
 
-    def define_slices(n_slices: int, factor: int):
-
-        if n_slices <= 0:
-            return [tuple()]
-
-        slices = []
-        n_shims = n_slices // factor
-        leftover = n_slices % factor
-
-        for i_shim in range(n_shims):
-            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
-
-        if leftover != 0:
-            slices.append(tuple(range(n_shims * factor, n_slices)))
-
-        return slices
-
     slices = define_slices(unshimmed.shape[2], 1)
 
-    # currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
-    #                                                                     static_mask, riro_mask, slices,
-    #                                                                     opt_method='least_squares')
-    currents_static, currents_riro, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
-                                                                        static_mask, riro_mask, slices,
-                                                                        opt_method='pseudo_inverse')
+    currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+                                                                                static_mask, riro_mask, slices,
+                                                                                opt_method='least_squares')
+    # currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+    #                                                                             static_mask, riro_mask, slices,
+    #                                                                             opt_method='pseudo_inverse')
     currents_riro_rms = currents_riro * p_rms
 
     print(f"\nSlices: {slices}"
@@ -301,8 +285,8 @@ def test_realtime_sequencer():
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
-    mean_p = np.mean(acq_pressures)
-    pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
+    # mean_p = np.mean(acq_pressures)
+    # pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
 
     # shim
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
@@ -396,7 +380,7 @@ def test_realtime_sequencer():
         ax.legend()
         ax.set_ylim(0, max(unshimmed_trace))
         ax.set_title("Unshimmed vs shimmed values")
-        fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed_riro.png')
+        fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
 
         fig = Figure(figsize=(10, 10))
@@ -456,20 +440,3 @@ def test_realtime_sequencer():
 
     # Todo:
     # Use same affine for coil and for defining siemens basis
-
-    # Sequencer mentions Hz but they don't have to be
-
-    # Docstring and new metrics
-
-    # Also solving for RMS of riro makes it so that bounds can be bust out if the value read is higher
-    # than the rms. We should solve for the max difference just in case.
-    # What we could do:
-    #                   Change the bounds before so that there is a ratio between the bounds for riro and static
-    #                   (bounds and max)
-    #
-    #                   Change the bounds after only if there is a problem with
-    #                       sum of total currents or
-    #                       sum of individual channels..
-    #                   i dont think this is the best idea
-    #
-    #                   Change the bounds of riro after solving for static to be the remaining of what static uses
