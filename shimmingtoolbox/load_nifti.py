@@ -216,37 +216,57 @@ def scale_tfl_b1(image, json_data):
         warnings.warn("Missing json tag: 'SliceTiming', slices number cannot be checked.")
         n_slices = image.shape[2]
 
-    # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
-    # Get the Transmission amplifier reference amplitude
-    amplifier_voltage = json_data['TxRefAmp']  # [V]
-    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
     # Magnitude values are stored in the first half of the 4th dimension
-    b1_mag = image[:, :, :, :image.shape[3] // 2] / 10  # Siemens magnitude values are stored in degrees x10
+    b1_mag = image[:, :, :, :image.shape[3] // 2]
 
     if b1_mag.min() < 0:
         raise ValueError("Unexpected negative magnitude values")
 
+    # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
+    b1_phase = image[:, :, :, image.shape[3] // 2:]
+
+    # Reorder data shuffled by dm2niix into shape (x, y , n_slices*n_coils)
+    b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
+    b1_phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
+    if 'ImageOrientationPatientDICOM' in json_data:
+        # If axial slices
+        if json_data['ImageOrientationPatientDICOM'] == [1, 0, 0, 0, 1, 0]:
+            for i in range(n_coils):
+                b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
+                b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
+        # If sagittal slices
+        elif json_data['ImageOrientationPatientDICOM'] == [0, 1, 0, 0, 1, -1]:
+            for i in range(n_coils):
+                b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
+                b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
+        # TODO: add elif coronal case
+        else:
+            raise ValueError("Unknown slice orientation")
+    else:
+        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'")
+
+    # Reorder data shuffled by dm2niix into shape (x, y, n_slices, n_coils)
+    b1_mag_ordered = np.zeros_like(b1_mag)
+    b1_phase_ordered = np.zeros_like(b1_phase)
+    for i in range(n_slices):
+        b1_mag_ordered[:, :, i, :] = b1_mag_vector[:, :, i * n_coils:i * n_coils + n_coils]
+        b1_phase_ordered[:, :, i, :] = b1_phase_vector[:, :, i * n_coils:i * n_coils + n_coils]
+
+    # TODO: assert mask consistency within slices
+
     # Scale magnitude in nT/V
-    b1_mag[b1_mag > 180] = 180  # Values higher than 180 degrees are due to noise
-    b1_mag = (b1_mag / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
+    b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
+    b1_mag_ordered[b1_mag_ordered > 180] = 180  # Values higher than 180 degrees are due to noise
+    # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
+    # Get the Transmission amplifier reference amplitude
+    amplifier_voltage = json_data['TxRefAmp']  # [V]
+    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
+    b1_mag_ordered = (b1_mag_ordered / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
 
     # Scale the phase between [-pi, pi]
-    # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
-    b1_phase = image[:, :, :, image.shape[3] // 2:]  # [248 - 3848]
     # Remove potential out of range zeros (set them as null phase = 2048)
-    b1_phase[b1_phase == 0] = 2048
-    b1_phase = (b1_phase - 2048) * np.pi / 1800  # [-pi pi]
+    b1_phase_ordered[b1_phase_ordered == 0] = 2048
+    b1_phase_ordered = (b1_phase_ordered - 2048) * np.pi / 1800  # [-pi pi]
 
-    # Reorder data shuffled by dm2niix
-    mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
-    phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
-    for i in range(n_coils):
-        mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
-        phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-
-    # Compute complex B1 maps
-    image = np.zeros_like(b1_mag).astype(complex)
-    for i in range(n_coils):
-        image[:, :, :, i] = mag_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)] * \
-                            np.exp(1j * phase_vector[:, :, np.arange(i, n_coils * n_slices, n_coils)])
-    return image
+    # Return complex B1 maps
+    return b1_mag_ordered * np.exp(1j * b1_phase_ordered)
