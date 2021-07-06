@@ -248,11 +248,12 @@ def scale_tfl_b1(image, json_data):
     # Reorder data shuffled by dm2niix into shape (x, y, n_slices, n_coils)
     b1_mag_ordered = np.zeros_like(b1_mag)
     b1_phase_ordered = np.zeros_like(b1_phase)
+
     for i in range(n_slices):
         b1_mag_ordered[:, :, i, :] = b1_mag_vector[:, :, i * n_coils:i * n_coils + n_coils]
         b1_phase_ordered[:, :, i, :] = b1_phase_vector[:, :, i * n_coils:i * n_coils + n_coils]
 
-    # TODO: assert mask consistency within slices
+    # TODO: Find a way to assert mask consistency within slices
 
     # Scale magnitude in nT/V
     b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
