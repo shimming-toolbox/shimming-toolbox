@@ -83,12 +83,16 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     # TODO: deal with saturation
     # fit PMU and fieldmap values
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    # DEBUG:
+    acq_pressures = np.array([3000, 2000, 1000, 2000])
 
     # regularization --> static, riro
     # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, fieldmap.reshape(-1, fieldmap.shape[-1]).T)
+
+    # static/riro contains a 3d matrix of static/riro coefficients
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
     riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
@@ -100,14 +104,15 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     bounds = new_bounds_from_currents(currents_static, optimizer.merged_bounds)
 
     # Riro shim
-    # We multiply by the max offset so that the bounds take effect on the maximum value that the pressure probe can
-    # acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes "riro(i_vox) * max_offset" which is the
-    # maximum shim we will have. We solve for that to make sure the coils can support it. The units of riro * max_offset
-    # are: [unit_shim], ex: [Hz]
-    max_offset = max(4095 - mean_p, mean_p)
+    # We multiply by the max offset of the siemens pmu [max - min = 4095] so that the bounds take effect on the maximum
+    # value that the pressure probe can acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes
+    # "riro(i_vox) * max_offset" which is the maximum shim we will have. We solve for that to make sure the coils can
+    # support it. The units of riro * max_offset are: [unit_shim], ex: [Hz]
+    max_offset = max((pmu.max - pmu.min) - mean_p, mean_p)
+
+    # Set the riro map to shim
     optimizer.set_unshimmed(riro * max_offset, affine)
     currents_max_riro = optimize(optimizer, riro_mask, slices, shimwise_bounds=bounds)
-    # currents_max_riro = optimize(optimizer, riro_mask, slices)
     # Once the currents are solved, we divide by max_offset to return to units of
     # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
     currents_riro = currents_max_riro / max_offset

@@ -23,12 +23,14 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.shim.sequencer import define_slices
 
+DEBUG = False
+
 
 def create_unshimmed():
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
     model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
-    model_obj.generate_deltaB0('linear', [0.0, 20])
+    model_obj.generate_deltaB0('linear', [0.025, 2])
     tr = 0.025  # in s
     te = [0.004, 0.008]  # in s
     model_obj.simulate_measurement(tr, te)
@@ -42,18 +44,19 @@ def create_unshimmed():
     # various shim configurations.
     unshimmed = np.zeros([num_vox, num_vox, nz])
     for i_n in range(nz // 3):
-        unshimmed[:, :, 5 * i_n] = b0_map
-        unshimmed[:, :, (5 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
-        unshimmed[:, :, (5 * i_n) + 2] = unshimmed[:, :, 0] ** 2
+        unshimmed[:, :, 3 * i_n] = b0_map
+        unshimmed[:, :, (3 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
+        unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
 
     return unshimmed
 
 
 def create_unshimmed_affine():
-    return np.array([[0., 0., 3., 1],
-                     [-2.91667008, 0., 0., 2],
-                     [0., 2.91667008, 0., 3],
-                     [0., 0., 0., 1.]])
+    # return np.array([[0., 0., 3., 1],
+    #                  [-2.91667008, 0., 0., 2],
+    #                  [0., 2.91667008, 0., 3],
+    #                  [0., 0., 0., 1.]])
+    return np.eye(4)
 
 
 def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
@@ -87,10 +90,11 @@ def create_mask(ref):
 
 nz = 3  # Must be multiple of 3
 a_unshimmed = create_unshimmed()
-affine = np.eye(4) * 2
-affine[3, 3] = 1
-coil1 = create_coil(150, 150, nz + 10, create_constraints(1000, -1000, 2000), affine)
-affine = np.eye(4) * 0.75
+unshimmed_affine = create_unshimmed_affine()
+coil_affine = unshimmed_affine * 2
+coil_affine[3, 3] = 1
+coil1 = create_coil(100, 100, nz, create_constraints(1000, -1000, 2000), unshimmed_affine)
+affine = coil_affine * 0.75
 affine[3, 3] = 1
 coil2 = create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine)
 
@@ -98,12 +102,11 @@ coil2 = create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affi
 @pytest.mark.parametrize(
     "unshimmed,un_affine,sph_coil,sph_coil2,mask", [(
         a_unshimmed,
-        create_unshimmed_affine(),
+        unshimmed_affine,
         coil1,
         coil2,
         create_mask(a_unshimmed)
-    )
-    ]
+    )]
 )
 class TestSequencer(object):
     def test_shim_sequencer_lsq(self, unshimmed, un_affine, sph_coil, sph_coil2, mask):
@@ -202,15 +205,40 @@ class TestSequencer(object):
 def assert_results(coil, unshimmed, un_affine, currents, mask, z_slices):
     # Calculate theoretical shimmed map
     opt = Optimizer(coil, unshimmed, un_affine)
+
+    if DEBUG:
+        # Save fieldmap
+        fname_fieldmap_2 = os.path.join(os.curdir, 'fig_fieldmap.nii.gz')
+        nii_fieldmap = nib.Nifti1Image(unshimmed, un_affine)
+        nib.save(nii_fieldmap, fname_fieldmap_2)
+
+        # Save coil profiles as nifti
+        fname_coil = os.path.join(os.curdir, 'fig_coil_orig.nii.gz')
+        nii_coil = nib.Nifti1Image(coil[0].profile, coil[0].affine)
+        nib.save(nii_coil, fname_coil)
+
+        # save resampled coil profiles
+        fname_coil_res = os.path.join(os.curdir, 'fig_coil_resampled.nii.gz')
+        nii_coil = nib.Nifti1Image(opt.merged_coils, opt.unshimmed_affine)
+        nib.save(nii_coil, fname_coil_res)
+
+    correction_per_channel = np.zeros_like(opt.merged_coils)
     shimmed = np.zeros_like(unshimmed)
     for i_shim in range(len(z_slices)):
-        correction = np.sum(currents[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., z_slices[i_shim]]
+        correction_per_channel[..., z_slices[i_shim], :] = (currents[i_shim] * opt.merged_coils)[:, :, z_slices[i_shim], :]
+        correction = np.sum(correction_per_channel[..., z_slices[i_shim], :], axis=3, keepdims=False)
         shimmed[..., z_slices[i_shim]] = unshimmed[..., z_slices[i_shim]] + correction
 
         sum_shimmed = np.sum(np.abs(mask[:, :, z_slices[i_shim]] * shimmed[:, :, z_slices[i_shim]]))
         sum_unshimmed = np.sum(np.abs(mask[:, :, z_slices[i_shim]] * unshimmed[:, :, z_slices[i_shim]]))
         print(f"\nshimmed: {sum_shimmed}, unshimmed: {sum_unshimmed}, current: \n{currents[i_shim, :]}")
-        assert sum_shimmed < sum_unshimmed
+        # assert sum_shimmed < sum_unshimmed
+
+    if DEBUG:
+        # save resampled coil profiles
+        fname_correction = os.path.join(os.curdir, 'fig_correction.nii.gz')
+        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
+        nib.save(nii_correction, fname_correction)
 
 
 def test_realtime_sequencer():
@@ -225,17 +253,23 @@ def test_realtime_sequencer():
     nii_fieldmap = nib.Nifti1Image(unshimmed, new_affine, header=nii_fieldmap.header)
     unshimmed = nii_fieldmap.get_fdata()
 
-    # fake = create_unshimmed()
-    # # fake_temp = np.zeros([100, 100, 3, 3])
-    # # for i_temp in range(3):
-    # #     fake_temp[..., i_temp] = fake
+    # TODO: add linear riro, riro could require 0th order shim, is this done through frequency adjust? No, we should do
+    #  frequency adjust, for now, single slice can be 0th order shim using through slice "gradient"
+    # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
+    # down
+    # Dont forget to change the pmu trace
+    fake = create_unshimmed()
     # fake_temp = np.zeros([100, 100, 3, 4])
-    # fake_temp[..., 0] = fake + 10
-    # fake_temp[..., 1] = fake
-    # fake_temp[..., 2] = fake - 10
-    # fake_temp[..., 3] = fake
-    # nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
-    # unshimmed = nii_fieldmap.get_fdata()
+    # for i_temp in range(4):
+    #     fake_temp[..., i_temp] = fake
+    fake_temp = np.zeros([100, 100, 3, 4])
+    lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
+    fake_temp[..., 0] = fake + lin
+    fake_temp[..., 1] = fake
+    fake_temp[..., 2] = fake - lin
+    fake_temp[..., 3] = fake
+    nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
+    unshimmed = nii_fieldmap.get_fdata()
 
     # Set up mask
     # static
@@ -262,7 +296,7 @@ def test_realtime_sequencer():
         json_data = json.load(json_file)
 
     # Create Coil
-    coil_affine = new_affine
+    coil_affine = nii_fieldmap.affine
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
 
     slices = define_slices(unshimmed.shape[2], 1)
@@ -285,6 +319,8 @@ def test_realtime_sequencer():
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    # DEBUG
+    acq_pressures = [3000, 2000, 1000, 2000]
     # mean_p = np.mean(acq_pressures)
     # pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
 
@@ -319,8 +355,8 @@ def test_realtime_sequencer():
             sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
             print(f"\ni_shim: {i_shim}, t: {i_t}"
                   f"\nshimmed: {sum_shimmed_static_riro}, unshimmed: {sum_unshimmed}, "
-                  f"Static currents:\n{currents_static}\n"
-                  f"Riro currents:\n{currents_riro}\n")
+                  f"Static currents:\n{currents_static[i_shim]}\n"
+                  f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
 
             shim_trace_static.append(sum_shimmed_static)
             shim_trace_static_riro.append(sum_shimmed_static_riro)
@@ -329,7 +365,6 @@ def test_realtime_sequencer():
 
             assert sum_shimmed_static_riro < sum_unshimmed
 
-    DEBUG = False
     if DEBUG:
         n_t = nii_fieldmap.shape[3]
         for i_t in range(n_t):
@@ -410,7 +445,7 @@ def test_realtime_sequencer():
         # Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
         # Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
 
-        rep_mask = np.repeat(static_mask[..., np.newaxis], 10, 3)
+        rep_mask = np.repeat(static_mask[..., np.newaxis], nii_fieldmap.shape[3], 3)
         ma_unshimmed = np.ma.array(unshimmed, mask=rep_mask == False)
         ma_shim_static = np.ma.array(shimmed_static, mask=rep_mask == False)
         ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=rep_mask == False)
@@ -440,3 +475,5 @@ def test_realtime_sequencer():
 
     # Todo:
     # Use same affine for coil and for defining siemens basis
+    #
+    # Look at input of tests if the coil profiles are at the same place as the unshimmed map
