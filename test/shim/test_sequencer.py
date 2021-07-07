@@ -258,18 +258,18 @@ def test_realtime_sequencer():
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
     # down
     # Dont forget to change the pmu trace
-    fake = create_unshimmed()
+    # fake = create_unshimmed()
+    # # fake_temp = np.zeros([100, 100, 3, 4])
+    # # for i_temp in range(4):
+    # #     fake_temp[..., i_temp] = fake
     # fake_temp = np.zeros([100, 100, 3, 4])
-    # for i_temp in range(4):
-    #     fake_temp[..., i_temp] = fake
-    fake_temp = np.zeros([100, 100, 3, 4])
-    lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
-    fake_temp[..., 0] = fake + lin
-    fake_temp[..., 1] = fake
-    fake_temp[..., 2] = fake - lin
-    fake_temp[..., 3] = fake
-    nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
-    unshimmed = nii_fieldmap.get_fdata()
+    # lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
+    # fake_temp[..., 0] = fake + lin
+    # fake_temp[..., 1] = fake
+    # fake_temp[..., 2] = fake - lin
+    # fake_temp[..., 3] = fake
+    # nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
+    # unshimmed = nii_fieldmap.get_fdata()
 
     # Set up mask
     # static
@@ -277,13 +277,13 @@ def test_realtime_sequencer():
     static_mask = shapes(unshimmed[..., 0], 'cube',
                          center_dim1=int(nx / 2) - 6,
                          center_dim2=int(ny / 2) - 5,
-                         len_dim1=20, len_dim2=20, len_dim3=nz)
+                         len_dim1=5, len_dim2=10, len_dim3=nz)
 
     # Riro
     riro_mask = shapes(unshimmed[..., 0], 'cube',
                        center_dim1=int(nx / 2) - 6,
                        center_dim2=int(ny / 2) - 5,
-                       len_dim1=20, len_dim2=20, len_dim3=nz)
+                       len_dim1=5, len_dim2=10, len_dim3=nz)
 
     # Pmu
     fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -319,10 +319,8 @@ def test_realtime_sequencer():
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
-    # DEBUG
-    acq_pressures = [3000, 2000, 1000, 2000]
-    # mean_p = np.mean(acq_pressures)
-    # pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
+    # # DEBUG
+    # acq_pressures = [3000, 2000, 1000, 2000]
 
     # shim
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)

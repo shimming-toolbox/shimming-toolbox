@@ -83,8 +83,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, pmu: PmuResp, coils: Li
     # TODO: deal with saturation
     # fit PMU and fieldmap values
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
-    # DEBUG:
-    acq_pressures = np.array([3000, 2000, 1000, 2000])
+    # # DEBUG:
+    # acq_pressures = np.array([3000, 2000, 1000, 2000])
 
     # regularization --> static, riro
     # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
