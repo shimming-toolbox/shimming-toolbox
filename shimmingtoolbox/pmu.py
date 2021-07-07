@@ -37,6 +37,8 @@ class PmuResp(object):
         self.stop_time_mdh = attributes['stop_time_mdh']
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
+        self.max = attributes['max']
+        self.min = attributes['min']
 
     def read_resp(self, fname_pmu):
         """
@@ -114,7 +116,9 @@ class PmuResp(object):
             'start_time_mdh': start_time_mdh,
             'stop_time_mdh': stop_time_mdh,
             'start_time_mpcu': start_time_mpcu,
-            'stop_time_mpcu': stop_time_mpcu
+            'stop_time_mpcu': stop_time_mpcu,
+            'max': 4095,
+            'min': 0
         }
 
         return attributes
