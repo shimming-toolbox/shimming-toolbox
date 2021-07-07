@@ -156,9 +156,9 @@ class Optimizer(object):
 
         return bounds
 
-    def initial_guess_half_bounds(self):
+    def initial_guess_mean_bounds(self):
         """
-        Calculates the initial guess from the bounds, sets it to half of the bounds
+        Calculates the initial guess from the bounds, sets it to the mean of the bounds
 
         Returns:
             np.ndarray: 1d array (n_channels) of coefficient representing the initial guess

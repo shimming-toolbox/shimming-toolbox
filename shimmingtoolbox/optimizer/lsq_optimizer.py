@@ -68,7 +68,7 @@ class LsqOptimizer(Optimizer):
             start_index = end_index
 
         # Set up output currents
-        currents_0 = self.initial_guess_half_bounds()
+        currents_0 = self.initial_guess_mean_bounds()
 
         # Optimize
         currents_sp = opt.minimize(self._residuals, currents_0,
