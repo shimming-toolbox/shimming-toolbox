@@ -23,7 +23,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.shim.sequencer import define_slices
 
-DEBUG = False
+DEBUG = True
 
 
 def create_unshimmed():
@@ -241,7 +241,7 @@ def assert_results(coil, unshimmed, un_affine, currents, mask, z_slices):
         nib.save(nii_correction, fname_correction)
 
 
-def test_realtime_sequencer():
+def test_realtime_sequencer_phantom_data():
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
@@ -252,24 +252,6 @@ def test_realtime_sequencer():
     new_affine[:3, :3] = nii_fieldmap.affine[:3, :3]
     nii_fieldmap = nib.Nifti1Image(unshimmed, new_affine, header=nii_fieldmap.header)
     unshimmed = nii_fieldmap.get_fdata()
-
-    # TODO: add linear riro, riro could require 0th order shim, is this done through frequency adjust? No, we should do
-    #  frequency adjust, for now, single slice can be 0th order shim using through slice "gradient"
-    # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
-    # down
-    # Dont forget to change the pmu trace
-    # fake = create_unshimmed()
-    # # fake_temp = np.zeros([100, 100, 3, 4])
-    # # for i_temp in range(4):
-    # #     fake_temp[..., i_temp] = fake
-    # fake_temp = np.zeros([100, 100, 3, 4])
-    # lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
-    # fake_temp[..., 0] = fake + lin
-    # fake_temp[..., 1] = fake
-    # fake_temp[..., 2] = fake - lin
-    # fake_temp[..., 3] = fake
-    # nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine(), header=nii_fieldmap.header)
-    # unshimmed = nii_fieldmap.get_fdata()
 
     # Set up mask
     # static
@@ -295,6 +277,10 @@ def test_realtime_sequencer():
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
 
+    # Calc pressure
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+
     # Create Coil
     coil_affine = nii_fieldmap.affine
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
@@ -316,12 +302,6 @@ def test_realtime_sequencer():
           f"Riro currents * p_rms:\n{currents_riro_rms}\n")
 
     # Calculate theoretical shimmed map
-    # Calc pressure
-    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
-    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
-    # # DEBUG
-    # acq_pressures = [3000, 2000, 1000, 2000]
-
     # shim
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
     shimmed_static_riro = np.zeros_like(unshimmed)
@@ -372,36 +352,8 @@ def test_realtime_sequencer():
             masked_shim_riro[..., i_t] = shimmed_riro[..., i_t]
             masked_unshimmed[..., i_t] = riro_mask * unshimmed[..., i_t]
 
-        # Plot Static and RIRO
-        i_t = 0
-        fig = Figure(figsize=(10, 10))
-        ax = fig.add_subplot(2, 3, 1)
-        im = ax.imshow(np.rot90(masked_shim_static_riro[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("masked_shim static + riro")
-        ax = fig.add_subplot(2, 3, 2)
-        im = ax.imshow(np.rot90(masked_shim_static[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("masked_shim static")
-        ax = fig.add_subplot(2, 3, 3)
-        im = ax.imshow(np.rot90(masked_unshimmed[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("masked_unshimmed")
-
-        ax = fig.add_subplot(2, 3, 4)
-        im = ax.imshow(np.rot90(shimmed_static_riro[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("shim static + riro")
-        ax = fig.add_subplot(2, 3, 5)
-        im = ax.imshow(np.rot90(shimmed_static[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("shim static")
-        ax = fig.add_subplot(2, 3, 6)
-        im = ax.imshow(np.rot90(unshimmed[..., 0, i_t]))
-        fig.colorbar(im)
-        ax.set_title("unshimmed")
-        fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure)
+        plot_shimmed_vs_unshimmed(0, 0, masked_shim_static_riro, masked_shim_static, masked_unshimmed,
+                                  shimmed_static_riro, shimmed_static, unshimmed)
 
         # plot shimmed and unshimmed trace
         fig = Figure(figsize=(10, 10))
@@ -416,62 +368,255 @@ def test_realtime_sequencer():
         fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
 
-        fig = Figure(figsize=(10, 10))
-        ax = fig.add_subplot(111)
-        ax.plot(acq_pressures, label='pressures')
-        ax.legend()
-        ax.set_ylim(0, 4095)
-        ax.set_title("Pressures vs time points")
-        fname_figure = os.path.join(os.curdir, 'fig_trace_pressures.png')
+        plot_pressure_points(acq_pressures)
+        save_nii(nii_fieldmap, coil, opt)
+        print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro)
+
+
+def test_realtime_sequencer_fake_data():
+    # TODO: add linear riro, riro could require 0th order shim, is this done through frequency adjust? No, we should do
+    #  frequency adjust, for now, single slice can be 0th order shim using through slice "gradient"
+    # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
+    # down
+    # Dont forget to change the pmu trace
+    fake = create_unshimmed()
+    # fake_temp = np.zeros([100, 100, 3, 4])
+    # for i_temp in range(4):
+    #     fake_temp[..., i_temp] = fake
+    fake_temp = np.zeros([100, 100, 3, 4])
+    lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
+    fake_temp[..., 0] = fake + lin
+    fake_temp[..., 1] = fake
+    fake_temp[..., 2] = fake - lin
+    fake_temp[..., 3] = fake
+    nii_fieldmap = nib.Nifti1Image(fake_temp, create_unshimmed_affine())
+    unshimmed = nii_fieldmap.get_fdata()
+
+    # Set up mask
+    # static
+    nx, ny, nz, _ = nii_fieldmap.shape
+    static_mask = shapes(unshimmed[..., 0], 'cube',
+                         center_dim1=int(nx / 2) - 6,
+                         center_dim2=int(ny / 2) - 5,
+                         len_dim1=20, len_dim2=20, len_dim3=nz)
+
+    # Riro
+    riro_mask = shapes(unshimmed[..., 0], 'cube',
+                       center_dim1=int(nx / 2) - 6,
+                       center_dim2=int(ny / 2) - 5,
+                       len_dim1=20, len_dim2=20, len_dim3=nz)
+
+    # Pmu
+    fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_resp)
+    # Change pmu so that it uses fake data
+    pmu.data = np.array([3000, 2000, 1000, 2000])
+    pmu.stop_time_mdh = 750
+    pmu.start_time_mdh = 0
+
+    # Calc pressure
+    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+
+    # Create Coil
+    coil_affine = nii_fieldmap.affine
+    coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
+
+    slices = define_slices(unshimmed.shape[2], 1)
+
+    currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+                                                                                static_mask, riro_mask, slices,
+                                                                                opt_method='least_squares')
+    # currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
+    #                                                                             static_mask, riro_mask, slices,
+    #                                                                             opt_method='pseudo_inverse')
+    currents_riro_rms = currents_riro * p_rms
+
+    print(f"\nSlices: {slices}"
+          f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
+          f"Coil affine:\n{coil_affine}\n"
+          f"Static currents:\n{currents_static}\n"
+          f"Riro currents * p_rms:\n{currents_riro_rms}\n")
+
+    # Calculate theoretical shimmed map
+    # shim
+    opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
+    shimmed_static_riro = np.zeros_like(unshimmed)
+    shimmed_static = np.zeros_like(unshimmed)
+    shimmed_riro = np.zeros_like(unshimmed)
+    masked_shim_static_riro = np.zeros_like(unshimmed)
+    masked_shim_static = np.zeros_like(unshimmed)
+    masked_shim_riro = np.zeros_like(unshimmed)
+    masked_unshimmed = np.zeros_like(unshimmed)
+    shim_trace_static_riro = []
+    shim_trace_static = []
+    shim_trace_riro = []
+    unshimmed_trace = []
+    for i_shim in range(len(slices)):
+        # Calculate static correction
+        correction_static = np.sum(currents_static[i_shim] *
+                                   opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
+
+        riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
+        for i_t in range(nii_fieldmap.shape[3]):
+            correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
+            shimmed_static[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static
+            shimmed_static_riro[..., slices[i_shim], i_t] = shimmed_static[..., slices[i_shim], i_t] + correction_riro
+            shimmed_riro[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_riro
+
+            sum_shimmed_static = np.sum(np.abs(static_mask[:, :, slices[i_shim]] * shimmed_static[:, :, slices[i_shim], i_t]))
+            sum_shimmed_static_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_static_riro[:, :, slices[i_shim], i_t]))
+            sum_shimmed_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_riro[:, :, slices[i_shim], i_t]))
+            sum_unshimmed = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * unshimmed[:, :, slices[i_shim], i_t]))
+            print(f"\ni_shim: {i_shim}, t: {i_t}"
+                  f"\nshimmed: {sum_shimmed_static_riro}, unshimmed: {sum_unshimmed}, "
+                  f"Static currents:\n{currents_static[i_shim]}\n"
+                  f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
+
+            shim_trace_static.append(sum_shimmed_static)
+            shim_trace_static_riro.append(sum_shimmed_static_riro)
+            shim_trace_riro.append(sum_shimmed_riro)
+            unshimmed_trace.append(sum_unshimmed)
+
+            assert sum_shimmed_static_riro < sum_unshimmed
+
+    # reshape to slice x timepoint
+    nt = nii_fieldmap.shape[3]
+    n_slice = nii_fieldmap.shape[2]
+    shim_trace_static = np.array(shim_trace_static).reshape(n_slice, nt)
+    shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_slice, nt)
+    shim_trace_riro = np.array(shim_trace_riro).reshape(n_slice, nt)
+    unshimmed_trace = np.array(unshimmed_trace).reshape(n_slice, nt)
+
+    if DEBUG:
+        for i_t in range(nt):
+            # static mask and riro are the same
+            masked_shim_static[..., i_t] = static_mask * shimmed_static[..., i_t]
+            masked_shim_static_riro[..., i_t] = riro_mask * shimmed_static_riro[..., i_t]
+            masked_shim_riro[..., i_t] = shimmed_riro[..., i_t]
+            masked_unshimmed[..., i_t] = riro_mask * unshimmed[..., i_t]
+
+        plot_shimmed_vs_unshimmed(0, 0, masked_shim_static_riro, masked_shim_static, masked_unshimmed,
+                                  shimmed_static_riro, shimmed_static, unshimmed)
+
+        # plot shimmed and unshimmed trace
+        fig = Figure(figsize=(10, 14))
+        for i_slice in range(n_slice):
+            ax = fig.add_subplot(n_slice, 1, i_slice + 1)
+            # ax = fig.add_subplot(1, n_slice, i_slice + 1)
+            ax.plot(shim_trace_static_riro[i_slice, :], label='shimmed static + riro')
+            ax.plot(shim_trace_static[i_slice, :], label='shimmed static')
+            ax.plot(shim_trace_riro[i_slice, :], label='shimmed_riro')
+            ax.plot(unshimmed_trace[i_slice, :], label='unshimmed')
+            ax.set_xlabel('Timepoints')
+            ax.set_ylabel('Sum over the ROI')
+            ax.legend()
+            ax.set_ylim(0, max(unshimmed_trace[i_slice, :]))
+            ax.set_title(f"Unshimmed vs shimmed values: slice {i_slice}")
+        fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
 
-        # Save fieldmap
-        fname_fieldmap_2 = os.path.join(os.curdir, 'fig_fieldmap.nii.gz')
-        nib.save(nii_fieldmap, fname_fieldmap_2)
-
-        # Save coil profiles as nifti
-        fname_coil = os.path.join(os.curdir, 'fig_coil_orig.nii.gz')
-        nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
-        nib.save(nii_coil, fname_coil)
-
-        # save resampled coil profiles
-        fname_coil_res = os.path.join(os.curdir, 'fig_coil_resampled.nii.gz')
-        nii_coil = nib.Nifti1Image(opt.merged_coils, opt.unshimmed_affine)
-        nib.save(nii_coil, fname_coil_res)
-
-        # metric to isolate temporal and static component
-        # Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
-        # Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
-
-        rep_mask = np.repeat(static_mask[..., np.newaxis], nii_fieldmap.shape[3], 3)
-        ma_unshimmed = np.ma.array(unshimmed, mask=rep_mask == False)
-        ma_shim_static = np.ma.array(shimmed_static, mask=rep_mask == False)
-        ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=rep_mask == False)
-        ma_shim_riro = np.ma.array(shimmed_riro, mask=rep_mask == False)
-
-        # Temporal
-        temp_shim_static = np.ma.mean(np.ma.std(ma_shim_static, 3))
-        temp_shim_static_riro = np.ma.mean(np.ma.std(ma_shim_static_riro, 3))
-        temp_shim_riro = np.ma.mean(np.ma.std(ma_shim_riro, 3))
-        temp_unshimmed = np.ma.mean(np.ma.std(ma_unshimmed, 3))
-
-        # Static
-        static_shim_static = np.ma.std(np.ma.mean(ma_shim_static, 3))
-        static_shim_static_riro = np.ma.std(np.ma.mean(ma_shim_static_riro, 3))
-        static_shim_riro = np.ma.std(np.ma.mean(ma_shim_riro, 3))
-        static_unshimmed = np.ma.std(np.ma.mean(ma_unshimmed, 3))
-        print(f"\nTemporal: Compute the STD across time pixelwise, and then compute the mean across pixels."
-              f"\ntemp_shim_static: {temp_shim_static}"
-              f"\ntemp_shim_static_riro: {temp_shim_static_riro}"
-              f"\ntemp_shim_riro: {temp_shim_riro}"
-              f"\ntemp_unshimmed: {temp_unshimmed}"
-              f"\nStatic: Compute the MEAN across time pixelwise, and then compute the STD across pixels."
-              f"\nstatic_shim_static: {static_shim_static}"
-              f"\nstatic_shim_static_riro: {static_shim_static_riro}"
-              f"\nstatic_shim_riro: {static_shim_riro}"
-              f"\nstatic_unshimmed: {static_unshimmed}")
+        plot_pressure_points(acq_pressures)
+        save_nii(nii_fieldmap, coil, opt)
+        print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro)
 
     # Todo:
     # Use same affine for coil and for defining siemens basis
     #
     # Look at input of tests if the coil profiles are at the same place as the unshimmed map
+
+
+def plot_pressure_points(acq_pressures):
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(acq_pressures, label='pressures')
+    ax.legend()
+    ax.set_ylim(0, 4095)
+    ax.set_title("Pressures vs time points")
+    fname_figure = os.path.join(os.curdir, 'fig_trace_pressures.png')
+    fig.savefig(fname_figure)
+
+
+def plot_shimmed_vs_unshimmed(timepoint, slice, masked_shim_static_riro, masked_shim_static, masked_unshimmed,
+                              shimmed_static_riro, shimmed_static, unshimmed):
+    # Plot Static and RIRO
+    i_t = timepoint
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(2, 3, 1)
+    im = ax.imshow(np.rot90(masked_shim_static_riro[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("masked_shim static + riro")
+    ax = fig.add_subplot(2, 3, 2)
+    im = ax.imshow(np.rot90(masked_shim_static[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("masked_shim static")
+    ax = fig.add_subplot(2, 3, 3)
+    im = ax.imshow(np.rot90(masked_unshimmed[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("masked_unshimmed")
+
+    ax = fig.add_subplot(2, 3, 4)
+    im = ax.imshow(np.rot90(shimmed_static_riro[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("shim static + riro")
+    ax = fig.add_subplot(2, 3, 5)
+    im = ax.imshow(np.rot90(shimmed_static[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("shim static")
+    ax = fig.add_subplot(2, 3, 6)
+    im = ax.imshow(np.rot90(unshimmed[..., slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title("unshimmed")
+    fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure)
+
+
+def save_nii(nii_fieldmap, coil, opt):
+    # Save fieldmap
+    fname_fieldmap_2 = os.path.join(os.curdir, 'fig_fieldmap.nii.gz')
+    nib.save(nii_fieldmap, fname_fieldmap_2)
+
+    # Save coil profiles as nifti
+    fname_coil = os.path.join(os.curdir, 'fig_coil_orig.nii.gz')
+    nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
+    nib.save(nii_coil, fname_coil)
+
+    # save resampled coil profiles
+    fname_coil_res = os.path.join(os.curdir, 'fig_coil_resampled.nii.gz')
+    nii_coil = nib.Nifti1Image(opt.merged_coils, opt.unshimmed_affine)
+    nib.save(nii_coil, fname_coil_res)
+
+
+def print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro):
+    # metric to isolate temporal and static component
+    # Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
+    # Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
+
+    rep_mask = np.repeat(static_mask[..., np.newaxis], nii_fieldmap.shape[3], 3)
+    ma_unshimmed = np.ma.array(unshimmed, mask=rep_mask == False)
+    ma_shim_static = np.ma.array(shimmed_static, mask=rep_mask == False)
+    ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=rep_mask == False)
+    ma_shim_riro = np.ma.array(shimmed_riro, mask=rep_mask == False)
+
+    # Temporal
+    temp_shim_static = np.ma.mean(np.ma.std(ma_shim_static, 3))
+    temp_shim_static_riro = np.ma.mean(np.ma.std(ma_shim_static_riro, 3))
+    temp_shim_riro = np.ma.mean(np.ma.std(ma_shim_riro, 3))
+    temp_unshimmed = np.ma.mean(np.ma.std(ma_unshimmed, 3))
+
+    # Static
+    static_shim_static = np.ma.std(np.ma.mean(ma_shim_static, 3))
+    static_shim_static_riro = np.ma.std(np.ma.mean(ma_shim_static_riro, 3))
+    static_shim_riro = np.ma.std(np.ma.mean(ma_shim_riro, 3))
+    static_unshimmed = np.ma.std(np.ma.mean(ma_unshimmed, 3))
+    print(f"\nTemporal: Compute the STD across time pixelwise, and then compute the mean across pixels."
+          f"\ntemp_shim_static: {temp_shim_static}"
+          f"\ntemp_shim_static_riro: {temp_shim_static_riro}"
+          f"\ntemp_shim_riro: {temp_shim_riro}"
+          f"\ntemp_unshimmed: {temp_unshimmed}"
+          f"\nStatic: Compute the MEAN across time pixelwise, and then compute the STD across pixels."
+          f"\nstatic_shim_static: {static_shim_static}"
+          f"\nstatic_shim_static_riro: {static_shim_static_riro}"
+          f"\nstatic_shim_riro: {static_shim_riro}"
+          f"\nstatic_unshimmed: {static_unshimmed}")
