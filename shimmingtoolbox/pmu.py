@@ -135,10 +135,10 @@ class PmuResp(object):
         Returns:
             numpy.ndarray: 1D array with interpolated times
         """
-        if np.any(self.start_time_mdh > acquisition_times) or np.all(self.stop_time_mdh < acquisition_times):
+        if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
-        raster = float(self.stop_time_mdh - self.start_time_mdh) / len(self.data-1)
+        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data)-1)
         times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
 
         interp_data = np.interp(acquisition_times, times, self.data)

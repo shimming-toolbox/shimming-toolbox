@@ -71,9 +71,9 @@ class TestRealtimeShim(object):
                                                  self.json)
 
         assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
-        assert np.isclose(riro_zcorrection[0], -0.00802980555042238)
-        assert np.isclose(mean_p, 1326.3179660207873)
-        assert np.isclose(pressure_rms, 1493.9468284155396)
+        assert np.isclose(riro_zcorrection[0], -0.008084002566817211)
+        assert np.isclose(mean_p, 1326.7410085020922)
+        assert np.isclose(pressure_rms, 1494.6380477845253)
 
     def test_mask(self):
         """Test realtime_shim mask parameter"""
@@ -87,9 +87,9 @@ class TestRealtimeShim(object):
                                                  nii_mask_anat_riro=self.nii_mask_riro)
 
         assert np.isclose(static_zcorrection[0], 0.2766538103967352)
-        assert np.isclose(riro_zcorrection[0], -0.051144561917725075)
-        assert np.isclose(mean_p, 1326.318)
-        assert np.isclose(pressure_rms, 1493.9468284155396)
+        assert np.isclose(riro_zcorrection[0], -0.05118665738437744)
+        assert np.isclose(mean_p, 1326.7410085020922)
+        assert np.isclose(pressure_rms, 1494.6380477845253)
 
     def test_output_figure(self):
         """Test realtime_shim output figures parameter"""
