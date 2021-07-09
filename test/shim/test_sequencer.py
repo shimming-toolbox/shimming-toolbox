@@ -242,6 +242,7 @@ def assert_results(coil, unshimmed, un_affine, currents, mask, z_slices):
 
 
 def test_realtime_sequencer_phantom_data():
+    """Test on the realtime sequencer using realtime zshimming data"""
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
@@ -285,8 +286,10 @@ def test_realtime_sequencer_phantom_data():
     coil_affine = nii_fieldmap.affine
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
 
+    # Define the slices to shim with the proper convention
     slices = define_slices(unshimmed.shape[2], 1)
 
+    # Find optimal currents
     currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
                                                                                 static_mask, riro_mask, slices,
                                                                                 opt_method='least_squares')
@@ -320,13 +323,16 @@ def test_realtime_sequencer_phantom_data():
         correction_static = np.sum(currents_static[i_shim] *
                                    opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
 
+        # Calculate the riro coil profiles
         riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
         for i_t in range(nii_fieldmap.shape[3]):
+            # Apply the static and riro correction
             correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
             shimmed_static[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static
             shimmed_static_riro[..., slices[i_shim], i_t] = shimmed_static[..., slices[i_shim], i_t] + correction_riro
             shimmed_riro[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_riro
 
+            # Calculate the sum over the ROI
             sum_shimmed_static = np.sum(np.abs(static_mask[:, :, slices[i_shim]] * shimmed_static[:, :, slices[i_shim], i_t]))
             sum_shimmed_static_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_static_riro[:, :, slices[i_shim], i_t]))
             sum_shimmed_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_riro[:, :, slices[i_shim], i_t]))
@@ -336,6 +342,7 @@ def test_realtime_sequencer_phantom_data():
                   f"Static currents:\n{currents_static[i_shim]}\n"
                   f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
 
+            # Create a 1D list of the sum of the shimmed and unshimmed maps
             shim_trace_static.append(sum_shimmed_static)
             shim_trace_static_riro.append(sum_shimmed_static_riro)
             shim_trace_riro.append(sum_shimmed_riro)
@@ -374,15 +381,11 @@ def test_realtime_sequencer_phantom_data():
 
 
 def test_realtime_sequencer_fake_data():
-    # TODO: add linear riro, riro could require 0th order shim, is this done through frequency adjust? No, we should do
-    #  frequency adjust, for now, single slice can be 0th order shim using through slice "gradient"
+    """Test on the realtime sequencer using simulated data"""
+
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
     # down
-    # Dont forget to change the pmu trace
     fake = create_unshimmed()
-    # fake_temp = np.zeros([100, 100, 3, 4])
-    # for i_temp in range(4):
-    #     fake_temp[..., i_temp] = fake
     fake_temp = np.zeros([100, 100, 3, 4])
     lin = np.repeat(fake[:, :, 0, np.newaxis], 3, axis=2) / 10
     fake_temp[..., 0] = fake + lin
@@ -423,8 +426,10 @@ def test_realtime_sequencer_fake_data():
     coil_affine = nii_fieldmap.affine
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
 
+    # Define the slices to shim with the proper convention
     slices = define_slices(unshimmed.shape[2], 1)
 
+    # Find optimal currents
     currents_static, currents_riro, mean_p, p_rms = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, pmu, [coil],
                                                                                 static_mask, riro_mask, slices,
                                                                                 opt_method='least_squares')
@@ -458,13 +463,16 @@ def test_realtime_sequencer_fake_data():
         correction_static = np.sum(currents_static[i_shim] *
                                    opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
 
+        # Calculate the riro coil profiles
         riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)[..., slices[i_shim]]
         for i_t in range(nii_fieldmap.shape[3]):
+            # Apply the static and riro correction
             correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
             shimmed_static[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_static
             shimmed_static_riro[..., slices[i_shim], i_t] = shimmed_static[..., slices[i_shim], i_t] + correction_riro
             shimmed_riro[..., slices[i_shim], i_t] = unshimmed[..., slices[i_shim], i_t] + correction_riro
 
+            # Calculate the sum over the ROI
             sum_shimmed_static = np.sum(np.abs(static_mask[:, :, slices[i_shim]] * shimmed_static[:, :, slices[i_shim], i_t]))
             sum_shimmed_static_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_static_riro[:, :, slices[i_shim], i_t]))
             sum_shimmed_riro = np.sum(np.abs(riro_mask[:, :, slices[i_shim]] * shimmed_riro[:, :, slices[i_shim], i_t]))
@@ -474,6 +482,7 @@ def test_realtime_sequencer_fake_data():
                   f"Static currents:\n{currents_static[i_shim]}\n"
                   f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
 
+            # Create a 1D list of the sum of the shimmed and unshimmed maps
             shim_trace_static.append(sum_shimmed_static)
             shim_trace_static_riro.append(sum_shimmed_static_riro)
             shim_trace_riro.append(sum_shimmed_riro)
@@ -490,6 +499,7 @@ def test_realtime_sequencer_fake_data():
     unshimmed_trace = np.array(unshimmed_trace).reshape(n_slice, nt)
 
     if DEBUG:
+        # Create mashed shim and unshimmed variables
         for i_t in range(nt):
             # static mask and riro are the same
             masked_shim_static[..., i_t] = static_mask * shimmed_static[..., i_t]
@@ -497,6 +507,7 @@ def test_realtime_sequencer_fake_data():
             masked_shim_riro[..., i_t] = shimmed_riro[..., i_t]
             masked_unshimmed[..., i_t] = riro_mask * unshimmed[..., i_t]
 
+        # Plot figures of the shimmined and unshimmend maps
         plot_shimmed_vs_unshimmed(0, 0, masked_shim_static_riro, masked_shim_static, masked_unshimmed,
                                   shimmed_static_riro, shimmed_static, unshimmed)
 
