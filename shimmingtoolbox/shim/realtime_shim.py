@@ -74,7 +74,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                 not np.all(nii_mask_anat_riro.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp)
+        nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp, mode='constant')
         mask_fmap_riro = nii_mask_fmap_riro.get_fdata()
     else:
         mask_fmap_riro = np.ones_like(fieldmap[..., 0])
@@ -87,7 +87,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                 not np.all(nii_mask_anat_static.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp)
+        nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp, mode='constant')
         mask_fmap_static = nii_mask_fmap_static.get_fdata()
     else:
         mask_fmap_static = np.ones_like(fieldmap[..., 0])
@@ -148,7 +148,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
         nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
-        nii_resampled_static = resample_from_to(nii_static, nii_anat)
+        nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
 
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
@@ -176,7 +176,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
         nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
-        nii_resampled_riro = resample_from_to(nii_riro, nii_anat)
+        nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
 
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
