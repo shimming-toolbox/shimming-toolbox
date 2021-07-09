@@ -1,7 +1,11 @@
 Welcome to shimming-toolbox!
 ============================
 
-|badge-ci| |badge-coveralls| |badge-doc| |badge-twitter|
+|badge-releases| |badge-ci| |badge-coveralls| |badge-doc| |badge-twitter| |badge-license|
+
+.. |badge-releases| image:: https://img.shields.io/github/v/release/shimming-toolbox/shimming-toolbox
+    :alt: Releases
+    :target: https://github.com/shimming-toolbox/shimming-toolbox/releases
 
 .. |badge-ci| image:: https://github.com/shimming-toolbox/shimming-toolbox/workflows/CI-Tests/badge.svg?
     :alt: GitHub Actions CI
@@ -18,6 +22,10 @@ Welcome to shimming-toolbox!
 .. |badge-twitter| image:: https://img.shields.io/twitter/follow/shimmingtoolbox.svg?style=social&label=Follow
     :alt: Twitter Follow
     :target: https://twitter.com/shimmingtoolbox
+
+.. |badge-license| image:: https://img.shields.io/github/license/shimming-toolbox/shimming-toolbox
+   :alt: License
+   :target: https://github.com/shimming-toolbox/shimming-toolbox/blob/master/LICENSE
 
 ``shimming-toolbox`` is an open-source Python software package enabling
 a variety of MRI shimming (magnetic field homogenization) techniques
