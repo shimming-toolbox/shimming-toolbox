@@ -70,8 +70,8 @@ class TestRealtimeShim(object):
                                                  self.pmu,
                                                  self.json)
 
-        assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
-        assert np.isclose(riro_zcorrection[0], -0.00802980555042238)
+        assert np.isclose(static_zcorrection[0], 0.12928646689120157)
+        assert np.isclose(riro_zcorrection[0], -0.007959437710556651)
         assert np.isclose(mean_p, 1326.3179660207873)
         assert np.isclose(pressure_rms, 1493.9468284155396)
 
@@ -100,6 +100,10 @@ class TestRealtimeShim(object):
                           path_output=tmp)
 
             assert len(os.listdir(tmp)) != 0
+
+            nib.save(self.nii_mask_static, os.path.join(tmp, 'fig_mask_static.nii.gz'))
+            nib.save(self.nii_mask_riro, os.path.join(tmp, 'fig_mask_riro.nii.gz'))
+            nib.save(self.nii_anat, os.path.join(tmp, 'fig_anat.nii.gz'))
 
     # Tests that should throw errors
     def test_wrong_dim_fieldmap(self):
