@@ -74,7 +74,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                 not np.all(nii_mask_anat_riro.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp, mode='constant')
+        nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp, mode='grid-constant')
         mask_fmap_riro = nii_mask_fmap_riro.get_fdata()
     else:
         mask_fmap_riro = np.ones_like(fieldmap[..., 0])
@@ -87,7 +87,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                 not np.all(nii_mask_anat_static.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
         nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp, mode='constant')
+        nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp, mode='grid-constant')
         mask_fmap_static = nii_mask_fmap_static.get_fdata()
     else:
         mask_fmap_static = np.ones_like(fieldmap[..., 0])
