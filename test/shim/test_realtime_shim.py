@@ -36,7 +36,7 @@ class TestRealtimeShim(object):
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine, header=nii_anat.header)
         self.nii_mask_static = nii_mask_static
 
         # Riro
@@ -45,7 +45,7 @@ class TestRealtimeShim(object):
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine, header=nii_anat.header)
         self.nii_mask_riro = nii_mask_riro
 
         # Pmu
@@ -110,7 +110,7 @@ class TestRealtimeShim(object):
         """Wrong number of fieldmap dimensions."""
 
         fieldmap = self.nii_fieldmap.get_fdata()
-        nii_fieldmap_3d = nib.Nifti1Image(fieldmap[..., 0], self.nii_fieldmap.affine)
+        nii_fieldmap_3d = nib.Nifti1Image(fieldmap[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -127,7 +127,7 @@ class TestRealtimeShim(object):
         """Wrong number of anat dimensions."""
 
         anat = self.nii_anat.get_fdata()
-        nii_anat_2d = nib.Nifti1Image(anat[..., 0], self.nii_fieldmap.affine)
+        nii_anat_2d = nib.Nifti1Image(anat[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -144,7 +144,7 @@ class TestRealtimeShim(object):
         """Wrong number of static mask dimensions."""
 
         mask = self.nii_mask_static.get_fdata()
-        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
+        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -161,7 +161,7 @@ class TestRealtimeShim(object):
         """Wrong number of riro mask dimensions."""
 
         mask = self.nii_mask_riro.get_fdata()
-        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
+        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:

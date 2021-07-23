@@ -69,31 +69,30 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         raise RuntimeError("Anatomical image must be in 3d")
 
     # Load riro mask
-    if nii_mask_anat_riro is not None:
+    if nii_mask_anat_riro is None:
+        mask_anat_riro = np.ones_like(anat)
+        nii_mask_anat_riro = nib.Nifti1Image(mask_anat_riro, nii_anat.affine, header=nii_anat.header)
+    else:
         if not np.all(np.isclose(nii_anat.affine, nii_mask_anat_riro.affine)) or \
                 not np.all(nii_mask_anat_riro.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
-        nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp, mode='grid-constant')
-        mask_fmap_riro = nii_mask_fmap_riro.get_fdata()
-    else:
-        mask_fmap_riro = np.ones_like(fieldmap[..., 0])
-        nii_mask_fmap_riro = nib.Nifti1Image(mask_fmap_riro, nii_anat.affine)
-        nii_mask_anat_riro = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
+    nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+    nii_mask_fmap_riro = resample_from_to(nii_mask_anat_riro, nii_fmap_3d_temp, order=0, mode='grid-constant')
+    mask_fmap_riro = nii_mask_fmap_riro.get_fdata()
 
     # Load static mask
-    if nii_mask_anat_static is not None:
+    if nii_mask_anat_static is None:
+        mask_anat_static = np.ones_like(anat)
+        nii_mask_anat_static = nib.Nifti1Image(mask_anat_static, nii_anat.affine, header=nii_anat.header)
+    else:
         if not np.all(np.isclose(nii_anat.affine, nii_mask_anat_static.affine)) or \
                 not np.all(nii_mask_anat_static.shape == nii_anat.shape):
             raise RuntimeError("Mask must have the same shape and affine transformation as anat")
-        nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine)
-        nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp, mode='grid-constant')
-        mask_fmap_static = nii_mask_fmap_static.get_fdata()
-    else:
-        mask_fmap_static = np.ones_like(fieldmap[..., 0])
-        nii_mask_fmap_static = nib.Nifti1Image(mask_fmap_static, nii_anat.affine)
-        nii_mask_anat_static = nib.Nifti1Image(np.ones_like(anat), nii_anat.affine)
+    nii_fmap_3d_temp = nib.Nifti1Image(fieldmap[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+    nii_mask_fmap_static = resample_from_to(nii_mask_anat_static, nii_fmap_3d_temp, order=0, mode='grid-constant')
+    mask_fmap_static = nii_mask_fmap_static.get_fdata()
 
+    # Output figures
     if is_outputting_figures:
         nib.save(nii_mask_fmap_riro, os.path.join(path_output, 'fig_mask_fmap_riro.nii.gz'))
         nib.save(nii_mask_fmap_static, os.path.join(path_output, 'fig_mask_fmap_static.nii.gz'))
@@ -112,11 +111,11 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     gradient *= 1000  # [mT / m]
 
     if is_outputting_figures:
-        nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine)
+        nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine, header=nii_fieldmap.header)
         nib.save(nii_gz_gradient, os.path.join(path_output, 'fig_gz_gradient.nii.gz'))
-        nii_gy_gradient = nib.Nifti1Image(gradient[1], nii_fieldmap.affine)
+        nii_gy_gradient = nib.Nifti1Image(gradient[1], nii_fieldmap.affine, header=nii_fieldmap.header)
         nib.save(nii_gy_gradient, os.path.join(path_output, 'fig_gy_gradient.nii.gz'))
-        nii_gx_gradient = nib.Nifti1Image(gradient[0], nii_fieldmap.affine)
+        nii_gx_gradient = nib.Nifti1Image(gradient[0], nii_fieldmap.affine, header=nii_fieldmap.header)
         nib.save(nii_gx_gradient, os.path.join(path_output, 'fig_gx_gradient.nii.gz'))
 
     # Fetch PMU timing
@@ -147,7 +146,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     # Resample static to target anatomical image
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
-        nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine)
+        nii_static = nib.Nifti1Image(static[g_axis], nii_fieldmap.affine, header=nii_fieldmap.header)
         nii_resampled_static = resample_from_to(nii_static, nii_anat, mode='nearest')
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
 
@@ -157,15 +156,15 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                                                                                                resampled_static[2],
                                                                                                nii_anat.affine)
 
-    nii_resampled_zstatic_vox = nib.Nifti1Image(resampled_zstatic_vox, nii_anat.affine)
+    nii_resampled_zstatic_vox = nib.Nifti1Image(resampled_zstatic_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zstatic_vox * nii_mask_anat_static.get_fdata(),
-                                                   nii_resampled_zstatic_vox.affine)
-    nii_resampled_ystatic_vox = nib.Nifti1Image(resampled_ystatic_vox, nii_anat.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
+    nii_resampled_ystatic_vox = nib.Nifti1Image(resampled_ystatic_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_ystatic_masked = nib.Nifti1Image(resampled_ystatic_vox * nii_mask_anat_static.get_fdata(),
-                                                   nii_resampled_ystatic_vox.affine)
-    nii_resampled_xstatic_vox = nib.Nifti1Image(resampled_xstatic_vox, nii_anat.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
+    nii_resampled_xstatic_vox = nib.Nifti1Image(resampled_xstatic_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_xstatic_masked = nib.Nifti1Image(resampled_xstatic_vox * nii_mask_anat_static.get_fdata(),
-                                                   nii_resampled_xstatic_vox.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
 
     if is_outputting_figures:
         nib.save(nii_resampled_zstatic_masked, os.path.join(path_output, 'fig_resampled_zstatic.nii.gz'))
@@ -175,7 +174,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         # Resample riro to target anatomical image
     resampled_riro = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
     for g_axis in range(3):
-        nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine)
+        nii_riro = nib.Nifti1Image(riro[g_axis], nii_fieldmap.affine, header=nii_fieldmap.header)
         nii_resampled_riro = resample_from_to(nii_riro, nii_anat, mode='nearest')
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
 
@@ -185,15 +184,15 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
                                                                                          resampled_riro[2],
                                                                                          nii_anat.affine)
 
-    nii_resampled_zriro_vox = nib.Nifti1Image(resampled_zriro_vox, nii_anat.affine)
+    nii_resampled_zriro_vox = nib.Nifti1Image(resampled_zriro_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                   nii_resampled_zriro_vox.affine)
-    nii_resampled_yriro_vox = nib.Nifti1Image(resampled_yriro_vox, nii_anat.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
+    nii_resampled_yriro_vox = nib.Nifti1Image(resampled_yriro_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_ystatic_masked = nib.Nifti1Image(resampled_yriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                   nii_resampled_yriro_vox.affine)
-    nii_resampled_xriro_vox = nib.Nifti1Image(resampled_xriro_vox, nii_anat.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
+    nii_resampled_xriro_vox = nib.Nifti1Image(resampled_xriro_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_xstatic_masked = nib.Nifti1Image(resampled_xriro_vox * nii_mask_anat_riro.get_fdata(),
-                                                   nii_resampled_xriro_vox.affine)
+                                                   nii_anat.affine, header=nii_anat.header)
 
     if is_outputting_figures:
         nib.save(nii_resampled_zstatic_masked, os.path.join(path_output, 'fig_resampled_zriro.nii.gz'))
