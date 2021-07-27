@@ -358,7 +358,9 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     nii_mask = nib.Nifti1Image(sliced_mask.astype(int), nii_mask_from.affine)
 
     # Resample the mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='constant', cval=0)
+    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
+
+    # TODO: Add pixels/slices if the number of pixel is too small in a direction
 
     #######
     # Debug

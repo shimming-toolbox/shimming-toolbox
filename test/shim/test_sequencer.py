@@ -810,7 +810,8 @@ def test_sequencer_anat_res_mask():
             sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
             sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
             print(f"\ni_shim: {i_shim}, t: {i_t}"
-                  f"\nshimmed: {sum_shimmed_static_riro}, unshimmed: {sum_unshimmed}, "
+                  f"\nshimmed static: {sum_shimmed_static}, shimmed static+riro: {sum_shimmed_static_riro}, "
+                  f"unshimmed: {sum_unshimmed}\n"
                   f"Static currents:\n{currents_static[i_shim]}\n"
                   f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
 
@@ -887,7 +888,7 @@ def test_sequencer_anat_res_mask():
             ax.set_ylabel('Sum over the ROI')
             ax.legend()
             ax.set_ylim(0, max(unshimmed_trace[i_slice, :]))
-            ax.set_title(f"Unshimmed vs shimmed values: slice {i_slice}")
+            ax.set_title(f"Unshimmed vs shimmed values: slice {i_shim}")
         fname_figure = os.path.join(os.curdir, 'fig_trace_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
 
