@@ -355,7 +355,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
 
     # Create nibabel object
-    nii_mask = nib.Nifti1Image(sliced_mask.astype(int), nii_mask_from.affine)
+    nii_mask = nib.Nifti1Image(sliced_mask.astype(int), nii_mask_from.affine, header=nii_mask_from.header)
 
     # Resample the mask onto nii_target
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)

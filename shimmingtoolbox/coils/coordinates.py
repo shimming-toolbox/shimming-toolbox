@@ -158,7 +158,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
 
     from_img = nii_from_img.get_fdata()
     if from_img.ndim == 2:
-        nii_from_img_3d = nib.Nifti1Image(np.expand_dims(from_img, -1), nii_from_img.affine)
+        nii_from_img_3d = nib.Nifti1Image(np.expand_dims(from_img, -1), nii_from_img.affine, header=nii_from_img.header)
         nii_resampled = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
                                              out_class=out_class)
 
@@ -176,7 +176,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         cpus = mp.cpu_count()
         if cpus == 1:
             for it in range(nt):
-                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
+                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine, header=nii_from_img.header)
                 nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
                                                         cval=cval, out_class=out_class)
                 resampled_4d[..., it] = nii_resampled_3d.get_fdata()
@@ -184,7 +184,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
             # Create inputs for multiprocessing
             inputs = []
             for it in range(nt):
-                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine)
+                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine, header=nii_from_img.header)
                 inputs.append((nii_from_img_3d, nii_to_vox_map, order, mode, cval, out_class))
 
             with mp.Pool(cpus - 1) as pool:
@@ -194,7 +194,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
             for it in range(from_img.shape[3]):
                 resampled_4d[..., it] = output[it]
 
-        nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine)
+        nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine, header=nii_to_vox_map.header)
 
     else:
         raise NotImplementedError("Dimensions of input can only be 2D, 3D or 4D")

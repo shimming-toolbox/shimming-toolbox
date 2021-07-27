@@ -23,6 +23,7 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.shim.sequencer import define_slices
+from shimmingtoolbox.shim.sequencer import resample_mask
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -379,7 +380,7 @@ def test_realtime_sequencer_phantom_data():
         fig.savefig(fname_figure)
 
         plot_pressure_points(acq_pressures)
-        save_nii(nii_fieldmap, coil, opt)
+        save_nii(nii_fieldmap, coil, opt, nib.Nifti1Image(static_mask, nii_fieldmap.affine, header=nii_fieldmap.header))
         print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro)
 
 
@@ -531,7 +532,7 @@ def test_realtime_sequencer_fake_data():
         fig.savefig(fname_figure)
 
         plot_pressure_points(acq_pressures)
-        save_nii(nii_fieldmap, coil, opt)
+        save_nii(nii_fieldmap, coil, opt, nib.Nifti1Image(static_mask, nii_fieldmap.affine, header=nii_fieldmap.header))
         print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro)
 
     # Todo:
@@ -559,7 +560,7 @@ def test_sequencer_anat_res_before():
                          center_dim2=int(ny / 2),
                          len_dim1=5, len_dim2=5, len_dim3=nz)
 
-    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine)
+    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Riro
     riro_mask = shapes(nii_anat.get_fdata(), 'cube',
@@ -567,7 +568,7 @@ def test_sequencer_anat_res_before():
                        center_dim2=int(ny / 2),
                        len_dim1=5, len_dim2=5, len_dim3=nz)
 
-    nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine)
+    nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Pmu
     fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -717,7 +718,7 @@ def test_sequencer_anat_res_mask():
                          center_dim2=int(ny / 2),
                          len_dim1=5, len_dim2=5, len_dim3=nz)
 
-    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine)
+    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Riro
     # riro_mask = shapes(nii_anat.get_fdata(), 'cube',
@@ -726,7 +727,7 @@ def test_sequencer_anat_res_mask():
     #                    len_dim1=5, len_dim2=5, len_dim3=nz)
     riro_mask = static_mask
 
-    nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine)
+    nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Pmu
     fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
@@ -767,7 +768,7 @@ def test_sequencer_anat_res_mask():
     # Calculate theoretical shimmed map
     # shim
     unshimmed = nii_fieldmap.get_fdata()
-    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine)
+    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
     opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
     shape = unshimmed.shape + (len(slices),)
     shimmed_static_riro = np.zeros(shape)
@@ -1016,14 +1017,13 @@ def print_metrics(static_mask, nii_fieldmap, unshimmed, shimmed_static, shimmed_
           f"\nstatic_unshimmed: {static_unshimmed}")
 
 
-from shimmingtoolbox.shim.sequencer import resample_mask
 def test_resample_mask():
 
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
-    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine)
+    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
 
     # anat image
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
@@ -1038,7 +1038,7 @@ def test_resample_mask():
                          center_dim2=int(ny / 2),
                          len_dim1=5, len_dim2=5, len_dim3=nz)
 
-    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine)
+    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     nii_mask_res = resample_mask(nii_mask_static, nii_target, (2,))
     nib.save(nii_mask_res, os.path.join(os.curdir, "fig_res_mask.nii.gz"))
