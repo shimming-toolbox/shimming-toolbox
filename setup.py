@@ -39,7 +39,7 @@ setup(
         "phantominator~=0.6.4",
         "nibabel~=3.1.1",
         "requests",
-        "scipy~=1.5.0",
+        "scipy~=1.6.0",
         "tqdm",
         "matplotlib~=3.1.2",
         "psutil~=5.7.3",
