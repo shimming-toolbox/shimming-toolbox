@@ -36,7 +36,7 @@ class TestRealtimeShim(object):
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine, header=nii_anat.header)
         self.nii_mask_static = nii_mask_static
 
         # Riro
@@ -45,7 +45,7 @@ class TestRealtimeShim(object):
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine, header=nii_anat.header)
         self.nii_mask_riro = nii_mask_riro
 
         # Pmu
@@ -70,10 +70,10 @@ class TestRealtimeShim(object):
                                                  self.pmu,
                                                  self.json)
 
-        assert np.isclose(static_zcorrection[0], 0.1291926595061463,)
-        assert np.isclose(riro_zcorrection[0], -0.008084002566817211)
-        assert np.isclose(mean_p, 1326.7410085020922)
-        assert np.isclose(pressure_rms, 1494.6380477845253)
+        assert np.isclose(static_zcorrection[0], 0.12928646689120157)
+        assert np.isclose(riro_zcorrection[0], -0.007959437710556651)
+        assert np.isclose(mean_p, 1326.3179660207873)
+        assert np.isclose(pressure_rms, 1493.9468284155396)
 
     def test_mask(self):
         """Test realtime_shim mask parameter"""
@@ -101,12 +101,16 @@ class TestRealtimeShim(object):
 
             assert len(os.listdir(tmp)) != 0
 
+            nib.save(self.nii_mask_static, os.path.join(tmp, 'fig_mask_static.nii.gz'))
+            nib.save(self.nii_mask_riro, os.path.join(tmp, 'fig_mask_riro.nii.gz'))
+            nib.save(self.nii_anat, os.path.join(tmp, 'fig_anat.nii.gz'))
+
     # Tests that should throw errors
     def test_wrong_dim_fieldmap(self):
         """Wrong number of fieldmap dimensions."""
 
         fieldmap = self.nii_fieldmap.get_fdata()
-        nii_fieldmap_3d = nib.Nifti1Image(fieldmap[..., 0], self.nii_fieldmap.affine)
+        nii_fieldmap_3d = nib.Nifti1Image(fieldmap[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -123,7 +127,7 @@ class TestRealtimeShim(object):
         """Wrong number of anat dimensions."""
 
         anat = self.nii_anat.get_fdata()
-        nii_anat_2d = nib.Nifti1Image(anat[..., 0], self.nii_fieldmap.affine)
+        nii_anat_2d = nib.Nifti1Image(anat[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -140,7 +144,7 @@ class TestRealtimeShim(object):
         """Wrong number of static mask dimensions."""
 
         mask = self.nii_mask_static.get_fdata()
-        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
+        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
@@ -157,7 +161,7 @@ class TestRealtimeShim(object):
         """Wrong number of riro mask dimensions."""
 
         mask = self.nii_mask_riro.get_fdata()
-        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_fieldmap.affine)
+        nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
         # This should return an error
         try:
