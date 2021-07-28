@@ -24,10 +24,10 @@ supported_optimizers = {
 
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares'):
     """
-    Performs shimming slice by slice using one of the supported optimizers
+    Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
     Args:
-        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d.
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
         nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
@@ -36,7 +36,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
                           Refer to shimmingtoolbox.coils.coil:Coil().
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
+                      implementation to know limits of the methods in: shimmingtoolbox.optimizer
 
     Returns:
         numpy.ndarray: Coefficients to shim (len(slices) x channels)
@@ -53,11 +54,23 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     if anat.ndim != 3:
         raise RuntimeError("Anatomical image must be in 3d")
 
+    # Make sure the mask has the appropriate dimensions
+    mask = nii_mask_anat.get_fdata()
+    if mask.ndim != 3:
+        raise RuntimeError("Mask image must be in 3d")
+
+    # Make sure shape and affine of mask are the same as the anat
+    if not np.all(mask.shape == anat.shape):
+        raise ValueError(f"Shape of mask: {mask.shape} must be the same as the shape of anat: {anat.shape}")
+    if not np.all(nii_mask_anat.affine == nii_anat.affine):
+        raise ValueError(f"Affine of mask: {nii_mask_anat.affine} must be the same as the affine of anat: "
+                         f"{nii_anat.affine}")
+
     # Select and initialize the optimizer
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
 
     # Optimize slice by slice
-    currents = optimize(optimizer, nii_mask_anat, slices, shimwise_bounds=None)
+    currents = optimize(optimizer, nii_mask_anat, slices)
 
     return currents
 
@@ -70,7 +83,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     Args:
         nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
                                             timeseries.
-        json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
+        json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                           timestamps).
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
         nii_static_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the static
@@ -87,13 +100,14 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     Returns:
         (tuple): tuple containing:
 
-            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) [Hz]
-            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) [Hz/unit_pressure]
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) e.g. [Hz]
+            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) e.g. [Hz/unit_pressure]
             * float: Mean pressure of the respiratory trace.
             * float: Root mean squared of the pressure. This is provided to compare results between scans, multiply the
                      riro coefficients by rms of the pressure to do so.
     """
-    # We technically dont need the anat if we use the nii_mask
+    # Note: We technically dont need the anat if we use the nii_mask. However, this is a nice safety check to make sur
+    # the mask is indeed in the dimension of the anat and not the fieldmap
 
     # Make sure fieldmap has the appropriate dimensions
     fieldmap = nii_fieldmap.get_fdata()
@@ -270,19 +284,19 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
 
     # TODO: Add pixels/slices if the number of pixel is too small in a direction
 
-    #######
-    # Debug
-    nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
-    nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
-    nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    #######
+    # #######
+    # # Debug
+    # nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
+    # nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    # #######
 
     return nii_mask_target
 
 
 def define_slices(n_slices: int, factor: int, method='separated'):
     """
-    Define the slices to shim according to the output covention.
+    Define the slices to shim according to the output convention.
 
     Args:
         n_slices (int): Number of total slices.

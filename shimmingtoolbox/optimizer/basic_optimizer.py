@@ -17,7 +17,7 @@ class Optimizer(object):
     """
     Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
     Use optimize(args) to optimize a given mask.
-    For basic optimizer, uses unbounded pseudo-inverse.
+    For basic optimizer, uses *unbounded* pseudo-inverse.
 
     Attributes:
         coils (ListCoil): List of Coil objects containing the coil profiles and related constraints

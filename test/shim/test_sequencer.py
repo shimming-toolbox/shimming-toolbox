@@ -22,7 +22,7 @@ import nibabel as nib
 import json
 from matplotlib.figure import Figure
 
-DEBUG = True
+DEBUG = False
 
 
 def create_fieldmap(n_slices=3):
@@ -666,7 +666,6 @@ def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_rir
     Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
     Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
     """
-
 
     unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], masked_fieldmap.shape[-1], axis=-1)
     mask_repeats = np.repeat(masked_fieldmap[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
