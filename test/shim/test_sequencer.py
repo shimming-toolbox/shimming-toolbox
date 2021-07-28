@@ -22,10 +22,10 @@ import nibabel as nib
 import json
 from matplotlib.figure import Figure
 
-DEBUG = False
+DEBUG = True
 
 
-def create_fieldmap(nz=3):
+def create_fieldmap(n_slices=3):
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
     model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
@@ -264,9 +264,8 @@ def test_realtime_sequencer_fake_data():
 
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
     # down
-    # TODO: reduce number of slices, need to play with the anat mask to make that possible
-    nz = 30
-    fake = create_fieldmap(nz=nz).get_fdata()
+    nz = 3
+    fake = create_fieldmap(n_slices=nz).get_fdata()
     fake_temp = np.zeros([100, 100, nz, 4])
     lin = np.repeat(fake[:, :, 0, np.newaxis], nz, axis=2) / 10
     fake_temp[..., 0] = fake + lin
@@ -289,12 +288,12 @@ def test_realtime_sequencer_fake_data():
     # Pmu
     fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
     pmu = PmuResp(fname_resp)
-    # Change pmu so that it uses fake data
+    # Change pmu so that it uses fake data. The fake data is essentially a sinusoid with 4 points
     pmu.data = np.array([3000, 2000, 1000, 2000])
     pmu.stop_time_mdh = 750
     pmu.start_time_mdh = 0
 
-    # Calc pressure
+    # Define a dummy json data with the bare minimum fields and calculate the pressures pressure
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
@@ -387,6 +386,7 @@ def test_realtime_sequencer_fake_data():
         shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
         unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
 
+        # Plot and save debug outputs
         i_slice = 0
         i_shim = 0
         i_t = 0
@@ -397,9 +397,6 @@ def test_realtime_sequencer_fake_data():
         plot_pressure_points(acq_pressures)
         save_nii(nii_fieldmap, coil, opt, nii_mask_static)
         print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
-
-    # Todo:
-    # Use same affine for coil and for defining siemens basis
 
 
 def test_sequencer_rt_zshim():
@@ -538,7 +535,7 @@ def test_sequencer_rt_zshim():
 
 
 def plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro):
-    # plot shimmed and unshimmed trace
+    """plot shimmed and unshimmed sum over the roi for each shim"""
 
     min_value = min(
         shim_trace_static_riro[:, :].min(),
@@ -572,7 +569,7 @@ def plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim
 
 def plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
                      shimmed_static_riro, i_t=0, i_slice=0, i_shim=0):
-    # Plot Static and RIRO
+    """Plot Static and RIRO fieldmap for a perticular fieldmap slice, anat shim and timepoint"""
 
     min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
                     masked_shim_static[..., i_slice, i_t, i_shim].min(),
@@ -602,16 +599,17 @@ def plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_ri
     ax = fig.add_subplot(2, 3, 5)
     im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]))
     fig.colorbar(im)
-    ax.set_title("shim static")
+    ax.set_title(f"shim static: shim:{i_shim}")
     ax = fig.add_subplot(2, 3, 6)
     im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]))
     fig.colorbar(im)
-    ax.set_title("unshimmed")
+    ax.set_title(f"unshimmed slice: {i_slice}, timepoint: {i_t}")
     fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure)
 
 
 def plot_currents(static, riro=None):
+    """Plot evolution of currents through shims"""
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     ax.plot(static[:, 0], label='Static dim0 currents through shims')
@@ -630,6 +628,7 @@ def plot_currents(static, riro=None):
 
 
 def plot_pressure_points(acq_pressures):
+    """Plot respiratory trace pressure points"""
     fig = Figure(figsize=(10, 10))
     ax = fig.add_subplot(111)
     ax.plot(acq_pressures, label='pressures')
@@ -640,41 +639,8 @@ def plot_pressure_points(acq_pressures):
     fig.savefig(fname_figure)
 
 
-def plot_shimmed_vs_unshimmed(timepoint, slice, masked_shim_static_riro, masked_shim_static, masked_unshimmed,
-                              shimmed_static_riro, shimmed_static, unshimmed):
-    # Plot Static and RIRO
-    i_t = timepoint
-    fig = Figure(figsize=(10, 10))
-    ax = fig.add_subplot(2, 3, 1)
-    im = ax.imshow(np.rot90(masked_shim_static_riro[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("masked_shim static + riro")
-    ax = fig.add_subplot(2, 3, 2)
-    im = ax.imshow(np.rot90(masked_shim_static[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("masked_shim static")
-    ax = fig.add_subplot(2, 3, 3)
-    im = ax.imshow(np.rot90(masked_unshimmed[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("masked_unshimmed")
-
-    ax = fig.add_subplot(2, 3, 4)
-    im = ax.imshow(np.rot90(shimmed_static_riro[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("shim static + riro")
-    ax = fig.add_subplot(2, 3, 5)
-    im = ax.imshow(np.rot90(shimmed_static[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("shim static")
-    ax = fig.add_subplot(2, 3, 6)
-    im = ax.imshow(np.rot90(unshimmed[..., slice, i_t]))
-    fig.colorbar(im)
-    ax.set_title("unshimmed")
-    fname_figure = os.path.join(os.curdir, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
-    fig.savefig(fname_figure)
-
-
 def save_nii(nii_fieldmap, coil, opt, nii_mask):
+    """Save relevant nifti files"""
     # save mask
     fname_mask = os.path.join(os.curdir, 'fig_mask.nii.gz')
     nib.save(nii_mask, fname_mask)
@@ -695,9 +661,12 @@ def save_nii(nii_fieldmap, coil, opt, nii_mask):
 
 
 def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap):
-    # metric to isolate temporal and static component
-    # Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
-    # Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
+    """Print to the console metrics about the realtime and static shim. These metrics isolate temporal and static
+    components
+    Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
+    Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
+    """
+
 
     unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], masked_fieldmap.shape[-1], axis=-1)
     mask_repeats = np.repeat(masked_fieldmap[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
@@ -730,7 +699,7 @@ def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_rir
 
 
 def test_resample_mask():
-
+    """Test for fucnstion that resamples a mask"""
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
@@ -752,7 +721,14 @@ def test_resample_mask():
 
     nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
-    nii_mask_res = resample_mask(nii_mask_static, nii_target, (2,))
-    nib.save(nii_mask_res, os.path.join(os.curdir, "fig_res_mask.nii.gz"))
+    nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,))
 
-    nib.save(nii_mask_static, os.path.join(os.curdir, "fig_full_mask.nii.gz"))
+    if DEBUG:
+        nib.save(nii_mask_res, os.path.join(os.curdir, "fig_res_mask.nii.gz"))
+
+        nib.save(nii_mask_static, os.path.join(os.curdir, "fig_full_mask.nii.gz"))
+
+    expected = np.full_like(nii_target.get_fdata(), fill_value=False)
+    expected[24:28, 27, 0] = 1
+
+    assert np.all(nii_mask_res.get_fdata() == expected)
