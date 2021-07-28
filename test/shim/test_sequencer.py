@@ -41,8 +41,8 @@ def create_fieldmap(n_slices=3):
     # Construct a 3-dimensional synthetic field map by stacking different z-slices along the 3rd dimension. Each
     # slice is subjected to a manipulation of model_obj across slices (e.g. rotation, squared) in order to test
     # various shim configurations.
-    unshimmed = np.zeros([num_vox, num_vox, nz])
-    for i_n in range(nz // 3):
+    unshimmed = np.zeros([num_vox, num_vox, n_slices])
+    for i_n in range(n_slices // 3):
         unshimmed[:, :, 3 * i_n] = b0_map
         unshimmed[:, :, (3 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
         unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
