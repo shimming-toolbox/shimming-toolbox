@@ -54,6 +54,7 @@ def load_nifti(path_data, modality='phase'):
         If 'path' is a folder containing niftis, directly output niftis. It 'path' is a folder containing acquisitions,
         ask the user for which acquisition to use.
     """
+
     if not os.path.exists(path_data):
         raise RuntimeError("Not an existing NIFTI path")
 
@@ -66,9 +67,9 @@ def load_nifti(path_data, modality='phase'):
     # Check for incompatible acquisition source path
     if all([os.path.isdir(f) for f in file_list]):
         acquisitions = [f for f in file_list if os.path.isdir(f)]
-        logging.info("Multiple acquisition directories in path. Choosing only one.")
+        logger.info("Multiple acquisition directories in path. Choosing only one.")
     elif all([os.path.isfile(f) for f in file_list]):
-        logging.info("Acquisition directory given. Using acquisitions.")
+        logger.info("Acquisition directory given. Using acquisitions.")
         nifti_path = path_data
     else:
         raise RuntimeError("Directories and files in input path")
@@ -89,7 +90,7 @@ def load_nifti(path_data, modality='phase'):
             if select_acquisition in range(len(acquisitions)):
                 break
             else:
-                logging.error(f"Input must be linked to an acquisition folder. {input_resp} is out of range")
+                logger.error(f"Input must be linked to an acquisition folder. {input_resp} is out of range")
 
         nifti_path = os.path.abspath(file_list[select_acquisition])
 
@@ -126,10 +127,10 @@ def load_nifti(path_data, modality='phase'):
             if select_run in list(run_list.keys()):
                 break
             else:
-                logging.error(f"Input must be linked to a run number. {input_resp} is out of range")
+                logger.error(f"Input must be linked to a run number. {input_resp} is out of range")
     else:
         select_run = list(run_list.keys())[0]
-        logging.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
+        logger.info(f"Reading acquisitions for run {list(run_list.keys())[0]}")
 
     # Create output array and headers
     nifti_pos = 0
@@ -178,7 +179,7 @@ def read_nii(fname_nifti, auto_scale=True):
     image = np.asarray(info.dataobj)
 
     if auto_scale:
-        logging.info("Scaling the selected nifti")
+        logger.info("Scaling the selected nifti")
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
             image = scale_tfl_b1(image, json_data)
@@ -193,9 +194,9 @@ def read_nii(fname_nifti, auto_scale=True):
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
         else:
-            logging.info("Unknown nifti type: No scaling applied")
+            logger.info("Unknown nifti type: No scaling applied")
     else:
-        logging.info("No scaling applied to selected nifti")
+        logger.info("No scaling applied to selected nifti")
 
     return info, json_data, image
 

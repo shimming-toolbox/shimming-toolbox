@@ -6,9 +6,12 @@ import os
 import math
 import nibabel as nib
 import json
+import logging
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
+
+logger = logging.getLogger(__name__)
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -39,7 +42,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
-
+    logger.setLevel("INFO")
     # Import phase
     list_phase = []
     echo_times = []
