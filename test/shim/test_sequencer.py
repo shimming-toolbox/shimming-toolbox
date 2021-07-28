@@ -116,6 +116,7 @@ nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_
     )]
 )
 class TestSequencer(object):
+    """Tests for shim_sequencer"""
     def test_shim_sequencer_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
@@ -254,8 +255,8 @@ def assert_results(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
         nib.save(nii_res_mask, fname_res_mask)
 
 
-def test_realtime_sequencer_fake_data():
-    """Test on the realtime sequencer using simulated data"""
+def test_shim_realtime_pmu_sequencer_fake_data():
+    """Test on the shim_realtime_pmu_sequencer using simulated data"""
 
     # anat image
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
@@ -399,7 +400,7 @@ def test_realtime_sequencer_fake_data():
         print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
 
 
-def test_sequencer_rt_zshim():
+def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
@@ -698,7 +699,7 @@ def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_rir
 
 
 def test_resample_mask():
-    """Test for fucnstion that resamples a mask"""
+    """Test for function that resamples a mask"""
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
