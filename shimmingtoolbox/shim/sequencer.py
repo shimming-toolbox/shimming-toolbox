@@ -4,8 +4,12 @@
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
+from scipy.ndimage import binary_dilation
+from scipy.ndimage import binary_erosion
+from scipy.ndimage import binary_closing
+from scipy.ndimage import binary_opening
 import nibabel as nib
-import os
+import logging
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -15,6 +19,8 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 ListCoil = List[Coil]
+
+logger = logging.getLogger(__name__)
 
 supported_optimizers = {
     'least_squares': LsqOptimizer,
@@ -31,8 +37,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
         nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
-        slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of anat:
-                       (dim1, dim2, dim3). Refer to shimmingtoolbox.shim.sequencer:define_slices().
+        slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape of anat
+                       is: (dim1, dim2, dim3). Refer to shimmingtoolbox.shim.sequencer:define_slices().
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
                           Refer to shimmingtoolbox.coils.coil:Coil().
@@ -47,17 +53,17 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
     if fieldmap.ndim != 3:
-        raise RuntimeError("Fieldmap must be 3d (x, y, z, t)")
+        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
     if anat.ndim != 3:
-        raise RuntimeError("Anatomical image must be in 3d")
+        raise ValueError("Anatomical image must be in 3d")
 
     # Make sure the mask has the appropriate dimensions
     mask = nii_mask_anat.get_fdata()
     if mask.ndim != 3:
-        raise RuntimeError("Mask image must be in 3d")
+        raise ValueError("Mask image must be in 3d")
 
     # Make sure shape and affine of mask are the same as the anat
     if not np.all(mask.shape == anat.shape):
@@ -113,7 +119,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
     if fieldmap.ndim != 4:
-        raise RuntimeError("Fieldmap must be 4d (x, y, z, t)")
+        raise RuntimeError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -282,26 +288,66 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     # Resample the mask onto nii_target
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
 
-    # TODO: Add pixels/slices if the number of pixel is too small in a direction
+    # TODO: Add pixels/slices if the number of pixel is too small in a direction, dilation?
+    # Straight up dilation won't work since it will add pixels in every direction regardless
+    def dilate_mask(mask, n_pixels, direction='all'):
+        if direction == 'all':
+            return binary_dilation(mask)
+        elif direction == 'individual':
 
-    # #######
-    # # Debug
-    # nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
-    # nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
-    # nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    # #######
+            # TODO: remove
+            mask[5,5] = 1
+
+            # TODO: use n_pixels to dilate an appropriate amount of pixels
+            struct_dim1 = np.zeros([3, 3, 3])
+            struct_dim1[:, 1, 1] = 1
+            # Finds where the structure fits
+            open1 = binary_opening(mask, structure=struct_dim1)
+            # Select Everything that does not fit within the structure and erode along a dim
+            dim1 = binary_dilation(np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
+
+            struct_dim2 = np.zeros([3, 3, 3])
+            struct_dim2[1, :, 1] = 1
+            # Finds where the structure fits
+            open2 = binary_opening(mask, structure=struct_dim2)
+            # Select Everything that does not fit within the structure and erode along a dim
+            dim2 = binary_dilation(np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
+
+            struct_dim3 = np.zeros([3, 3, 3])
+            struct_dim3[1, 1, :] = 1
+            # Finds where the structure fits
+            open3 = binary_opening(mask, structure=struct_dim3)
+            # Select Everything that does not fit within the structure and erode along a dim
+            dim3 = binary_dilation(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
+
+            mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
+
+            return mask_dilated.astype(int)
+
+    mask_dilated = dilate_mask(nii_mask_target.get_fdata(), 1, 'individual')
+    mask_dilated = dilate_mask(mask_dilated, 1, 'individual')
+    nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
+
+    #######
+    # Debug TODO: REMOVE
+    import os
+    nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
+    nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
+    nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    #######
 
     return nii_mask_target
 
 
-def define_slices(n_slices: int, factor: int, method='separated'):
+def define_slices(n_slices: int, factor: int, method='interleaved'):
     """
     Define the slices to shim according to the output convention.
 
     Args:
         n_slices (int): Number of total slices.
         factor (int): Number of slices per shim.
-        method (str): Defines how the slices should be seperated, supported methods include: 'separated', 'sequential'.
+        method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'sequential'.
                       See Examples for more details.
 
     Returns:
@@ -311,7 +357,7 @@ def define_slices(n_slices: int, factor: int, method='separated'):
 
         ::
 
-            slices = define_slices(10, 2, 'separated')
+            slices = define_slices(10, 2, 'interleaved')
             print(slices)  # [(0, 5), (1, 6), (2, 7), (3, 8), (4, 9)]
 
             slices = define_slices(20, 5, 'sequential')
@@ -325,7 +371,7 @@ def define_slices(n_slices: int, factor: int, method='separated'):
     n_shims = n_slices // factor
     leftover = n_slices % factor
 
-    if method == 'separated':
+    if method == 'interleaved':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
@@ -338,5 +384,8 @@ def define_slices(n_slices: int, factor: int, method='separated'):
 
     if leftover != 0:
         slices.append(tuple(range(n_shims * factor, n_slices)))
+        logger.warning(f"When defining the slices to shim, there are leftover slices since the factor used and number "
+                       f"of slices is not perfectly dividable. Make sure the last tuple of slices is "
+                       f"appropriate: {slices}")
 
     return slices
