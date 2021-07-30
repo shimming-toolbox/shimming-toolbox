@@ -4,10 +4,6 @@
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
-from scipy.ndimage import binary_dilation
-from scipy.ndimage import binary_erosion
-from scipy.ndimage import binary_closing
-from scipy.ndimage import binary_opening
 import nibabel as nib
 import logging
 
@@ -16,7 +12,7 @@ from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.masking.mask_utils import resample_mask
 
 ListCoil = List[Coil]
 
@@ -251,6 +247,7 @@ def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=N
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 
         # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
+        # TODO: deal with 1 slice fieldmap,
         sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i]).get_fdata()
 
         # If new bounds are included, change them for each shim
@@ -261,83 +258,6 @@ def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=N
         currents[i, :] = optimizer.optimize(sliced_mask_resampled)
 
     return currents
-
-
-def resample_mask(nii_mask_from, nii_target, from_slices):
-    """
-    Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
-
-    Args:
-        nii_mask_from (nib.Nifti1Image): Mask to resample from. False or 0 signifies not included.
-        nii_target (nib.Nifti1Image): Target image to resample onto.
-        from_slices (tuple): Tuple containing the slices to select from nii_mask_from.
-
-    Returns:
-        nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
-    """
-
-    mask_from = nii_mask_from.get_fdata()
-
-    # Initialize a sliced mask and select the slices from from_slices
-    sliced_mask = np.full_like(mask_from, fill_value=False)
-    sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
-
-    # Create nibabel object
-    nii_mask = nib.Nifti1Image(sliced_mask.astype(int), nii_mask_from.affine, header=nii_mask_from.header)
-
-    # Resample the mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
-
-    # TODO: Add pixels/slices if the number of pixel is too small in a direction, dilation?
-    # Straight up dilation won't work since it will add pixels in every direction regardless
-    def dilate_mask(mask, n_pixels, direction='all'):
-        if direction == 'all':
-            return binary_dilation(mask)
-        elif direction == 'individual':
-
-            # TODO: remove
-            mask[5,5] = 1
-
-            # TODO: use n_pixels to dilate an appropriate amount of pixels
-            struct_dim1 = np.zeros([3, 3, 3])
-            struct_dim1[:, 1, 1] = 1
-            # Finds where the structure fits
-            open1 = binary_opening(mask, structure=struct_dim1)
-            # Select Everything that does not fit within the structure and erode along a dim
-            dim1 = binary_dilation(np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
-
-            struct_dim2 = np.zeros([3, 3, 3])
-            struct_dim2[1, :, 1] = 1
-            # Finds where the structure fits
-            open2 = binary_opening(mask, structure=struct_dim2)
-            # Select Everything that does not fit within the structure and erode along a dim
-            dim2 = binary_dilation(np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
-
-            struct_dim3 = np.zeros([3, 3, 3])
-            struct_dim3[1, 1, :] = 1
-            # Finds where the structure fits
-            open3 = binary_opening(mask, structure=struct_dim3)
-            # Select Everything that does not fit within the structure and erode along a dim
-            dim3 = binary_dilation(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
-
-            mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
-
-            return mask_dilated.astype(int)
-
-    mask_dilated = dilate_mask(nii_mask_target.get_fdata(), 1, 'individual')
-    mask_dilated = dilate_mask(mask_dilated, 1, 'individual')
-    nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
-
-    #######
-    # Debug TODO: REMOVE
-    import os
-    nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
-    nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
-    nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
-    #######
-
-    return nii_mask_target
 
 
 def define_slices(n_slices: int, factor: int, method='interleaved'):

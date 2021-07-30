@@ -178,6 +178,16 @@ class TestSequencer(object):
 
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
+    def test_shim_sequencer_wrong_optimizer(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+
+        # Optimize
+        slices = [(0, 2), (1,)]
+        method = 'abc'
+        with pytest.raises(KeyError, match=f"Method: {method} is not part of the supported optimizers"):
+            shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method=method)
+
+    # TODO: tests for wrong inputs
+
     # def test_speed_huge_matrix(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
     #     # Create 1 huge coil which essentially is siemens basis concatenated 4 times
     #     coils = [sph_coil, sph_coil, sph_coil, sph_coil]
@@ -696,39 +706,3 @@ def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_rir
           f"\nstatic_shim_static_riro: {static_shim_static_riro}"
           f"\nstatic_shim_riro: {static_shim_riro}"
           f"\nstatic_unshimmed: {static_unshimmed}")
-
-
-def test_resample_mask():
-    """Test for function that resamples a mask"""
-    # Fieldmap
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    nii_fieldmap = nib.load(fname_fieldmap)
-    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
-
-    # anat image
-    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                              'sub-example_unshimmed_e1.nii.gz')
-    nii_anat = nib.load(fname_anat)
-
-    # Set up mask
-    # static
-    nx, ny, nz = nii_anat.shape
-    static_mask = shapes(nii_anat.get_fdata(), 'cube',
-                         center_dim1=int(nx / 2),
-                         center_dim2=int(ny / 2),
-                         len_dim1=5, len_dim2=5, len_dim3=nz)
-
-    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
-
-    nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,))
-
-    if DEBUG:
-        nib.save(nii_mask_res, os.path.join(os.curdir, "fig_res_mask.nii.gz"))
-
-        nib.save(nii_mask_static, os.path.join(os.curdir, "fig_full_mask.nii.gz"))
-
-    expected = np.full_like(nii_target.get_fdata(), fill_value=False)
-    expected[24:28, 27, 0] = 1
-
-    assert np.all(nii_mask_res.get_fdata() == expected)
