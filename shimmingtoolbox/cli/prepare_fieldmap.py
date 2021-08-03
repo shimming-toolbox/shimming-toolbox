@@ -96,3 +96,5 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
         json.dump(json_fieldmap, outfile, indent=2)
+
+    logger.info(f"Filename of the fieldmap is: {fname_output}")

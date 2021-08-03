@@ -3,7 +3,11 @@
 """ Wrapper to different unwrapping algorithms. """
 
 import numpy as np
+import logging
+
 from shimmingtoolbox.unwrap.prelude import prelude
+
+logger = logging.getLogger(__name__)
 
 
 def unwrap_phase(phase, affine, unwrapper='prelude', mag=None, mask=None, threshold=None):
@@ -39,14 +43,18 @@ def unwrap_phase(phase, affine, unwrapper='prelude', mag=None, mask=None, thresh
             mag = mag4d
             mask = mask4d
 
+            logger.info(f"Unwrapping 1 volume")
             phase3d_unwrapped = prelude(phase4d, affine, mag=mag, mask=mask, threshold=threshold)
 
             phase_unwrapped = phase3d_unwrapped[..., 0]
 
         elif phase.ndim == 3:
+            logger.info("Unwrapping 1 volume")
             phase_unwrapped = prelude(phase, affine, mag=mag, mask=mask, threshold=threshold)
 
         elif phase.ndim == 4:
+
+            logger.info(f"Unwrapping {phase.shape[3]} volumes")
             phase_unwrapped = np.zeros_like(phase)
             for i_t in range(phase.shape[3]):
                 mask3d = None
