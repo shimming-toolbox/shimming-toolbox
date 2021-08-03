@@ -188,11 +188,11 @@ def read_nii(fname_nifti, auto_scale=True):
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
-            # Bootstrap
+            # Bootstrap, rescales from -pi to pi
             if np.amin(image) < 0:
-                image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2)) + math.pi
+                image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2))
             else:
-                image = image * (2 * math.pi / PHASE_SCALING_SIEMENS)
+                image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
         else:
             logger.info("Unknown nifti type: No scaling applied")
     else:
