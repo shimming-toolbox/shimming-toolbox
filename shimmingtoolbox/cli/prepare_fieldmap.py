@@ -3,7 +3,6 @@
 
 import click
 import os
-import math
 import nibabel as nib
 import json
 import logging
@@ -11,7 +10,9 @@ import logging
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -21,24 +22,26 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 )
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
-@click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', help="Algorithm for unwrapping")
+@click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
+              help="Algorithm for unwrapping")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'fieldmap.nii.gz'),
-              help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
-@click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True,
-              help="Tells wheter to auto rescale phase inputs according to manufacturer standards. If you have non "
+              show_default=True, help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
+@click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
+              help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
                    "-pi to pi to avoid unwanted rescaling")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
 @click.option('--threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
-@click.option('--gaussian-filter', 'gaussian_filter', type=bool, help="Gaussian filter for B0 map")
+@click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
-def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, gaussian_filter, sigma):
+def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, gaussian_filter,
+                         sigma):
     """Creates fieldmap (in Hz) from phase images.
 
     This function accommodates multiple echoes (2 or more) and phase difference. This function also
     accommodates 4D phase inputs, where the 4th dimension represents the time, in case multiple
     field maps are acquired across time for the purpose of real-time shimming experiments.
-    For non standard phase data, see --autoscale-phase option.
+    For non Siemens phase data, see --autoscale-phase option.
 
     PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
@@ -48,8 +51,6 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     echo_times = []
     for i_echo in range(len(phase)):
         nii_phase, json_phase, phase_img = read_nii(phase[i_echo], auto_scale=autoscale)
-        # Add pi since read_nii returns phase between 0 and 2pi whereas prepare_fieldmap accepts between -pi to pi
-        phase_img -= math.pi
 
         list_phase.append(phase_img)
         # Special case for echo_times if input is a phasediff
@@ -84,7 +85,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
                                    sigma=sigma)
 
     # Save NIFTI
-    nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine)
+    nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
     nib.save(nii_fieldmap, fname_output)
 
     # Save json
