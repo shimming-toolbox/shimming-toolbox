@@ -31,7 +31,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
                    "-pi to pi to avoid unwanted rescaling")
-@click.option('--mask', 'fname_mask', type=click.Path(exists=True), help="Input path for a mask. Used for PRELUDE")
+@click.option('--mask', 'fname_mask', type=click.Path(exists=True),
+              help="Input path for a mask. Mask must be the same shape as the array of each PHASE input."
+                   "Used for PRELUDE")
 @click.option('--threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
 @click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
