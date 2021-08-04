@@ -9,10 +9,11 @@ import logging
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
+from shimmingtoolbox.utils import create_fname_from_path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+FILE_OUTPUT_DEFAULT = 'fieldmap.nii.gz'
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -24,7 +25,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'fieldmap.nii.gz'),
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT),
               show_default=True, help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
@@ -45,7 +46,12 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
-    logger.setLevel("INFO")
+
+    # Make sure output filename is valid
+    fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
+    if fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz':
+        raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
     # Import phase
     list_phase = []
     echo_times = []
@@ -86,15 +92,15 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     # Save NIFTI
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
-    nib.save(nii_fieldmap, fname_output)
+    nib.save(nii_fieldmap, fname_output_v2)
 
     # Save json
     json_fieldmap = json_phase
     if len(phase) > 1:
         for i_echo in range(len(echo_times)):
             json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
-    fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
+    fname_json = fname_output_v2.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
         json.dump(json_fieldmap, outfile, indent=2)
 
-    logger.info(f"Filename of the fieldmap is: {fname_output}")
+    logger.info(f"Filename of the fieldmap is: {fname_output_v2}")
