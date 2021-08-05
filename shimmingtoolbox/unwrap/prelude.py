@@ -14,6 +14,8 @@ import numpy as np
 
 from shimmingtoolbox.utils import run_subprocess
 
+logger = logging.getLogger(__name__)
+
 
 def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
@@ -72,14 +74,14 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     if threshold is not None:
         options += ' -t {}'.format(threshold)
         if mask is not None:
-            logging.warning('Specifying both a mask and a threshold is not recommended, results might not be what is '
-                            'expected')
+            logger.warning('Specifying both a mask and a threshold is not recommended, results might not be what is '
+                           'expected')
 
     # Unwrap
     unwrap_command = 'prelude -p {} -a {} -o {}{}'.format(os.path.join(path_tmp, 'rawPhase'),
                                                           os.path.join(path_tmp, 'mag'),
                                                           os.path.join(path_tmp, 'rawPhase_unwrapped'), options)
-    logging.info('Unwrap with prelude')
+    logger.debug('Unwrap with prelude')
     run_subprocess(unwrap_command)
 
     fname_phase_unwrapped = glob.glob(os.path.join(path_tmp, 'rawPhase_unwrapped*'))[0]

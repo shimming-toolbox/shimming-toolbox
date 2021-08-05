@@ -126,3 +126,24 @@ def create_output_dir(path_output, is_file=False, output_folder_name="output"):
         path_output_folder = path_output
     if not os.path.exists(path_output_folder):
         os.makedirs(path_output_folder)
+
+
+def create_fname_from_path(path, file_default):
+    """Given a path, make sure it is not a directory, if it is add the default filename, if not, return the path
+
+    Args:
+        path (str): filename or path to add the `file_default` to.
+        file_default (str): Name of the file + ext (example.nii.gz) to add to the path if the path is a directory.
+
+    Returns:
+        str: Absolute path of a file
+    """
+
+    is_dir = os.path.splitext(path)[-1] == ''
+
+    if is_dir:
+        fname = os.path.join(path, file_default)
+    else:
+        fname = path
+
+    return os.path.abspath(fname)

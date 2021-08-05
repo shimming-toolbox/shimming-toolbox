@@ -1,7 +1,9 @@
 import tempfile
 import pathlib
 import os
+
 from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.utils import create_fname_from_path
 
 
 def test_create_output_dir_folder():
@@ -27,3 +29,30 @@ def test_create_output_dir_folder_exists():
         assert os.path.exists(path_output)
         create_output_dir(path_output, is_file=False)
         assert os.path.exists(path_output)
+
+
+def test_create_fname_from_path():
+    path = 'a/b/c'
+    file = 'file.nii'
+
+    fname = create_fname_from_path(path, file)
+
+    assert fname == os.path.abspath("a/b/c/file.nii")
+
+
+def test_create_fname_from_path_fname():
+    path = 'a/b/c/file.nii'
+    file = 'file2.nii'
+
+    fname = create_fname_from_path(path, file)
+
+    assert fname == os.path.abspath("a/b/c/file.nii")
+
+
+def test_create_fname_from_path_2():
+    path = '.'
+    file = 'file.nii'
+
+    fname = create_fname_from_path(path, file)
+
+    assert fname == os.path.abspath("./file.nii")
