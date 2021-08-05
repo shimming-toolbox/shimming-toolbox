@@ -40,14 +40,14 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), 'line', 3)
     nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
 
-    #######
-    # Debug TODO: REMOVE
-    import os
-    nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
-    nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
-    nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
-    #######
+    # #######
+    # # Debug
+    # import os
+    # nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
+    # nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    # #######
 
     return nii_mask_dilated
 
