@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import os
+import math
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
@@ -26,7 +26,8 @@ supported_optimizers = {
 }
 
 
-def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares'):
+def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
+                   mask_dilation=3):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -39,23 +40,30 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                        is: (dim1, dim2, dim3). Refer to shimmingtoolbox.shim.sequencer:define_slices().
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
-                          Refer to shimmingtoolbox.coils.coil:Coil().
+                          Refer to shimmingtoolbox.coils.coil:Coil(). Make sure the extent of the coil profiles
+                          are larger than the extent of the fieldmap. This is especially true for dimensions with only
+                          1 voxel(e.g. (50x50x1). Refer to shimmingtoolbox.shim.sequencer:extend_slice()/
+                          shimmingtoolbox.shim.sequencer:update_affine_for_ap_slices
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: shimmingtoolbox.optimizer
+        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
 
     Returns:
         numpy.ndarray: Coefficients to shim (len(slices) x channels)
     """
 
     # Make sure fieldmap has the appropriate dimensions
+    if nii_fieldmap.get_fdata().ndim != 3:
+        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
+    fieldmap_shape = nii_fieldmap.get_fdata().shape
+    # Extend the fieldmap if there are axes that are 1d
+    if 1 in fieldmap_shape:
+        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
+        for i_axis in list_axis:
+            n_slices = int(math.ceil((mask_dilation - 1) / 2))
+            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
-    if fieldmap.ndim != 3:
-        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
-    if np.any(fieldmap.shape == 1):
-        # TODO: deal with 1 slice fieldmap
-        raise NotImplementedError("Fieldmap has a 1 pixel dimension along a direction, can't accurately shim along "
-                                  "that direction yet")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -78,13 +86,13 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
 
     # Optimize slice by slice
-    currents = optimize(optimizer, nii_mask_anat, slices)
+    currents = optimize(optimizer, nii_mask_anat, slices, dilate=mask_dilation)
 
     return currents
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
-                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares'):
+                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', mask_dilation=3):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -103,7 +111,12 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         pmu (PmuResp): Filename of the file of the respiratory trace.
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
+                          Refer to shimmingtoolbox.coils.coil:Coil(). Make sure the extent of the coil profiles
+                          are larger than the extent of the fieldmap. This is especially true for dimensions with only
+                          1 voxel(e.g. (50x50x1x10). Refer to shimmingtoolbox.shim.sequencer:extend_slice()/
+                          shimmingtoolbox.shim.sequencer:update_affine_for_ap_slices
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'.
+        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
 
     Returns:
         (tuple): tuple containing:
@@ -118,14 +131,17 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # the mask is indeed in the dimension of the anat and not the fieldmap
 
     # Make sure fieldmap has the appropriate dimensions
+    if nii_fieldmap.get_fdata().ndim != 4:
+        raise RuntimeError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+    fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
+    # Extend the fieldmap if there are axes that are 1d
+    if 1 in fieldmap_shape:
+        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
+        for i_axis in list_axis:
+            n_slices = int(math.ceil((mask_dilation - 1) / 2))
+            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
-    if fieldmap.ndim != 4:
-        raise RuntimeError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
-    if 1 in fieldmap.shape:
-        # TODO: deal with 1 slice fieldmap
-        raise NotImplementedError("Fieldmap has a 1 pixel dimension along a direction, can't accurately shim along "
-                                  "that direction yet")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -166,7 +182,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
-    currents_static = optimize(optimizer, nii_static_mask, slices)
+    currents_static = optimize(optimizer, nii_static_mask, slices, dilate=mask_dilation)
 
     # Use the currents to define a list of new bounds for the riro optimization
     bounds = new_bounds_from_currents(currents_static, optimizer.merged_bounds)
@@ -180,7 +196,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Set the riro map to shim
     optimizer.set_unshimmed(riro * max_offset, affine_fieldmap)
-    currents_max_riro = optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds)
+    currents_max_riro = optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds, dilate=mask_dilation)
     # Once the currents are solved, we divide by max_offset to return to units of
     # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
     currents_riro = currents_max_riro / max_offset
@@ -240,7 +256,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
     return optimizer
 
 
-def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None):
+def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None, dilate=3):
 
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
@@ -257,7 +273,7 @@ def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=N
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 
         # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
-        sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i]).get_fdata()
+        sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i], dilate=dilate).get_fdata()
 
         # If new bounds are included, change them for each shim
         if shimwise_bounds is not None:

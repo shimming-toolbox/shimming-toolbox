@@ -11,7 +11,7 @@ from scipy.ndimage import iterate_structure
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 
-def resample_mask(nii_mask_from, nii_target, from_slices):
+def resample_mask(nii_mask_from, nii_target, from_slices, dilate=3):
     """
     Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
 
@@ -19,6 +19,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
         nii_mask_from (nib.Nifti1Image): Mask to resample from. False or 0 signifies not included.
         nii_target (nib.Nifti1Image): Target image to resample onto.
         from_slices (tuple): Tuple containing the slices to select from nii_mask_from.
+        dilate (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
@@ -37,7 +38,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
 
     # dilate the mask to add more pixels in particular directions
-    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), 'line', 3)
+    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), 'line', dilate)
     nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
 
     # #######
@@ -52,7 +53,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices):
     return nii_mask_dilated
 
 
-def dilate_binary_mask(mask, shape='cross', size=3):
+def dilate_binary_mask(mask, shape='sphere', size=3):
     """
     Dilates a binary mask according to different shapes and kernel size
 
@@ -61,7 +62,7 @@ def dilate_binary_mask(mask, shape='cross', size=3):
         shape (str): 3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube'.
                      'line' uses 3 line kernels to extend in each directions by "(size - 1) / 2" only if that direction
                      is smaller than (size - 1) / 2
-        size (int): length of a side of the 3d kernel.
+        size (int): Length of a side of the 3d kernel. Must be odd.
 
     Returns:
         numpy.ndarray: Dilated mask.
