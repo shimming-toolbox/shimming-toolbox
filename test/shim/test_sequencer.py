@@ -14,6 +14,7 @@ from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
 from shimmingtoolbox.shim.sequencer import define_slices
 from shimmingtoolbox.shim.sequencer import resample_mask
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
+from shimmingtoolbox.shim.sequencer import extend_slice
 
 import numpy as np
 import pytest
@@ -415,6 +416,8 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
+    # larger_fieldmap =
+    # nib.Nifti1Image
 
     # anat image
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
@@ -706,3 +709,65 @@ def print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_rir
           f"\nstatic_shim_static_riro: {static_shim_static_riro}"
           f"\nstatic_shim_riro: {static_shim_riro}"
           f"\nstatic_unshimmed: {static_unshimmed}")
+
+
+array = np.array([[1, 2], [3, 4]])
+array = np.repeat(array, 4, 1)
+array = np.repeat(array[..., np.newaxis], 1, 2)
+array = np.repeat(array[..., np.newaxis], 5, 3)
+affine = np.array([[3.342335, -9.593514, 0.173426, 3],
+                   [0.083550, 0.202371, 11.829379, 7],
+                   [8.295892, 3.863097, -0.189009, 11],
+                   [0, 0, 0, 1]])
+# array.shape: (2, 8, 1, 5)
+nii = nib.Nifti1Image(array, affine)
+
+
+@pytest.mark.parametrize(
+    "nii_4d", [(
+        nii,
+    )]
+)
+class TestExtendSlice(object):
+    def test_extend_slice_4d_dim1(self, nii_4d):
+
+        nii_out = extend_slice(nii_4d[0], 1, 0)
+
+        assert nii_out.get_fdata().shape == (4, 8, 1, 5)
+        assert np.all(np.isclose(nii_out.affine, np.array([[3.342335, -9.593514, 0.173426, -0.342335],
+                                                           [0.08355, 0.202371, 11.829379, 6.91645],
+                                                           [8.295892, 3.863097, -0.189009, 2.704108],
+                                                           [0., 0., 0., 1.]])))
+
+    def test_extend_slice_4d_dim2(self, nii_4d):
+
+        nii_out = extend_slice(nii_4d[0], 1, 1)
+
+        assert nii_out.get_fdata().shape == (2, 10, 1, 5)
+
+    def test_extend_slice_4d_dim3(self, nii_4d):
+
+        nii_out = extend_slice(nii_4d[0], 1, 2)
+
+        assert nii_out.get_fdata().shape == (2, 8, 3, 5)
+
+    def test_extend_slice_3d(self, nii_4d):
+        nii_3d = nib.Nifti1Image(nii_4d[0].get_fdata()[..., 0], nii_4d[0].affine)
+        nii_out = extend_slice(nii_3d, 1, 2)
+
+        assert nii_out.get_fdata().shape == (2, 8, 3)
+
+    def test_extend_slice_3d_dim1_2slices(self, nii_4d):
+
+        nii_out = extend_slice(nii_4d[0], 2, 2)
+
+        assert nii_out.get_fdata().shape == (2, 8, 5, 5)
+
+    def test_extend_slice_wrong_dim(self, nii_4d):
+        nii_2d = nib.Nifti1Image(nii_4d[0].get_fdata()[..., 0, 0], nii_4d[0].affine)
+        with pytest.raises(ValueError, match="Unsupported number of dimensions for input array"):
+            extend_slice(nii_2d, 1, 2)
+
+    def test_extend_slice_wrong_axis(self, nii_4d):
+        with pytest.raises(ValueError, match="Unsupported value for axis"):
+            extend_slice(nii_4d[0], 1, 4)

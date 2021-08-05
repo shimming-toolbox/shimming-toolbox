@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import os
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
 import nibabel as nib
 import logging
+from nibabel.affines import apply_affine
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -50,6 +52,10 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     affine_fieldmap = nii_fieldmap.affine
     if fieldmap.ndim != 3:
         raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
+    if np.any(fieldmap.shape == 1):
+        # TODO: deal with 1 slice fieldmap
+        raise NotImplementedError("Fieldmap has a 1 pixel dimension along a direction, can't accurately shim along "
+                                  "that direction yet")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -116,6 +122,10 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     affine_fieldmap = nii_fieldmap.affine
     if fieldmap.ndim != 4:
         raise RuntimeError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+    if 1 in fieldmap.shape:
+        # TODO: deal with 1 slice fieldmap
+        raise NotImplementedError("Fieldmap has a 1 pixel dimension along a direction, can't accurately shim along "
+                                  "that direction yet")
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
@@ -247,7 +257,6 @@ def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=N
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 
         # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
-        # TODO: deal with 1 slice fieldmap,
         sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i]).get_fdata()
 
         # If new bounds are included, change them for each shim
@@ -258,6 +267,83 @@ def optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=N
         currents[i, :] = optimizer.optimize(sliced_mask_resampled)
 
     return currents
+
+
+def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
+    """ Updates the input affine to reflect an insertion of n_slices on each side of the selected axis
+
+    Args:
+        affine (numpy.ndarray): 4x4 qform affine matrix representing the coordinates
+        n_slices (int): Number of pixels to add on each side of the selected axis
+        axis (int): Axis along which to insert the slice(s)
+
+    Returns:
+        (numpy.ndarray): 4x4 updated affine matrix
+    """
+    # Define indexes
+    index_shifted = [0, 0, 0]
+    index_shifted[axis] = n_slices
+
+    # Difference of voxel in world coordinates
+    spacing = apply_affine(affine, index_shifted) - apply_affine(affine, [0, 0, 0])
+
+    # Calculate new affine
+    new_affine = affine
+    new_affine[:3, 3] = affine[:3, 3] - spacing
+
+    return new_affine
+
+
+def extend_slice(nii_array, n_slices=1, axis=2):
+    """ Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
+    Updates the affine of the matrix to keep the input array in the same location.
+
+    Args:
+        nii_array (nib.Nifti1Image): 3 or 4d array to extend the dimensions
+        n_slices (int): Number of pixels to add on each side of the selected axis
+        axis (int): Axis along which to insert the slice(s)
+
+    Returns:
+        nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.
+
+    Examples:
+
+        ::
+
+            print(nii_array.get_fdata().shape)  # (50, 50, 1, 10)
+            nii_out = extend_slice(nii_array, n_slices=1, axis=2)
+            print(nii_out.get_fdata().shape)  # (50, 50, 3, 10)
+
+    """
+    if nii_array.get_fdata().ndim == 3:
+        extended = nii_array.get_fdata()
+        extended = extended[..., np.newaxis]
+    elif nii_array.get_fdata().ndim == 4:
+        extended = nii_array.get_fdata()
+    else:
+        raise ValueError("Unsupported number of dimensions for input array")
+
+    for i_slice in range(n_slices):
+        if axis == 0:
+            extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
+        elif axis == 1:
+            extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
+        elif axis == 2:
+            extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
+        else:
+            raise ValueError("Unsupported value for axis")
+
+    new_affine = update_affine_for_ap_slices(nii_array.affine, n_slices, axis)
+
+    if nii_array.get_fdata().ndim == 3:
+        extended = extended[..., 0]
+
+    nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
+
+    return nii_extended
 
 
 def define_slices(n_slices: int, factor: int, method='interleaved'):
