@@ -132,7 +132,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Make sure fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 4:
-        raise RuntimeError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+        raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
     fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
     # Extend the fieldmap if there are axes that are 1d
     if 1 in fieldmap_shape:
@@ -146,15 +146,15 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
     if anat.ndim != 3:
-        raise RuntimeError("Anatomical image must be in 3d")
+        raise ValueError("Anatomical image must be in 3d")
 
     # Make sure masks have the appropriate dimensions
     static_mask = nii_static_mask.get_fdata()
     if static_mask.ndim != 3:
-        raise RuntimeError("static_mask image must be in 3d")
+        raise ValueError("static_mask image must be in 3d")
     riro_mask = nii_riro_mask.get_fdata()
     if riro_mask.ndim != 3:
-        raise RuntimeError("riro_mask image must be in 3d")
+        raise ValueError("riro_mask image must be in 3d")
 
     # Make sure shape and affine of masks are the same as the anat
     if not (np.all(riro_mask.shape == anat.shape) and np.all(static_mask.shape == anat.shape)):
@@ -402,7 +402,7 @@ def define_slices(n_slices: int, factor: int, method='interleaved'):
             slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
 
     else:
-        raise NotImplementedError("Not a supported method to define slices")
+        raise ValueError("Not a supported method to define slices")
 
     if leftover != 0:
         slices.append(tuple(range(n_shims * factor, n_slices)))

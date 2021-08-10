@@ -187,7 +187,43 @@ class TestSequencer(object):
         with pytest.raises(KeyError, match=f"Method: {method} is not part of the supported optimizers"):
             shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method=method)
 
-    # TODO: tests for wrong inputs
+    def test_shim_sequencer_wrong_fmap_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = [(0, 2), (1,)]
+        nii_wrong_fmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine,
+                                         header=nii_fieldmap.header)
+        with pytest.raises(ValueError, match="Fieldmap must be 3d"):
+            shim_sequencer(nii_wrong_fmap, nii_anat, nii_mask, slices, [sph_coil])
+
+    def test_shim_sequencer_wrong_anat_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = [(0, 2), (1,)]
+        nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
+        with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
+            shim_sequencer(nii_fieldmap, nii_wrong_anat, nii_mask, slices, [sph_coil])
+
+    def test_shim_sequencer_wrong_mask_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = [(0, 2), (1,)]
+        nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[..., 0], nii_mask.affine, header=nii_mask.header)
+        with pytest.raises(ValueError, match="Mask image must be in 3d"):
+            shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
+
+    def test_shim_sequencer_wrong_mask_affine(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = [(0, 2), (1,)]
+        wrong_affine = nii_mask.affine
+        wrong_affine[0, 0] = 100
+        nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata(), wrong_affine, header=nii_mask.header)
+        with pytest.raises(ValueError, match="Affine of mask:"):
+            shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
+
+    def test_shim_sequencer_wrong_mask_shape(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = [(0, 2), (1,)]
+        nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[:5, ...], nii_mask.affine, header=nii_mask.header)
+        with pytest.raises(ValueError, match="Shape of mask:"):
+            shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
 
     # def test_speed_huge_matrix(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
     #     # Create 1 huge coil which essentially is siemens basis concatenated 4 times
@@ -266,9 +302,7 @@ def assert_results(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
         nib.save(nii_res_mask, fname_res_mask)
 
 
-def test_shim_realtime_pmu_sequencer_fake_data():
-    """Test on the shim_realtime_pmu_sequencer using simulated data"""
-
+def define_rt_sim_inputs():
     # anat image
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
                               'sub-example_unshimmed_e1.nii.gz')
@@ -317,98 +351,166 @@ def test_shim_realtime_pmu_sequencer_fake_data():
     # Define the slices to shim with the proper convention
     slices = define_slices(nii_anat.shape[2], 1, method='sequential')
 
-    # Find optimal currents
-    output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                         slices, pmu, [coil], opt_method='least_squares')
-    currents_static, currents_riro, mean_p, p_rms = output
+    return nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu, coil
 
-    currents_riro_rms = currents_riro * p_rms
 
-    print(f"\nSlices: {slices}"
-          f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
-          f"Coil affine:\n{coil_affine}\n"
-          f"Static currents:\n{currents_static}\n"
-          f"Riro currents * p_rms:\n{currents_riro_rms}\n")
+nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
+    define_rt_sim_inputs()
 
-    # Calculate theoretical shimmed map
-    # shim
-    unshimmed = nii_fieldmap.get_fdata()
-    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
-    opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
-    shape = unshimmed.shape + (len(slices),)
-    shimmed_static_riro = np.zeros(shape)
-    shimmed_static = np.zeros(shape)
-    shimmed_riro = np.zeros(shape)
-    masked_shim_static_riro = np.zeros(shape)
-    masked_shim_static = np.zeros(shape)
-    masked_shim_riro = np.zeros(shape)
-    masked_unshimmed = np.zeros(shape)
-    masked_fieldmap = np.zeros(unshimmed[..., 0].shape + (len(slices),))
-    shim_trace_static_riro = []
-    shim_trace_static = []
-    shim_trace_riro = []
-    unshimmed_trace = []
-    for i_shim in range(len(slices)):
-        # Calculate static correction
-        correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-        # Calculate the riro coil profiles
-        riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
+@pytest.mark.parametrize(
+    "nii_fieldmap,json_data,nii_anat,nii_mask_static,nii_mask_riro,slices,pmu,coil", [(
+        nii_rt_fieldmap,
+        json_rt_data,
+        nii_rt_anat,
+        nii_mask_rt_static,
+        nii_mask_rt_riro,
+        slices_rt,
+        pmu_rt,
+        coil_rt
+    )]
+)
+class TestShimRTpmuSimData(object):
+    def test_shim_realtime_pmu_sequencer_fake_data(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        """Test on the shim_realtime_pmu_sequencer using simulated data"""
 
-        masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
-        for i_t in range(nii_fieldmap.shape[3]):
-            # Apply the static and riro correction
-            correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
-            shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
-            shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
-            shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
+        # Find optimal currents
+        output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
+                                             slices, pmu, [coil], opt_method='least_squares')
+        currents_static, currents_riro, mean_p, p_rms = output
 
-            # Calculate masked shim
-            masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
-            masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
-            masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
+        currents_riro_rms = currents_riro * p_rms
 
-            # Calculate the sum over the ROI
-            sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
-            sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
-            sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
-            sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
-            print(f"\ni_shim: {i_shim}, t: {i_t}"
-                  f"\nshimmed static: {sum_shimmed_static}, shimmed static+riro: {sum_shimmed_static_riro}, "
-                  f"unshimmed: {sum_unshimmed}\n"
-                  f"Static currents:\n{currents_static[i_shim]}\n"
-                  f"Riro currents:\n{currents_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
+        print(f"\nSlices: {slices}"
+              f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
+              f"Coil affine:\n{coil_affine}\n"
+              f"Static currents:\n{currents_static}\n"
+              f"Riro currents * p_rms:\n{currents_riro_rms}\n")
 
-            # Create a 1D list of the sum of the shimmed and unshimmed maps
-            shim_trace_static.append(sum_shimmed_static)
-            shim_trace_static_riro.append(sum_shimmed_static_riro)
-            shim_trace_riro.append(sum_shimmed_riro)
-            unshimmed_trace.append(sum_unshimmed)
+        # Calculate theoretical shimmed map
+        # shim
+        unshimmed = nii_fieldmap.get_fdata()
+        nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+        opt = Optimizer([coil], unshimmed[..., 0], nii_fieldmap.affine)
+        shape = unshimmed.shape + (len(slices),)
+        shimmed_static_riro = np.zeros(shape)
+        shimmed_static = np.zeros(shape)
+        shimmed_riro = np.zeros(shape)
+        masked_shim_static_riro = np.zeros(shape)
+        masked_shim_static = np.zeros(shape)
+        masked_shim_riro = np.zeros(shape)
+        masked_unshimmed = np.zeros(shape)
+        masked_fieldmap = np.zeros(unshimmed[..., 0].shape + (len(slices),))
+        shim_trace_static_riro = []
+        shim_trace_static = []
+        shim_trace_riro = []
+        unshimmed_trace = []
+        for i_shim in range(len(slices)):
+            # Calculate static correction
+            correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-            assert sum_shimmed_static_riro <= sum_unshimmed
+            # Calculate the riro coil profiles
+            riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-    if DEBUG:
+            masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
+            for i_t in range(nii_fieldmap.shape[3]):
+                # Apply the static and riro correction
+                correction_riro = riro_profile * (pmu.data[i_t] - mean_p)
+                shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
+                shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
+                shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
-        # reshape to slice x timepoint
-        nt = unshimmed.shape[3]
-        n_shim = len(slices)
-        shim_trace_static = np.array(shim_trace_static).reshape(n_shim, nt)
-        shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
-        shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
-        unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
+                # Calculate masked shim
+                masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
+                masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
+                masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+                masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
 
-        # Plot and save debug outputs
-        i_slice = 0
-        i_shim = 0
-        i_t = 0
-        plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
-                         shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
-        plot_currents(currents_static, currents_riro_rms)
-        plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
-        plot_pressure_points(acq_pressures)
-        save_nii(nii_fieldmap, coil, opt, nii_mask_static)
-        print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
+                # Calculate the sum over the ROI
+                sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
+                sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
+                sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
+                sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
+                print(f"\ni_shim: {i_shim}, t: {i_t}"
+                      f"\nshimmed static: {sum_shimmed_static}, shimmed static+riro: {sum_shimmed_static_riro}, "
+                      f"unshimmed: {sum_unshimmed}\n"
+                      f"Static currents:\n{currents_static[i_shim]}\n"
+                      f"Riro currents:\n{currents_riro[i_shim] * (pmu.data[i_t] - mean_p)}\n")
+
+                # Create a 1D list of the sum of the shimmed and unshimmed maps
+                shim_trace_static.append(sum_shimmed_static)
+                shim_trace_static_riro.append(sum_shimmed_static_riro)
+                shim_trace_riro.append(sum_shimmed_riro)
+                unshimmed_trace.append(sum_unshimmed)
+
+                assert sum_shimmed_static_riro <= sum_unshimmed
+
+        if DEBUG:
+
+            # reshape to slice x timepoint
+            nt = unshimmed.shape[3]
+            n_shim = len(slices)
+            shim_trace_static = np.array(shim_trace_static).reshape(n_shim, nt)
+            shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
+            shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
+            unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
+
+            # Plot and save debug outputs
+            i_slice = 0
+            i_shim = 0
+            i_t = 0
+            plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
+                             shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
+            plot_currents(currents_static, currents_riro_rms)
+            plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
+            plot_pressure_points(pmu.data)
+            save_nii(nii_fieldmap, coil, opt, nii_mask_static)
+            print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
+
+    def test_shim_sequencer_wrong_fmap_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        nii_wrong_fmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine,
+                                         header=nii_fieldmap.header)
+        with pytest.raises(ValueError, match="Fieldmap must be 4d"):
+            shim_realtime_pmu_sequencer(nii_wrong_fmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
+                                                 slices, pmu, [coil])
+
+    def test_shim_sequencer_wrong_anat_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
+        with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
+            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_wrong_anat, nii_mask_static, nii_mask_riro,
+                                        slices, pmu, [coil])
+
+    def test_shim_sequencer_wrong_mask_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[:5, ...], nii_mask.affine, header=nii_mask.header)
+        with pytest.raises(ValueError, match="Shape of riro mask"):
+            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
+                                        slices, pmu, [coil])
+
+    def test_shim_sequencer_wrong_mask_affine(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        wrong_affine = nii_mask.affine
+        wrong_affine[0, 0] = 100
+        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata(), wrong_affine, header=nii_mask_static.header)
+        with pytest.raises(ValueError, match="Affine of riro mask:"):
+            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
+                                        slices, pmu, [coil])
+
+    def test_shim_sequencer_wrong_mask_shape(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                   nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[:5, ...], nii_mask_static.affine,
+                                         header=nii_mask_static.header)
+        with pytest.raises(ValueError, match="Shape of riro mask:"):
+            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
+                                        slices, pmu, [coil])
 
 
 def test_shim_realtime_pmu_sequencer_rt_zshim_data():
@@ -416,8 +518,6 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
-    # larger_fieldmap =
-    # nib.Nifti1Image
 
     # anat image
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
@@ -771,3 +871,17 @@ class TestExtendSlice(object):
     def test_extend_slice_wrong_axis(self, nii_4d):
         with pytest.raises(ValueError, match="Unsupported value for axis"):
             extend_slice(nii_4d[0], 1, 4)
+
+
+class TestDefineSlices(object):
+    def test_define_slices_interleaved(self):
+        output = define_slices(5, 2, "interleaved")
+        assert np.all(output == [(0, 2), (1, 3), (4,)])
+
+    def test_define_slices_sequential(self):
+        output = define_slices(5, 2, "sequential")
+        assert np.all(output == [(0, 1), (2, 3), (4,)])
+
+    def test_define_slices_wrong_method(self):
+        with pytest.raises(ValueError, match="Not a supported method to define slices"):
+            define_slices(5, 2, "abc")
