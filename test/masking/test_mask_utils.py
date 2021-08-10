@@ -21,7 +21,7 @@ dummy_image[2, 6:8, 6:8] = 1
         dummy_image,
     )]
 )
-class TestDilaceBinaryMask(object):
+class TestDilateBinaryMask(object):
     def test_dilate_binary_mask_default(self, input_mask):
         """Default is the cross"""
         dilated = dilate_binary_mask(input_mask[0])
