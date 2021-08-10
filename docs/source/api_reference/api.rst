@@ -31,6 +31,9 @@ Masking
 .. automodule:: shimmingtoolbox.masking.threshold
     :members:
 
+.. automodule:: shimmingtoolbox.masking.mask_utils
+    :members:
+
 Coils
 -----
 

@@ -69,65 +69,65 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
 
     Notes:
         Kernels for
-            'cross':
-                array([[[0., 0., 0.],
-                        [0., 1., 0.],
-                        [0., 0., 0.]],
-                       [[0., 1., 0.],
-                        [1., 1., 1.],
-                        [0., 1., 0.]],
-                       [[0., 0., 0.],
-                        [0., 1., 0.],
-                        [0., 0., 0.]]])
+            * 'cross':
+              array([[[0, 0, 0],
+              [0, 1, 0],
+              [0, 0, 0]],
+              [[0, 1, 0],
+              [1, 1, 1],
+              [0, 1, 0]],
+              [[0, 0, 0],
+              [0, 1, 0],
+              [0, 0, 0]]])
 
-            'sphere' size 5:
-                [[[False False False False False]
-                  [False False False False False]
-                  [False False  True False False]
-                  [False False False False False]
-                  [False False False False False]]
-                 [[False False False False False]
-                  [False False  True False False]
-                  [False  True  True  True False]
-                  [False False  True False False]
-                  [False False False False False]]
-                 [[False False  True False False]
-                  [False  True  True  True False]
-                  [ True  True  True  True  True]
-                  [False  True  True  True False]
-                  [False False  True False False]]
-                 [[False False False False False]
-                  [False False  True False False]
-                  [False  True  True  True False]
-                  [False False  True False False]
-                  [False False False False False]]
-                 [[False False False False False]
-                  [False False False False False]
-                  [False False  True False False]
-                  [False False False False False]
-                  [False False False False False]]]
+            * 'sphere' size 5:
+              [[[0 0 0 0 0]
+              [0 0 0 0 0]
+              [0 0  1 0 0]
+              [0 0 0 0 0]
+              [0 0 0 0 0]]
+              [[0 0 0 0 0]
+              [0 0 1 0 0]
+              [0 1 1 1 0]
+              [0 0 1 0 0]
+              [0 0 0 0 0]]
+              [[0 0 1 0 0]
+              [0 1 1 1 0]
+              [1 1 1 1 1]
+              [0 1 1 1 0]
+              [0 0 1 0 0]]
+              [[0 0 0 0 0]
+              [0 0 1 0 0]
+              [0 1 1 1 0]
+              [0 0 1 0 0]
+              [0 0 0 0 0]]
+              [[0 0 0 0 0]
+              [0 0 0 0 0]
+              [0 0 1 0 0]
+              [0 0 0 0 0]
+              [0 0 0 0 0]]]
 
-            'cube':
-                array([[[ True,  True,  True],
-                        [ True,  True,  True],
-                        [ True,  True,  True]],
-                       [[ True,  True,  True],
-                        [ True,  True,  True],
-                        [ True,  True,  True]],
-                       [[ True,  True,  True],
-                        [ True,  True,  True],
-                        [ True,  True,  True]]])
+            * 'cube':
+              array([[[1, 1, 1],
+              [1, 1, 1],
+              [1, 1, 1]],
+              [[1, 1, 1],
+              [1, 1, 1],
+              [1, 1, 1]],
+              [[1, 1, 1],
+              [1, 1, 1],
+              [1, 1, 1]]])
 
-            'line':
-                array([[[0., 0., 0.],
-                        [0., 1., 0.],
-                        [0., 0., 0.]],
-                       [[0., 0., 0.],
-                        [0., 1., 0.],
-                        [0., 0., 0.]],
-                       [[0., 0., 0.],
-                        [0., 1., 0.],
-                        [0., 0., 0.]]])
+            * 'line':
+              array([[[0, 0, 0],
+              [0, 1, 0],
+              [0, 0, 0]],
+              [[0, 0, 0],
+              [0, 1, 0],
+              [0, 0, 0]],
+              [[0, 0, 0],
+              [0, 1, 0],
+              [0, 0, 0]]])
 
     """
 
