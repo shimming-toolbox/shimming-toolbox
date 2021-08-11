@@ -32,7 +32,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
     Args:
-        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d.
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine trandformation.
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
         nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
@@ -46,13 +46,14 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
+        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel
+                             of size 3 will dilate the mask by 1 pixel.
 
     Returns:
-        numpy.ndarray: Coefficients to shim (len(slices) x channels)
+        numpy.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
     """
 
-    # Make sure fieldmap has the appropriate dimensions
+    # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 3:
         raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
     fieldmap_shape = nii_fieldmap.get_fdata().shape
@@ -86,9 +87,9 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
 
     # Optimize slice by slice
-    currents = _optimize(optimizer, nii_mask_anat, slices, dilate=mask_dilation)
+    coef = _optimize(optimizer, nii_mask_anat, slices, dilate=mask_dilation)
 
-    return currents
+    return coef
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
@@ -98,7 +99,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     Args:
         nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
-                                            timeseries.
+                                            timeseries. Also contains an affine transformation.
         json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                           timestamps).
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
@@ -108,7 +109,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                                              component.
         slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of anat:
                        (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
-        pmu (PmuResp): Filename of the file of the respiratory trace.
+        pmu (PmuResp): PmuResp object containing the respiratory trace information.
         coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
                           Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
@@ -117,21 +118,23 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                           implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
+        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel
+                             of size 3 will dilate the mask by 1 pixel.
 
     Returns:
         (tuple): tuple containing:
 
-            * numpy.ndarray: Static coefficients to shim (len(slices) x channels) e.g. [Hz]
-            * numpy.ndarray: Riro coefficients to shim (len(slices) x channels) e.g. [Hz/unit_pressure]
+            * numpy.ndarray: Static coefficients of the coil profiles to shim (len(slices) x channels) e.g. [Hz]
+            * numpy.ndarray: Riro coefficients of the coil profiles to shim (len(slices) x channels)
+                             e.g. [Hz/unit_pressure]
             * float: Mean pressure of the respiratory trace.
             * float: Root mean squared of the pressure. This is provided to compare results between scans, multiply the
                      riro coefficients by rms of the pressure to do so.
     """
-    # Note: We technically dont need the anat if we use the nii_mask. However, this is a nice safety check to make sur
-    # the mask is indeed in the dimension of the anat and not the fieldmap
+    # Note: We technically dont need the anat if we use the nii_mask. However, this is a nice safety check to make sure
+    # the mask is indeed in the dimension of the anat and not the fieldmap.
 
-    # Make sure fieldmap has the appropriate dimensions
+    # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
     fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
@@ -176,48 +179,51 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, fieldmap.reshape(-1, fieldmap.shape[-1]).T)
+    # TODO: Safety check for linear regression if the pressure and fieldmap fits
 
-    # static/riro contains a 3d matrix of static/riro coefficients in the fieldmap space
+    # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
     riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
-    currents_static = _optimize(optimizer, nii_static_mask, slices, dilate=mask_dilation)
+    coef_static = _optimize(optimizer, nii_static_mask, slices, dilate=mask_dilation)
 
-    # Use the currents to define a list of new bounds for the riro optimization
-    bounds = new_bounds_from_currents(currents_static, optimizer.merged_bounds)
+    # Use the currents to define a list of new coil bounds for the riro optimization
+    bounds = new_bounds_from_currents(coef_static, optimizer.merged_bounds)
 
     # Riro shim
-    # We multiply by the max offset of the siemens pmu [max - min = 4095] so that the bounds take effect on the maximum
-    # value that the pressure probe can acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes
-    # "riro(i_vox) * max_offset" which is the maximum shim we will have. We solve for that to make sure the coils can
-    # support it. The units of riro * max_offset are: [unit_shim], ex: [Hz]
+    # We multiply by the max offset of the siemens pmu e.g. [max - min = 4095] so that the bounds take effect on the
+    # maximum value that the pressure probe can acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes
+    # "riro(i_vox) * max_offset" which is the maximum riro shim we will have. We solve for that to make sure the coils
+    # can support it. The units of riro * max_offset are: [unit_shim], ex: [Hz]
     max_offset = max((pmu.max - pmu.min) - mean_p, mean_p)
 
     # Set the riro map to shim
+    # TODO: make sure max_offset could not bust with negative offset
     optimizer.set_unshimmed(riro * max_offset, affine_fieldmap)
-    currents_max_riro = _optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds, dilate=mask_dilation)
-    # Once the currents are solved, we divide by max_offset to return to units of
+    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds, dilate=mask_dilation)
+    # Once the coefficients are solved, we divide by max_offset to return to units of
     # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
-    currents_riro = currents_max_riro / max_offset
+    coef_riro = coef_max_riro / max_offset
 
     # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
     # between scans. This allows to compare results between scans.
-    # currents_riro_rms = currents_riro * pressure_rms
+    # coef_riro_rms = coef_riro * pressure_rms
     # [unit_shim/unit_pressure] * rms_pressure, ex: [Hz/unit_pressure] * rms_pressure
 
-    return currents_static, currents_riro, mean_p, pressure_rms
+    return coef_static, coef_riro, mean_p, pressure_rms
 
 
 def new_bounds_from_currents(currents, old_bounds):
     """
-    Uses the currents to determine the appropriate bound for a next optimization. It assumes that
-    "old_current + next_current < old_bound".
+    Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
+    "old_coef + next_bound < old_bound".
 
     Args:
-        currents: 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
-        old_bounds: 1d list (n_channels) of the merged bounds of the previous optimization.
+        currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
+        old_bounds (list): 1d list (n_channels) of tuples (min, max) containing the merged bounds of the previous
+                           optimization.
 
     Returns:
         list: 2d list (n_shims x n_channels) of bounds (min, max) corresponding to each shim and channel.
@@ -266,7 +272,7 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     n_shims = len(slices_anat)
 
     # Initialize
-    currents = np.zeros((n_shims, n_channels))
+    coefs = np.zeros((n_shims, n_channels))
 
     # For each shim
     for i in range(n_shims):
@@ -281,9 +287,9 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
             optimizer.set_merged_bounds(shimwise_bounds[i])
 
         # Optimize using the mask
-        currents[i, :] = optimizer.optimize(sliced_mask_resampled)
+        coefs[i, :] = optimizer.optimize(sliced_mask_resampled)
 
-    return currents
+    return coefs
 
 
 def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
@@ -365,7 +371,7 @@ def extend_slice(nii_array, n_slices=1, axis=2):
 
 def define_slices(n_slices: int, factor: int, method='interleaved'):
     """
-    Define the slices to shim according to the output convention.
+    Define the slices to shim according to the output convention. (list of tuples)
 
     Args:
         n_slices (int): Number of total slices.
@@ -374,7 +380,7 @@ def define_slices(n_slices: int, factor: int, method='interleaved'):
                       See Examples for more details.
 
     Returns:
-        list: 1D list containing tuples of z slices to shim.
+        list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
 
     Examples:
 
@@ -388,7 +394,7 @@ def define_slices(n_slices: int, factor: int, method='interleaved'):
 
     """
     if n_slices <= 0:
-        return [tuple()]
+        raise ValueError("Number of slices should be greater than 0")
 
     slices = []
     n_shims = n_slices // factor
