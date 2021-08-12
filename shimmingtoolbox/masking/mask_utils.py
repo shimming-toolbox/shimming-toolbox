@@ -11,7 +11,7 @@ from scipy.ndimage import iterate_structure
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 
-def resample_mask(nii_mask_from, nii_target, from_slices, dilate=3):
+def resample_mask(nii_mask_from, nii_target, from_slices, dilation_kernel='None', dilation_size=3):
     """
     Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
 
@@ -19,7 +19,10 @@ def resample_mask(nii_mask_from, nii_target, from_slices, dilate=3):
         nii_mask_from (nib.Nifti1Image): Mask to resample from. False or 0 signifies not included.
         nii_target (nib.Nifti1Image): Target image to resample onto.
         from_slices (tuple): Tuple containing the slices to select from nii_mask_from.
-        dilate (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
+        dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
+                               'cube'. See :func:`dilate_binary_mask` for more details.
+        dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
+                                         a kernel of size 3 will dilate the mask by 1 pixel.
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
@@ -38,17 +41,17 @@ def resample_mask(nii_mask_from, nii_target, from_slices, dilate=3):
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
 
     # dilate the mask to add more pixels in particular directions
-    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), 'line', dilate)
+    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size)
     nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
 
-    # #######
-    # # Debug
-    # import os
-    # nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
-    # nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
-    # nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    # nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
-    # #######
+    #######
+    # Debug
+    import os
+    nib.save(nii_mask, os.path.join(os.curdir, f"fig_mask_{from_slices[0]}.nii.gz"))
+    nib.save(nii_mask_from, os.path.join(os.curdir, "fig_mask_roi.nii.gz"))
+    nib.save(nii_mask_target, os.path.join(os.curdir, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    nib.save(nii_mask_dilated, os.path.join(os.curdir, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    #######
 
     return nii_mask_dilated
 
@@ -59,7 +62,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
 
     Args:
         mask (numpy.ndarray): 3d array containing the binary mask.
-        shape (str): 3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube'.
+        shape (str): 3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.
                      'line' uses 3 line kernels to extend in each directions by "(size - 1) / 2" only if that direction
                      is smaller than (size - 1) / 2
         size (int): Length of a side of the 3d kernel. Must be odd.
@@ -71,7 +74,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
 
         Kernels for
 
-            * 'cross':
+            * 'cross' size 3:
                 ::
 
                       np.array([[[0, 0, 0],
@@ -113,7 +116,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
                                [0 0 0 0 0],
                                [0 0 0 0 0]]]
 
-            * 'cube':
+            * 'cube' size 3:
                 ::
 
                     np.array([[[1, 1, 1],
@@ -126,7 +129,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
                                [1, 1, 1],
                                [1, 1, 1]]])
 
-            * 'line':
+            * 'line' size 3:
                 ::
 
                   np.array([[[0, 0, 0],
@@ -195,6 +198,9 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         dim3 = binary_dilation(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
 
         mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
+
+    elif shape == 'None':
+        mask_dilated = mask
 
     else:
         raise ValueError("Use of non supported algorithm for dilating the mask")

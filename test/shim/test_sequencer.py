@@ -319,6 +319,7 @@ def define_rt_sim_inputs():
     fake_temp[..., 2] = fake - lin
     fake_temp[..., 3] = fake
     fake_affine = nii_anat.affine * 0.75
+    fake_affine[:, 3] = nii_anat.affine[:, 3]
     fake_affine[3, 3] = 1
     nii_fieldmap = nib.Nifti1Image(fake_temp, fake_affine)
 
@@ -492,6 +493,14 @@ class TestShimRTpmuSimData(object):
               f"Riro currents * p_rms:\n{currents_riro * p_rms}\n")
 
         assert np.all(currents_static.shape == (20, 3))
+
+    def test_shim_sequencer_rt_kernel_line(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                           nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
+                                             slices, pmu, [coil], mask_dilation_kernel='line')
+
+        assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_wrong_fmap_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                               nii_mask_riro, slices, pmu, coil):

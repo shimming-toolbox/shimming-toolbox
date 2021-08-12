@@ -27,7 +27,7 @@ supported_optimizers = {
 
 
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   mask_dilation=3):
+                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -46,8 +46,11 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel
-                             of size 3 will dilate the mask by 1 pixel.
+        mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
+                                    'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
+                                    details.
+        mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
+                                         a kernel of size 3 will dilate the mask by 1 pixel.
 
     Returns:
         numpy.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
@@ -61,7 +64,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     if 1 in fieldmap_shape:
         list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
         for i_axis in list_axis:
-            n_slices = int(math.ceil((mask_dilation - 1) / 2))
+            n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
             nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
@@ -87,13 +90,15 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
 
     # Optimize slice by slice
-    coef = _optimize(optimizer, nii_mask_anat, slices, dilate=mask_dilation)
+    coef = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
+                     dilation_size=mask_dilation_kernel_size)
 
     return coef
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
-                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', mask_dilation=3):
+                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
+                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -118,8 +123,11 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                           implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        mask_dilation (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel
-                             of size 3 will dilate the mask by 1 pixel.
+        mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
+                                    'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
+                                    details.
+        mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
+                                         a kernel of size 3 will dilate the mask by 1 pixel.
 
     Returns:
         (tuple): tuple containing:
@@ -142,7 +150,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     if 1 in fieldmap_shape:
         list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
         for i_axis in list_axis:
-            n_slices = int(math.ceil((mask_dilation - 1) / 2))
+            n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
             nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
@@ -187,7 +195,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
-    coef_static = _optimize(optimizer, nii_static_mask, slices, dilate=mask_dilation)
+    coef_static = _optimize(optimizer, nii_static_mask, slices, dilation_kernel=mask_dilation_kernel,
+                            dilation_size=mask_dilation_kernel_size)
 
     # Use the currents to define a list of new coil bounds for the riro optimization
     bounds = new_bounds_from_currents(coef_static, optimizer.merged_bounds)
@@ -202,7 +211,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Set the riro map to shim
     # TODO: make sure max_offset could not bust with negative offset
     optimizer.set_unshimmed(riro * max_offset, affine_fieldmap)
-    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds, dilate=mask_dilation)
+    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds,
+                              dilation_kernel=mask_dilation_kernel, dilation_size=mask_dilation_kernel_size)
     # Once the coefficients are solved, we divide by max_offset to return to units of
     # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
     coef_riro = coef_max_riro / max_offset
@@ -263,7 +273,8 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
     return optimizer
 
 
-def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None, dilate=3):
+def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
+              dilation_kernel='sphere', dilation_size=3):
 
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
@@ -280,7 +291,8 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 
         # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
-        sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i], dilate=dilate).get_fdata()
+        sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i],
+                                              dilation_kernel=dilation_kernel, dilation_size=dilation_size).get_fdata()
 
         # If new bounds are included, change them for each shim
         if shimwise_bounds is not None:

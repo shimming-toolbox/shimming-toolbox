@@ -66,6 +66,12 @@ class TestDilateBinaryMask(object):
 
         assert np.all(expected_slice == dilated[:, 2, :])
 
+    def test_dilate_binary_mask_none(self, input_mask):
+
+        dilated = dilate_binary_mask(input_mask[0], shape='None')
+
+        assert np.all(input_mask[0] == dilated)
+
     def test_dilate_binary_mask_wrong_size(self, input_mask):
 
         with pytest.raises(ValueError, match="Size must be odd and greater or equal to 3"):
@@ -100,7 +106,7 @@ def test_resample_mask():
 
     nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
-    nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,))
+    nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,), dilation_kernel='line')
 
     expected = np.full_like(nii_target.get_fdata(), fill_value=False)
     expected[24:28, 26:29, 0] = 1
