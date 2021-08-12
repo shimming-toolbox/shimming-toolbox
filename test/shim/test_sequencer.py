@@ -347,7 +347,8 @@ def define_rt_sim_inputs():
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
-    coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf, n_channels=3), coil_affine, n_channel=3)
+    coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf, n_channels=3),
+                       coil_affine, n_channel=3)
 
     # Define the slices to shim with the proper convention
     slices = define_slices(nii_anat.shape[2], 1, method='sequential')
@@ -378,7 +379,8 @@ class TestShimRTpmuSimData(object):
 
         # Find optimal currents
         output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                             slices, pmu, [coil], opt_method='least_squares')
+                                             slices, pmu, [coil], opt_method='least_squares',
+                                             mask_dilation_kernel='sphere')
         currents_static, currents_riro, mean_p, p_rms = output
 
         currents_riro_rms = currents_riro * p_rms
@@ -414,7 +416,8 @@ class TestShimRTpmuSimData(object):
             # Calculate the riro coil profiles
             riro_profile = np.sum(currents_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-            masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
+            masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim],
+                                                         dilation_kernel='sphere').get_fdata()
             for i_t in range(nii_fieldmap.shape[3]):
                 # Apply the static and riro correction
                 correction_riro = riro_profile * (pmu.data[i_t] - mean_p)
