@@ -373,6 +373,7 @@ nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro
     )]
 )
 class TestShimRTpmuSimData(object):
+    """Tests for realtime Sequencer with simulated data"""
     def test_shim_realtime_pmu_sequencer_fake_data(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                                    nii_mask_riro, slices, pmu, coil):
         """Test on the shim_realtime_pmu_sequencer using simulated data"""
@@ -551,6 +552,7 @@ class TestShimRTpmuSimData(object):
 
 
 def test_shim_realtime_pmu_sequencer_rt_zshim_data():
+    """Tests for realtime Sequencer with real data"""
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
