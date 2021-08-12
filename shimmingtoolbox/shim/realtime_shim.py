@@ -27,7 +27,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
                                             timeseries. Fieldmap should be in Hz.
         nii_anat (nibabel.Nifti1Image):  Nibabel object containing a 3d image of the target data to shim.
-        pmu (PmuResp): Filename of the file of the respiratory trace.
+        pmu (PmuResp): PmuResp object containing the respiratory trace information.
         json_fmap (dict): dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                           timestamps).
         nii_mask_anat_static (nibabel.Nifti1Image): Nibabel object containing the mask to specify the shimming region

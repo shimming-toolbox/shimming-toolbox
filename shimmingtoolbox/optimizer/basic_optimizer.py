@@ -17,7 +17,7 @@ class Optimizer(object):
     """
     Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
     Use optimize(args) to optimize a given mask.
-    For basic optimizer, uses unbounded pseudo-inverse.
+    For basic optimizer, uses *unbounded* pseudo-inverse.
 
     Attributes:
         coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
@@ -43,20 +43,44 @@ class Optimizer(object):
         logging.basicConfig(filename='test_optimizer.log', filemode='w', level=logging.DEBUG)
 
         self.coils = coils
+        self.unshimmed = np.array([])
+        self.unshimmed_affine = []
+        self.merged_coils = []
+        self.merged_bounds = []
+        self.set_unshimmed(unshimmed, affine)
 
+    def set_unshimmed(self, unshimmed, affine):
+        """
+        Set the unshimmed array to a new array. Resamples coil profiles accordingly.
+
+        Args:
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine: (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+        """
         # Check dimensions of unshimmed map
         if unshimmed.ndim != 3:
             raise ValueError(f"Unshimmed profile has {unshimmed.ndim} dimensions, expected 3 (dim1, dim2, dim3)")
-        self.unshimmed = unshimmed
 
         # Check dimensions of affine
         if affine.shape != (4, 4):
             raise ValueError("Shape of affine matrix should be 4x4")
+
+        # Define coil profiles if unshimmed or affine is different than previously
+        if (self.unshimmed.shape != unshimmed.shape) or not np.all(self.unshimmed_affine == affine):
+            self.merged_coils, self.merged_bounds = self.merge_coils(unshimmed, affine)
+
+        self.unshimmed = unshimmed
         self.unshimmed_affine = affine
 
-        # Define coil profiles
-        merged_coils, merged_bounds = self.merge_coils(unshimmed, affine)
-        self.merged_coils = merged_coils
+    def set_merged_bounds(self, merged_bounds):
+        """
+        Changes the default bounds set in the coil profile
+
+        Args:
+            merged_bounds: Concatenated coil profile bounds
+        """
+        if len(self.merged_bounds) != len(merged_bounds):
+            raise ValueError(f"Size of merged bounds: must match the number of total channel: {len(self.merged_bounds)}")
         self.merged_bounds = merged_bounds
 
     def optimize(self, mask):
@@ -99,7 +123,6 @@ class Optimizer(object):
         """
 
         coil_profiles_list = []
-        bounds = []
 
         # Define the nibabel unshimmed array
         nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
@@ -109,15 +132,48 @@ class Optimizer(object):
 
             # Resample a coil on the unshimmed image
             resampled_coil = resample_from_to(nii_coil, nii_unshimmed).get_fdata()
-
-            # Concat coils and bounds
             coil_profiles_list.append(resampled_coil)
-            for a_bound in coil.coef_channel_minmax:
-                bounds.append(a_bound)
 
         coil_profiles = np.concatenate(coil_profiles_list, axis=3)
 
+        bounds = self.merge_bounds()
+
         return coil_profiles, bounds
+
+    def merge_bounds(self):
+        """
+        Merge the coil profile bounds into a single array.
+
+        Returns:
+            list: list of bounds corresponding to each merged coils
+        """
+
+        bounds = []
+        for coil in self.coils:
+            # Concat coils and bounds
+            for a_bound in coil.coef_channel_minmax:
+                bounds.append(a_bound)
+
+        return bounds
+
+    def initial_guess_mean_bounds(self):
+        """
+        Calculates the initial guess from the bounds, sets it to the mean of the bounds
+
+        Returns:
+            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
+
+        """
+        current_0 = []
+        for bounds in self.merged_bounds:
+            avg = np.mean(bounds)
+
+            if np.isnan(avg):
+                current_0.append(0)
+            else:
+                current_0.append(avg)
+
+        return np.array(current_0)
 
     def _check_sizing(self, mask):
         """
