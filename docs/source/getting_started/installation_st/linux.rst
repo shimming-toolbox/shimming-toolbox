@@ -7,13 +7,13 @@ Dependencies
 
 
 Install FSL
-===========
+~~~~~~~~~~~
 
 You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ if you want to use ``prelude``.
 
 
 Install
-~~~~~~~
+-------
 
 To install ``shimming-toolbox``, clone the ``shimming-toolbox`` repository from ``GitHub`` (you will need to have ``Git`` installed on your system):
 
