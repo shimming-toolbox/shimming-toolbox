@@ -7,7 +7,7 @@ Dependencies
 
 
 Install FSL
-===========
+~~~~~~~~~~~
 
 You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ if you want to use ``prelude``.
 

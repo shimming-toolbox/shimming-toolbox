@@ -13,7 +13,7 @@ You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstall
 
 
 Install
--------
+~~~~~~~
 
 To install ``shimming-toolbox``, clone the ``shimming-toolbox`` repository from ``GitHub`` (you will need to have ``Git`` installed on your system):
 
