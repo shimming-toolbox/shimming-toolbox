@@ -33,7 +33,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.curdir,
               help="Directory to output gradient text file and figures.")
 def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
-    """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
+    """ Perform gradient realtime shimming. This function will generate textfile containing static and dynamic (due to
     respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
     bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
     static and dynamic Gz component maps to match the MGRE image. Lastly the mean Gz values within the ROI are computed
