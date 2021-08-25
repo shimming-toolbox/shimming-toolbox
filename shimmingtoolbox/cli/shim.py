@@ -40,11 +40,11 @@ def shim_cli():
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
-              help="Filename containing the coil profiles followed by the filename to the constraints "
+              help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
-                   "The coil profiles and the fieldmaps must have matching units (if fmap is in Hz, the coil profiles "
-                   "must be in hz/unit_shim). If you only want to shim using the scanner's gradient/shim coils, use "
-                   f"the `scanner_coil_order` option. For an example of a constraint file, "
+                   "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
+                   "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
+                   "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="B0 fieldmap. This should be a 3d file.")
@@ -53,20 +53,20 @@ def shim_cli():
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="3D nifti file used to define the spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner_coil_order', type=click.INT, default=0, show_default=True,
-              help="Order of the shim system, allowed values are 1, 2. Note that specifying 2 will return orders 1 and "
-                   "2")
-@click.option('--scanner_coil_constraints', 'fname_sph_constr', type=click.Path(exists=True),
+@click.option('--scanner-coil-order', type=click.INT, default=0, show_default=True,
+              help="Maximum order of the shim system, allowed values are 1, 2. Note that specifying 2 will return "
+                   "orders 1 and 2")
+@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
-              help="Default constraints for the 1st and 2nd order scanner coils")
+              help="Constraints for the 1st and 2nd order scanner coils")
 # Import a Json file? Define de slices here? eg sequential,Nslices,...
 @click.option('--slices', type=click.STRING, required=True,
               help="")
-@click.option('--optimizer_method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True, help="Method used by the optimizer")
-@click.option('--mask_dilation_kernel', type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), required=False,
+@click.option('--mask-dilation-kernel', type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), required=False,
               default='sphere', show_default=True, help="Kernel used to dilate the mask to expand the roi")
-@click.option('--mask_dilation_kernel_size', type=click.INT, required=False, default='3', show_default=True,
+@click.option('--mask-dilation-kernel-size', type=click.INT, required=False, default='3', show_default=True,
               help="Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel of size 3"
                    "will dilate the mask by 1 pixel, 5->2 pixels")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.abspath(os.curdir),
@@ -74,7 +74,7 @@ def shim_cli():
 def static_cli(fname_fmap, fname_anat, fname_mask_anat, fname_output, slices, coils, method, mask_dilation_kernel,
                mask_dilation_kernel_size, scanner_coil_order, fname_sph_constr):
     """ Static shim by fitting a fieldmap. Example of use: st_shim fieldmap_static --coil coil1.nii
-    coil1_constraints.nii --coil coil2.nii coil2_constraints.nii --fmap fmap.nii --anat anat.nii
+    coil1_constraints.json --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii
 
     EXPAND
 
@@ -114,7 +114,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, fname_output, slices, co
         mesh1, mesh2, mesh3 = generate_meshgrid(nii_fmap.shape, nii_fmap.affine)
         sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, scanner_coil_order)))
 
-        # It looks like for the prisma it would be 80mT/m --> 80000mT/mm
+        # It looks like for the prisma it would be 80mT/m --> 80000uT/m
         sph_contraints = json.load(fname_sph_constr)
         if scanner_coil_order == 1:
             # Order 1 only requires the first 3 channels
@@ -154,6 +154,7 @@ def realtime_cli():
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")
+# Add 'volume'
 @click.option('--method', type=click.Choice(['interleaved', 'sequential']), required=True,
               help="Defines how the slices should be sorted")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'slices.json'),
