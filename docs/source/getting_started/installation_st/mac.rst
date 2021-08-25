@@ -2,8 +2,8 @@
 Mac
 *****
 
-Dependencies
-------------
+1. Install Dependencies
+-----------------------
 
 
 Install FSL
@@ -12,8 +12,8 @@ Install FSL
 You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ if you want to use ``prelude``.
 
 
-Install
--------
+2. Install ``shimming-toolbox``
+-------------------------------
 
 To install ``shimming-toolbox``, clone the ``shimming-toolbox`` repository from ``GitHub`` (you will need to have ``Git`` installed on your system):
 
@@ -30,8 +30,8 @@ Next, install ``shimming-toolbox`` using the ``Makefile``:
   make install
 
 
-Test the Install (optional)
----------------------------
+3. Test the Installation (optional)
+-----------------------------------
 
 Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
@@ -72,7 +72,7 @@ Note that supplying the ``"-m"`` argument ``"prelude and dcm2niix"`` only runs t
 
 
 For Developers
-==============
+---------------
 
 The installation files can be found in the ``installer`` folder, and are called by the ``Makefile``.
 
