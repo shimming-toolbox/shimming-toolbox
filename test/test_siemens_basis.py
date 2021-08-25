@@ -31,6 +31,13 @@ def test_normal_siemens_basis(x, y, z):
     assert(math.isclose(basis[0, 0, 0, 0], -4.25760000e-02, rel_tol=1e-09))
 
 
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_siemens_basis(x, y, z):
+    basis = siemens_basis(x, y, z, orders=(1,))
+    print(basis.shape)
+    assert np.all(basis.shape == (3, 3, 3, 3))
+
+
 def test_siemens_basis_resample():
     """
     Output spherical harmonics in a discrete space corresponding to an image

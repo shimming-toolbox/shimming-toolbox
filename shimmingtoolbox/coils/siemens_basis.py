@@ -20,7 +20,7 @@ def _reorder_to_siemens(spher_harm):
 
     Args:
         spher_harm (numpy.ndarray): 4d basis set of spherical harmonics with order/degree ordered along 4th
-                                    dimension. ``spher_harm.shape[3]`` must qual 8.
+                                    dimension. ``spher_harm.shape[3]`` must equal 8.
 
     Returns:
         numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
@@ -92,7 +92,7 @@ def _get_scaling_factors():
     return scaling_factors
 
 
-def siemens_basis(x, y, z):
+def siemens_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*, ``basis`` is
@@ -109,8 +109,6 @@ def siemens_basis(x, y, z):
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
     Args:
-        orders (numpy.ndarray): **not yet implemented** Degrees of the desired terms in the series expansion, specified
-                                as a vector of non-negative integers (``[0:1:n]`` yields harmonics up to n-th order)
         x (numpy.ndarray): 3-D arrays of grid coordinates, "Right->Left" grid coordinates in the patient coordinate
                            system (i.e. DICOM reference, units of mm)
         y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Anterior->Posterior" grid coordinates in
@@ -118,15 +116,18 @@ def siemens_basis(x, y, z):
 
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
                            the patient coordinate system (i.e. DICOM reference, units of mm)
+        orders (tuple): Degrees of the desired terms in the series expansion, specified
+                       as a vector of non-negative integers (``(0:1:n)`` yields harmonics up to n-th order, implemented
+                       1st and 2nd order)
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
 
     NOTES:
-        For now, ``orders`` is, in fact, ignored: fixed as [1:2]—which is suitable for the Prisma (presumably other
+        For now, ``orders`` is, in fact, as default [1:2]—which is suitable for the Prisma (presumably other
         Siemens systems as well) however, the 3rd-order shims of the Terra should ultimately be accommodated too.
         (Requires checking the Adjustments/Shim card to see what the corresponding terms and values actually are). So,
-        for now, ``basis`` will always be returned with 8 terms along the 4th dim.
+        ``basis`` will return with 8 terms along the 4th dim if using the 1st and 2nd order.
     """
 
     # Check inputs
@@ -137,8 +138,8 @@ def siemens_basis(x, y, z):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
     # Create spherical harmonics from first to second order
-    orders = np.array(range(1, 3))
-    spher_harm = spherical_harmonics(orders, x, y, z)
+    all_orders = np.array(range(1, 3))
+    spher_harm = spherical_harmonics(all_orders, x, y, z)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
     reordered_spher = _reorder_to_siemens(spher_harm)
@@ -151,4 +152,16 @@ def siemens_basis(x, y, z):
     for i_channel in range(0, spher_harm.shape[3]):
         scaled[:, :, :, i_channel] = scaling_factors[i_channel] * reordered_spher[:, :, :, i_channel]
 
-    return scaled
+    # Patch to make orders work. A better implementation would be to refactor _get_scaling_factors and
+    # _reorder_to_siemens
+    range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
+    length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
+    output = np.zeros(scaled[..., 0].shape + (length_dim3,), dtype=scaled.dtype)
+    start_index = 0
+    for order in orders:
+        end_index = start_index + len(range_per_order[order])
+        output[..., start_index:end_index] = scaled[..., range_per_order[order]]
+        # prep next iteration
+        start_index = end_index
+
+    return output
