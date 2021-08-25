@@ -32,7 +32,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
     Args:
-        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine trandformation.
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine transformation.
         nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
         nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
@@ -63,8 +63,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     # Extend the fieldmap if there are axes that are 1d
     if 1 in fieldmap_shape:
         list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
+        n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
         for i_axis in list_axis:
-            n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
             nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
@@ -81,9 +81,9 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Make sure shape and affine of mask are the same as the anat
     if not np.all(mask.shape == anat.shape):
-        raise ValueError(f"Shape of mask: {mask.shape} must be the same as the shape of anat: {anat.shape}")
+        raise ValueError(f"Shape of mask:\n {mask.shape} must be the same as the shape of anat:\n{anat.shape}")
     if not np.all(nii_mask_anat.affine == nii_anat.affine):
-        raise ValueError(f"Affine of mask: {nii_mask_anat.affine} must be the same as the affine of anat: "
+        raise ValueError(f"Affine of mask:\n{nii_mask_anat.affine}\nmust be the same as the affine of anat:\n"
                          f"{nii_anat.affine}")
 
     # Select and initialize the optimizer
@@ -173,8 +173,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         raise ValueError(f"Shape of riro mask: {riro_mask.shape} and static mask: {static_mask.shape} "
                          f"must be the same as the shape of anat: {anat.shape}")
     if not(np.all(nii_riro_mask.affine == nii_anat.affine) and np.all(nii_static_mask.affine == nii_anat.affine)):
-        raise ValueError(f"Affine of riro mask: {nii_riro_mask.affine} and static mask: {nii_static_mask.affine} "
-                         f"must be the same as the affine of anat: {nii_anat.affine}")
+        raise ValueError(f"Affine of riro mask:\n{nii_riro_mask.affine}\nand static mask: {nii_static_mask.affine}\n"
+                         f"must be the same as the affine of anat:\n{nii_anat.affine}")
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
