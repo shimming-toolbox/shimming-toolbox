@@ -3,7 +3,7 @@ Linux
 *****
 
 1. Install Dependencies
-------------
+-----------------------
 
 
 Install FSL
