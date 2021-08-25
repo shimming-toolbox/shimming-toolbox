@@ -69,8 +69,10 @@ def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
         bounds.append((min_coef, max_coef))
 
     constraints = {
+                "name": "test",
                 "coef_sum_max": sum_coef,
-                "coef_channel_minmax": bounds
+                "coef_channel_minmax": bounds,
+                "units": "hz"
             }
     return constraints
 
@@ -208,6 +210,13 @@ class TestSequencer(object):
         nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[..., 0], nii_mask.affine, header=nii_mask.header)
         with pytest.raises(ValueError, match="Mask image must be in 3d"):
             shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
+
+    def test_shim_sequencer_wrong_units(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2, caplog):
+        # Change the name of the units
+        sph_coil2.units = "T"
+        slices = [(0, 2), (1,)]
+        shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil, sph_coil2])
+        assert "The coils don't have matching units:" in caplog.text
 
     def test_shim_sequencer_wrong_mask_affine(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize

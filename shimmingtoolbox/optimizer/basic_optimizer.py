@@ -11,6 +11,7 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 ListCoil = List[Coil]
+logger = logging.getLogger(__name__)
 
 
 class Optimizer(object):
@@ -126,6 +127,12 @@ class Optimizer(object):
 
         # Define the nibabel unshimmed array
         nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
+
+        # Make sure all the coils have the same units
+        units = [coil.units for coil in self.coils]
+        if units.count(units[0]) != len(units):
+            names = [coil.name for coil in self.coils]
+            logger.warning(f"The coils don't have matching units: {list(zip(names, units))}")
 
         for coil in self.coils:
             nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
