@@ -381,15 +381,15 @@ def extend_slice(nii_array, n_slices=1, axis=2):
     return nii_extended
 
 
-def define_slices(n_slices: int, factor: int, method='interleaved'):
+def define_slices(n_slices: int, factor=1, method='sequential'):
     """
     Define the slices to shim according to the output convention. (list of tuples)
 
     Args:
         n_slices (int): Number of total slices.
         factor (int): Number of slices per shim.
-        method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'sequential'.
-                      See Examples for more details.
+        method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'sequential',
+                      'volume'. See Examples for more details.
 
     Returns:
         list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
@@ -403,6 +403,9 @@ def define_slices(n_slices: int, factor: int, method='interleaved'):
 
             slices = define_slices(20, 5, 'sequential')
             print(slices)  # [(0, 1, 2, 3, 4), (5, 6, 7, 8, 9), (10, 11, 12, 13, 14), (15, 16, 17, 18, 19)]
+
+            slices = define_slices(20, method='volume')
+            print(slices)  # [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)]
 
     """
     if n_slices <= 0:
@@ -419,6 +422,9 @@ def define_slices(n_slices: int, factor: int, method='interleaved'):
     elif method == 'sequential':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
+
+    elif method == 'volume':
+        slices.append(tuple(range(n_shims)))
 
     else:
         raise ValueError("Not a supported method to define slices")

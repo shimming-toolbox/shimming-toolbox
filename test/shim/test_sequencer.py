@@ -921,6 +921,10 @@ class TestExtendSlice(object):
 
 
 class TestDefineSlices(object):
+    def test_define_slices_default_factor(self):
+        output = define_slices(5)
+        assert np.all(output == [(0,), (1,), (2,), (3,), (4,)])
+
     def test_define_slices_interleaved(self):
         output = define_slices(5, 2, "interleaved")
         assert np.all(output == [(0, 2), (1, 3), (4,)])
@@ -928,6 +932,10 @@ class TestDefineSlices(object):
     def test_define_slices_sequential(self):
         output = define_slices(5, 2, "sequential")
         assert np.all(output == [(0, 1), (2, 3), (4,)])
+
+    def test_define_slices_volume(self):
+        output = define_slices(5, method="volume")
+        assert np.all(output == [(0, 1, 2, 3, 4)])
 
     def test_define_slices_wrong_method(self):
         with pytest.raises(ValueError, match="Not a supported method to define slices"):
