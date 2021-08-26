@@ -3,7 +3,8 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source $SCRIPT_DIR/utils.sh
 
-VENV=st_venv
+
+print info "Installing conda in $ST_DIR/$PYTHON_DIR"
 
 rm -rf "$TMP_DIR"
 

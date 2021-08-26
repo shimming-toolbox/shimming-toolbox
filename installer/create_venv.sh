@@ -5,7 +5,10 @@ source $SCRIPT_DIR/utils.sh
 
 VENV=st_venv
 ST_DIR="$HOME/shimming_toolbox"
+PYTHON_DIR=python
 cd "$ST_DIR"
+
+print info "Creating new virtual environment in $ST_DIR/$PYTHON_DIR/envs/$VENV"
 
 rm -rf "$ST_DIR/$PYTHON_DIR/envs/$VENV"
 

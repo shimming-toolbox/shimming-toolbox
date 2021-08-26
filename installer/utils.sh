@@ -10,6 +10,10 @@ function print() {
   info)
     echo -e "\n\033[0;32m${*}\033[0m\n"
     ;;
+  # Display useful info as a list (light blue)
+  list)
+    echo -e "\033[0;36m${*}\033[0m\n"
+    ;;
   # To interact with user (no carriage return) (light green)
   question)
     echo -e -n "\n\033[0;92m${*}\033[0m"

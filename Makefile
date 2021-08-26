@@ -3,6 +3,8 @@ ST_DIR := $(HOME)/shimming_toolbox
 PYTHON_DIR := python
 CLEAN := false
 
+.SILENT: install
+
 # Put it first so that "make" without argument is like "make help".
 help:
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m  %-30s\033[0m %s\n", $$1, $$2}'
@@ -17,5 +19,5 @@ install: ## Run 'make install' to install Shimming Toolbox
 	else \
 		echo "$(ST_DIR) and conda install found, skipping install"; \
     fi
-	@bash installer/create_venv.sh
-	@bash installer/install_shimming_toolbox.sh
+	bash installer/create_venv.sh
+	bash installer/install_shimming_toolbox.sh

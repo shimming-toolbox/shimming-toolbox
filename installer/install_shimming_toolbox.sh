@@ -11,6 +11,9 @@ ST_DIR=$HOME/shimming_toolbox
 PYTHON_DIR=python
 BIN_DIR=bin
 
+print info "Installing shimming-toolbox in $ST_DIR/$PYTHON_DIR/envs/$VENV"
+
+
 # Define sh files
 get_shell_rc_path
 
@@ -46,11 +49,12 @@ cp config/dcm2bids.json $ST_DIR/dcm2bids.json
 python -m pip install -e ".[docs,dev]"
 
 # Create launchers for Python scripts
-echo "Creating launchers for Python scripts..."
+print info "Creating launchers for Python scripts. List of functions available:"
 mkdir -p $ST_DIR/$BIN_DIR
-echo $ST_DIR/python/envs/$VENV/bin/*st_*
-for file in $ST_DIR/python/envs/$VENV/bin/*st_*; do
+
+for file in $ST_DIR/$PYTHON_DIR/envs/$VENV/bin/*st_*; do
   cp "$file" $ST_DIR/$BIN_DIR/ # || die "Problem creating launchers!"
+  print list "$file"
 done
 
 # Activate the launchers
@@ -58,4 +62,4 @@ export PATH=$ST_DIR/$BIN_DIR:$PATH
 
 edit_shellrc
 
-echo "Open a new Terminal window to load environment variables, or run: source $RC_FILE_PATH"
+print info "Open a new Terminal window to load environment variables, or run: source $RC_FILE_PATH"
