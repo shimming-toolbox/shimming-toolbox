@@ -7,7 +7,7 @@ CLEAN := false
 help:
 	@egrep -h '\s##\s' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m  %-30s\033[0m %s\n", $$1, $$2}'
 
-install: ## Run 'make install' to install the plugin
+install: ## Run 'make install' to install Shimming Toolbox
 	if [[ $(CLEAN) == true || ! -d $(ST_DIR) ]]; then \
 		echo "Clean install, deleting $(ST_DIR). Warning: This will delete fsleyes-plugin-shimming-toolbox."; \
 		bash installer/create_st_dir.sh; \
