@@ -8,7 +8,6 @@ required_constraints = [
     "name",
     "coef_channel_minmax",
     "coef_sum_max",
-    "units"
 ]
 
 
@@ -26,8 +25,6 @@ class Coil(object):
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
                                     used to specify no bounds.
-        units (str): String containing the units of the coil profiles. This can be any unit. A check will be made when
-                     using multiple coils that the units are the same.
         name (str): Name of the coil.
     """
 
@@ -44,8 +41,6 @@ class Coil(object):
                   specify no bounds
                 * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
                   used to specify no bounds.
-                * units (str): String containing the units of the coil profiles. This can be any unit. A check will be
-                  made when using multiple coils that the units are the same.
 
         Examples:
 
@@ -57,7 +52,6 @@ class Coil(object):
                     'coef_sum_max': 10,
                     # 8 channel coil
                     'coef_channel_minmax': [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)],
-                    'units': 'hz'
                 }
         """
 
@@ -69,7 +63,7 @@ class Coil(object):
             raise ValueError("Shape of affine matrix should be 4x4")
         self.affine = affine
 
-        self.units = self.name = ""
+        self.name = ""
         self.coef_channel_minmax = self.coef_sum_max = -1
         self.load_constraints(constraints)
 

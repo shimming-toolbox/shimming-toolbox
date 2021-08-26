@@ -17,7 +17,6 @@ def test_coil_siemens_basis():
         "name": "Siemens Basis",
         "coef_sum_max": 40,
         "coef_channel_minmax": [(-2, 2), (-2, 2), (-2, 2), (-2, 2), (-3, 3), (-3, 3), (-3, 3), (-3, 3)],
-        "units": "hz"
     }
 
     a_coil = Coil(profiles, np.eye(4), constraints)
