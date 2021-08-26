@@ -9,7 +9,7 @@ help:
 
 install: ## Run 'make install' to install the plugin
 	if [[ $(CLEAN) == true || ! -d $(ST_DIR) ]]; then \
-		echo "Clean install, deleting $(ST_DIR). Warning: This will delete fsleyes-plugin-shimming-toolbox."; \
+		echo "Clean install, deleting $(ST_DIR). Warning: If you have previously installed fsleyes-plugin-shimming-toolbox, this will delete it."; \
 		bash installer/create_st_dir.sh; \
 	elif [[ ! -f $(ST_DIR)/$(PYTHON_DIR)/etc/profile.d/conda.sh ]]; then \
 		echo "Conda install not found in $(ST_DIR), installing conda"; \
