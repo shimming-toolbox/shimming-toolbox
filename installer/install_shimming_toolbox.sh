@@ -11,7 +11,7 @@ ST_DIR=$HOME/shimming_toolbox
 PYTHON_DIR=python
 BIN_DIR=bin
 
-print info "Installing shimming-toolbox in $ST_DIR/$PYTHON_DIR/envs/$VENV"
+print info "Beginning shimming-toolbox install in $ST_DIR/$PYTHON_DIR/envs/$VENV"
 
 
 # Define sh files
@@ -42,8 +42,10 @@ source $ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh
 conda activate $VENV
 # set -u
 
-conda install -c conda-forge dcm2niix
+print info "Installing dcm2niix"
+yes | conda install -c conda-forge dcm2niix
 
+print info "Installing shimming-toolbox"
 cd $ST_PACKAGE_DIR
 cp config/dcm2bids.json $ST_DIR/dcm2bids.json
 python -m pip install -e ".[docs,dev]"
