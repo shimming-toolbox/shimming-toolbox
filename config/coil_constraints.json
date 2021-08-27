@@ -1,6 +1,6 @@
 {
-    "name": "Siemens gradient coils",
-    "coef_channel_max": [
+    "name": "siemens_gradient_coils",
+    "coef_channel_minmax": [
         [-5000, 5000],
         [-5000, 5000],
         [-5000, 5000],
@@ -10,5 +10,5 @@
         [-5000, 5000],
         [-5000, 5000]
     ],
-  "coef_sum_max": null,
+  "coef_sum_max": null
 }
