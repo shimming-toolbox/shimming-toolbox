@@ -19,6 +19,6 @@ install: ## Run 'make install' to install Shimming Toolbox [Use flag CLEAN=true 
 		bash installer/install_conda.sh; \
 	else \
 		echo "$(ST_DIR) and conda install found, skipping install"; \
-	fi
+        fi
 	bash installer/create_venv.sh
 	bash installer/install_shimming_toolbox.sh
