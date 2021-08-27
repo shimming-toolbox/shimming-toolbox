@@ -15,7 +15,6 @@ import math
 
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.shim.sequencer import shim_sequencer
-from shimmingtoolbox.utils import create_output_dir
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
@@ -149,6 +148,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
     # Output #
     end_channel = 0
+    list_fname_output = []
     for i_coil in range(len(list_coils)):
         start_channel = end_channel
         coil = list_coils[i_coil]
@@ -176,6 +176,9 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                         if i_channel != n_channels:
                             f.write(", ")
                     f.write("\n")
+        list_fname_output.append(fname_output)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
 def _expand_fmap(nii_fieldmap, n_exp_slices):

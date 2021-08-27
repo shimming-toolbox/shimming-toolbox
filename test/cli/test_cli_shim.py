@@ -6,6 +6,7 @@ import tempfile
 import pathlib
 import os
 import nibabel as nib
+import numpy as np
 
 from shimmingtoolbox.cli.shim import define_slices_cli
 from shimmingtoolbox.cli.shim import static_cli
@@ -15,13 +16,20 @@ from shimmingtoolbox import __dir_testing__
 DEBUG = True
 
 
-def test_cli_static():
-
+def _define_inputs(fmap_dim):
     # fname for fmap
     fname_fmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                               'sub-example_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
-    nii_fmap = nib.Nifti1Image(nii.get_fdata()[..., 0], nii.affine, header=nii.header)
+
+    if fmap_dim == 4:
+        nii_fmap = nii
+    elif fmap_dim == 3:
+        nii_fmap = nib.Nifti1Image(np.mean(nii.get_fdata(), axis=3), nii.affine, header=nii.header)
+    elif fmap_dim == 2:
+        nii_fmap = nib.Nifti1Image(nii.get_fdata()[..., 0, 0], nii.affine, header=nii.header)
+    else:
+        raise ValueError("Supported Dimensions are 2, 3 or 4")
 
     # fname for anat
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
@@ -40,27 +48,42 @@ def test_cli_static():
 
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
 
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # Save the modified fieldmap (one volume)
-        fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-        nib.save(nii_fmap, fname_fmap)
+    return nii_fmap, nii_anat, nii_mask
 
-        # Save the mask
-        fname_mask = os.path.join(tmp, 'mask.nii.gz')
-        nib.save(nii_mask, fname_mask)
 
-        runner = CliRunner()
-        runner.invoke(static_cli, ['--fmap', fname_fmap,
-                                   '--anat', fname_anat,
-                                   '--mask', fname_mask,
-                                   '--scanner-coil-order', '1',
-                                   '--output', tmp],
-                      catch_exceptions=False)
+@pytest.mark.parametrize(
+    "nii_fmap,nii_anat,nii_mask", [(
+        _define_inputs(fmap_dim=3)
+    )]
+)
+class TestCliStatic(object):
+    def test_cli_static_default(self, nii_fmap, nii_anat, nii_mask):
 
-        if DEBUG:
-            nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-            nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-            nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            runner = CliRunner()
+            runner.invoke(static_cli, ['--fmap', fname_fmap,
+                                       '--anat', fname_anat,
+                                       '--mask', fname_mask,
+                                       '--scanner-coil-order', '1',
+                                       '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
 
 
 # def test_cli_define_slices_def():
