@@ -12,6 +12,7 @@ from shimmingtoolbox.cli.shim import define_slices_cli
 from shimmingtoolbox.cli.shim import static_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox import __dir_config_scanner_constraints__
 
 DEBUG = True
 
@@ -75,6 +76,40 @@ class TestCliStatic(object):
                                        '--anat', fname_anat,
                                        '--mask', fname_mask,
                                        '--scanner-coil-order', '1',
+                                       '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
+
+    def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask):
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 8, axis=3),
+                                             nii_fmap.affine, header=nii_fmap.header)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            runner = CliRunner()
+            # TODO: use actual coil files (These are just dummy files to test if the code works)
+            runner.invoke(static_cli, ['--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                       '--fmap', fname_fmap,
+                                       '--anat', fname_anat,
+                                       '--mask', fname_mask,
                                        '--output', tmp],
                           catch_exceptions=False)
 

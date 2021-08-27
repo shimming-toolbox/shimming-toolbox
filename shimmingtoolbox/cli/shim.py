@@ -105,15 +105,12 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         # If no mask is provided, shim the whole anat volume
         nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
 
-    # Prepare the output
-    create_output_dir(path_output)
-
     # Load the coils
     list_coils = []
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
-        constraints = json.load(coil[1])
-        list_coils.append(Coil(nii_coil_profiles.get_fdata(), coil.affine, constraints))
+        constraints = json.load(open(coil[1]))
+        list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
 
     # Create the spherical harmonic coil profiles of the scanner
     if scanner_coil_order == 1 or scanner_coil_order == 2:
@@ -134,6 +131,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
         list_coils.append(Coil(sph_coil_profile, nii_fmap.affine, sph_contraints))
 
+    # Make sure a coil is selected
     if len(list_coils) == 0:
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
@@ -141,6 +139,9 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     n_slices = nii_anat.shape[2]
     list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are: {list_slices}")
+
+    # Prepare the output
+    create_output_dir(path_output)
 
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils, method=method,
