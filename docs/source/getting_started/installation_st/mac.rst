@@ -42,6 +42,8 @@ shimming-toolbox directory:
 .. code:: bash
 
  cd shimming-toolbox
+ source $HOME/shimming_toolbox/python/etc/profile.d/conda.sh
+ conda activate st_venv
  pytest
 
 See https://docs.pytest.org/ for more options.
