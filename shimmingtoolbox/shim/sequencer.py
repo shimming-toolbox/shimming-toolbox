@@ -186,8 +186,23 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
     mean_p = np.mean(acq_pressures)
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
-    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p, fieldmap.reshape(-1, fieldmap.shape[-1]).T)
-    # TODO: Safety check for linear regression if the pressure and fieldmap fits
+    x = acq_pressures.reshape(-1, 1) - mean_p
+
+    # Mask the voxels not being shimmed
+    nii_temp_3dfmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+    fmap_mask = resample_mask(nii_riro_mask, nii_temp_3dfmap, tuple(range(anat.shape[2])),
+                              dilation_kernel=mask_dilation_kernel, dilation_size=mask_dilation_kernel_size).get_fdata()
+    masked_fieldmap = np.repeat(fmap_mask[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
+    y = masked_fieldmap.reshape(-1, fieldmap.shape[-1]).T
+    # Fit to the linear model
+    reg = LinearRegression().fit(x, y)
+
+    # TODO: Safety check for linear regression if the pressure and fieldmap fits, also make sure the above code works
+    # It should work since I am expecting taking the mask and dilating all the slices should include all the slices
+    # resampled and dilated individually
+    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
+    # Warn if lower than a threshold?
+    logger.debug(f"Linear fit of the masked fieldmap and pressure got a R2 score of{reg.score(x, y)}")
 
     # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
