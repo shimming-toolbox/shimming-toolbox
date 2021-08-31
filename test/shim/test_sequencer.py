@@ -23,8 +23,11 @@ import os
 import nibabel as nib
 import json
 from matplotlib.figure import Figure
+import logging
 
 DEBUG = False
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 def create_fieldmap(n_slices=3):
@@ -559,8 +562,10 @@ class TestShimRTpmuSimData(object):
                                         slices, pmu, [coil])
 
 
-def test_shim_realtime_pmu_sequencer_rt_zshim_data():
+def test_shim_realtime_pmu_sequencer_rt_zshim_data(caplog):
     """Tests for realtime Sequencer with real data"""
+    caplog.set_level(logging.DEBUG)
+
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                   'sub-example_fieldmap.nii.gz')
@@ -610,6 +615,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     currents_riro_rms = currents_riro * p_rms
 
     # Print some outputs
+    print(caplog.text)
     print(f"\nSlices: {slices}"
           f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
           f"Coil affine:\n{coil_affine}\n"
