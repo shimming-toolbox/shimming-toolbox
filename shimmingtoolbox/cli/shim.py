@@ -44,11 +44,12 @@ def shim_cli():
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
-              help="B0 fieldmap. This should be a 3d file.")
+              help="Nifti filename of the B0 fieldmap. This file should contain a 3d array.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
-              help="Filename of the anatomical image to apply the correction.")
+              help="Nifti filename of the anatomical image to apply the correction onto."
+                   "This file should contain a 3d array.")
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
-              help="3D nifti file used to define the spatial region to shim. "
+              help="Nifti file used to define the spatial region to shim. This file should contain a 3d array."
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
 @click.option('--scanner-coil-order', type=click.INT, default=0, show_default=True,
               help="Maximum order of the shim system, allowed values are 1, 2. Note that specifying 2 will return "
@@ -61,7 +62,8 @@ def shim_cli():
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shim for 'interleaved' and 'sequential'")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
-              default='least_squares', show_default=True, help="Method used by the optimizer")
+              default='least_squares', show_default=True, help="Method used by the optimizer. LS will respect the "
+                                                               "constraints, PS will not respect the constraints")
 @click.option('--mask-dilation-kernel', 'dilation_kernel',
               type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), required=False, default='sphere',
               show_default=True, help="Kernel used to dilate the mask to expand the roi")
@@ -75,11 +77,11 @@ def shim_cli():
               show_default=True, help="Format of the output txt file(s)")
 def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils, dilation_kernel,
                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format):
-    """ Static shim by fitting a fieldmap. Example of use: st_shim fieldmap_static --coil coil1.nii
-    coil1_constraints.json --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii
+    """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
+    optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
-    EXPAND
-
+    Example of use: st_shim fieldmap_static --coil coil1.nii
+    coil1_constraints.json --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii --mask mask.nii
     """
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
@@ -148,6 +150,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                            mask_dilation_kernel=dilation_kernel, mask_dilation_kernel_size=dilation_kernel_size)
 
     # Output #
+    _save_to_text_file(list_coils, coefs, list_slices, path_output, o_format)
+
+
+def _save_to_text_file(list_coils, coefs, list_slices, path_output, o_format):
+
     end_channel = 0
     list_fname_output = []
     for i_coil in range(len(list_coils)):
@@ -170,7 +177,9 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
             elif o_format == 'slicewise':
                 # Output per slice, output all channels for a particular slice, then repeat
-                for i_slice in range(nii_anat.shape[2]):
+                # Assumes all slices are in list_slices once which is the case for sequential, interleaved and volume
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
                     for i_channel in range(n_channels):
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                         f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
