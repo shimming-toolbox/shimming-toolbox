@@ -260,8 +260,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Prepare the output
     create_output_dir(path_output)
 
-    out = shim_realtime_pmu_sequencer(nii_fmap, json_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro, slices,
-                                      pmu, list_coils, opt_method=method,  mask_dilation_kernel=dilation_kernel,
+    out = shim_realtime_pmu_sequencer(nii_fmap, json_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
+                                      list_slices, pmu, list_coils,
+                                      opt_method=method,
+                                      mask_dilation_kernel=dilation_kernel,
                                       mask_dilation_kernel_size=dilation_kernel_size)
 
     currents_static, currents_riro, mean_p, p_rms = out
@@ -305,6 +307,7 @@ def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, li
     #                 f.write("\n")
     #     list_fname_output.append(fname_output)
 
+
 def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):
     """ Load the fmap and expand its dimensions to the kernel size
 
@@ -327,10 +330,10 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):
     # Extend the fieldmap if there are axes that are 1d. This is done since we are fitting a fieldmap to coil profiles,
     # having essentially a 2d matrix as a fieldmap can lead to errors in the through plane direction. To metigate this,
     # we create a 3d volume by replicating the single slice.
-    if 1 or 2 in nii_fmap_orig.shape:
+    if 1 in nii_fmap_orig.shape[:3] or 2 in nii_fmap_orig.shape[:3]:
         n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
         fieldmap_shape = nii_fmap_orig.shape
-        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1 or 2]
+        list_axis = [i for i in range(len(fieldmap_shape) - 1) if (fieldmap_shape[i] == 1 or fieldmap_shape[i] == 2)]
         for i_axis in list_axis:
             nii_fmap = extend_slice(nii_fmap_orig, n_slices=n_slices_to_expand, axis=i_axis)
     else:
@@ -362,7 +365,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap):
     # Create the spherical harmonic coil profiles of the scanner
     if order == 1 or order == 2:
 
-        mesh1, mesh2, mesh3 = generate_meshgrid(nii_fmap.shape, nii_fmap.affine)
+        mesh1, mesh2, mesh3 = generate_meshgrid(nii_fmap.shape[:3], nii_fmap.affine)
         sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, order + 1)))
 
         # It looks like for the prisma it would be 80mT/m --> 80000uT/m

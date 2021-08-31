@@ -375,7 +375,7 @@ def extend_slice(nii_array, n_slices=1, axis=2):
     Args:
         nii_array (nib.Nifti1Image): 3d or 4d array to extend the dimensions along an axis.
         n_slices (int): Number of slices to add on each side of the selected axis.
-        axis (int): Axis along which to insert the slice(s).
+        axis (int): Axis along which to insert the slice(s), Allowed axis: 0, 1, 2.
 
     Returns:
         nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.

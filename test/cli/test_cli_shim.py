@@ -7,9 +7,11 @@ import pathlib
 import os
 import nibabel as nib
 import numpy as np
+from shutil import copy
 
 from shimmingtoolbox.cli.shim import define_slices_cli
 from shimmingtoolbox.cli.shim import static_cli
+from shimmingtoolbox.cli.shim import realtime_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
@@ -119,6 +121,50 @@ class TestCliStatic(object):
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
+
+
+@pytest.mark.parametrize(
+    "nii_fmap,nii_anat,nii_mask", [(
+        _define_inputs(fmap_dim=4)
+    )]
+)
+class TestCLIRealtime(object):
+    def test_cli_rt_default(self, nii_fmap, nii_anat, nii_mask):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the fieldmap
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+
+            # Copy fieldmap json to tmp
+            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                           'sub-example_fieldmap.json')
+            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
+
+            runner = CliRunner()
+            runner.invoke(realtime_cli, ['--fmap', fname_fmap,
+                                         '--anat', fname_anat,
+                                         '--mask-static', fname_mask,
+                                         '--mask-riro', fname_mask,
+                                         '--resp', fname_resp,
+                                         '--scanner-coil-order', '1',
+                                         '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
 
 
 # def test_cli_define_slices_def():
