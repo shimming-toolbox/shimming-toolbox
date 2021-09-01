@@ -123,7 +123,7 @@ def check_sct_installation():
     """
     try:
         subprocess.check_call(['sct_check_dependencies', '-short'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
+                              stderr=subprocess.DEVNULL, shell=True)
     except subprocess.CalledProcessError as error:
         print_fail()
         print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
