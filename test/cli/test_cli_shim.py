@@ -40,8 +40,7 @@ def _define_inputs(fmap_dim):
     nii_anat = nib.load(fname_anat)
     anat = nii_anat.get_fdata()
 
-    # Set up mask
-    # Cube
+    # Set up mask: Cube
     # static
     nx, ny, nz = anat.shape
     mask = shapes(anat, 'cube',
@@ -86,7 +85,7 @@ class TestCliStatic(object):
                 nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
     def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask):
 
@@ -120,7 +119,7 @@ class TestCliStatic(object):
                 nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
 
 @pytest.mark.parametrize(
@@ -164,7 +163,7 @@ class TestCLIRealtime(object):
                 nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
-            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coils.txt"))
+            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
 
 # def test_cli_define_slices_def():

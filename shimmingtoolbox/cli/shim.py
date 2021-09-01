@@ -333,7 +333,7 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):
     if 1 in nii_fmap_orig.shape[:3] or 2 in nii_fmap_orig.shape[:3]:
         n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
         fieldmap_shape = nii_fmap_orig.shape
-        list_axis = [i for i in range(len(fieldmap_shape) - 1) if (fieldmap_shape[i] == 1 or fieldmap_shape[i] == 2)]
+        list_axis = [i for i in range(3) if (fieldmap_shape[i] == 1 or fieldmap_shape[i] == 2)]
         for i_axis in list_axis:
             nii_fmap = extend_slice(nii_fmap_orig, n_slices=n_slices_to_expand, axis=i_axis)
     else:
