@@ -3,6 +3,7 @@
 
 import numpy as np
 import scipy.optimize
+import logging
 import warnings
 
 
@@ -40,10 +41,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False
         else:
             raise ValueError("CP mode and maps dimensions not matching.")
     else:
-        # TODO: add function to compute CP coefficients
-        # Approximation of a circular polarisation to initialize the optimization
-        weights_init = np.concatenate((np.ones(n_coils) / np.linalg.norm(np.ones(n_coils)),
-                                       np.arange(0, 2 * np.pi, 2 * np.pi/n_coils)))
+        weights_init = complex_to_vector(calc_cp(b1_maps))
 
     # Bounds for the optimization
     bounds = np.concatenate((n_coils * [(0, None)], n_coils * [(-np.pi, np.pi)]))
@@ -67,7 +65,7 @@ def combine_maps(b1_maps, weights):
     Combines the B1 field distribution of several coils into one map representing the total B1 field magnitude.
 
     Args:
-        b1_maps (numpy.ndarray): Complex B1 field for different coils. Last dimension must correspond to n_coils.
+        b1_maps (numpy.ndarray): Complex B1 field for different coils (x, y, n_slices, n_coils).
         weights (numpy.ndarray): 1D complex array of length n_coils.
 
     Returns:
@@ -125,3 +123,53 @@ def complex_to_vector(weights):
 
     """
     return np.concatenate((np.abs(weights), np.angle(weights)))
+
+
+def calc_cp(b1_maps, voxel_position=[], voxel_size=[]):
+    """
+    Reads in B1 maps and returns the individual shim weights for each channel that correspond to a circular polarization
+    (CP) mode, computed in the specified voxel.
+    Args:
+        b1_maps (numpy.ndarray): Complex B1 field for different coils (x, y, n_slices, n_coils).
+        voxel_position (numpy.ndarray): Position of the center of the voxel considered to compute the CP mode
+        voxel_size (numpy.ndarray): Size of the voxel
+
+    Returns:
+        numpy.ndarray: Complex 1D array of individual shim weights (length = n_coils).
+
+    """
+    x, y, z, n_coils = b1_maps.shape
+    if voxel_size == []:
+        voxel_size = np.asarray([5, 5, 1])  # Default voxel size
+        warnings.warn("No voxel size provided for CP computation. Default size set to a single voxel.")
+    else:
+        if (voxel_size > np.asarray([x, y, z])).any():
+            raise ValueError("The size of the voxel used for CP computation exceeds the size of the B1 maps.")
+
+    if voxel_position == []:
+        voxel_position = (x//2, y//2, z//2)
+        warnings.warn("No voxel position provided for CP computation. Default set to the center of the B1 maps.")
+    else:
+        if (voxel_position < np.asarray([0, 0, 0])).any() or (voxel_position > np.asarray([x, y, z])).any():
+            raise ValueError("The position of the voxel used to compute the CP mode exceeds the B1 maps bounds.")
+
+    start_voxel = voxel_position - voxel_size // 2
+    end_voxel = start_voxel + voxel_size
+
+    if (start_voxel < 0).any() or (end_voxel > np.asarray([x, y, z])).any():
+        raise ValueError("Voxel bounds exceed the B1 maps.")
+
+    cp_phases = np.zeros(n_coils, dtype=complex)
+    for channel in range(n_coils):
+        voxel_values = b1_maps[start_voxel[0]:end_voxel[0], start_voxel[1]:end_voxel[1], start_voxel[2]:end_voxel[2], channel]
+        mean_phase = np.angle(voxel_values).mean()
+
+        if channel == 0:
+            mean_phase_first_channel = mean_phase
+
+        cp_phases[channel] = -1*mean_phase - mean_phase_first_channel
+
+    cp_weights = (np.ones(n_coils)*np.exp(1j*cp_phases))/np.linalg.norm(np.ones(n_coils))
+
+    return cp_weights
+

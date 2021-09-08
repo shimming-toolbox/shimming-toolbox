@@ -5,7 +5,7 @@ import numpy as np
 import os
 import pytest
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.b1.b1_shim import b1_shim, combine_maps, cov, vector_to_complex, complex_to_vector
+from shimmingtoolbox.b1.b1_shim import b1_shim, combine_maps, vector_to_complex, complex_to_vector, calc_cp
 from shimmingtoolbox.load_nifti import read_nii
 
 fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
@@ -17,7 +17,7 @@ cp_weights = [0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+
 
 def test_b1_shim():
     shim_weights = b1_shim(b1_maps, mask)
-    assert np.linalg.norm(shim_weights) == 1, "The shim weights are not normalized"
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
@@ -77,3 +77,32 @@ def test_combine_maps_wrong_weights_number():
     dummy_weights = [1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j]
     with pytest.raises(ValueError, match=r"The number of shim weights does not match the number of coils."):
         combine_maps(b1_maps, dummy_weights)
+
+
+def test_calc_cp_no_size():
+    with pytest.warns(UserWarning, match=r"No voxel size provided for CP computation. Default size set to a single "
+                                         r"voxel."):
+        calc_cp(b1_maps, voxel_position=np.asarray([32, 32, 8]))
+
+
+def test_calc_cp_excessive_size():
+    with pytest.raises(ValueError, match=r"The size of the voxel used for CP computation exceeds the size of the B1 "
+                                         r"maps."):
+        calc_cp(b1_maps, voxel_size=np.asarray([70, 32, 8]))
+
+
+def test_calc_cp_no_position():
+    with pytest.warns(UserWarning, match=r"No voxel position provided for CP computation. Default set to the center "
+                                         r"of the B1 maps."):
+        calc_cp(b1_maps, voxel_size=np.asarray([10, 10, 2]))
+
+
+def test_calc_cp_out_of_bounds_position():
+    with pytest.raises(ValueError, match=r"The position of the voxel used to compute the CP mode exceeds the B1 maps "
+                                         r"bounds."):
+        calc_cp(b1_maps, voxel_position=np.asarray([70, 32, 8]))
+
+
+def test_calc_cp_out_out_of_bounds_voxel():
+    with pytest.raises(ValueError, match=r"Voxel bounds exceed the B1 maps."):
+        calc_cp(b1_maps, voxel_size=np.asarray([20, 10, 2]), voxel_position=np.asarray([55, 32, 8]))
