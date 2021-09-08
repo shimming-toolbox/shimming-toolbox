@@ -41,7 +41,7 @@ def test_b1_shim_cp_mode_not_normalized():
     cp_weights_not_normalized = [2*cp_weights[i] for i in range(len(cp_weights))]
     with pytest.warns(UserWarning, match=r"Normalizing the CP mode weights."):
         shim_weights = b1_shim(b1_maps, mask, cp_weights_not_normalized)
-    assert np.linalg.norm(shim_weights) == 1, "The shim weights are not normalized"
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 

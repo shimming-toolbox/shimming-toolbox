@@ -125,7 +125,7 @@ def complex_to_vector(weights):
     return np.concatenate((np.abs(weights), np.angle(weights)))
 
 
-def calc_cp(b1_maps, voxel_position=[], voxel_size=[]):
+def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     """
     Reads in B1 maps and returns the individual shim weights for each channel that correspond to a circular polarization
     (CP) mode, computed in the specified voxel.
@@ -139,14 +139,14 @@ def calc_cp(b1_maps, voxel_position=[], voxel_size=[]):
 
     """
     x, y, z, n_coils = b1_maps.shape
-    if voxel_size == []:
+    if voxel_size is None:
         voxel_size = np.asarray([5, 5, 1])  # Default voxel size
         warnings.warn("No voxel size provided for CP computation. Default size set to a single voxel.")
     else:
         if (voxel_size > np.asarray([x, y, z])).any():
             raise ValueError("The size of the voxel used for CP computation exceeds the size of the B1 maps.")
 
-    if voxel_position == []:
+    if voxel_position is None:
         voxel_position = (x//2, y//2, z//2)
         warnings.warn("No voxel position provided for CP computation. Default set to the center of the B1 maps.")
     else:
