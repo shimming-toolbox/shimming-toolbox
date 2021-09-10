@@ -47,7 +47,7 @@ jobs:
       - name: Package installation
         run: |
           echo "shimming-toolbox installation"
-          make install
+          sudo make install
 
       - name: Spinal Cord Toolbox clone
         run: |
