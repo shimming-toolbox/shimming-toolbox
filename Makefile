@@ -1,5 +1,5 @@
 SHELL := /bin/bash
-ST_DIR := $(HOME)/shimming_toolbox
+ST_DIR := $(HOME)/shimming-toolbox
 PYTHON_DIR := python
 CLEAN := false
 

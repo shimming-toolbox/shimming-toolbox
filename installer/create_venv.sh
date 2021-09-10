@@ -4,7 +4,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source $SCRIPT_DIR/utils.sh
 
 VENV=st_venv
-ST_DIR="$HOME/shimming_toolbox"
+ST_DIR="$HOME/shimming-toolbox"
 PYTHON_DIR=python
 cd "$ST_DIR"
 
