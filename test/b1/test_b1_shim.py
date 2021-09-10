@@ -1,12 +1,15 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
-
+import logging
 import numpy as np
 import os
 import pytest
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.b1_shim import b1_shim, combine_maps, vector_to_complex, complex_to_vector, calc_cp
 from shimmingtoolbox.load_nifti import read_nii
+
+
+logging.basicConfig(level=logging.INFO)
 
 fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
 _, _, b1_maps = read_nii(fname_b1)
@@ -37,10 +40,10 @@ def test_b1_shim_cp_mode():
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_cp_mode_not_normalized():
+def test_b1_shim_cp_mode_not_normalized(caplog):
     cp_weights_not_normalized = [2*cp_weights[i] for i in range(len(cp_weights))]
-    with pytest.warns(UserWarning, match=r"Normalizing the CP mode weights."):
-        shim_weights = b1_shim(b1_maps, mask, cp_weights_not_normalized)
+    shim_weights = b1_shim(b1_maps, mask, cp_weights_not_normalized)
+    assert r"Normalizing the CP mode weights." in caplog.text
     assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
@@ -79,10 +82,9 @@ def test_combine_maps_wrong_weights_number():
         combine_maps(b1_maps, dummy_weights)
 
 
-def test_calc_cp_no_size():
-    with pytest.warns(UserWarning, match=r"No voxel size provided for CP computation. Default size set to a single "
-                                         r"voxel."):
-        calc_cp(b1_maps, voxel_position=np.asarray([32, 32, 8]))
+def test_calc_cp_no_size(caplog):
+    calc_cp(b1_maps, voxel_position=np.asarray([32, 32, 8]))
+    assert r"No voxel size provided for CP computation. Default size set to a single voxel." in caplog.text
 
 
 def test_calc_cp_excessive_size():
@@ -91,10 +93,9 @@ def test_calc_cp_excessive_size():
         calc_cp(b1_maps, voxel_size=np.asarray([70, 32, 8]))
 
 
-def test_calc_cp_no_position():
-    with pytest.warns(UserWarning, match=r"No voxel position provided for CP computation. Default set to the center "
-                                         r"of the B1 maps."):
-        calc_cp(b1_maps, voxel_size=np.asarray([10, 10, 2]))
+def test_calc_cp_no_position(caplog):
+    calc_cp(b1_maps, voxel_size=np.asarray([10, 10, 2]))
+    assert r"No voxel position provided for CP computation. Default set to the center of the B1 maps." in caplog.text
 
 
 def test_calc_cp_out_of_bounds_position():

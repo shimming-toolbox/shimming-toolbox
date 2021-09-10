@@ -4,7 +4,8 @@
 import numpy as np
 import scipy.optimize
 import logging
-import warnings
+
+logger = logging.getLogger(__name__)
 
 
 def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False):
@@ -36,7 +37,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False
             if np.isclose(np.linalg.norm(cp_weights), 1, rtol=0.0001):
                 weights_init = complex_to_vector(cp_weights)
             else:
-                warnings.warn("Normalizing the CP mode weights.")
+                logger.info("Normalizing the CP mode weights.")
                 weights_init = complex_to_vector(cp_weights / np.linalg.norm(cp_weights))
         else:
             raise ValueError("CP mode and maps dimensions not matching.")
@@ -141,14 +142,14 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     x, y, z, n_coils = b1_maps.shape
     if voxel_size is None:
         voxel_size = np.asarray([5, 5, 1])  # Default voxel size
-        warnings.warn("No voxel size provided for CP computation. Default size set to a single voxel.")
+        logger.info("No voxel size provided for CP computation. Default size set to a single voxel.")
     else:
         if (voxel_size > np.asarray([x, y, z])).any():
             raise ValueError("The size of the voxel used for CP computation exceeds the size of the B1 maps.")
 
     if voxel_position is None:
         voxel_position = (x//2, y//2, z//2)
-        warnings.warn("No voxel position provided for CP computation. Default set to the center of the B1 maps.")
+        logger.info("No voxel position provided for CP computation. Default set to the center of the B1 maps.")
     else:
         if (voxel_position < np.asarray([0, 0, 0])).any() or (voxel_position > np.asarray([x, y, z])).any():
             raise ValueError("The position of the voxel used to compute the CP mode exceeds the B1 maps bounds.")
@@ -160,9 +161,10 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
         raise ValueError("Voxel bounds exceed the B1 maps.")
 
     cp_phases = np.zeros(n_coils, dtype=complex)
+    mean_phase_first_channel = 0
     for channel in range(n_coils):
-        voxel_values = b1_maps[start_voxel[0]:end_voxel[0], start_voxel[1]:end_voxel[1], start_voxel[2]:end_voxel[2], channel]
-        mean_phase = np.angle(voxel_values).mean()
+        values = b1_maps[start_voxel[0]:end_voxel[0], start_voxel[1]:end_voxel[1], start_voxel[2]:end_voxel[2], channel]
+        mean_phase = np.angle(values).mean()
 
         if channel == 0:
             mean_phase_first_channel = mean_phase
@@ -172,4 +174,3 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     cp_weights = (np.ones(n_coils)*np.exp(1j*cp_phases))/np.linalg.norm(np.ones(n_coils))
 
     return cp_weights
-
