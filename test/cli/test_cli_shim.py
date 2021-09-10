@@ -10,8 +10,7 @@ import numpy as np
 from shutil import copy
 
 from shimmingtoolbox.cli.shim import define_slices_cli
-from shimmingtoolbox.cli.shim import static_cli
-from shimmingtoolbox.cli.shim import realtime_cli
+from shimmingtoolbox.cli.shim import shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
@@ -73,11 +72,12 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            runner.invoke(static_cli, ['--fmap', fname_fmap,
-                                       '--anat', fname_anat,
-                                       '--mask', fname_mask,
-                                       '--scanner-coil-order', '1',
-                                       '--output', tmp],
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--scanner-coil-order', '1',
+                                     '--output', tmp],
                           catch_exceptions=False)
 
             if DEBUG:
@@ -107,11 +107,12 @@ class TestCliStatic(object):
 
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
-            runner.invoke(static_cli, ['--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
-                                       '--fmap', fname_fmap,
-                                       '--anat', fname_anat,
-                                       '--mask', fname_mask,
-                                       '--output', tmp],
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--output', tmp],
                           catch_exceptions=False)
 
             if DEBUG:
@@ -149,13 +150,14 @@ class TestCLIRealtime(object):
             copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
-            runner.invoke(realtime_cli, ['--fmap', fname_fmap,
-                                         '--anat', fname_anat,
-                                         '--mask-static', fname_mask,
-                                         '--mask-riro', fname_mask,
-                                         '--resp', fname_resp,
-                                         '--scanner-coil-order', '1',
-                                         '--output', tmp],
+            runner.invoke(shim_cli, ['fieldmap_realtime',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask-static', fname_mask,
+                                     '--mask-riro', fname_mask,
+                                     '--resp', fname_resp,
+                                     '--scanner-coil-order', '1',
+                                     '--output', tmp],
                           catch_exceptions=False)
 
             if DEBUG:
