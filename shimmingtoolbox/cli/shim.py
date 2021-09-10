@@ -75,8 +75,20 @@ def shim_cli():
                    "will dilate the mask by 1 pixel, 5->2 pixels")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
-@click.option('--output-format', 'o_format', type=click.Choice(['slicewise', 'shimwise']), default='slicewise',
-              show_default=True, help="Format of the output txt file(s), there will be one txt file per coil")
+@click.option('--output-format-custom', 'o_format', type=click.Choice(['slicewise-ch', 'slicewise-coil',
+                                                                       'chronological-ch', 'chronological-coil']),
+              default='slicewise-coil',
+              show_default=True, help="Format of the output txt file(s) for the custom soils. slicewise will output "
+                                      "one slice per row in the txt file, chronological will output one set of shim "
+                                      "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
+                                      "specify whether to output one txt file per coil system or coil channel.")
+@click.option('--output-format-scanner', 'o_format', type=click.Choice(['slicewise-ch', 'slicewise-coil',
+                                                                        'chronological-ch', 'chronological-coil']),
+              default='slicewise-coil',
+              show_default=True, help="Format of the output txt file(s) for the custom soils. slicewise will output "
+                                      "one slice per row in the txt file, chronological will output one set of shim "
+                                      "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
+                                      "specify whether to output one txt file per coil system or coil channel.")
 def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils, dilation_kernel,
                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
@@ -134,7 +146,7 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
             n_channels = coil.dim[3]
             end_channel = start_channel + n_channels
 
-            if o_format == 'shimwise':
+            if o_format == 'chronological-coil':
                 # Output per shim (chronological), output all channels for a particular shim, then repeat
                 for i_shim in range(len(list_slices)):
                     for i_channel in range(n_channels):
@@ -143,7 +155,7 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
                             f.write(", ")
                     f.write("\n")
 
-            elif o_format == 'slicewise':
+            elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
                 # Assumes all slices are in list_slices once which is the case for sequential, interleaved and volume
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
