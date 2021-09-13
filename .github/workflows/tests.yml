@@ -47,6 +47,7 @@ jobs:
       - name: Package installation
         run: |
           echo "shimming-toolbox installation"
+          # Use -E to preserve the environment variables of the GA CI runner
           sudo -E make install
 
       - name: Set path for Shimming Toolbox
@@ -98,7 +99,9 @@ jobs:
         run: st_check_dependencies
 
       - name: Run unit tests
-        run: py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
+        run: |
+          conda activate st_venv
+          py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 
       - name: macOS Shellcheck
         if: contains(matrix.os, 'macos')
