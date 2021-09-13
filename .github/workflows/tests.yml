@@ -47,7 +47,7 @@ jobs:
       - name: Package installation
         run: |
           echo "shimming-toolbox installation"
-          sudo make install
+          sudo -E make install
 
       - name: Set path for Shimming Toolbox
         run: |
