@@ -25,12 +25,15 @@ def test_b1_shim():
 
 
 def test_b1_shim_wrong_ndim():
-    with pytest.raises(ValueError, match=r"Unexpected negative magnitude values."):
+    with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\n"
+                                         r"Actual: 3"):
         b1_shim(b1_maps[:, :, :, 0], mask)
 
 
 def test_b1_shim_wrong_mask_shape():
-    with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching."):
+    with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching.\n"
+                                         r"Maps dimensions: \(64, 64, 16\)\n"
+                                         r"Mask dimensions: \(63, 64, 16\)"):
         b1_shim(b1_maps, mask[:-1, :, :])
 
 
@@ -49,7 +52,9 @@ def test_b1_shim_cp_mode_not_normalized(caplog):
 
 
 def test_b1_shim_cp_mode_wrong_length():
-    with pytest.raises(ValueError, match=r"CP mode and maps dimensions not matching."):
+    with pytest.raises(ValueError, match=r"The number of CP weights does not match the number of channels.\n"
+                                         r"Number of CP weights: 7\n"
+                                         r"Number of channels: 8"):
         b1_shim(b1_maps, mask, cp_weights[:-1])
 
 
@@ -78,32 +83,45 @@ def test_combine_maps():
 
 def test_combine_maps_wrong_weights_number():
     dummy_weights = [1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j]
-    with pytest.raises(ValueError, match=r"The number of shim weights does not match the number of coils."):
+    with pytest.raises(ValueError, match=f"The number of shim weights does not match the number of channels.\n"
+                                         f"Number of shim weights: 7\n"
+                                         f"Number of channels: 8"):
         combine_maps(b1_maps, dummy_weights)
 
 
 def test_calc_cp_no_size(caplog):
-    calc_cp(b1_maps, voxel_position=np.asarray([32, 32, 8]))
-    assert r"No voxel size provided for CP computation. Default size set to a single voxel." in caplog.text
+    calc_cp(b1_maps, voxel_position=(32, 32, 8))
+    assert r"No voxel size provided for CP computation. Default size set to (5, 5, 1)." in caplog.text
 
 
 def test_calc_cp_excessive_size():
     with pytest.raises(ValueError, match=r"The size of the voxel used for CP computation exceeds the size of the B1 "
-                                         r"maps."):
-        calc_cp(b1_maps, voxel_size=np.asarray([70, 32, 8]))
+                                         r"maps.\n"
+                                         r"B1 maps size: \(64, 64, 16\)\n"
+                                         r"Voxel size: \(70, 32, 8\)"):
+        calc_cp(b1_maps, voxel_size=(70, 32, 8))
 
 
 def test_calc_cp_no_position(caplog):
-    calc_cp(b1_maps, voxel_size=np.asarray([10, 10, 2]))
+    calc_cp(b1_maps, voxel_size=(10, 10, 2))
     assert r"No voxel position provided for CP computation. Default set to the center of the B1 maps." in caplog.text
+
+
+def test_calc_cp_small_b1(caplog):
+    with pytest.raises(ValueError, match=r"Provided B1 maps are too small to compute CP phases.\n"
+                                         r"Minimum size: \(5, 5, 1\)\n"
+                                         r"Actual size: \(4, 64, 16\)"):
+        calc_cp(b1_maps[:4, ...])
 
 
 def test_calc_cp_out_of_bounds_position():
     with pytest.raises(ValueError, match=r"The position of the voxel used to compute the CP mode exceeds the B1 maps "
-                                         r"bounds."):
-        calc_cp(b1_maps, voxel_position=np.asarray([70, 32, 8]))
+                                         r"bounds.\n"
+                                         r"B1 maps size: \(64, 64, 16\)\n"
+                                         r"Voxel position: \(70, 32, 8\)"):
+        calc_cp(b1_maps, voxel_position=(70, 32, 8))
 
 
 def test_calc_cp_out_out_of_bounds_voxel():
     with pytest.raises(ValueError, match=r"Voxel bounds exceed the B1 maps."):
-        calc_cp(b1_maps, voxel_size=np.asarray([20, 10, 2]), voxel_position=np.asarray([55, 32, 8]))
+        calc_cp(b1_maps, voxel_size=(20, 10, 2), voxel_position=(55, 32, 8))
