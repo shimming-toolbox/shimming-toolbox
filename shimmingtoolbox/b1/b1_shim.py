@@ -188,7 +188,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
             # Remember mean phase of 1st channel as it is used to compute the CP phases of the next channels
             mean_phase_first_channel = mean_phase
 
-        cp_phases[channel] = -1*mean_phase - mean_phase_first_channel
+        cp_phases[channel] = -(mean_phase - mean_phase_first_channel)
 
     cp_weights = (np.ones(n_channels)*np.exp(1j*cp_phases))/np.linalg.norm(np.ones(n_channels))
 
