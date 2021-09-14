@@ -45,7 +45,9 @@ autodoc_mock_imports = [
     "requests",
     "scipy",
     "tqdm",
-    "matplotlib"
+    "matplotlib",
+    "sklearn",
+    "skimage"
 ]
 
 # Add any paths that contain templates here, relative to this directory.

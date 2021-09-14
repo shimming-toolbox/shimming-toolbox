@@ -23,7 +23,6 @@ jobs:
           # - 'macos-11.0'
           - 'ubuntu-18.04'
           - 'ubuntu-20.04'
-          - 'ubuntu-16.04'
         python-version:
           - '3.7'
           - '3.8'

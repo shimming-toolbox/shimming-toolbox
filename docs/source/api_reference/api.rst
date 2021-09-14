@@ -12,9 +12,8 @@ The following section outlines the API of shimming-toolbox.
 Fieldmapping
 ------------
 
-.. Error while importing skimage
-    .. automodule:: shimmingtoolbox.prepare_fieldmap
-        :members:
+.. automodule:: shimmingtoolbox.prepare_fieldmap
+    :members:
 
 .. automodule:: shimmingtoolbox.unwrap.unwrap_phase
    :members:
@@ -29,6 +28,9 @@ Masking
     :members:
 
 .. automodule:: shimmingtoolbox.masking.threshold
+    :members:
+
+.. automodule:: shimmingtoolbox.masking.mask_utils
     :members:
 
 Coils
@@ -53,11 +55,10 @@ Coils
 Shim
 ----
 
-.. Error while importing sklearn and skimage
-    .. automodule:: shimmingtoolbox.shim.realtime_shim
-        :members:
+.. automodule:: shimmingtoolbox.shim.realtime_shim
+    :members:
 
-.. automodule:: shimmingtoolbox.optimizer.sequential
+.. automodule:: shimmingtoolbox.shim.sequencer
    :members:
 
 Optimizer

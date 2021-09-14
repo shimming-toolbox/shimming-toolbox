@@ -8,6 +8,10 @@ from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
 
 class LsqOptimizer(Optimizer):
+    """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
+        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
+        It supports bounds for each channel as well as a bound for the absolute sum of the channels.
+    """
 
     def _residuals(self, coef, unshimmed_vec, coil_mat):
         """
@@ -68,7 +72,7 @@ class LsqOptimizer(Optimizer):
             start_index = end_index
 
         # Set up output currents
-        currents_0 = np.zeros(n_channels)
+        currents_0 = self.initial_guess_mean_bounds()
 
         # Optimize
         currents_sp = opt.minimize(self._residuals, currents_0,
