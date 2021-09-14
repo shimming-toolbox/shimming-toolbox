@@ -87,7 +87,7 @@ def combine_maps(b1_maps, weights):
                          f"Number of shim weights: {len(weights)}\n"
                          f"Number of channels: {b1_maps.shape[-1]}")
 
-    return abs(np.sum(np.multiply(b1_maps, weights), b1_maps.ndim - 1))
+    return np.abs(b1_maps @ weights)
 
 
 def cov(array):
