@@ -129,6 +129,24 @@ def realtime_zshim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat=None, p
                 static[i_x, i_y, i_z] = reg.intercept_
                 progress_bar.update(1)
 
+    # save riro maps
+    nii_riro_Hz = nib.Nifti1Image(riro, nii_fieldmap.affine)
+    if is_outputting_figures:
+        nib.save(nii_riro_Hz, os.path.join(path_output, 'riro.nii.gz'))
+
+    # Resample riro (Hz) to target anatomical image    
+    resampled_riro_Hz = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
+    nii_resampled_riro = resample_from_to(nii_riro_Hz, nii_anat)
+    resampled_riro_Hz = nii_resampled_riro.get_fdata()
+    _, _, resampled_riro_Hz_vox = phys_to_vox_gradient(resampled_riro_Hz, resampled_riro_Hz, resampled_riro_Hz,
+                                                      nii_anat.affine)
+
+    # save resampled riro maps
+    nii_resampled_riro_Hz_vox = nib.Nifti1Image(resampled_riro_Hz_vox, nii_anat.affine)
+    if is_outputting_figures:
+        nib.save(nii_resampled_riro_Hz_vox, os.path.join(path_output, 'resampled_riro.nii.gz'))
+
+
     # Calculate gradient of the static and riro corrections (in the physical coordinate system)
     g = 1000 / 42.5774785178325552e6  # [mT / Hz]
     
