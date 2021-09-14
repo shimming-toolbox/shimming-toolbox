@@ -49,6 +49,10 @@ jobs:
           echo "shimming-toolbox installation"
           sudo make install
 
+      - name: Set path for Shimming Toolbox
+        run: |
+          echo "$HOME/shimming-toolbox/bin" >> $GITHUB_PATH
+
       - name: Spinal Cord Toolbox clone
         run: |
           cd ~/work
