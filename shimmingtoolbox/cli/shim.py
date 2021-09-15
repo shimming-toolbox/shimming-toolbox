@@ -78,14 +78,14 @@ def shim_cli():
 @click.option('--output-format-coil', 'o_format_coil', type=click.Choice(['slicewise-ch', 'slicewise-coil',
                                                                           'chronological-ch', 'chronological-coil']),
               default='slicewise-coil',
-              show_default=True, help="Format of the output txt file(s) for the custom soils. slicewise will output "
+              show_default=True, help="Format of the output txt file(s) for the custom coils. slicewise will output "
                                       "one slice per row in the txt file, chronological will output one set of shim "
                                       "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
                                       "specify whether to output one txt file per coil system or coil channel.")
 @click.option('--output-format-scanner', 'o_format_sph', type=click.Choice(['slicewise-ch', 'slicewise-coil',
                                                                             'chronological-ch', 'chronological-coil']),
               default='slicewise-coil',
-              show_default=True, help="Format of the output txt file(s) for the custom soils. slicewise will output "
+              show_default=True, help="Format of the output txt file(s) for the custom coils. slicewise will output "
                                       "one slice per row in the txt file, chronological will output one set of shim "
                                       "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
                                       "specify whether to output one txt file per coil system or coil channel.")
@@ -196,7 +196,7 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
 
                 if o_format == 'slicewise-ch':
                     with open(fname_output, 'w', encoding='utf-8') as f:
-                        # Each row will have one coef representing the shim in chronological order
+                        # Each row will have one coef representing the shim in slicewise order
                         n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                         for i_slice in range(n_slices):
                             i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
@@ -250,10 +250,13 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
               show_default=True,
               help="Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel of size 3"
                    "will dilate the mask by 1 pixel, 5->2 pixels")
+@click.option('--output-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch']),
+              default='slicewise-ch',
+              show_default=True, help="Format of the output txt file(s) of the coils. slicewise will output "
+                                      "one slice per row in the txt file, chronological will output one set of shim "
+                                      "per row in the order that the shim will be performed.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
-@click.option('--output-format', 'o_format', type=click.Choice(['slicewise', 'shimwise']), default='slicewise',
-              show_default=True, help="Format of the output txt file(s)")
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
                  slice_factor, coils, dilation_kernel, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
                  path_output, o_format):
@@ -321,39 +324,44 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
 
 def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format):
-    pass
-    # end_channel = 0
-    # list_fname_output = []
-    # for i_coil in range(len(list_coils)):
-    #     start_channel = end_channel
-    #     coil = list_coils[i_coil]
-    #     fname_output = os.path.join(path_output, f"coefs_coil{i_coil}_{coil.name}.txt")
-    #     with open(fname_output, 'w', encoding='utf-8') as f:
-    #         # (len(slices) x n_channels)
-    #         n_channels = coil.dim[3]
-    #         end_channel = start_channel + n_channels
-    #
-    #         if o_format == 'shimwise':
-    #             # Output per shim (chronological), output all channels for a particular shim, then repeat
-    #             for i_shim in range(len(list_slices)):
-    #                 for i_channel in range(n_channels):
-    #                     f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
-    #                     if i_channel != n_channels:
-    #                         f.write(", ")
-    #                 f.write("\n")
-    #
-    #         elif o_format == 'slicewise':
-    #             # Output per slice, output all channels for a particular slice, then repeat
-    #             # Assumes all slices are in list_slices once which is the case for sequential, interleaved and volume
-    #             n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-    #             for i_slice in range(n_slices):
-    #                 for i_channel in range(n_channels):
-    #                     i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
-    #                     f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
-    #                     if i_channel != n_channels:
-    #                         f.write(", ")
-    #                 f.write("\n")
-    #     list_fname_output.append(fname_output)
+    """o_format can either be 'chronological-ch', 'chronological-coil'"""
+
+    end_channel = 0
+    list_fname_output = []
+    for i_coil in range(len(list_coils)):
+        start_channel = end_channel
+        coil = list_coils[i_coil]
+        n_channels = coil.dim[3]
+        end_channel = start_channel + n_channels
+
+        # o_format[-3:] == '-ch':
+        # Write a file for each channel
+        for i_channel in range(n_channels):
+            fname_output = os.path.join(path_output, f"coefs_coil{i_coil}_ch{i_channel}_{coil.name}.txt")
+
+            if o_format == 'chronological-ch':
+                with open(fname_output, 'w', encoding='utf-8') as f:
+                    # Each row will have 3 coef representing the static, riro and mean_p in chronological order
+                    for i_shim in range(len(list_slices)):
+                        f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
+                        f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
+                        f.write(str(mean_p))
+                        f.write("\n")
+
+            if o_format == 'slicewise-ch':
+                with open(fname_output, 'w', encoding='utf-8') as f:
+                    # Each row will have one coef representing the static, riro and mean_p in slicewise order
+                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                    for i_slice in range(n_slices):
+                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                        f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
+                        f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
+                        f.write(str(mean_p))
+                        f.write("\n")
+
+            list_fname_output.append(fname_output)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
 def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):

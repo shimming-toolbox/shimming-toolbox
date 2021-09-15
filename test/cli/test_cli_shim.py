@@ -256,6 +256,7 @@ class TestCLIRealtime(object):
                                      '--mask-static', fname_mask,
                                      '--mask-riro', fname_mask,
                                      '--resp', fname_resp,
+                                     '--slice-factor', '2',
                                      '--scanner-coil-order', '1',
                                      '--output', tmp],
                           catch_exceptions=False)
@@ -265,7 +266,53 @@ class TestCLIRealtime(object):
                 nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
-            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
+            # There should be 3 x 20 x 1 value
+
+    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the fieldmap
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+
+            # Copy fieldmap json to tmp
+            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                           'sub-example_fieldmap.json')
+            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
+
+            runner = CliRunner()
+            runner.invoke(shim_cli, ['fieldmap_realtime',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask-static', fname_mask,
+                                     '--mask-riro', fname_mask,
+                                     '--resp', fname_resp,
+                                     '--slice-factor', '2',
+                                     '--scanner-coil-order', '1',
+                                     '--output-format', 'chronological-ch',
+                                     '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
+            # There should be 3 x 10 x 1 value
 
 
 # def test_cli_define_slices_def():
