@@ -120,7 +120,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
     list_slices = define_slices(n_slices, slice_factor, slices)
-    logger.info(f"The slices to shim are: {list_slices}")
+    logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Prepare the output
     create_output_dir(path_output)
@@ -132,16 +132,22 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Output
     if scanner_coil_order > 0:
         n_channels = list_coils[-1].dim[3]
-        _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices, path_output, o_format_sph)
+        list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices,
+                                                      path_output, o_format_sph)
         if len(coils) > 0:
-            _save_to_text_file_static(list_coils[:-1], coefs[:-n_channels], list_slices, path_output, o_format_coil)
+            fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_channels], list_slices, path_output,
+                                      o_format_coil, start_coil_number=1)
+            # Concat list
+            list_fname_output = list_fname_output + fname_tmp
     else:
         # The case where there is no custom coil or scanner coil is already checked in load_coils so no need to check
         # again i.e. there must be a custom coil at this point
-        _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format_coil)
+        list_fname_output = _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format_coil)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
-def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format):
+def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format, start_coil_number=0):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil'"""
 
     end_channel = 0
@@ -154,7 +160,7 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
 
         if o_format[-5:] == '-coil':
 
-            fname_output = os.path.join(path_output, f"coefs_coil{i_coil}_{coil.name}.txt")
+            fname_output = os.path.join(path_output, f"coefs_coil{start_coil_number + i_coil}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # (len(slices) x n_channels)
 
@@ -171,9 +177,9 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
                     # Output per slice, output all channels for a particular slice, then repeat
                     # Assumes all slices are in list_slices once which is the case for sequential, interleaved and
                     # volume
-                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                    n_slices = np.sum([len(a_shim) for a_shim in list_slices])
                     for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                        i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
                         for i_channel in range(n_channels):
                             f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
                             if i_channel != n_channels:
@@ -204,7 +210,7 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
 
                 list_fname_output.append(fname_output)
 
-    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    return list_fname_output
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
