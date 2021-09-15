@@ -59,10 +59,12 @@ def check_dependencies():
     print_line(prelude_check_msg)
     check_prelude_installation()
 
-    # dcm2niix
-    dcm2niix_check_msg = check_name.format("dcm2niix")
-    print_line(dcm2niix_check_msg)
-    check_dcm2niix_installation()
+    # # dcm2niix
+    # dcm2niix now comes bundled with shimming toolbox. Therefore we don't need to check if it is in the path since it
+    # is already in the environment
+    # dcm2niix_check_msg = check_name.format("dcm2niix")
+    # print_line(dcm2niix_check_msg)
+    # check_dcm2niix_installation()
 
     # SCT
     sct_check_msg = check_name.format("Spinal Cord Toolbox")

@@ -33,7 +33,7 @@ def test_check_installation_errors():
 
     result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
     assert result.exit_code == 0
-    assert result.stdout.count('FAIL') == 3
+    assert result.stdout.count('FAIL') == 2
 
 
 def test_check_prelude_installation():

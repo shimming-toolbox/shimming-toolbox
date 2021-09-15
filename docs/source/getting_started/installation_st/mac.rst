@@ -2,95 +2,36 @@
 Mac
 *****
 
-1. Set Up a Virtual Environment
+1. Install Dependencies
+-----------------------
+
+
+Install FSL
+~~~~~~~~~~~
+
+You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ if you want to use ``prelude``.
+
+
+2. Install ``shimming-toolbox``
 -------------------------------
 
-To install ``shimming-toolbox``, we recommend that you use a virtual environment. Virtual environments are a tool to separate the Python environment and packages used between Python projects. They allow for different versions of Python packages to be installed and managed for the specific needs of your projects. There are several virtual environment managers available,
-but the one we recommend and will use in our installation guide is
-`conda <https://conda.io/docs/>`__, which is installed by default with Miniconda. We strongly recommend you create a virtual environment before you continue with your installation.
-
-The Miniconda installation instructions depend on whether your system
-default shell is Bash or Zsh. You can determine this from the output of
-running the following in your terminal:
-
-.. code:: bash
-
-   echo $SHELL
-
-Bash
-~~~~
-
-.. code:: bash
-
-   cd
-   curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o ~/miniconda.sh
-   bash ~/miniconda.sh -b -p $HOME/miniconda
-   echo ". ~/miniconda/etc/profile.d/conda.sh" >> ~/.bash_profile
-   source ~/.bash_profile
-
-Zsh
-~~~
-
-.. code:: zsh
-
-   cd
-   curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o ~/miniconda.sh
-   bash ~/miniconda.sh -b -p $HOME/miniconda
-   source $HOME/miniconda/bin/activate
-   conda init zsh
-
-Next, create your virtual environment:
-
-.. code:: bash
-
-   conda create -n shim_venv python=3.7
-
-Then, activate your virtual environment:
-
-.. code:: bash
-
-   conda activate shim_venv
-
-To switch back to your default environment, run:
-
-.. code:: bash
-
-   conda deactivate
-
-
-2. Install dcm2niix
--------------------
-
-Ensure that you have `dcm2niix <https://github.com/rordenlab/dcm2niix>`__ >= v1.0.20201102. installed on your system.
-
-3. Install FSL
---------------
-
-You will also need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__.
-
-
-4. Install from GitHub
-----------------------
-
-To install shimming-toolbox, clone
-shimming-toolbox's repository (you will need to have Git installed on
-your system):
+To install ``shimming-toolbox``, clone the ``shimming-toolbox`` repository from ``GitHub`` (you will need to have ``Git`` installed on your system):
 
 .. code:: bash
 
   git clone https://github.com/shimming-toolbox/shimming-toolbox.git
 
 
-Next, install using pip:
+Next, install ``shimming-toolbox`` using the ``Makefile``:
 
 .. code:: bash
 
   cd shimming-toolbox
-  pip install -e ".[docs,dev]"
+  make install
 
 
-5. Test the Install (optional)
-------------------------------
+3. Test the Installation (optional)
+-----------------------------------
 
 Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
@@ -101,6 +42,8 @@ shimming-toolbox directory:
 .. code:: bash
 
  cd shimming-toolbox
+ source $HOME/shimming_toolbox/python/etc/profile.d/conda.sh
+ conda activate st_venv
  pytest
 
 See https://docs.pytest.org/ for more options.
@@ -128,3 +71,16 @@ To test **only** the parts of shimming-toolbox dependent on ``prelude`` or
 ``dcm2niix``, the corresponding ``-m`` argument is ``"prelude or dcm2niix"``
 
 Note that supplying the ``"-m"`` argument ``"prelude and dcm2niix"`` only runs tests dependent on both ``prelude`` **and** ``dcm2niix``.
+
+
+For Developers
+---------------
+
+The installation files can be found in the ``installer`` folder, and are called by the ``Makefile``.
+
+When you run ``make install``, we first check if the ``ST_DIR`` exists, or if a clean install has
+been requested. The ``ST_DIR`` is where this package and also the ``fsleyes-plugin-shimming-toolbox`` are installed. By choosing clean, you delete the entire install directory, and consequently any prior installs of ``shimming-toolbox`` or ``fsleyes-plugin-shimming-toolbox``. Note that this is set to ``CLEAN==false`` by default.
+
+We next check if ``conda`` has been installed into the ``ST_DIR``. If not, we run the ``conda`` installer.
+
+Finally, we create a virtual environment and install ``shimming-toolbox``.
