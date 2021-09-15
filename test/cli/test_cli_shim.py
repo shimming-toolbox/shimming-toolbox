@@ -59,7 +59,7 @@ def _define_inputs(fmap_dim):
 )
 class TestCliStatic(object):
     def test_cli_static_default(self, nii_fmap, nii_anat, nii_mask):
-
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -88,7 +88,7 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
     def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask):
-
+        """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -121,6 +121,106 @@ class TestCliStatic(object):
                 nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+
+    def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask):
+        """Test cli with scanner coil with chronological-coil oformat"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            runner = CliRunner()
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--scanner-coil-order', '1',
+                                     '--slice-factor', '2',
+                                     '--output-format-scanner', 'chronological-coil',
+                                     '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+            #There should be 10 x 3 values
+
+    def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask):
+        """Test cli with scanner coil with chronological-coil oformat"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            runner = CliRunner()
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--scanner-coil-order', '1',
+                                     '--slice-factor', '2',
+                                     '--output-format-scanner', 'chronological-ch',
+                                     '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
+            # There should be 3 x 10 x 1 value
+
+    def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask):
+        """Test cli with scanner coil with chronological-coil oformat"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            runner = CliRunner()
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--scanner-coil-order', '1',
+                                     '--slice-factor', '2',
+                                     '--output-format-scanner', 'slicewise-ch',
+                                     '--output', tmp],
+                          catch_exceptions=False)
+
+            if DEBUG:
+                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
+            # There should be 3 x 20 x 1 value
 
 
 @pytest.mark.parametrize(
