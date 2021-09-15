@@ -444,6 +444,7 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
             print(slices)  # [(0, 1, 2, 3, 4), (5, 6, 7, 8, 9), (10, 11, 12, 13, 14), (15, 16, 17, 18, 19)]
 
             slices = define_slices(20, method='volume')
+            # 'volume' ignores the 'factor' option
             print(slices)  # [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19)]
 
     """

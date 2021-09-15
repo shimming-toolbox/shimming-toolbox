@@ -456,8 +456,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap):
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")
-# Add 'volume'
-@click.option('--method', type=click.Choice(['interleaved', 'sequential']), required=True,
+@click.option('--method', type=click.Choice(['interleaved', 'sequential', 'volume']), required=True,
               help="Defines how the slices should be sorted")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'slices.json'),
               show_default=True, help="Output filename for the json file")
