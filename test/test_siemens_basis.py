@@ -28,7 +28,7 @@ def test_normal_siemens_basis(x, y, z):
     # Test for a value, arbitrarily chose basis[0, 0, 0, 0].
     # The full matrix could be checked to be more thorough but would require explicitly defining the matrix which is
     # 2x2x2x8. -4.25760000e-02 was worked out to be the value that should be in basis[0, 0, 0, 0].
-    assert(math.isclose(basis[0, 0, 0, 0], -4.25760000e-02, rel_tol=1e-09))
+    assert(math.isclose(basis[0, 0, 0, 0], -0.04257747851783255, rel_tol=1e-09))
 
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
@@ -54,8 +54,8 @@ def test_siemens_basis_resample():
     basis = siemens_basis(coord_phys[0], coord_phys[1], coord_phys[2])
 
     # Hard-coded values corresponding to the mid-point of the FOV.
-    expected = np.array([5.31991104e-18, -8.68807405e-02,  1.03212742e+00,  2.49321889e-02,
-                         2.57930573e-19, -4.21232592e-03, -1.77289155e-04, -2.17116596e-20])
+    expected = np.array([5.32009578e-18, -8.68837575e-02,  1.03216326e+00,  2.49330547e-02,
+                         2.57939530e-19, -4.21247220e-03, -1.77295312e-04, -2.17124136e-20])
 
     nx, ny, nz = nii.get_fdata().shape
     assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))

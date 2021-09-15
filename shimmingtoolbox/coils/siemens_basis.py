@@ -9,7 +9,7 @@ Y = 1
 Z = 2
 ZX = 4
 XY = 7
-GYROMAGNETIC_RATIO = 42.576
+GYROMAGNETIC_RATIO = 42.5774785178325552
 
 
 def _reorder_to_siemens(spher_harm):
