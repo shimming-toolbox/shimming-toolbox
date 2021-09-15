@@ -5,7 +5,7 @@ import numpy as np
 import os
 import pytest
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.b1.b1_shim import b1_shim, combine_maps, vector_to_complex, complex_to_vector, calc_cp
+from shimmingtoolbox.b1.b1_shim import *
 from shimmingtoolbox.load_nifti import read_nii
 
 
@@ -125,3 +125,12 @@ def test_calc_cp_out_of_bounds_position():
 def test_calc_cp_out_out_of_bounds_voxel():
     with pytest.raises(ValueError, match=r"Voxel bounds exceed the B1 maps."):
         calc_cp(b1_maps, voxel_size=(20, 10, 2), voxel_position=(55, 32, 8))
+
+
+def test_calc_approx_cp():
+    approx_weights = calc_approx_cp(8)
+    assert np.isclose(approx_weights,
+                      np.asarray([3.53553391e-01+0.00000000e+00j,  2.50000000e-01-2.50000000e-01j,
+                                 2.16489014e-17-3.53553391e-01j, -2.50000000e-01-2.50000000e-01j,
+                                 -3.53553391e-01-4.32978028e-17j, -2.50000000e-01+2.50000000e-01j,
+                                 -6.49467042e-17+3.53553391e-01j,  2.50000000e-01+2.50000000e-01j])).all()

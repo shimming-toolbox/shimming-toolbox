@@ -164,7 +164,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
                              f"Voxel size: {voxel_size}")
 
     if voxel_position is None:
-        voxel_position = (x//2, y//2, n_slices//2)
+        voxel_position = (x // 2, y // 2, n_slices // 2)
         logger.info("No voxel position provided for CP computation. Default set to the center of the B1 maps.")
     else:
         if (np.asarray(voxel_position) < np.asarray([0, 0, 0])).any() or \
@@ -172,7 +172,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
             raise ValueError(f"The position of the voxel used to compute the CP mode exceeds the B1 maps bounds.\n"
                              f"B1 maps size: {b1_maps.shape[:-1]}\n"
                              f"Voxel position: {voxel_position}")
-    start_voxel = np.asarray(voxel_position) - np.asarray(voxel_size)//2
+    start_voxel = np.asarray(voxel_position) - np.asarray(voxel_size) // 2
     end_voxel = start_voxel + np.asarray(voxel_size)
 
     if (start_voxel < 0).any() or (end_voxel > np.asarray([x, y, n_slices])).any():
@@ -190,6 +190,23 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
 
         cp_phases[channel] = -(mean_phase - mean_phase_first_channel)
 
-    cp_weights = (np.ones(n_channels)*np.exp(1j*cp_phases))/np.linalg.norm(np.ones(n_channels))
+    cp_weights = (np.ones(n_channels) * np.exp(1j * cp_phases)) / np.linalg.norm(np.ones(n_channels))
 
     return cp_weights
+
+
+def calc_approx_cp(n_channels):
+    """
+    Returns a approximation of a circular polarization based on the number of transmit elements. Assumes a circular coil
+    with regularly spaced transmit elements
+    Args:
+        n_channels (int): Number of transmit elements to consider.
+
+    Returns:
+        numpy.ndarray: Complex 1D array of individual shim weights (length = n_channels).
+
+    """
+
+    # Approximation of a circular polarisation
+    return (np.ones(n_channels) * np.exp(-1j * np.linspace(0, 2 * np.pi - 2 * np.pi / n_channels, n_channels))) / \
+        np.linalg.norm(np.ones(n_channels))
