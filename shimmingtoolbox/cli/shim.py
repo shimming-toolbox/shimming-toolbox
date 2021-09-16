@@ -97,12 +97,14 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     Example of use: st_shim fieldmap_static --coil coil1.nii coil1_constraints.json
     --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii --mask mask.nii
     """
+    # Prepare the output
+    create_output_dir(path_output)
 
     # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
     # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
     # through plane direction.
     fmap_required_dims = 3
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size)
+    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -121,9 +123,6 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     n_slices = nii_anat.shape[2]
     list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
-
-    # Prepare the output
-    create_output_dir(path_output)
 
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils, method=method,
@@ -263,9 +262,10 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
                                       "per row in the order that the shim will be performed.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
                  slice_factor, coils, dilation_kernel, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
-                 path_output, o_format):
+                 path_output, o_format, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -273,11 +273,16 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     Example of use: st_shim fieldmap_static --coil coil1.nii coil1_constraints.json
     --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii --mask-static mask.nii
     """
+    logger.setLevel(verbose.upper())
+
+    # Prepare the output
+    create_output_dir(path_output)
+
     # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
     # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
     # through plane direction.
     fmap_required_dims = 4
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size)
+    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
 
     # Load json associated with the fieldmap
     fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
@@ -306,6 +311,16 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap)
 
+    if logging.getLevelName(logger.level) == 'DEBUG':
+        # Save inputs
+        list_fname = [
+            fname_fmap,
+            fname_anat,
+            fname_mask_anat_static,
+            fname_mask_anat_riro
+        ]
+        _save_nii_to_new_dir(list_fname, path_output)
+
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
     list_slices = define_slices(n_slices, slice_factor, slices)
@@ -313,9 +328,6 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     # Load PMU
     pmu = PmuResp(fname_resp)
-
-    # Prepare the output
-    create_output_dir(path_output)
 
     out = shim_realtime_pmu_sequencer(nii_fmap, json_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
@@ -351,8 +363,7 @@ def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, li
                     for i_shim in range(len(list_slices)):
                         f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
                         f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
-                        f.write(str(mean_p))
-                        f.write("\n")
+                        f.write(f"{mean_p:.4f}\n")
 
             if o_format == 'slicewise-ch':
                 with open(fname_output, 'w', encoding='utf-8') as f:
@@ -362,15 +373,14 @@ def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, li
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                         f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
                         f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
-                        f.write(str(mean_p))
-                        f.write("\n")
+                        f.write(f"{mean_p:.4f}\n")
 
             list_fname_output.append(fname_output)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
-def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):
+def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
     """ Load the fmap and expand its dimensions to the kernel size
 
     Args:
@@ -396,8 +406,17 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size):
         n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
         fieldmap_shape = nii_fmap_orig.shape
         list_axis = [i for i in range(3) if (fieldmap_shape[i] == 1 or fieldmap_shape[i] == 2)]
+
+        tmp_nii = nii_fmap_orig
         for i_axis in list_axis:
-            nii_fmap = extend_slice(nii_fmap_orig, n_slices=n_slices_to_expand, axis=i_axis)
+            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
+        nii_fmap = tmp_nii
+
+        if logging.getLevelName(logger.level) == 'DEBUG':
+            fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
+            nib.save(nii_fmap, fname_new_fmap)
+            logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
+
     else:
         nii_fmap = nii_fmap_orig
 
@@ -448,6 +467,17 @@ def _load_coils(coils, order, fname_constraints, nii_fmap):
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
+
+
+def _save_nii_to_new_dir(list_fname, path_output):
+    """List of nii to save to a new output folder"""
+    logger.debug(f"Saving CLI inputs to: {path_output}")
+    for fname in list_fname:
+        if fname is None:
+            continue
+        nii = nib.load(fname)
+        fname_to_save = os.path.join(path_output, os.path.basename(fname))
+        nib.save(nii, fname_to_save)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
