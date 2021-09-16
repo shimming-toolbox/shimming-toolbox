@@ -11,6 +11,7 @@ from shutil import copy
 
 from shimmingtoolbox.cli.shim import define_slices_cli
 from shimmingtoolbox.cli.shim import shim_cli
+from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
@@ -487,3 +488,60 @@ def test_cli_define_slices_wrong_output():
                                               '--method', 'sequential',
                                               '-o', fname_output],
                           catch_exceptions=False)
+
+
+def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
+    """Test to compare grad vs fieldmap realtime shim"""
+    nii_fmap, nii_anat, nii_mask = _define_inputs(4)
+
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Save the fieldmap
+        fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+        nib.save(nii_fmap, fname_fmap)
+        # Save the mask
+        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        nib.save(nii_mask, fname_mask)
+        # Save the anat
+        fname_anat = os.path.join(tmp, 'anat.nii.gz')
+        nib.save(nii_anat, fname_anat)
+
+        # Input pmu fname
+        fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+
+        # Copy fieldmap json to tmp
+        fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_fieldmap.json')
+        copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
+
+        runner = CliRunner()
+
+        # fieldmap rt shim
+        runner.invoke(shim_cli, ['fieldmap_realtime',
+                                 '--fmap', fname_fmap,
+                                 '--anat', fname_anat,
+                                 '--mask-static', fname_mask,
+                                 '--mask-riro', fname_mask,
+                                 '--resp', fname_resp,
+                                 '--slice-factor', '1',
+                                 '--mask-dilation-kernel-size', '3',
+                                 '--optimizer-method', 'pseudo_inverse',
+                                 '--scanner-coil-order', '1',
+                                 '--output', os.path.join(tmp, 'fmap'),
+                                 '-v', 'debug'],
+                      catch_exceptions=False)
+
+        # grad rt shim
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
+                                                   '--anat', fname_anat,
+                                                   '--mask-static', fname_mask,
+                                                   '--mask-riro', fname_mask,
+                                                   '--output', os.path.join(tmp, 'grad'),
+                                                   '--resp', fname_resp],
+                               catch_exceptions=False)
+
+        if DEBUG:
+            nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
+            nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
+            nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
+
+        a=1
