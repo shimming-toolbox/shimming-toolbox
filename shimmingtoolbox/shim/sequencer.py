@@ -93,7 +93,31 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     coef = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
                      dilation_size=mask_dilation_kernel_size)
 
+    # Evaluate theoretical shim
+    if logger.level >= getattr(logging, 'DEBUG'):
+        _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coef, slices)
+
     return coef
+
+
+def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices):
+    # Calculate theoretical shimmed map
+    unshimmed = nii_fieldmap.get_fdata()
+    correction_per_channel = np.zeros(opt.merged_coils.shape + (len(slices),))
+    shimmed = np.zeros(unshimmed.shape + (len(slices),))
+    mask_fieldmap = np.zeros(unshimmed.shape + (len(slices),))
+    for i_shim in range(len(slices)):
+        correction_per_channel[..., i_shim] = coef[i_shim] * opt.merged_coils
+        correction = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        shimmed[..., i_shim] = unshimmed + correction
+
+        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap, slices[i_shim]).get_fdata()
+
+        sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
+        sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
+
+        logger.debug(f"Slice(s): {slices[i_shim]}\n"
+                     f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
@@ -261,7 +285,71 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # coef_riro_rms = coef_riro * pressure_rms
     # [unit_shim/unit_pressure] * rms_pressure, ex: [Hz/unit_pressure] * rms_pressure
 
+    # Evaluate theoretical shim
+    if logger.level >= getattr(logging, 'DEBUG'):
+        _eval_rt_shim(optimizer, nii_fieldmap, nii_static_mask, coef_static, coef_riro, mean_p,
+                      acq_pressures, slices)
+
     return coef_static, coef_riro, mean_p, pressure_rms
+
+
+def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, coef_riro, mean_p,
+                  acq_pressures, slices):
+    # Calculate theoretical shimmed map
+    # shim
+    unshimmed = nii_fieldmap.get_fdata()
+    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+    shape = unshimmed.shape + (len(slices),)
+    shimmed_static_riro = np.zeros(shape)
+    shimmed_static = np.zeros(shape)
+    shimmed_riro = np.zeros(shape)
+    masked_shim_static_riro = np.zeros(shape)
+    masked_shim_static = np.zeros(shape)
+    masked_shim_riro = np.zeros(shape)
+    masked_unshimmed = np.zeros(shape)
+    masked_fieldmap = np.zeros(unshimmed[..., 0].shape + (len(slices),))
+    shim_trace_static_riro = []
+    shim_trace_static = []
+    shim_trace_riro = []
+    unshimmed_trace = []
+    for i_shim in range(len(slices)):
+        # Calculate static correction
+        correction_static = np.sum(coef_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
+
+        # Calculate the riro coil profiles
+        riro_profile = np.sum(coef_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
+
+        masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
+        for i_t in range(nii_fieldmap.shape[3]):
+            # Apply the static and riro correction
+            correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
+            shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
+            shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
+            shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
+
+            # Calculate masked shim
+            masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
+            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
+            masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+            masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
+
+            # Calculate the sum over the ROI
+            sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
+            sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
+            sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
+            sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
+            logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
+            logger.debug(f"\ni_shim: {i_shim}, t: {i_t}"
+                         f"\nunshimmed: {sum_unshimmed}, shimmed static: {sum_shimmed_static}, "
+                         f"shimmed static+riro: {sum_shimmed_static_riro}\n"
+                         f"Static currents:\n{coef_static[i_shim]}\n"
+                         f"Riro currents:\n{coef_riro[i_shim] * (acq_pressures[i_t] - mean_p)}\n")
+
+            # Create a 1D list of the sum of the shimmed and unshimmed maps
+            shim_trace_static.append(sum_shimmed_static)
+            shim_trace_static_riro.append(sum_shimmed_static_riro)
+            shim_trace_riro.append(sum_shimmed_riro)
+            unshimmed_trace.append(sum_unshimmed)
 
 
 def new_bounds_from_currents(currents, old_bounds):
