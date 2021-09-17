@@ -147,3 +147,9 @@ def create_fname_from_path(path, file_default):
         fname = path
 
     return os.path.abspath(fname)
+
+
+def set_all_loggers(verbose):
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for a_logger in loggers:
+        a_logger.setLevel(verbose.upper())
