@@ -277,6 +277,7 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "fmap.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "anat.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
+            assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
     def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask):
         """Test cli with scanner coil profiles of order 1 with default constraints"""

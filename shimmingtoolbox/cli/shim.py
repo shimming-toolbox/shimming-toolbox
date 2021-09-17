@@ -121,7 +121,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         # If no mask is provided, shim the whole anat volume
         nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
 
-    if logger.level >= getattr(logging, 'DEBUG'):
+    if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
         list_fname = [
             fname_fmap,
@@ -139,8 +139,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Get shimming coefficients
-    coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils, method=method,
-                           mask_dilation_kernel=dilation_kernel, mask_dilation_kernel_size=dilation_kernel_size)
+    coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils,
+                           method=method,
+                           mask_dilation_kernel=dilation_kernel,
+                           mask_dilation_kernel_size=dilation_kernel_size,
+                           path_output=path_output)
 
     # Output
     if scanner_coil_order > 0:
@@ -149,7 +152,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                                                       path_output, o_format_sph)
         if len(coils) > 0:
             fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_channels], list_slices, path_output,
-                                      o_format_coil, start_coil_number=1)
+                                                  o_format_coil, start_coil_number=1)
             # Concat list
             list_fname_output = list_fname_output + fname_tmp
     else:
@@ -326,7 +329,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap)
 
-    if logger.level >= getattr(logging, 'DEBUG'):
+    if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
         list_fname = [
             fname_fmap,
@@ -348,7 +351,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
                                       mask_dilation_kernel=dilation_kernel,
-                                      mask_dilation_kernel_size=dilation_kernel_size)
+                                      mask_dilation_kernel_size=dilation_kernel_size,
+                                      path_output=path_output)
 
     currents_static, currents_riro, mean_p, p_rms = out
 
@@ -427,7 +431,7 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
             tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
         nii_fmap = tmp_nii
 
-        if logger.level >= getattr(logging, 'DEBUG'):
+        if logger.level <= getattr(logging, 'DEBUG'):
             fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
             nib.save(nii_fmap, fname_new_fmap)
             logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
