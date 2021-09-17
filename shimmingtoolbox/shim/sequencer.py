@@ -8,6 +8,8 @@ from sklearn.linear_model import LinearRegression
 import nibabel as nib
 import logging
 from nibabel.affines import apply_affine
+import os
+from matplotlib.figure import Figure
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -27,7 +29,7 @@ supported_optimizers = {
 
 
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3):
+                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=os.curdir):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -51,6 +53,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
+        path_output (str): Path to the directory to output figures. Set logging level to debug to output them.
 
     Returns:
         numpy.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
@@ -94,13 +97,12 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                      dilation_size=mask_dilation_kernel_size)
 
     # Evaluate theoretical shim
-    if logger.level >= getattr(logging, 'DEBUG'):
-        _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coef, slices)
+    _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coef, slices, path_output)
 
     return coef
 
 
-def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path_output):
     # Calculate theoretical shimmed map
     unshimmed = nii_fieldmap.get_fdata()
     correction_per_channel = np.zeros(opt.merged_coils.shape + (len(slices),))
@@ -116,13 +118,29 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices):
         sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
         sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
 
+        if sum_shimmed > sum_unshimmed:
+            logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                           f"i_shim: {i_shim}")
+
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
                      f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
+
+    if logger.level <= getattr(logging, 'DEBUG'):
+        _plot_currents(coef, path_output)
+
+        # Save correction
+        fname_correction = os.path.join(path_output, 'fig_correction_per_channel.nii.gz')
+        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
+        nib.save(nii_correction, fname_correction)
+
+        fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
+        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
+        nib.save(nii_correction, fname_correction)
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
-                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3):
+                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=os.curdir):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -152,6 +170,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
+        path_output (str): Path to the directory to output figures. Set logging level to debug to output them.
 
     Returns:
         (tuple): tuple containing:
@@ -286,15 +305,17 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # [unit_shim/unit_pressure] * rms_pressure, ex: [Hz/unit_pressure] * rms_pressure
 
     # Evaluate theoretical shim
-    if logger.level >= getattr(logging, 'DEBUG'):
-        _eval_rt_shim(optimizer, nii_fieldmap, nii_static_mask, coef_static, coef_riro, mean_p,
-                      acq_pressures, slices)
+    _eval_rt_shim(optimizer, nii_fieldmap, nii_static_mask, coef_static, coef_riro, mean_p,
+                  acq_pressures, slices, pressure_rms, pmu, path_output)
 
     return coef_static, coef_riro, mean_p, pressure_rms
 
 
 def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, coef_riro, mean_p,
-                  acq_pressures, slices):
+                  acq_pressures, slices, pressure_rms, pmu: PmuResp, path_output):
+
+    logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
+
     # Calculate theoretical shimmed map
     # shim
     unshimmed = nii_fieldmap.get_fdata()
@@ -338,7 +359,12 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
             sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
             sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
             sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
-            logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
+
+            if sum_shimmed_static_riro > sum_unshimmed:
+                # TODO: Remove if too many
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}, i_t: {i_t}")
+
             logger.debug(f"\ni_shim: {i_shim}, t: {i_t}"
                          f"\nunshimmed: {sum_unshimmed}, shimmed static: {sum_shimmed_static}, "
                          f"shimmed static+riro: {sum_shimmed_static_riro}\n"
@@ -350,6 +376,185 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
             shim_trace_static_riro.append(sum_shimmed_static_riro)
             shim_trace_riro.append(sum_shimmed_riro)
             unshimmed_trace.append(sum_unshimmed)
+
+    # reshape to slice x timepoint
+    nt = unshimmed.shape[3]
+    n_shim = len(slices)
+    shim_trace_static = np.array(shim_trace_static).reshape(n_shim, nt)
+    shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
+    shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
+    unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
+
+    # plot results
+    i_slice = 0
+    i_shim = 0
+    i_t = 0
+    while np.all(masked_unshimmed[..., i_slice, i_t, i_shim] == np.zeros(masked_unshimmed.shape[:2])):
+        i_shim += 1
+        if i_shim >= n_shim:
+            break
+
+    if logger.level <= getattr(logging, 'DEBUG'):
+        _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
+                          shimmed_static_riro, path_output, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
+        _plot_currents(coef_static, path_output, riro=coef_riro * pressure_rms)
+        _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro,
+                            path_output)
+        _plot_pressure_points(acq_pressures, (pmu.min, pmu.max), path_output)
+        _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
+
+        # Save shimmed result
+        nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, nii_fieldmap.affine, header=nii_fieldmap.header)
+        nib.save(nii_shimmed_static_riro, os.path.join(path_output,
+                                                       'shimmed_static_riro_4thdim_it_5thdim_ishim.nii.gz'))
+
+
+def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
+                      shimmed_static_riro, path_output, i_t=0, i_slice=0, i_shim=0):
+    """Plot Static and RIRO fieldmap for a perticular fieldmap slice, anat shim and timepoint"""
+
+    min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
+                    masked_shim_static[..., i_slice, i_t, i_shim].min(),
+                    masked_unshimmed[..., i_slice, i_t, i_shim].min())
+    max_value = max(masked_shim_static_riro[..., i_slice, i_t, i_shim].max(),
+                    masked_shim_static[..., i_slice, i_t, i_shim].max(),
+                    masked_unshimmed[..., i_slice, i_t, i_shim].max())
+
+    fig = Figure(figsize=(15, 10))
+    fig.suptitle(f"Maps for shim: {i_shim}, slice: {i_slice}, timepoint: {i_t}")
+    ax = fig.add_subplot(2, 3, 1)
+    im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+    fig.colorbar(im)
+    ax.set_title("masked_shim static + riro")
+    ax = fig.add_subplot(2, 3, 2)
+    im = ax.imshow(np.rot90(masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+    fig.colorbar(im)
+    ax.set_title("masked_shim static")
+    ax = fig.add_subplot(2, 3, 3)
+    im = ax.imshow(np.rot90(masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+    fig.colorbar(im)
+    ax.set_title("masked_unshimmed")
+
+    ax = fig.add_subplot(2, 3, 4)
+    im = ax.imshow(np.rot90(shimmed_static_riro[..., i_slice, i_t, i_shim]))
+    fig.colorbar(im)
+    ax.set_title("shim static + riro")
+    ax = fig.add_subplot(2, 3, 5)
+    im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]))
+    fig.colorbar(im)
+    ax.set_title(f"shim static")
+    ax = fig.add_subplot(2, 3, 6)
+    im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]))
+    fig.colorbar(im)
+    ax.set_title(f"unshimmed")
+    fname_figure = os.path.join(path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure)
+    logger.debug(f"Saved figure: {fname_figure}")
+
+
+def _plot_currents(static, path_output: str, riro=None):
+    """Plot evolution of currents through shims"""
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(111)
+    n_channels = static.shape[1]
+    for i_channel in range(n_channels):
+        ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shims")
+    if riro is not None:
+        for i_channel in range(n_channels):
+            ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shims")
+    ax.set_xlabel('i_shims')
+    ax.set_ylabel('Coefficients')
+    ax.legend()
+    ax.set_title("Currents through shims")
+    fname_figure = os.path.join(path_output, 'fig_currents.png')
+    fig.savefig(fname_figure)
+    logger.debug(f"Saved figure: {fname_figure}")
+
+
+def _plot_pressure_points(acq_pressures, ylim, path_output):
+    """Plot respiratory trace pressure points"""
+    fig = Figure(figsize=(10, 10))
+    ax = fig.add_subplot(111)
+    ax.plot(acq_pressures, label='pressures')
+    ax.legend()
+    ax.set_ylim(ylim)
+    ax.set_title("Pressures vs time points")
+    fname_figure = os.path.join(path_output, 'fig_trace_pressures.png')
+    fig.savefig(fname_figure)
+    logger.debug(f"Saved figure: {fname_figure}")
+
+
+def _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro, path_output):
+    """plot shimmed and unshimmed sum over the roi for each shim"""
+
+    min_value = min(
+        shim_trace_static_riro[:, :].min(),
+        shim_trace_static[:, :].min(),
+        shim_trace_riro[:, :].min(),
+        unshimmed_trace[:, :].min()
+    )
+    max_value = max(
+        shim_trace_static_riro[:, :].max(),
+        shim_trace_static[:, :].max(),
+        shim_trace_riro[:, :].max(),
+        unshimmed_trace[:, :].max()
+    )
+
+    # Calc ysize
+    n_shims = len(unshimmed_trace)
+    ysize = n_shims * 4.7
+    fig = Figure(figsize=(10, ysize), tight_layout=True)
+    for i_shim in range(n_shims):
+        ax = fig.add_subplot(n_shims, 1, i_shim + 1)
+        ax.plot(shim_trace_static_riro[i_shim, :], label='shimmed static + riro')
+        ax.plot(shim_trace_static[i_shim, :], label='shimmed static')
+        ax.plot(shim_trace_riro[i_shim, :], label='shimmed_riro')
+        ax.plot(unshimmed_trace[i_shim, :], label='unshimmed')
+        ax.set_xlabel('Timepoints')
+        ax.set_ylabel('Sum over the ROI')
+        ax.legend()
+        ax.set_ylim(min_value, max_value)
+        ax.set_title(f"Unshimmed vs shimmed values: shim {i_shim}")
+    fname_figure = os.path.join(path_output, 'fig_trace_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure)
+    logger.debug(f"Saved figure: {fname_figure}")
+
+
+def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap):
+    """Print to the console metrics about the realtime and static shim. These metrics isolate temporal and static
+    components
+    Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
+    Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
+    """
+
+    unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], masked_fieldmap.shape[-1], axis=-1)
+    mask_repeats = np.repeat(masked_fieldmap[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
+    ma_unshimmed = np.ma.array(unshimmed_repeat, mask=mask_repeats == False)
+    ma_shim_static = np.ma.array(shimmed_static, mask=mask_repeats == False)
+    ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=mask_repeats == False)
+    ma_shim_riro = np.ma.array(shimmed_riro, mask=mask_repeats == False)
+
+    # Temporal
+    temp_shim_static = np.ma.mean(np.ma.std(ma_shim_static, 3))
+    temp_shim_static_riro = np.ma.mean(np.ma.std(ma_shim_static_riro, 3))
+    temp_shim_riro = np.ma.mean(np.ma.std(ma_shim_riro, 3))
+    temp_unshimmed = np.ma.mean(np.ma.std(ma_unshimmed, 3))
+
+    # Static
+    static_shim_static = np.ma.std(np.ma.mean(ma_shim_static, 3))
+    static_shim_static_riro = np.ma.std(np.ma.mean(ma_shim_static_riro, 3))
+    static_shim_riro = np.ma.std(np.ma.mean(ma_shim_riro, 3))
+    static_unshimmed = np.ma.std(np.ma.mean(ma_unshimmed, 3))
+    logger.debug(f"\nTemporal: Compute the STD across time pixelwise, and then compute the mean across pixels."
+                 f"\ntemp_shim_static: {temp_shim_static}"
+                 f"\ntemp_shim_static_riro: {temp_shim_static_riro}"
+                 f"\ntemp_shim_riro: {temp_shim_riro}"
+                 f"\ntemp_unshimmed: {temp_unshimmed}"
+                 f"\nStatic: Compute the MEAN across time pixelwise, and then compute the STD across pixels."
+                 f"\nstatic_shim_static: {static_shim_static}"
+                 f"\nstatic_shim_static_riro: {static_shim_static_riro}"
+                 f"\nstatic_shim_riro: {static_shim_riro}"
+                 f"\nstatic_unshimmed: {static_unshimmed}")
 
 
 def new_bounds_from_currents(currents, old_bounds):
