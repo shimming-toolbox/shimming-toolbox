@@ -6,6 +6,7 @@ import os
 import pytest
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.b1_shim import *
+from shimmingtoolbox.b1.load_vop import *
 from shimmingtoolbox.load_nifti import read_nii
 
 
@@ -17,11 +18,25 @@ mask = b1_maps[:, :, :, 0] != 0
 cp_weights = [0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j, 0.3381+0.1034j,
               -0.1494+0.3204j]
 
+path_sar_file = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser.mat')
+vop = load_siemens_vop(path_sar_file)
+
 
 def test_b1_shim():
     shim_weights = b1_shim(b1_maps, mask)
     assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_constrained():
+    shim_weights = b1_shim(b1_maps, mask, q_matrix=vop, constrained=True)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_constrained_factor_too_small():
+    with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
+        b1_shim(b1_maps, mask, q_matrix=vop, sar_factor=0.9, constrained=True)
 
 
 def test_b1_shim_wrong_ndim():

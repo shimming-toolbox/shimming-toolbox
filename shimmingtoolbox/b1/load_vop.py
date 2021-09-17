@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import scipy.io
-import numpy as np
 import os
 
 

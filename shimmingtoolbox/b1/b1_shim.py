@@ -8,17 +8,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False):
+def b1_shim(b1_maps, mask, cp_weights=None, q_matrix=None, sar_factor=1, constrained=False):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
     Args:
-        b1_maps (numpy.ndarray): 4D array (x, y, n_slices, n_channels) corresponding to the measured B1 field.
-        mask (numpy.ndarray): 3D array (x, y, n_slices) corresponding to the region where shimming will be performed.
+        b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1 field. (x, y, n_slices, n_channels)
+        mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         cp_weights (numpy.ndarray): 1D vector of length n_channels of complex weights corresponding to the CP mode of
         the coil. Must be normalized.
-        vop (numpy.ndarray): (n_channels, n_channels, n_vop) matrix used to constrain local SAR.
-        SED (int): factor to which the local SAR after optimization can exceed the CP mode local SAR.
+        q_matrix (numpy.ndarray): Matrix used to constrain local SAR. (n_channels, n_channels, n_vop)
+        sar_factor (int): Factor to which the local SAR after optimization can exceed the CP mode local SAR. (=> 1)
         constrained (boolean): Specifies if the optimization has to be constrained (True) or unconstrained (False).
 
     Returns:
@@ -55,16 +55,19 @@ def b1_shim(b1_maps, mask, cp_weights=None, vop=None, SED=1.5, constrained=False
     # Bounds for the optimization
     bounds = np.concatenate((n_channels * [(0, None)], n_channels * [(-np.pi, np.pi)]))
 
-    # # SAR constraint
-    # sar_limit = SED * np.max(np.real(vector_to_complex(weights_init) @ vop.T @ vector_to_complex(weights_init)).T)
-    # cons = ({'type': 'ineq', 'fun': lambda weights: np.max(np.real(np.matmul(vector_to_complex(weights), np.matmul(vop.T, vector_to_complex(
-    #                                                                                    weights)).T)))})
-
     def cost(weights):
         return cov(combine_maps(b1_roi, vector_to_complex(weights)))
 
-    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, bounds=bounds).x)
-    shim_weights = shim_weights / np.linalg.norm(shim_weights)
+    if constrained:
+        if sar_factor < 1:
+            raise ValueError(f"The SAR factor must be equal to or greater than 1.")
+        max_sar = sar_factor * sar(vector_to_complex(weights_init), q_matrix)
+        cons = ({'type': 'ineq', 'fun': lambda w: -sar(vector_to_complex(w), q_matrix) + max_sar},  # SAR constraint
+                {'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1})  # Norm constraint
+    else:
+        cons = ({'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1})  # Norm constraint
+
+    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=cons, bounds=bounds).x)
 
     return shim_weights
 
@@ -78,7 +81,7 @@ def combine_maps(b1_maps, weights):
         weights (numpy.ndarray): 1D complex array of length n_channels.
 
     Returns:
-
+        numpy.ndarray: B1 field distribution obtained when applying the provided shim weights.
     """
     if b1_maps.shape[-1] == len(weights):
         pass
@@ -141,9 +144,9 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     Reads in B1 maps and returns the individual shim weights for each channel that correspond to a circular polarization
     (CP) mode, computed in the specified voxel.
     Args:
-        b1_maps (numpy.ndarray): Complex B1 field for different channels (x, y, n_slices, n_channels).
-        voxel_position (numpy.ndarray): Position of the center of the voxel considered to compute the CP mode
-        voxel_size (tuple): Size of the voxel
+        b1_maps (numpy.ndarray): Complex B1 field for different channels. (x, y, n_slices, n_channels)
+        voxel_position (numpy.ndarray): Position of the center of the voxel considered to compute the CP mode.
+        voxel_size (tuple): Size of the voxel.
 
     Returns:
         numpy.ndarray: Complex 1D array of individual shim weights (length = n_channels).
@@ -203,10 +206,25 @@ def calc_approx_cp(n_channels):
         n_channels (int): Number of transmit elements to consider.
 
     Returns:
-        numpy.ndarray: Complex 1D array of individual shim weights (length = n_channels).
+        numpy.ndarray: Complex 1D array of individual shim weights (length: n_channels).
 
     """
 
     # Approximation of a circular polarisation
     return (np.ones(n_channels) * np.exp(-1j * np.linspace(0, 2 * np.pi - 2 * np.pi / n_channels, n_channels))) / \
         np.linalg.norm(np.ones(n_channels))
+
+
+def sar(weights, q_matrix):
+    """
+    Returns the maximum local SAR corresponding to a set of shim weight and a set of Q matrices
+    Args:
+        weights (numpy.ndarray): 1D vector of complex shim weights. (length: n_channel)
+        q_matrix (numpy.ndarray): Q matrices used to compute the local energy deposition in the tissues.
+        (n_channels, n_channels, n_voxel)
+
+    Returns:
+        float: maximum local SAR.
+    """
+
+    return np.max(np.real(np.conj(weights).T @ q_matrix.T @ weights))
