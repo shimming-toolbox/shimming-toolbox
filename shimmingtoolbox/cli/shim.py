@@ -23,7 +23,7 @@ from shimmingtoolbox.shim.sequencer import update_affine_for_ap_slices
 from shimmingtoolbox.shim.sequencer import extend_slice
 from shimmingtoolbox.shim.sequencer import define_slices
 from shimmingtoolbox import __dir_config_scanner_constraints__
-from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.utils import create_output_dir, set_all_loggers
 from shimmingtoolbox.pmu import PmuResp
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -89,14 +89,19 @@ def shim_cli():
                                       "one slice per row in the txt file, chronological will output one set of shim "
                                       "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
                                       "specify whether to output one txt file per coil system or coil channel.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils, dilation_kernel,
-               dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph):
+               dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
+               verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
     Example of use: st_shim fieldmap_static --coil coil1.nii coil1_constraints.json
     --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii --mask mask.nii
     """
+    # Set logger level
+    set_all_loggers(verbose)
+
     # Prepare the output
     create_output_dir(path_output)
 
@@ -115,6 +120,15 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     else:
         # If no mask is provided, shim the whole anat volume
         nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
+
+    if logger.level >= getattr(logging, 'DEBUG'):
+        # Save inputs
+        list_fname = [
+            fname_fmap,
+            fname_anat,
+            fname_mask_anat
+        ]
+        _save_nii_to_new_dir(list_fname, path_output)
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap)
@@ -273,7 +287,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     Example of use: st_shim fieldmap_static --coil coil1.nii coil1_constraints.json
     --coil coil2.nii coil2_constraints.json --fmap fmap.nii --anat anat.nii --mask-static mask.nii
     """
-    logger.setLevel(verbose.upper())
+    # Set logger level
+    set_all_loggers(verbose)
 
     # Prepare the output
     create_output_dir(path_output)
@@ -311,7 +326,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap)
 
-    if logging.getLevelName(logger.level) == 'DEBUG':
+    if logger.level >= getattr(logging, 'DEBUG'):
         # Save inputs
         list_fname = [
             fname_fmap,
@@ -412,7 +427,7 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
             tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
         nii_fmap = tmp_nii
 
-        if logging.getLevelName(logger.level) == 'DEBUG':
+        if logger.level >= getattr(logging, 'DEBUG'):
             fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
             nib.save(nii_fmap, fname_new_fmap)
             logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
