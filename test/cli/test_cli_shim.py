@@ -16,8 +16,6 @@ from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
 
-DEBUG = True
-
 
 def _define_inputs(fmap_dim):
     # fname for fmap
@@ -81,11 +79,6 @@ class TestCliStatic(object):
                                      '--output', tmp],
                           catch_exceptions=False)
 
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
     def test_cli_static_no_mask(self, nii_fmap, nii_anat, nii_mask):
@@ -105,10 +98,6 @@ class TestCliStatic(object):
                                      '--scanner-coil-order', '1',
                                      '--output', tmp],
                           catch_exceptions=False)
-
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
@@ -139,11 +128,6 @@ class TestCliStatic(object):
                                      '--mask', fname_mask,
                                      '--output', tmp],
                           catch_exceptions=False)
-
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
@@ -176,11 +160,6 @@ class TestCliStatic(object):
                                      '--output', tmp],
                           catch_exceptions=False)
 
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_siemens_gradient_coil.txt"))
 
@@ -208,11 +187,6 @@ class TestCliStatic(object):
                                      '--output', tmp],
                           catch_exceptions=False)
 
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             # There should be 10 x 3 values
 
@@ -239,11 +213,6 @@ class TestCliStatic(object):
                                      '--output-format-scanner', 'chronological-ch',
                                      '--output', tmp],
                           catch_exceptions=False)
-
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
@@ -274,15 +243,40 @@ class TestCliStatic(object):
                                      '--output', tmp],
                           catch_exceptions=False)
 
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             # There should be 3 x 20 x 1 value
+
+    def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the modified fieldmap (one volume)
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            nib.save(nii_fmap, fname_fmap)
+            # Save the mask
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+            # Save the anat
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            nib.save(nii_anat, fname_anat)
+
+            runner = CliRunner()
+            runner.invoke(shim_cli, ['fieldmap_static',
+                                     '--fmap', fname_fmap,
+                                     '--anat', fname_anat,
+                                     '--mask', fname_mask,
+                                     '--scanner-coil-order', '1',
+                                     '-v', 'debug',
+                                     '--output', tmp],
+                          catch_exceptions=False)
+
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+            # Artefacts of the debug verbose
+            assert os.path.isfile(os.path.join(tmp, "tmp_extended_fmap.nii.gz"))
+            assert os.path.isfile(os.path.join(tmp, "fmap.nii.gz"))
+            assert os.path.isfile(os.path.join(tmp, "anat.nii.gz"))
+            assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
 
     def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -346,11 +340,6 @@ class TestCLIRealtime(object):
                                      '--output', tmp],
                           catch_exceptions=False)
 
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
@@ -382,10 +371,6 @@ class TestCLIRealtime(object):
                                      '--scanner-coil-order', '1',
                                      '--output', tmp],
                           catch_exceptions=False)
-
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
@@ -423,11 +408,6 @@ class TestCLIRealtime(object):
                                      '--output-format', 'chronological-ch',
                                      '--output', tmp],
                           catch_exceptions=False)
-
-            if DEBUG:
-                nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-                nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-                nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
@@ -538,10 +518,3 @@ def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
                                                    '--output', os.path.join(tmp, 'grad'),
                                                    '--resp', fname_resp],
                                catch_exceptions=False)
-
-        if DEBUG:
-            nib.save(nii_fmap, os.path.join(tmp, "fmap.nii.gz"))
-            nib.save(nii_anat, os.path.join(tmp, "anat.nii.gz"))
-            nib.save(nii_mask, os.path.join(tmp, "mask.nii.gz"))
-
-        a=1
