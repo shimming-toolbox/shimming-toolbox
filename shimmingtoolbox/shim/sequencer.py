@@ -94,7 +94,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Optimize slice by slice
     coef = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
-                     dilation_size=mask_dilation_kernel_size)
+                     dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
     _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coef, slices, path_output)
@@ -277,8 +277,10 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
-    coef_static = _optimize(optimizer, nii_static_mask, slices, dilation_kernel=mask_dilation_kernel,
-                            dilation_size=mask_dilation_kernel_size)
+    coef_static = _optimize(optimizer, nii_static_mask, slices,
+                            dilation_kernel=mask_dilation_kernel,
+                            dilation_size=mask_dilation_kernel_size,
+                            path_output=path_output)
 
     # Use the currents to define a list of new coil bounds for the riro optimization
     bounds = new_bounds_from_currents(coef_static, optimizer.merged_bounds)
@@ -293,8 +295,11 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Set the riro map to shim
     # TODO: make sure max_offset could not bust with negative offset
     optimizer.set_unshimmed(riro * max_offset, affine_fieldmap)
-    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices, shimwise_bounds=bounds,
-                              dilation_kernel=mask_dilation_kernel, dilation_size=mask_dilation_kernel_size)
+    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices,
+                              shimwise_bounds=bounds,
+                              dilation_kernel=mask_dilation_kernel,
+                              dilation_size=mask_dilation_kernel_size,
+                              path_output=path_output)
     # Once the coefficients are solved, we divide by max_offset to return to units of
     # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
     coef_riro = coef_max_riro / max_offset
@@ -606,7 +611,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
 
 
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-              dilation_kernel='sphere', dilation_size=3):
+              dilation_kernel='sphere', dilation_size=3, path_output=os.curdir):
 
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
@@ -624,7 +629,9 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
 
         # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
         sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i],
-                                              dilation_kernel=dilation_kernel, dilation_size=dilation_size).get_fdata()
+                                              dilation_kernel=dilation_kernel,
+                                              dilation_size=dilation_size,
+                                              path_output=path_output).get_fdata()
 
         # If new bounds are included, change them for each shim
         if shimwise_bounds is not None:
