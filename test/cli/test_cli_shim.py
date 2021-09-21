@@ -505,7 +505,7 @@ def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
                                  '--resp', fname_resp,
                                  '--slice-factor', '1',
                                  '--mask-dilation-kernel-size', '3',
-                                 '--optimizer-method', 'pseudo_inverse',
+                                 '--optimizer-method', 'least_squares',
                                  '--scanner-coil-order', '1',
                                  '--output', os.path.join(tmp, 'fmap'),
                                  '-v', 'debug'],
@@ -519,3 +519,83 @@ def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
                                                    '--output', os.path.join(tmp, 'grad'),
                                                    '--resp', fname_resp],
                                catch_exceptions=False)
+
+
+def test_grad_vs_fieldmap_known_result():
+
+    nii_fmap, nii_anat, nii_mask = _define_inputs(4)
+
+    from shimmingtoolbox.coils.coordinates import generate_meshgrid
+    from shimmingtoolbox.coils.siemens_basis import siemens_basis
+
+    def create_fieldmap(n_slices=3):
+        # Set up 2-dimensional unshimmed fieldmaps
+        from shimmingtoolbox.simulate.numerical_model import NumericalModel
+        num_vox = 100
+        model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
+        model_obj.generate_deltaB0('linear', [1, 0])
+        tr = 0.025  # in s
+        te = [0.004, 0.008]  # in s
+        model_obj.simulate_measurement(tr, te)
+        phase_meas1 = model_obj.get_phase()
+        phase_e1 = phase_meas1[:, :, 0, 0]
+        phase_e2 = phase_meas1[:, :, 0, 1]
+        b0_map = ((phase_e2 - phase_e1) / (te[1] - te[0])) / (2 * np.pi)
+
+        # Construct a 3-dimensional synthetic field map by stacking different z-slices along the 3rd dimension. Each
+        # slice is subjected to a manipulation of model_obj across slices (e.g. rotation, squared) in order to test
+        # various shim configurations.
+        unshimmed = np.zeros([num_vox, num_vox, n_slices])
+        for i_n in range(n_slices):
+            unshimmed[:, :, i_n] = b0_map
+
+        return unshimmed
+
+    fmap = np.repeat(create_fieldmap(3)[..., np.newaxis], 10, 3)
+    nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Save the fieldmap
+        fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+        nib.save(nii_fmap, fname_fmap)
+        # Save the mask
+        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        nib.save(nii_mask, fname_mask)
+        # Save the anat
+        fname_anat = os.path.join(tmp, 'anat.nii.gz')
+        nib.save(nii_anat, fname_anat)
+
+        # Input pmu fname
+        fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+
+        # Copy fieldmap json to tmp
+        fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_fieldmap.json')
+        copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
+
+        runner = CliRunner()
+
+        # fieldmap rt shim
+        runner.invoke(shim_cli, ['fieldmap_realtime',
+                                 '--fmap', fname_fmap,
+                                 '--anat', fname_anat,
+                                 '--mask-static', fname_mask,
+                                 '--mask-riro', fname_mask,
+                                 '--resp', fname_resp,
+                                 '--slice-factor', '1',
+                                 '--mask-dilation-kernel-size', '3',
+                                 '--optimizer-method', 'least_squares',
+                                 '--scanner-coil-order', '1',
+                                 '--output', os.path.join(tmp, 'fmap'),
+                                 '-v', 'debug'],
+                      catch_exceptions=False)
+
+        # grad rt shim
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
+                                                   '--anat', fname_anat,
+                                                   '--mask-static', fname_mask,
+                                                   '--mask-riro', fname_mask,
+                                                   '--output', os.path.join(tmp, 'grad'),
+                                                   '--resp', fname_resp],
+                               catch_exceptions=False)
+        a=1
