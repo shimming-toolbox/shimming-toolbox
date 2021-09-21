@@ -19,7 +19,6 @@ from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.shim.sequencer import update_affine_for_ap_slices
 from shimmingtoolbox.shim.sequencer import extend_slice
 from shimmingtoolbox.shim.sequencer import define_slices
 from shimmingtoolbox import __dir_config_scanner_constraints__
@@ -148,9 +147,26 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Output
     if scanner_coil_order > 0:
         n_channels = list_coils[-1].dim[3]
+        # TODO: Fix for 2nd order
+        # Convert coef of 1st order sph harmonics to voxel coord system
+        from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
+        # offset by 5 channels if using 2nd order
+        if scanner_coil_order == 2:
+            offset = 5
+        else:
+            offset = 0
+
+        scanner_coil_coef_vox = phys_to_vox_gradient(coefs[..., -3 - offset],
+                                                     coefs[..., -2 - offset],
+                                                     coefs[..., -1 - offset],
+                                                     nii_fmap.affine)
+        coefs[..., -3 - offset] = scanner_coil_coef_vox[0]
+        coefs[..., -2 - offset] = scanner_coil_coef_vox[1]
+        coefs[..., -1 - offset] = scanner_coil_coef_vox[2]
+
         list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices,
                                                       path_output, o_format_sph)
-        if len(coils) > 0:
+        if len(coils) > 1:
             fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_channels], list_slices, path_output,
                                                   o_format_coil, start_coil_number=1)
             # Concat list
@@ -357,6 +373,34 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     currents_static, currents_riro, mean_p, p_rms = out
 
     # Output
+    # TODO: Fix for 2nd order
+    from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
+
+    if scanner_coil_order > 0:
+        # offset by 5 channels if using 2nd order
+        if scanner_coil_order == 2:
+            offset = 5
+        else:
+            offset = 0
+
+        # Convert static to voxel coord system
+        scanner_coil_coef_vox = phys_to_vox_gradient(currents_static[..., -3 - offset],
+                                                     currents_static[..., -2 - offset],
+                                                     currents_static[..., -1 - offset],
+                                                     nii_fmap.affine)
+        currents_static[..., -3 - offset] = scanner_coil_coef_vox[0]
+        currents_static[..., -2 - offset] = scanner_coil_coef_vox[1]
+        currents_static[..., -1 - offset] = scanner_coil_coef_vox[2]
+
+        # Convert riro to voxel coord system
+        scanner_coil_coef_vox = phys_to_vox_gradient(currents_riro[..., -3 - offset],
+                                                     currents_riro[..., -2 - offset],
+                                                     currents_riro[..., -1 - offset],
+                                                     nii_fmap.affine)
+        currents_riro[..., -3 - offset] = scanner_coil_coef_vox[0]
+        currents_riro[..., -2 - offset] = scanner_coil_coef_vox[1]
+        currents_riro[..., -1 - offset] = scanner_coil_coef_vox[2]
+
     _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format)
 
 
@@ -416,7 +460,7 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
 
     # Make sure the fieldmap has the appropriate dimensions.
     if nii_fmap_orig.get_fdata().ndim != n_dims:
-        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
+        raise ValueError(f"Fieldmap must be {n_dims}")
 
     # Extend the fieldmap if there are axes that are 1d. This is done since we are fitting a fieldmap to coil profiles,
     # having essentially a 2d matrix as a fieldmap can lead to errors in the through plane direction. To metigate this,
