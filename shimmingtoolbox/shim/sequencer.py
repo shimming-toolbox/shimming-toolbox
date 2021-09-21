@@ -137,6 +137,10 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path
         nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
         nib.save(nii_correction, fname_correction)
 
+        # Save coils
+        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap.affine, header=nii_fieldmap.header)
+        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
+
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
@@ -412,6 +416,10 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, nii_fieldmap.affine, header=nii_fieldmap.header)
         nib.save(nii_shimmed_static_riro, os.path.join(path_output,
                                                        'shimmed_static_riro_4thdim_it_5thdim_ishim.nii.gz'))
+
+        # Save coils
+        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap.affine, header=nii_fieldmap.header)
+        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
 
 
 def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
