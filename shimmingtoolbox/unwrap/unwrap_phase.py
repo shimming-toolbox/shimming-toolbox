@@ -75,7 +75,7 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
                 phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold)
 
         else:
-            raise RuntimeError("Shape of input phase is not supported.")
+            raise ValueError("Shape of input phase is not supported.")
 
     else:
         raise NotImplementedError(f'The unwrap function {unwrapper} is not implemented.')

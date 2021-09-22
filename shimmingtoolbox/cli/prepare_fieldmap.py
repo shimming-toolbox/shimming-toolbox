@@ -88,7 +88,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     else:
         mask = None
 
-    fieldmap_hz = prepare_fieldmap(list_phase, echo_times, mag=mag, unwrapper=unwrapper,
+    fieldmap_hz = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
                                    mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
                                    sigma=sigma)
 

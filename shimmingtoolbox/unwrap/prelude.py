@@ -38,10 +38,10 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
     wrapped_phase = nii_wrapped_phase.get_fdata()
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
-        raise RuntimeError("Wrapped_phase must be 2d or 3d")
+        raise ValueError("Wrapped_phase must be 2d or 3d")
     if mag is not None:
         if wrapped_phase.shape != mag.shape:
-            raise RuntimeError("The magnitude image (mag) must be the same shape as wrapped_phase")
+            raise ValueError("The magnitude image (mag) must be the same shape as wrapped_phase")
     else:
         mag = np.zeros_like(wrapped_phase)
 
@@ -61,7 +61,7 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
     # Add mask data and options if there is a mask provided
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
-            raise RuntimeError("Mask must be the same shape as wrapped_phase")
+            raise ValueError("Mask must be the same shape as wrapped_phase")
         nii_mask = nib.Nifti1Image(mask, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
 
         options += ' -m '

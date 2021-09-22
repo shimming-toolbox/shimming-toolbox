@@ -39,7 +39,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, unwrapper='prelude', mag=None, 
 
             # If this is a rounding error from saving niftis, let it go, the algorithm can handle the difference.
             if (phase[i_echo].max() > math.pi + 1e-6) or (phase[i_echo].min() < -math.pi - 1e-6):
-                raise RuntimeError("read_nii must range from -pi to pi.")
+                raise ValueError("Values must range from -pi to pi.")
             else:
                 pass
                 # phase[i_echo][phase[i_echo] > math.pi] = math.pi
@@ -49,18 +49,18 @@ def prepare_fieldmap(list_nii_phase, echo_times, unwrapper='prelude', mag=None, 
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
     if not is_phasediff:
         if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
-            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
-                               " number of echo times.")
+            raise ValueError("The number of echoes must match the number of echo times unless there is 1 echo, which "
+                             "requires 2 echo_times")
 
     # Make sure mag is the right shape
     if mag is not None:
         if mag.shape != phase[0].shape:
-            raise RuntimeError("mag and phase must have the same dimensions.")
+            raise ValueError("mag and phase must have the same dimensions.")
 
     # Make sure mask has the right shape
     if mask is not None:
         if mask.shape != phase[0].shape:
-            raise RuntimeError("Shape of mask and phase must match.")
+            raise ValueError("Shape of mask and phase must match.")
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
