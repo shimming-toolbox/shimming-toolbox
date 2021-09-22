@@ -193,9 +193,12 @@ def read_nii(fname_nifti, auto_scale=True):
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2))
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
-            nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
         else:
             logger.info("Unknown nifti type: No scaling applied")
+
+        # Create new nibabel object with updated image
+        nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
+
     else:
         logger.info("No scaling applied to selected nifti")
 
