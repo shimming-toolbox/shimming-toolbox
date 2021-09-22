@@ -17,7 +17,6 @@ cd "$ST_DIR"
 set -e
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    apt-get install -y curl
     CONDA_INSTALLER=Miniconda3-latest-Linux-x86_64.sh
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     CONDA_INSTALLER=Miniconda3-latest-MacOSX-x86_64.sh

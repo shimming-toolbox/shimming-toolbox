@@ -46,8 +46,7 @@ jobs:
       - name: Package installation
         run: |
           echo "shimming-toolbox installation"
-          # Use -E to preserve the environment variables of the GA CI runner
-          sudo -E make install
+          make install
 
       - name: Set path for Shimming Toolbox
         run: |
