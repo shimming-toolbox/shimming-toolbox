@@ -17,7 +17,7 @@ from shimmingtoolbox.utils import run_subprocess
 logger = logging.getLogger(__name__)
 
 
-def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
+def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -25,10 +25,7 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     can optionally be saved.
 
     Args:
-        wrapped_phase (numpy.ndarray): 2D or 3D radian numpy array to perform phase unwrapping. (2 pi interval)
-        affine (numpy.ndarray): 2D array containing the transformation coefficients. Can be calculated by using:
-            nii = nib.load("nii_path")
-            affine = nii.affine
+        nii_wrapped_phase (nib.Nifti1Image): 2D or 3D radian numpy array to perform phase unwrapping. (2 pi interval)
         mag (numpy.ndarray): 2D or 3D magnitude numpy array corresponding to the phase array
         mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
@@ -38,6 +35,7 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
     """
+    wrapped_phase = nii_wrapped_phase.get_fdata()
     # Make sure phase and mag are the right shape
     if wrapped_phase.ndim not in [2, 3]:
         raise RuntimeError("Wrapped_phase must be 2d or 3d")
@@ -51,9 +49,8 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     path_tmp = tmp.name
 
     # Save phase and mag images
-    nii_phase = nib.Nifti1Image(wrapped_phase, affine)
-    nib.save(nii_phase, os.path.join(path_tmp, 'rawPhase.nii'))
-    nii_mag = nib.Nifti1Image(mag, affine)
+    nib.save(nii_wrapped_phase, os.path.join(path_tmp, 'rawPhase.nii'))
+    nii_mag = nib.Nifti1Image(mag, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
     nib.save(nii_mag, os.path.join(path_tmp, 'mag.nii'))
 
     # Fill options
@@ -65,7 +62,7 @@ def prelude(wrapped_phase, affine, mag=None, mask=None, threshold=None, is_unwra
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
             raise RuntimeError("Mask must be the same shape as wrapped_phase")
-        nii_mask = nib.Nifti1Image(mask, affine)
+        nii_mask = nib.Nifti1Image(mask, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
 
         options += ' -m '
         options += os.path.join(path_tmp, 'mask.nii')

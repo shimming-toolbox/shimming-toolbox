@@ -55,12 +55,12 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
         raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
 
     # Import phase
-    list_phase = []
+    list_nii_phase = []
     echo_times = []
     for i_echo in range(len(phase)):
         nii_phase, json_phase, phase_img = read_nii(phase[i_echo], auto_scale=autoscale)
 
-        list_phase.append(phase_img)
+        list_nii_phase.append(nii_phase)
         # Special case for echo_times if input is a phasediff
         if len(phase) == 1:
             # Check that the input phase is indeed a phasediff, by checking the existence of two echo times in the
@@ -88,7 +88,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     else:
         mask = None
 
-    fieldmap_hz = prepare_fieldmap(list_phase, echo_times, affine, mag=mag, unwrapper=unwrapper,
+    fieldmap_hz = prepare_fieldmap(list_phase, echo_times, mag=mag, unwrapper=unwrapper,
                                    mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
                                    sigma=sigma)
 
