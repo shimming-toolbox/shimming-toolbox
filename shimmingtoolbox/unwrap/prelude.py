@@ -50,7 +50,9 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
 
     # Save phase and mag images
     nib.save(nii_wrapped_phase, os.path.join(path_tmp, 'rawPhase.nii'))
-    nii_mag = nib.Nifti1Image(mag, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
+    header = nii_wrapped_phase.header
+    header['descrip'] = "mag"
+    nii_mag = nib.Nifti1Image(mag, nii_wrapped_phase.affine, header=header)
     nib.save(nii_mag, os.path.join(path_tmp, 'mag.nii'))
 
     # Fill options
