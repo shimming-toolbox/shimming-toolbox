@@ -12,6 +12,18 @@ Install FSL
 You will need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__ if you want to use ``prelude``.
 
 
+Install curl
+~~~~~~~~~~~~
+
+You will also need to make sure `curl` is installed. On Ubuntu, run:
+
+.. code:: bash
+
+  sudo apt-get install curl
+
+If you are using a different Linux, use your system's package manager instead of ``apt-get``.
+
+
 2. Install ``shimming-toolbox``
 -------------------------------
 
