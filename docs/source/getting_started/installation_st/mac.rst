@@ -29,6 +29,7 @@ Next, install ``shimming-toolbox`` using the ``Makefile``:
   cd shimming-toolbox
   make install
 
+Restart your terminal or source your terminal profile
 
 3. Test the Installation (optional)
 -----------------------------------
@@ -37,12 +38,12 @@ Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
 
 To run the entire testing suite, run ``pytest`` from the
-shimming-toolbox directory:
+**cloned** directory:
 
 .. code:: bash
 
  cd shimming-toolbox
- source $HOME/shimming_toolbox/python/etc/profile.d/conda.sh
+ source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
  conda activate st_venv
  pytest
 
