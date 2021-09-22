@@ -41,7 +41,7 @@ Next, install ``shimming-toolbox`` using the ``Makefile``:
   cd shimming-toolbox
   make install
 
-Restart your terminal or source your terminal profile
+Restart your terminal or source your terminal profile.
 
 3. Test the Installation (optional)
 -----------------------------------
@@ -50,7 +50,7 @@ Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
 
 To run the entire testing suite, run ``pytest`` from the
-**cloned** directory:
+**cloned** shimming-toolbox directory:
 
 .. code:: bash
 
