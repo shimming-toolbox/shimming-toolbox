@@ -28,10 +28,57 @@ def test_b1_shim():
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
+def test_b1_shim_algo_2():
+    shim_weights = b1_shim(b1_maps, mask, algo=2, target=20)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_algo_2_regularized():
+    shim_weights = b1_shim(b1_maps, mask, algo=2, target=20, reg_param=10e5)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_algo_2_no_target():
+    with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
+        b1_shim(b1_maps, mask, algo=2)
+
+
+def test_b1_shim_algo_3():
+    shim_weights = b1_shim(b1_maps, mask, algo=3)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_algo_3_regularized():
+    shim_weights = b1_shim(b1_maps, mask, algo=3, reg_param=10e5)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
 def test_b1_shim_constrained():
     shim_weights = b1_shim(b1_maps, mask, q_matrix=vop, constrained=True)
     assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_algo_4():
+    shim_weights = b1_shim(b1_maps, mask, algo=4)
+    assert np.isclose(np.linalg.norm(shim_weights), 1, atol=1e-3), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_algo_5():
+    shim_weights = b1_shim(b1_maps, mask, algo=5)
+    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1_shim_constrained_no_matrix():
+    with pytest.raises(ValueError, match=r"A Q matrix must be provided in order to perform SAR constrained "
+                                         r"optimization."):
+        b1_shim(b1_maps, mask, constrained=True)
 
 
 def test_b1_shim_constrained_factor_too_small():
