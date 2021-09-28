@@ -5,6 +5,7 @@ import numpy as np
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
 
+X = 0
 Y = 1
 Z = 2
 ZX = 4
@@ -79,8 +80,8 @@ def _get_scaling_factors():
     # distance from iso/origin to adopted reference point[units: mm]
     r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
 
-    # invert polarity
-    sh[:, :, :, [Y, Z, ZX, 7]] = -sh[:, :, :, [Y, Z, ZX, XY]]
+    # invert polarity TODO: Check acdc-82p to make sure 2nd order is correct
+    sh[:, :, :, [X, Z, ZX, XY]] = -sh[:, :, :, [X, Z, ZX, XY]]
 
     # scaling:
     orders = [1, 1, 1, 2, 2, 2, 2, 2]

@@ -5,8 +5,10 @@ import os
 import numpy as np
 import pytest
 import math
+import pathlib
+import tempfile
 
-import nibabel
+import nibabel as nib
 
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
@@ -43,7 +45,7 @@ def test_siemens_basis_resample():
     Output spherical harmonics in a discrete space corresponding to an image
     """
     fname = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
-    nii = nibabel.load(fname)
+    nii = nib.load(fname)
     # affine = np.linalg.inv(nib.affine)
     affine = nii.affine
 
@@ -59,3 +61,20 @@ def test_siemens_basis_resample():
 
     nx, ny, nz = nii.get_fdata().shape
     assert(np.all(np.isclose(basis[int(nx/2), int(ny/2), int(nz/2), :], expected, rtol=1e-05)))
+
+
+def test_siemens_basis_save():
+    affine = np.eye(4)
+    affine[0, 0] = -2
+    affine[1, 1] = 2
+    affine[2, 2] = 4.5
+    affine[0, 3] = 100
+    affine[1, 3] = -130.5
+    affine[2, 3] = -177.8
+
+    x, y, z = generate_meshgrid((100, 100, 80), affine)
+    profiles = siemens_basis(x, y, z, orders=(1,))
+
+    nii = nib.Nifti1Image(profiles * 50, affine)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        nib.save(nii, os.path.join(tmp, 'siemens_basis.nii.gz'))
