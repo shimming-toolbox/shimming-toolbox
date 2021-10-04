@@ -4,11 +4,12 @@
 import numpy as np
 import scipy.optimize
 import logging
+from scipy.stats import variation as cov
 
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q_matrix=None, sar_factor=1, constrained=False):
+def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q_matrix=None, SED=1.5):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
@@ -20,14 +21,13 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
         algo (int): Number from 1 to 5 specifying which algorithm to use for B1 optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
-                    3 - MLS optimization targeting the mean B1+ value at each iteration.
-                    4 - Maximizes the minimum B1+ value for better efficiency.
-                    5 - Minimizes the difference between the maximum and minimum B1+ values.
+                    3 - Maximizes the minimum B1+ value for better efficiency.
         reg_param (float): RF power Tikhonov-regularization parameter used by algorithms 2 and 3. Default is 0.
         target (float): Target B1+ value used by algorithm 2 in nT/V. Required by algorithm 2.
-        q_matrix (numpy.ndarray): Matrix used to constrain local SAR. (n_channels, n_channels, n_vop)
-        sar_factor (int): Factor to which the local SAR after optimization can exceed the CP mode local SAR. (=> 1)
-        constrained (boolean): Specifies if the optimization has to be constrained (True) or unconstrained (False).
+        q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
+        optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
+        SED (float): Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR. SED
+        between 1 and 1.5 usually work with Siemens scanners
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
@@ -46,7 +46,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
                          f"Maps dimensions: {b1_maps.shape[:-1]}\n"
                          f"Mask dimensions: {mask.shape}")
 
-    if cp_weights:
+    if cp_weights is not None:
         if len(cp_weights) == b1_maps.shape[-1]:
             if np.isclose(np.linalg.norm(cp_weights), 1, rtol=0.0001):
                 weights_init = complex_to_vector(cp_weights)
@@ -60,7 +60,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
     else:
         weights_init = complex_to_vector(calc_cp(b1_maps))
 
-    if algo==1:
+    if algo == 1:
         # CoV minimization
         def cost(weights):
             return cov(combine_maps(b1_roi, vector_to_complex(weights)))
@@ -75,39 +75,23 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
             return np.square(np.linalg.norm(b1_abs - target)) + reg_param * (1 / np.mean(np.square(b1_abs)))
 
     elif algo == 3:
-        # MLS targeting mean B1 at each iteration
-        def cost(weights):
-            b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            return np.square(np.linalg.norm(b1_abs - np.mean(b1_abs))) + reg_param * (1 / np.mean(np.square(b1_abs)))
-
-    elif algo == 4:
         # Maximizing the minimum B1+ value to get better RF efficiency
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
             return 1 / np.min(b1_abs)
 
-    elif algo == 5:
-        # Minimizing the difference between the maximum and minimum B1+ values
-        def cost(weights):
-            b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            # Using 3rd and 97th B1+ percentile values to minimize the influence of extreme values
-            return np.percentile(b1_abs, 97) - np.percentile(b1_abs, 3)
-
     else:
         raise ValueError(f"The specified algorithm does not exist. It must be an integer between 1 and 5.")
 
-    if constrained:
-        if sar_factor < 1:
+    if q_matrix is not None:
+        if SED < 1:
             raise ValueError(f"The SAR factor must be equal to or greater than 1.")
-        if q_matrix is None:
-            raise ValueError(f"A Q matrix must be provided in order to perform SAR constrained optimization.")
-        max_sar = sar_factor * sar(vector_to_complex(weights_init), q_matrix)
-        cons = ({'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1},  # Norm constraint
-                {'type': 'ineq', 'fun': lambda w: -sar(vector_to_complex(w), q_matrix) + max_sar})  # SAR constraint
+        max_sar = SED * sar(vector_to_complex(weights_init), q_matrix)
+        cons = ({'type': 'ineq', 'fun': lambda w: -sar(vector_to_complex(w), q_matrix) + max_sar})  # SAR constraint
+        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=cons).x)
     else:
-        cons = ({'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1})  # Norm constraint only
-
-    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=cons).x)
+        logger.info(f"No Q matrix provided, performing unconstrained optimization.")
+        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
 
     return shim_weights
 
@@ -131,20 +115,6 @@ def combine_maps(b1_maps, weights):
                          f"Number of channels: {b1_maps.shape[-1]}")
 
     return np.abs(np.matmul(b1_maps, weights))
-
-
-def cov(array):
-    """
-    Computes the coefficient of variation (CoV) of a given array.
-
-    Args:
-        array (numpy.ndarray): N-dimensional array.
-
-    Returns:
-        float: Coefficient of variation of the input array (standard deviation/mean).
-
-    """
-    return array.std() / array.mean()
 
 
 def vector_to_complex(weights):
@@ -185,7 +155,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     (CP) mode, computed in the specified voxel.
     Args:
         b1_maps (numpy.ndarray): Complex B1 field for different channels. (x, y, n_slices, n_channels)
-        voxel_position (numpy.ndarray): Position of the center of the voxel considered to compute the CP mode.
+        voxel_position (tuple): Position of the center of the voxel considered to compute the CP mode.
         voxel_size (tuple): Size of the voxel.
 
     Returns:

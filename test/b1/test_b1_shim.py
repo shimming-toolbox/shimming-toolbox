@@ -1,8 +1,6 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
-import logging
 import numpy as np
-import os
 import pytest
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.b1_shim import *
@@ -15,28 +13,28 @@ logging.basicConfig(level=logging.INFO)
 fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
 _, _, b1_maps = read_nii(fname_b1)
 mask = b1_maps[:, :, :, 0] != 0
-cp_weights = [0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j, 0.3381+0.1034j,
-              -0.1494+0.3204j]
+cp_weights = np.asarray([0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j,
+                         0.3381+0.1034j, -0.1494+0.3204j])
 
 path_sar_file = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser.mat')
 vop = load_siemens_vop(path_sar_file)
 
 
-def test_b1_shim():
+def test_b1_shim(caplog):
     shim_weights = b1_shim(b1_maps, mask)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_algo_2():
+def test_b1_shim_algo_2(caplog):
     shim_weights = b1_shim(b1_maps, mask, algo=2, target=20)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_algo_2_regularized():
+def test_b1_shim_algo_2_regularized(caplog):
     shim_weights = b1_shim(b1_maps, mask, algo=2, target=20, reg_param=10e5)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
@@ -45,46 +43,20 @@ def test_b1_shim_algo_2_no_target():
         b1_shim(b1_maps, mask, algo=2)
 
 
-def test_b1_shim_algo_3():
+def test_b1_shim_algo_3(caplog):
     shim_weights = b1_shim(b1_maps, mask, algo=3)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1_shim_algo_3_regularized():
-    shim_weights = b1_shim(b1_maps, mask, algo=3, reg_param=10e5)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1_shim_constrained():
-    shim_weights = b1_shim(b1_maps, mask, q_matrix=vop, constrained=True)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
+    shim_weights = b1_shim(b1_maps, mask, q_matrix=vop)
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1_shim_algo_4():
-    shim_weights = b1_shim(b1_maps, mask, algo=4)
-    print(np.linalg.norm(shim_weights))
-    assert np.isclose(np.linalg.norm(shim_weights), 1, atol=1e-1), "The shim weights are not normalized"
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1_shim_algo_5():
-    shim_weights = b1_shim(b1_maps, mask, algo=5)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1_shim_constrained_no_matrix():
-    with pytest.raises(ValueError, match=r"A Q matrix must be provided in order to perform SAR constrained "
-                                         r"optimization."):
-        b1_shim(b1_maps, mask, constrained=True)
 
 
 def test_b1_shim_constrained_factor_too_small():
     with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
-        b1_shim(b1_maps, mask, q_matrix=vop, sar_factor=0.9, constrained=True)
+        b1_shim(b1_maps, mask, q_matrix=vop, SED=0.9)
 
 
 def test_b1_shim_wrong_ndim():
@@ -102,15 +74,13 @@ def test_b1_shim_wrong_mask_shape():
 
 def test_b1_shim_cp_mode():
     shim_weights = b1_shim(b1_maps, mask, cp_weights)
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1_shim_cp_mode_not_normalized(caplog):
-    cp_weights_not_normalized = [2*cp_weights[i] for i in range(len(cp_weights))]
+    cp_weights_not_normalized = np.asarray([2*cp_weights[i] for i in range(len(cp_weights))])
     shim_weights = b1_shim(b1_maps, mask, cp_weights_not_normalized)
     assert r"Normalizing the CP mode weights." in caplog.text
-    assert np.isclose(np.linalg.norm(shim_weights), 1), "The shim weights are not normalized"
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
@@ -137,7 +107,7 @@ def test_complex_to_vector():
 
 
 def test_combine_maps():
-    dummy_weights = [1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j, 4-7j]
+    dummy_weights = np.asarray([1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j, 4-7j])
     combined_map = combine_maps(b1_maps, dummy_weights)
     values = [combined_map[30, 30, 15], combined_map[20, 30, 7], combined_map[40, 15, 10], combined_map[30, 60, 7]]
     values_to_match = [91.4696493618864, 306.7951929580235, 396.57494585161345, 212.46572478710647]
@@ -145,7 +115,7 @@ def test_combine_maps():
 
 
 def test_combine_maps_wrong_weights_number():
-    dummy_weights = [1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j]
+    dummy_weights = np.asarray([1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j])
     with pytest.raises(ValueError, match=f"The number of shim weights does not match the number of channels.\n"
                                          f"Number of shim weights: 7\n"
                                          f"Number of channels: 8"):
