@@ -400,7 +400,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
     i_t = 0
     while np.all(masked_unshimmed[..., i_slice, i_t, i_shim] == np.zeros(masked_unshimmed.shape[:2])):
         i_shim += 1
-        if i_shim >= n_shim:
+        if i_shim >= n_shim - 1:
             break
 
     if logger.level <= getattr(logging, 'DEBUG'):
@@ -644,6 +644,9 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
         # If new bounds are included, change them for each shim
         if shimwise_bounds is not None:
             optimizer.set_merged_bounds(shimwise_bounds[i])
+
+        if np.all(sliced_mask_resampled == 0):
+            continue
 
         # Optimize using the mask
         coefs[i, :] = optimizer.optimize(sliced_mask_resampled)
