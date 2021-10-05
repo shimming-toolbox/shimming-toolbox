@@ -8,6 +8,7 @@ import os
 import nibabel as nib
 import numpy as np
 from shutil import copy
+import json
 
 from shimmingtoolbox.cli.shim import define_slices_cli
 from shimmingtoolbox.cli.shim import shim_cli
@@ -15,6 +16,7 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
+from shimmingtoolbox.simulate.numerical_model import NumericalModel
 
 
 def _define_inputs(fmap_dim):
@@ -22,6 +24,10 @@ def _define_inputs(fmap_dim):
     fname_fmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                               'sub-example_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
+
+    fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                              'sub-example_fieldmap.json')
+    data = json.load(open(fname_json))
 
     if fmap_dim == 4:
         nii_fmap = nii
@@ -48,21 +54,25 @@ def _define_inputs(fmap_dim):
 
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
 
-    return nii_fmap, nii_anat, nii_mask
+    return nii_fmap, nii_anat, nii_mask, data
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_anat,nii_mask", [(
+    "nii_fmap,nii_anat,nii_mask,data", [(
         _define_inputs(fmap_dim=3)
     )]
 )
 class TestCliStatic(object):
-    def test_cli_static_default(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_default(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -81,12 +91,16 @@ class TestCliStatic(object):
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_no_mask(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_no_mask(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             nib.save(nii_anat, fname_anat)
@@ -101,12 +115,16 @@ class TestCliStatic(object):
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -114,7 +132,7 @@ class TestCliStatic(object):
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             nib.save(nii_anat, fname_anat)
 
-            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 8, axis=3),
+            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
                                              nii_fmap.affine, header=nii_fmap.header)
             fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
             nib.save(nii_dummy_coil, fname_dummy_coil)
@@ -131,12 +149,16 @@ class TestCliStatic(object):
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_coils_and_sph(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with input coil and scanner coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -144,7 +166,7 @@ class TestCliStatic(object):
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             nib.save(nii_anat, fname_anat)
 
-            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 8, axis=3),
+            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
                                              nii_fmap.affine, header=nii_fmap.header)
             fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
             nib.save(nii_dummy_coil, fname_dummy_coil)
@@ -163,12 +185,16 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_siemens_gradient_coil.txt"))
 
-    def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil with chronological-coil oformat"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -183,19 +209,23 @@ class TestCliStatic(object):
                                      '--mask', fname_mask,
                                      '--scanner-coil-order', '1',
                                      '--slice-factor', '2',
-                                     '--output-format-scanner', 'chronological-coil',
+                                     '--output-file-format-scanner', 'chronological-coil',
                                      '--output', tmp],
                           catch_exceptions=False)
 
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             # There should be 10 x 3 values
 
-    def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil with hronological_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -210,7 +240,7 @@ class TestCliStatic(object):
                                      '--mask', fname_mask,
                                      '--scanner-coil-order', '1',
                                      '--slice-factor', '2',
-                                     '--output-format-scanner', 'chronological-ch',
+                                     '--output-file-format-scanner', 'chronological-ch',
                                      '--output', tmp],
                           catch_exceptions=False)
 
@@ -219,12 +249,16 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             # There should be 3 x 10 x 1 value
 
-    def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil with slicewise_ch oformat"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -239,7 +273,7 @@ class TestCliStatic(object):
                                      '--mask', fname_mask,
                                      '--scanner-coil-order', '1',
                                      '--slice-factor', '2',
-                                     '--output-format-scanner', 'slicewise-ch',
+                                     '--output-file-format-scanner', 'slicewise-ch',
                                      '--output', tmp],
                           catch_exceptions=False)
 
@@ -248,12 +282,16 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             # There should be 3 x 20 x 1 value
 
-    def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -279,12 +317,16 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask, data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the modified fieldmap (one volume)
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -302,18 +344,51 @@ class TestCliStatic(object):
                                          '--output', tmp],
                               catch_exceptions=False)
 
+    # def test_cli_static_order_0(self, nii_fmap, nii_anat, nii_mask, data):
+    #     """Test cli with scanner coil profiles of order 1 with default constraints"""
+    #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+    #         # Save the modified fieldmap (one volume)
+    #         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+    #         nib.save(nii_fmap, fname_fmap)
+    #         # Save json
+    #         fname_json = os.path.join(tmp, 'fmap.json')
+    #         with open(fname_json, 'w', encoding='utf-8') as f:
+    #             json.dump(data, f, indent=4)
+    #         # Save the mask
+    #         fname_mask = os.path.join(tmp, 'mask.nii.gz')
+    #         nib.save(nii_mask, fname_mask)
+    #         # Save the anat
+    #         fname_anat = os.path.join(tmp, 'anat.nii.gz')
+    #         nib.save(nii_anat, fname_anat)
+    #
+    #         runner = CliRunner()
+    #         runner.invoke(shim_cli, ['fieldmap_static',
+    #                                  '--fmap', fname_fmap,
+    #                                  '--anat', fname_anat,
+    #                                  '--mask', fname_mask,
+    #                                  '--scanner-coil-order', '0',
+    #                                  '--output-value-format', 'absolute',
+    #                                  '--output', tmp],
+    #                       catch_exceptions=False)
+    #
+    #         assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_anat,nii_mask", [(
+    "nii_fmap,nii_anat,nii_mask,data", [(
         _define_inputs(fmap_dim=4)
     )]
 )
 class TestCLIRealtime(object):
-    def test_cli_rt_default(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_rt_default(self, nii_fmap, nii_anat, nii_mask, data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the fieldmap
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -346,11 +421,15 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             # There should be 3 x 20 x 1 value
 
-    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask, data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the fieldmap
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             nib.save(nii_anat, fname_anat)
@@ -377,11 +456,15 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
 
-    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask):
+    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the fieldmap
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             nib.save(nii_fmap, fname_fmap)
+            # Save json
+            fname_json = os.path.join(tmp, 'fmap.json')
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=4)
             # Save the mask
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
             nib.save(nii_mask, fname_mask)
@@ -406,7 +489,7 @@ class TestCLIRealtime(object):
                                      '--resp', fname_resp,
                                      '--slice-factor', '2',
                                      '--scanner-coil-order', '1',
-                                     '--output-format', 'chronological-ch',
+                                     '--output-file-format', 'chronological-ch',
                                      '--output', tmp],
                           catch_exceptions=False)
 
