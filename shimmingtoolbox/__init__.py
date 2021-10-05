@@ -12,6 +12,6 @@ del metadata
 __dir_shimmingtoolbox__ = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 __dir_testing__ = os.path.join(__dir_shimmingtoolbox__, 'testing_data')
 __dir_config_dcm2bids__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'dcm2bids.json')
-__dir_config_scanner_constraints__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'coil_constraints.json')
+__dir_config_scanner_constraints__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'coil_config.json')
 
 from .dicom_to_nifti import dicom_to_nifti
