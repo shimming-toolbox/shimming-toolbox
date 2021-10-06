@@ -43,7 +43,7 @@ def load_nifti(path_data, modality='phase'):
     """
     Load data from a directory containing NIFTI type file with nibabel.
     Args:
-        path_data (str): Path to the directory containing the file(s) to load
+        path_data (Path): Path to the directory containing the file(s) to load
         modality (str): Modality to read nifti (can be phase or magnitude)
     Returns:
         nibabel.Nifti1Image.Header: List containing headers for every Nifti file
@@ -157,7 +157,7 @@ def load_nifti(path_data, modality='phase'):
 def read_nii(fname_nifti, auto_scale=True):
     """ Reads a nifti file and returns the corresponding image and info. Also returns the associated json data.
     Args:
-        fname_nifti (str): direct path to the .nii or .nii.gz file that is going to be read
+        fname_nifti (Path): direct path to the .nii or .nii.gz file that is going to be read
         auto_scale (:obj:`bool`, optional): Tells if scaling is done before return
     Returns:
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
@@ -230,17 +230,17 @@ def scale_tfl_b1(image, json_data):
     b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
     b1_phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_coils))
     if 'ImageOrientationPatientDICOM' in json_data:
-        # If axial slices
-        if json_data['ImageOrientationPatientDICOM'] == [1, 0, 0, 0, 1, 0]:
+        orientation = json_data['ImageOrientationPatientDICOM']
+        # Axial or Coronal cases
+        if orientation[:3] == [1, 0, 0]:
             for i in range(n_coils):
                 b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
                 b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-        # If sagittal slices
-        elif json_data['ImageOrientationPatientDICOM'] == [0, 1, 0, 0, 1, -1]:
+        # Sagittal case
+        elif orientation[:3] == [0, 1, 0] and orientation[5] != 0:
             for i in range(n_coils):
                 b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
                 b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
-        # TODO: add elif coronal case
         else:
             raise ValueError("Unknown slice orientation")
     else:
@@ -253,8 +253,6 @@ def scale_tfl_b1(image, json_data):
     for i in range(n_slices):
         b1_mag_ordered[:, :, i, :] = b1_mag_vector[:, :, i * n_coils:i * n_coils + n_coils]
         b1_phase_ordered[:, :, i, :] = b1_phase_vector[:, :, i * n_coils:i * n_coils + n_coils]
-
-    # TODO: Find a way to assert mask consistency within slices
 
     # Scale magnitude in nT/V
     b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
