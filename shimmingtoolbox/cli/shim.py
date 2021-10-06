@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-- fm_static
-- fm_rt
-- gradient_rt
+This file includes CLIs for shimming by fitting fieldmaps for static and realtime shimming. It groups them along with
+the gradient method in a st_shim CLI with the argument being:
+- fieldmap_static
+- fieldmap_realtime
+- gradient_realtime
 """
 
 import click
@@ -502,8 +504,10 @@ def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, li
                     for i_slice in range(n_slices):
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                         # Divide by 1000 for mt/m units
-                        f.write(f"corr_vec[0][{i_slice}]= {currents_static[i_shim, start_channel + i_channel] / 1000:.6f}\n")
-                        f.write(f"corr_vec[1][{i_slice}]= {currents_riro[i_shim, start_channel + i_channel] / 1000:.12f}\n")
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{currents_static[i_shim, start_channel + i_channel] / 1000:.6f}\n")
+                        f.write(f"corr_vec[1][{i_slice}]= "
+                                f"{currents_riro[i_shim, start_channel + i_channel] / 1000:.12f}\n")
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
@@ -533,22 +537,26 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
     # Extend the fieldmap if there are axes that are 1d. This is done since we are fitting a fieldmap to coil profiles,
     # having essentially a 2d matrix as a fieldmap can lead to errors in the through plane direction. To metigate this,
     # we create a 3d volume by replicating the single slice.
-    if 1 in nii_fmap_orig.shape[:3] or 2 in nii_fmap_orig.shape[:3]:
+    if 1 in nii_fmap_orig.shape[:3]:
         n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
         fieldmap_shape = nii_fmap_orig.shape
-        list_axis = [i for i in range(3) if (fieldmap_shape[i] == 1 or fieldmap_shape[i] == 2)]
+        # Find the list of axes that has a length of 1
+        list_axis = [i for i in range(3) if fieldmap_shape[i] == 1]
 
+        # Extend for each axes
         tmp_nii = nii_fmap_orig
         for i_axis in list_axis:
             tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
         nii_fmap = tmp_nii
 
+        # If DEBUG, save the extended fieldmap
         if logger.level <= getattr(logging, 'DEBUG'):
             fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
             nib.save(nii_fmap, fname_new_fmap)
             logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
 
     else:
+        # Load the original
         nii_fmap = nii_fmap_orig
 
     return nii_fmap
@@ -583,10 +591,10 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
 
         # define the coil profiles
         if order == 0:
-            # f0
+            # f0 --> [1]
             sph_coil_profile = profile_order_0[..., np.newaxis]
         else:
-            # f0 and orders
+            # f0, orders
             mesh1, mesh2, mesh3 = generate_meshgrid(nii_fmap.shape[:3], nii_fmap.affine)
             profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, order + 1)))
             sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
@@ -611,8 +619,9 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
         else:
             raise OSError("Missing json file")
 
-        # f0 --> [1]
+        # Restrict constraint coefficient size/bounds depending on the order
         if order == 0:
+            # f0 --> [1]
             sph_coil_profile = sph_coil_profile[..., :1]
             sph_contraints['coef_channel_minmax'] = sph_contraints['coef_channel_minmax'][:1]
         # f0, x, y, z -- > [4]
