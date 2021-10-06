@@ -379,7 +379,7 @@ class TestCore(object):
         :return:
         """
         with pytest.raises(RuntimeError, match="Directories and files in input path"):
-            load_nifti(self.toolbox_path)
+            load_nifti(str(self.toolbox_path))
 
     def test_load_nifti_folders(self, monkeypatch):
         """
@@ -391,7 +391,7 @@ class TestCore(object):
         os.remove(os.path.join(self.data_path, "dummy2.nii"))
         os.remove(os.path.join(self.data_path, "dummy2.json"))
         monkeypatch.setattr('sys.stdin', StringIO('0\n'))
-        niftis, info, json_info = load_nifti(self.tmp_path)
+        niftis, info, json_info = load_nifti(str(self.tmp_path))
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
@@ -409,7 +409,7 @@ class TestCore(object):
             shutil.rmtree(self.data_path_volume)
         os.remove(os.path.join(self.data_path, "dummy2.nii"))
         os.remove(os.path.join(self.data_path, "dummy2.json"))
-        niftis, info, json_info = load_nifti(self.data_path)
+        niftis, info, json_info = load_nifti(str(self.data_path))
         assert (len(info) == 1), "Wrong number of info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
@@ -423,7 +423,7 @@ class TestCore(object):
         """
         os.remove(os.path.join(self.data_path, "dummy.json"))
         with pytest.raises(OSError, match="Missing json file"):
-            load_nifti(self.data_path)
+            load_nifti(str(self.data_path))
 
     def test_load_nifti_multiple_echoes(self, monkeypatch):
         """
@@ -433,7 +433,7 @@ class TestCore(object):
         if self.tmp_path.exists():
             shutil.rmtree(self.data_path_volume)
         monkeypatch.setattr('sys.stdin', StringIO('0\n'))
-        niftis, info, json_info = load_nifti(self.tmp_path)
+        niftis, info, json_info = load_nifti(str(self.tmp_path))
         assert (len(info) == 2), "Wrong number od info data 1"
         assert (len(json_info) == 2), "Wrong number of JSON data 1"
         self._json_phase['EchoNumber'] = 1
@@ -445,7 +445,7 @@ class TestCore(object):
         assert (niftis.shape == (3, 3, 3, 2, 1)), "Wrong shape for the Nifti output data 1"
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
-        niftis, info, json_info = load_nifti(self.tmp_path)
+        niftis, info, json_info = load_nifti(str(self.tmp_path))
         assert (len(info) == 2), "Wrong number of info data 2"
         assert (len(json_info) == 2), "Wrong number of JSON data 2"
         self._json_phase['EchoNumber'] = 1
@@ -462,7 +462,7 @@ class TestCore(object):
         :return:
         """
         monkeypatch.setattr('sys.stdin', StringIO('q\n'))
-        ret = load_nifti(self.tmp_path)
+        ret = load_nifti(str(self.tmp_path))
         assert (ret == 0), "Should have returned 0 for quit input"
 
     def test_load_nifti_volume(self):
@@ -474,7 +474,7 @@ class TestCore(object):
             shutil.rmtree(self.data_path_2)
         if self.data_path.exists():
             shutil.rmtree(self.data_path)
-        niftis, info, json_info = load_nifti(self.data_path_volume)
+        niftis, info, json_info = load_nifti(str(self.data_path_volume))
         assert (len(info) == 1), "Wrong number of info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
@@ -499,7 +499,7 @@ class TestCore(object):
             json.dump(self._json_phase, json_file)
 
         monkeypatch.setattr('sys.stdin', StringIO('1\n'))
-        niftis, info, json_info = load_nifti(self.data_path)
+        niftis, info, json_info = load_nifti(str(self.data_path))
         self._json_phase['AcquisitionNumber'] = 1
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
@@ -508,7 +508,7 @@ class TestCore(object):
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data"
 
         monkeypatch.setattr('sys.stdin', StringIO('2\n'))
-        niftis, info, json_info = load_nifti(self.data_path)
+        niftis, info, json_info = load_nifti(str(self.data_path))
         self._json_phase['AcquisitionNumber'] = 2
         assert (len(info) == 1), "Wrong number od info data"
         assert (len(json_info) == 1), "Wrong number of JSON data"
@@ -532,14 +532,14 @@ class TestCore(object):
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy2.nii'))
         with open(os.path.join(self.data_path, 'dummy2.json'), 'w') as json_file:
             json.dump(self._json_mag, json_file)
-        niftis, info, json_info = load_nifti(self.data_path)
+        niftis, info, json_info = load_nifti(str(self.data_path))
         assert (len(info) == 1), "Wrong number od info data 1"
         assert (len(json_info) == 1), "Wrong number of JSON data 1"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_phase, sort_keys=True)), \
             "JSON file is not correctly loaded for first JSON1"
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 1"
 
-        niftis, info, json_info = load_nifti(self.data_path, "magnitude")
+        niftis, info, json_info = load_nifti(str(self.data_path), "magnitude")
         assert (len(info) == 1), "Wrong number of info data 2"
         assert (len(json_info) == 1), "Wrong number of JSON data 2"
         assert (json.dumps(json_info[0], sort_keys=True) == json.dumps(self._json_mag, sort_keys=True)), \
@@ -564,17 +564,11 @@ class TestCore(object):
         assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi, \
             "Phase values out of range"
 
-        # Check masking consistency for all coils at each slice
-        for i in range(b1.shape[2]):
-            for j in range(b1.shape[3] - 1):
-                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
-
         test_values = [0.0787205885749701 + 4.099821199410974j,
                        8.426583467014298 + 4.728778099763556j,
                        10.485988324410084 + 4.494300336459402j]
 
         assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 1, 4], b1[40, 25, 4, 7]], test_values).all()
-
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_axial, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
@@ -587,15 +581,9 @@ class TestCore(object):
         assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi, \
             "Phase values out of range"
 
-        # Check masking consistency for all coils at each slice
-        for i in range(b1.shape[2]):
-            for j in range(b1.shape[3] - 1):
-                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
-
         test_values = [-18.95330780647338-15.623901256474788j, 0j, -4.017854608159664+14.390338163103701j]
 
         assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 1, 4], b1[40, 25, 4, 7]], test_values).all()
-
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_coronal, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
@@ -608,17 +596,11 @@ class TestCore(object):
         assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi, \
             "Phase values out of range"
 
-        # Check masking consistency for all coils at each slice
-        for i in range(b1.shape[2]):
-            for j in range(b1.shape[3] - 1):
-                assert ((b1[:, :, i, j] != 0) == (b1[:, :, i, j + 1] != 0)).any()
-
         test_values = [-2.3972261793386425-2.757693261674301j,
                        12.039283903012375+4.549266291277882j,
                        7.2905022476747625+8.240413764304524j]
 
         assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 1, 4], b1[40, 25, 4, 7]], test_values).all()
-
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_sagittal, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
@@ -662,7 +644,7 @@ class TestCore(object):
             json.dump(self._json_b1_wrong_shimsetting, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_shimsetting.nii")
-        with pytest.raises(ValueError, match="Wrong array dimension: number of coils not matching"):
+        with pytest.raises(ValueError, match="Wrong array dimension: number of channels not matching"):
             read_nii(fname_b1)
 
     def test_read_nii_b1_no_shimsetting(self):
