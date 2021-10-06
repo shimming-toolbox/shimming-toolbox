@@ -203,13 +203,12 @@ def scale_tfl_b1(image, json_data):
     """Rescales the magnitude and phase of complex B1 maps acquired with Siemens' standard B1 mapping sequence. Also
     reorders the data that are shuffled during DICOM to NIfTI conversion.
     Args:
-        image: Array of dimension (x, y, n_slices, 2*n_channels)
-                    First half: magnitude in degree*10
-                    Second half: phase in range [248-3848]
-        json_data: Contains the different fields present in the json file corresponding to the nifti file.
+        image (numpy.ndarray): Array of dimension (x, y, n_slices, 2*n_channels). First half: magnitude in degree*10.
+        Second half: phase in range [248-3848].
+        json_data (dict): Contains the different fields present in the json file corresponding to the nifti file.
 
     Returns:
-        numpy.ndarray: complex rescale B1 maps (x, y, n_slices, n_channels)
+        numpy.ndarray: Complex rescaled B1 maps (x, y, n_slices, n_channels).
 
     """
     if 'ShimSetting' in json_data:
