@@ -430,6 +430,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
             else:
                 offset = 0
 
+            logger.debug("Converting scanner coil from phys x, y, z to voxel x, y, z")
             # Convert static to voxel coord system
             scanner_coil_coef_vox = phys_to_vox_gradient(currents_static[..., -3 - offset],
                                                          currents_static[..., -2 - offset],
@@ -447,6 +448,20 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
             currents_riro[..., -3 - offset] = scanner_coil_coef_vox[0]
             currents_riro[..., -2 - offset] = scanner_coil_coef_vox[1]
             currents_riro[..., -1 - offset] = scanner_coil_coef_vox[2]
+
+            # Convert from voxel to freq, phase, slices encoding direction
+            logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
+            dim_info = nii_anat.header.get_dim_info()
+            # static
+            curr_static_freq, curr_static_phase, curr_static_slice = [currents_static[..., dim] for dim in dim_info]
+            currents_static[..., -3 - offset] = curr_static_freq
+            currents_static[..., -2 - offset] = curr_static_phase
+            currents_static[..., -1 - offset] = curr_static_slice
+            # riro
+            curr_riro_freq, curr_riro_phase, curr_riro_slice = [currents_riro[..., dim] for dim in dim_info]
+            currents_riro[..., -3 - offset] = curr_riro_freq
+            currents_riro[..., -2 - offset] = curr_riro_phase
+            currents_riro[..., -1 - offset] = curr_riro_slice
 
     _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format)
 
