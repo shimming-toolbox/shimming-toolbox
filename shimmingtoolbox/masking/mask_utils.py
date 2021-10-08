@@ -38,10 +38,14 @@ def resample_mask(nii_mask_from, nii_target, from_slices, dilation_kernel='None'
     sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
 
     # Create nibabel object
-    nii_mask = nib.Nifti1Image(sliced_mask.astype(int), nii_mask_from.affine, header=nii_mask_from.header)
+    nii_mask = nib.Nifti1Image(sliced_mask.astype(float), nii_mask_from.affine, header=nii_mask_from.header)
 
     # Resample the mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
+    nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
+
+    # TODO: Deal with soft mask
+    # Find highest value and stretch to 1
+    # Look into dilation of soft mask
 
     # dilate the mask to add more pixels in particular directions
     mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size)
