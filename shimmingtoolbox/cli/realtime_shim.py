@@ -74,28 +74,37 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
                                              nii_mask_anat_riro=nii_mask_anat_riro,
                                              path_output=fname_output)
 
+    # Reorient according to freq_encode, phase_encode and slice encode direction
+    dim_info = nii_anat.header.get_dim_info()
+    # static
+    corr_static_vox = (static_xcorrection, static_ycorrection, static_zcorrection)
+    freq_static_corr, phase_static_corr, slice_static_corr = [corr_static_vox[dim] for dim in dim_info]
+    # Riro
+    corr_riro_vox = (riro_xcorrection, riro_ycorrection, riro_zcorrection)
+    freq_riro_corr, phase_riro_corr, slice_riro_corr = [corr_riro_vox[dim] for dim in dim_info]
+
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_zcorrections, 'w')
-    for i_slice in range(static_zcorrection.shape[-1]):
-        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_zcorrection[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_zcorrection[i_slice] / pressure_rms:.12f}\n')
+    for i_slice in range(slice_static_corr.shape[-1]):
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {slice_static_corr[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {slice_riro_corr[i_slice] / pressure_rms:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
     fname_ycorrections = os.path.join(fname_output, 'yshim_gradients.txt')
     file_gradients = open(fname_ycorrections, 'w')
-    for i_slice in range(static_ycorrection.shape[-1]):
-        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_ycorrection[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_ycorrection[i_slice] / pressure_rms:.12f}\n')
+    for i_slice in range(phase_static_corr.shape[-1]):
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {phase_static_corr[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {phase_riro_corr[i_slice] / pressure_rms:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
     fname_xcorrections = os.path.join(fname_output, 'xshim_gradients.txt')
     file_gradients = open(fname_xcorrections, 'w')
-    for i_slice in range(static_xcorrection.shape[-1]):
-        file_gradients.write(f'corr_vec[0][{i_slice}]= {static_xcorrection[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {riro_xcorrection[i_slice] / pressure_rms:.12f}\n')
+    for i_slice in range(freq_static_corr.shape[-1]):
+        file_gradients.write(f'corr_vec[0][{i_slice}]= {freq_static_corr[i_slice]:.6f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {freq_riro_corr[i_slice] / pressure_rms:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
