@@ -81,6 +81,8 @@ def _get_scaling_factors():
     r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
 
     # invert polarity TODO: Check acdc-82p to make sure 2nd order is correct
+    # Link to document on gdrive:
+    # https://docs.google.com/document/d/1g8H2KxZ5NNIPmhCu9VIDr34VgskPOHVJBfOqMX7BHR8/edit#heading=h.q5ns257dbqga
     sh[:, :, :, [X, Z, ZX, XY]] = -sh[:, :, :, [X, Z, ZX, XY]]
 
     # scaling:
