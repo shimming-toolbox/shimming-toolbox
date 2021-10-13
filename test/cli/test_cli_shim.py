@@ -769,17 +769,17 @@ def test_cli_define_slices_wrong_output():
 #     # TODO: validate using anat in difference space than fmap
 #     anat = np.ones_like(nii_fmap.get_fdata())
 #     anat[0, 0, 0] = 0
-#     anat_affine = [[0, -1, 0, 60],
-#                    [0, 0, -2, 20],
-#                    [-4, 0, 0, 240],
-#                    [0, 0, 0, 100]]
+#     anat_affine = [[-1, 0, 0, 100],
+#                    [0, 1, 0, -130],
+#                    [0, 0, 2.25, -177],
+#                    [0, 0, 0, 1]]
 #     nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
 #
 #     nx, ny, nz = anat.shape
 #     mask = shapes(anat, 'cube',
 #                   center_dim1=int(nx / 2),
 #                   center_dim2=int(ny / 2),
-#                   len_dim1=20, len_dim2=40, len_dim3=int(nz/2))
+#                   len_dim1=20, len_dim2=40, len_dim3=nz)
 #
 #     nii_mask = nib.Nifti1Image(mask, nii_anat.affine, header=nii_anat.header)
 #
@@ -831,7 +831,7 @@ def test_cli_define_slices_wrong_output():
 #     anat_affine = [[0, -1, 0, 60],
 #                    [0, 0, -2, 20],
 #                    [-4, 0, 0, 240],
-#                    [0, 0, 0, 100]]
+#                    [0, 0, 0, 1]]
 #     nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
 #
 #     nx, ny, nz = anat.shape
