@@ -188,6 +188,15 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
             coefs[..., -2 - offset] = scanner_coil_coef_vox[1]
             coefs[..., -1 - offset] = scanner_coil_coef_vox[2]
 
+            # Convert from voxel to freq, phase, slices encoding direction
+            logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
+            dim_info = nii_anat.header.get_dim_info()
+            # static
+            curr_freq, curr_phase, curr_slice = [coefs[..., dim] for dim in dim_info]
+            coefs[..., -3 - offset] = curr_freq
+            coefs[..., -2 - offset] = curr_phase
+            coefs[..., -1 - offset] = curr_slice
+
         list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices,
                                                       path_output, o_format_sph)
         if len(list_coils) > 1:
