@@ -83,6 +83,13 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     corr_riro_vox = (riro_xcorrection, riro_ycorrection, riro_zcorrection)
     freq_riro_corr, phase_riro_corr, slice_riro_corr = [corr_riro_vox[dim] for dim in dim_info]
 
+    # To output to the proper coord system, axes need some invertions
+    # TODO: More thorough tests
+    freq_static_corr = -freq_static_corr
+    phase_static_corr = -phase_static_corr
+    freq_riro_corr = -freq_riro_corr
+    phase_riro_corr = -phase_riro_corr
+
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_zcorrections, 'w')
