@@ -24,6 +24,7 @@ st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 15 15 20 --
 
 # Shim
 st_realtime_shim --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../realtime_zshimming_data/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --output "." || exit
+# st_shim fieldmap_realtime --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../realtime_zshimming_data/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --scanner-coil-order "1" --output-file-format "eva" --output "."  -v debug|| exit
 # st_realtime_shim will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap
