@@ -191,8 +191,8 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
             # Convert from voxel to freq, phase, slices encoding direction
             logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
             dim_info = nii_anat.header.get_dim_info()
-            # static
-            curr_freq, curr_phase, curr_slice = [coefs[..., dim] for dim in dim_info]
+            order1 = coefs[..., -3 - offset:coefs.shape[-1] - offset]
+            curr_freq, curr_phase, curr_slice = [order1[..., dim] for dim in dim_info]
             coefs[..., -3 - offset] = curr_freq
             coefs[..., -2 - offset] = curr_phase
             coefs[..., -1 - offset] = curr_slice
@@ -462,12 +462,14 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
             logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
             dim_info = nii_anat.header.get_dim_info()
             # static
-            curr_static_freq, curr_static_phase, curr_static_slice = [currents_static[..., dim] for dim in dim_info]
+            order1_static = currents_static[..., -3 - offset:currents_static.shape[-1] - offset]
+            curr_static_freq, curr_static_phase, curr_static_slice = [order1_static[..., dim] for dim in dim_info]
             currents_static[..., -3 - offset] = curr_static_freq
             currents_static[..., -2 - offset] = curr_static_phase
             currents_static[..., -1 - offset] = curr_static_slice
             # riro
-            curr_riro_freq, curr_riro_phase, curr_riro_slice = [currents_riro[..., dim] for dim in dim_info]
+            order1_riro = currents_riro[..., -3 - offset:currents_riro.shape[-1] - offset]
+            curr_riro_freq, curr_riro_phase, curr_riro_slice = [order1_riro[..., dim] for dim in dim_info]
             currents_riro[..., -3 - offset] = curr_riro_freq
             currents_riro[..., -2 - offset] = curr_riro_phase
             currents_riro[..., -1 - offset] = curr_riro_slice
