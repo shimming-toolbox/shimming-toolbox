@@ -194,6 +194,7 @@
             "modalityLabel": "unshimmed_e1",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "1"
             }
         },
@@ -202,6 +203,7 @@
             "modalityLabel": "unshimmed_e2",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "2"
             }
         },
@@ -210,6 +212,34 @@
             "modalityLabel": "unshimmed_e3",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_phase_e1",
+            "criteria": {
+                "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_phase_e2",
+            "criteria": {
+                "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "unshimmed_phase_e3",
+            "criteria": {
+                "SeriesDescription": "*gre*realtime*",
+                "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "3"
             }
         },
