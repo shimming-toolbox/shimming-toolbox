@@ -753,33 +753,43 @@ def test_cli_define_slices_wrong_output():
 #                                                    '--resp', fname_resp],
 #                                catch_exceptions=False)
 #         a=1
-
-
+#
+#
 # def test_static_shim_known_real_input():
 #     """Test to validate using acdc82
 #
 #     Currently validated the output for order 1 using an anat in the same space as fmap, anat in different space as fmap
 #     (raised mask problems if fmap has bigger voxels than anat)
 #     """
-#     fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_82p_nifti/Gz+50/derivatives/fieldmap-Gz+50.nii.gz"
+#     # fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
+#     # fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
+#     fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
 #     nii_fmap = nib.load(fname_fmap)
-#     fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_82p_nifti/Gz+50/derivatives/fieldmap-Gz+50.json"
+#     nii_fmap = nib.Nifti1Image(np.mean(nii_fmap.get_fdata(), axis=3), nii_fmap.affine, header=nii_fmap.header)
+#     # fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
+#     # fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
+#     fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
+#     nii_anat = nib.load(fname_anat)
+#     anat = nii_anat.get_fdata()
+#     # fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
+#     # fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
+#     fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
 #     data = json.load(open(fname_json))
 #
-#     # TODO: validate using anat in difference space than fmap
-#     anat = np.ones_like(nii_fmap.get_fdata())
-#     anat[0, 0, 0] = 0
-#     anat_affine = [[-1, 0, 0, 100],
-#                    [0, 1, 0, -130],
-#                    [0, 0, 2.25, -177],
-#                    [0, 0, 0, 1]]
-#     nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
+#     # # TODO: validate using anat in difference space than fmap
+#     # anat = np.ones_like(nii_fmap.get_fdata())
+#     # anat[0, 0, 0] = 0
+#     # anat_affine = [[-1, 0, 0, 100],
+#     #                [0, 1, 0, -130],
+#     #                [0, 0, 2.25, -177],
+#     #                [0, 0, 0, 1]]
+#     # nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
 #
 #     nx, ny, nz = anat.shape
 #     mask = shapes(anat, 'cube',
 #                   center_dim1=int(nx / 2),
 #                   center_dim2=int(ny / 2),
-#                   len_dim1=20, len_dim2=40, len_dim3=nz)
+#                   len_dim1=20, len_dim2=20, len_dim3=nz)
 #
 #     nii_mask = nib.Nifti1Image(mask, nii_anat.affine, header=nii_anat.header)
 #
