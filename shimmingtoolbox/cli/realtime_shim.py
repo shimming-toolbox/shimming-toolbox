@@ -45,6 +45,11 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
 
     # Load anat
     nii_anat = nib.load(fname_anat)
+    dim_info = nii_anat.header.get_dim_info()
+    if dim_info[2] != 2:
+        # Slice must be the 3rd dimension of the file
+        # TODO: Reorient nifti so that the slice is the 3rd dim
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
 
     # Load static anatomical mask
     if fname_mask_anat_static is not None:
@@ -75,7 +80,6 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
                                              path_output=fname_output)
 
     # Reorient according to freq_encode, phase_encode and slice encode direction
-    dim_info = nii_anat.header.get_dim_info()
     # static
     corr_static_vox = (static_xcorrection, static_ycorrection, static_zcorrection)
     freq_static_corr, phase_static_corr, slice_static_corr = [corr_static_vox[dim] for dim in dim_info]
@@ -83,12 +87,14 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     corr_riro_vox = (riro_xcorrection, riro_ycorrection, riro_zcorrection)
     freq_riro_corr, phase_riro_corr, slice_riro_corr = [corr_riro_vox[dim] for dim in dim_info]
 
-    # To output to the proper coord system, axes need some invertions
+    # To output to the proper coord system, axes need some inversions
     # TODO: More thorough tests
-    freq_static_corr = -freq_static_corr
-    phase_static_corr = -phase_static_corr
-    freq_riro_corr = -freq_riro_corr
-    phase_riro_corr = -phase_riro_corr
+    phase_encode_is_positive = _get_phase_encode_direction_sign(fname_anat)
+    if not phase_encode_is_positive:
+        freq_static_corr = -freq_static_corr
+        phase_static_corr = -phase_static_corr
+        freq_riro_corr = -freq_riro_corr
+        phase_riro_corr = -phase_riro_corr
 
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
@@ -116,3 +122,42 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients.close()
 
     return fname_xcorrections, fname_ycorrections, fname_zcorrections
+
+
+def _get_phase_encode_direction_sign(fname_nii):
+    """ Returns the phase encode direction sign
+
+    Args:
+        fname_nii (str): Filename to a nibabel object
+
+    Returns:
+        bool: Returns whether the encoding direction is positive (True) or negative (False)
+    """
+
+    # Load nibabel
+    nii = nib.load(fname_nii)
+    dim_info = nii.header.get_dim_info()
+
+    # Load json
+    fname_json = fname_nii.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    # json_data['PhaseEncodingDirection'] contains i, j or k then a '-' if the direction is reversed
+    phase_en_dir = json_data['PhaseEncodingDirection']
+
+    # Check that dim_info is consistent with PhaseEncodingDirection tag i --> 0, j --> 1, k --> 2
+    if (phase_en_dir[0] == 'i' and dim_info[1] != 0) \
+            or (phase_en_dir[0] == 'j' and dim_info[1] != 1) \
+            or (phase_en_dir[0] == 'k' and dim_info[1] != 2):
+        raise RuntimeError("Inconsistency between dim_info of fieldmap and PhaseEncodeDirection tag in the json")
+
+    # Find if the phase encode direction is negative or positive
+    if len(phase_en_dir) == 2 and phase_en_dir[1] == '-':
+        en_is_positive = False
+    elif len(phase_en_dir) == 1:
+        en_is_positive = True
+    else:
+        raise ValueError(f"Unexpected value for PhaseEncodingDirection: {phase_en_dir}")
+
+    return en_is_positive
