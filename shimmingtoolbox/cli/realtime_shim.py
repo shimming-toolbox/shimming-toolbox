@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(),
-              help="B0 fieldmap. This should be a 4d file (4th dimension being time")
+              help="B0 fieldmap in hertz. This should be a 4d file (4th dimension being time")
 @click.option('--anat', 'fname_anat', type=click.Path(), required=True,
               help="Filename of the anatomical image to apply the correction.")
 @click.option('--resp', 'fname_resp', type=click.Path(), required=True,
@@ -30,14 +30,16 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="3D nifti file used to define the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "spatial region to shim. "
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.curdir,
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.abspath(os.curdir),
+              show_default=True,
               help="Directory to output gradient text file and figures.")
 def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
-    """ Perform realtime z-shimming. This function will generate textfile containing static and dynamic (due to
-    respiration) Gz components based on a fieldmap time series and respiratory trace information obtained from Siemens
-    bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to resample the
-    static and dynamic Gz component maps to match the MGRE image. Lastly the mean Gz values within the ROI are computed
-    for each slice. The mean pressure is also generated in the text file to be used to shim.
+    """ Perform realtime xyz-shimming. This function will generate textfiles containing static and dynamic (due to
+    respiration) Gx, Gy, Gz components based on a fieldmap time series and respiratory trace information obtained from
+    Siemens bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to
+    resample the static and dynamic Gx, Gy, Gz component maps to match the MGRE image. Lastly the mean Gx, Gy, Gz
+    values within the ROI are computed for each slice. The mean pressure is also generated in the text file to be used
+    to shim.
     """
 
     # Load fieldmap
@@ -128,7 +130,7 @@ def _get_phase_encode_direction_sign(fname_nii):
     """ Returns the phase encode direction sign
 
     Args:
-        fname_nii (str): Filename to a nibabel object
+        fname_nii (str): Filename to a nifti file with its corresponding json file
 
     Returns:
         bool: Returns whether the encoding direction is positive (True) or negative (False)
