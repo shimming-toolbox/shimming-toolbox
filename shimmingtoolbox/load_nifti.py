@@ -164,7 +164,7 @@ def read_nii(fname_nifti, auto_scale=True):
         and 2pi. For RF-maps, complex array of dimension (x, y, slice, coil) with phase between -pi and pi.
     """
 
-    info = nib.load(fname_nifti)
+    nii = nib.load(fname_nifti)
     # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
     json_path = fname_nifti.split('.nii')[0] + '.json'
 
@@ -174,7 +174,7 @@ def read_nii(fname_nifti, auto_scale=True):
         raise OSError("Missing json file")
 
     # Store nifti image in a numpy array
-    image = np.asarray(info.dataobj)
+    image = np.asarray(nii.dataobj)
 
     if auto_scale:
         logger.info("Scaling the selected nifti")
@@ -193,10 +193,14 @@ def read_nii(fname_nifti, auto_scale=True):
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
         else:
             logger.info("Unknown nifti type: No scaling applied")
+
+        # Create new nibabel object with updated image
+        nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
+
     else:
         logger.info("No scaling applied to selected nifti")
 
-    return info, json_data, image
+    return nii, json_data, image
 
 
 def scale_tfl_b1(image, json_data):
