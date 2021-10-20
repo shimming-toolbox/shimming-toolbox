@@ -153,11 +153,8 @@ def set_all_loggers(verbose, list_exclude=('matplotlib',)):
     """ Set all loggers in the root manager to the verbosity level. Exclude any logger with the name in list_exclude
 
     Args:
-        verbose: Verbosity level: info, debug, warning, critical, error
+        verbose (str): Verbosity level: 'info', 'debug', 'warning', 'critical', 'error'
         list_exclude: List of string to exclude from logging
-
-    Returns:
-
     """
     loggers = []
     # For every logger name
