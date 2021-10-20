@@ -18,7 +18,7 @@ import math
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil
-from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_to_vox_gradient
+from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_to_vox_coefs
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
@@ -117,6 +117,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
+    dim_info = nii_anat.header.get_dim_info()
+    if dim_info[2] != 2:
+        # Slice must be the 3rd dimension of the file
+        # TODO: Reorient nifti so that the slice is the 3rd dim
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
 
     # Load mask
     if fname_mask_anat is not None:
@@ -180,19 +185,26 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
             else:
                 offset = 0
 
-            scanner_coil_coef_vox = phys_to_vox_gradient(coefs[..., -3 - offset],
-                                                         coefs[..., -2 - offset],
-                                                         coefs[..., -1 - offset],
-                                                         nii_anat.affine)
+            # Invert coefficients of the 1st order, scanner shim coefficients (LAI) --> NIfTI coefficients (RAS)
+            # x
+            coefs[..., -3 - offset] = -coefs[..., -3 - offset]
+            # z
+            coefs[..., -1 - offset] = -coefs[..., -1 - offset]
+
+            # Convert from patient coordinates to image coordinates
+            scanner_coil_coef_vox = phys_to_vox_coefs(coefs[..., -3 - offset], coefs[..., -2 - offset],
+                                                      coefs[..., -1 - offset], nii_anat.affine)
             coefs[..., -3 - offset] = scanner_coil_coef_vox[0]
             coefs[..., -2 - offset] = scanner_coil_coef_vox[1]
             coefs[..., -1 - offset] = scanner_coil_coef_vox[2]
 
-            # Convert from voxel to freq, phase, slices encoding direction
+            # Convert from image to freq, phase, slice encoding direction
             logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
             dim_info = nii_anat.header.get_dim_info()
             order1 = coefs[..., -3 - offset:coefs.shape[-1] - offset]
             curr_freq, curr_phase, curr_slice = [order1[..., dim] for dim in dim_info]
+
+            # TODO: Phase encode direction
             coefs[..., -3 - offset] = curr_freq
             coefs[..., -2 - offset] = curr_phase
             coefs[..., -1 - offset] = curr_slice
@@ -363,6 +375,11 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
+    dim_info = nii_anat.header.get_dim_info()
+    if dim_info[2] != 2:
+        # Slice must be the 3rd dimension of the file
+        # TODO: Reorient nifti so that the slice is the 3rd dim
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
 
     # Load static mask
     if fname_mask_anat_static is not None:
@@ -440,26 +457,32 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 offset = 0
 
             logger.debug("Converting scanner coil from phys x, y, z to voxel x, y, z")
-            # Convert static to voxel coord system
-            scanner_coil_coef_vox = phys_to_vox_gradient(currents_static[..., -3 - offset],
-                                                         currents_static[..., -2 - offset],
-                                                         currents_static[..., -1 - offset],
-                                                         nii_anat.affine)
+            # Invert coefficients of the 1st order, scanner shim coefficients (LAI) --> NIfTI coefficients (RAS)
+            # x
+            currents_static[..., -3 - offset] = -currents_static[..., -3 - offset]
+            currents_riro[..., -3 - offset] = -currents_riro[..., -3 - offset]
+            # z
+            currents_static[..., -1 - offset] = -currents_static[..., -1 - offset]
+            currents_riro[..., -1 - offset] = -currents_riro[..., -1 - offset]
+
+            # Convert static from patient to image coord system
+            scanner_coil_coef_vox = phys_to_vox_coefs(currents_static[..., -3 - offset],
+                                                      currents_static[..., -2 - offset],
+                                                      currents_static[..., -1 - offset], nii_anat.affine)
             currents_static[..., -3 - offset] = scanner_coil_coef_vox[0]
             currents_static[..., -2 - offset] = scanner_coil_coef_vox[1]
             currents_static[..., -1 - offset] = scanner_coil_coef_vox[2]
 
             # Convert riro to voxel coord system
-            scanner_coil_coef_vox = phys_to_vox_gradient(currents_riro[..., -3 - offset],
-                                                         currents_riro[..., -2 - offset],
-                                                         currents_riro[..., -1 - offset],
-                                                         nii_anat.affine)
+            scanner_coil_coef_vox = phys_to_vox_coefs(currents_riro[..., -3 - offset], currents_riro[..., -2 - offset],
+                                                      currents_riro[..., -1 - offset], nii_anat.affine)
             currents_riro[..., -3 - offset] = scanner_coil_coef_vox[0]
             currents_riro[..., -2 - offset] = scanner_coil_coef_vox[1]
             currents_riro[..., -1 - offset] = scanner_coil_coef_vox[2]
 
-            # Convert from voxel to freq, phase, slices encoding direction
+            # Convert from image to freq, phase, slice encoding direction
             logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
+            # TODO: Phase encode direction
             dim_info = nii_anat.header.get_dim_info()
             # static
             order1_static = currents_static[..., -3 - offset:currents_static.shape[-1] - offset]
