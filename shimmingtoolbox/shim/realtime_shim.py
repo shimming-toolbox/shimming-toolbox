@@ -13,7 +13,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import st_progress_bar
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.coils.coordinates import phys_gradient
-from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
+from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs
 
 
 def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=None, nii_mask_anat_static=None,
@@ -152,10 +152,10 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         resampled_static[g_axis] = nii_resampled_static.get_fdata()
 
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
-    resampled_xstatic_vox, resampled_ystatic_vox, resampled_zstatic_vox = phys_to_vox_gradient(resampled_static[0],
-                                                                                               resampled_static[1],
-                                                                                               resampled_static[2],
-                                                                                               nii_anat.affine)
+    resampled_xstatic_vox, resampled_ystatic_vox, resampled_zstatic_vox = phys_to_vox_coefs(resampled_static[0],
+                                                                                            resampled_static[1],
+                                                                                            resampled_static[2],
+                                                                                            nii_anat.affine)
 
     nii_resampled_zstatic_vox = nib.Nifti1Image(resampled_zstatic_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zstatic_vox * nii_mask_anat_static.get_fdata(),
@@ -180,10 +180,10 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         resampled_riro[g_axis] = nii_resampled_riro.get_fdata()
 
     # Since this is xyzshimming, left-right (x), ant-post (y) and foot-head (z) components are used.
-    resampled_xriro_vox, resampled_yriro_vox, resampled_zriro_vox = phys_to_vox_gradient(resampled_riro[0],
-                                                                                         resampled_riro[1],
-                                                                                         resampled_riro[2],
-                                                                                         nii_anat.affine)
+    resampled_xriro_vox, resampled_yriro_vox, resampled_zriro_vox = phys_to_vox_coefs(resampled_riro[0],
+                                                                                      resampled_riro[1],
+                                                                                      resampled_riro[2],
+                                                                                      nii_anat.affine)
 
     nii_resampled_zriro_vox = nib.Nifti1Image(resampled_zriro_vox, nii_anat.affine, header=nii_anat.header)
     nii_resampled_zstatic_masked = nib.Nifti1Image(resampled_zriro_vox * nii_mask_anat_riro.get_fdata(),

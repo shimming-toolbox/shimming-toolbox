@@ -8,7 +8,7 @@ import nibabel as nib
 
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.coils.coordinates import phys_gradient
-from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
+from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox import __dir_testing__
 
@@ -150,7 +150,7 @@ def test_phys_to_vox_gradient_synt():
 
     gx_phys, gy_phys, gz_phys = phys_gradient(img_array, affine)  # gx = -5.32, gy = 2.37, gz = 0
 
-    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)  # gx_vox = -5.66, gy_vox = -1.41
+    gx_vox, gy_vox, gz_vox = phys_to_vox_coefs(gx_phys, gy_phys, gz_phys, affine)  # gx_vox = -5.66, gy_vox = -1.41
 
     # Calculate ground truth with the original matrix
     gx_truth = np.gradient(img_array, abs(x_vox_spacing), axis=0)
@@ -178,7 +178,7 @@ def test_phys_to_vox_gradient_reel():
 
     gx_phys, gy_phys, gz_phys = phys_gradient(fmap[..., 0], affine)
 
-    gx_vox, gy_vox, gz_vox = phys_to_vox_gradient(gx_phys, gy_phys, gz_phys, affine)
+    gx_vox, gy_vox, gz_vox = phys_to_vox_coefs(gx_phys, gy_phys, gz_phys, affine)
 
     # Test against scaled, non rotated sagittal fieldmap, this should get the same results as phys_gradient
     x_coord, y_coord, z_coord = generate_meshgrid(fmap[..., 0].shape, affine)

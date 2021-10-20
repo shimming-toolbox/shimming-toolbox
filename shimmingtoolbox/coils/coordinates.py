@@ -90,26 +90,24 @@ def phys_gradient(data, affine):
                  (y_vox_gradient * affine[2, y_vox] / y_vox_spacing) + \
                  (z_vox_gradient * affine[2, z_vox] / z_vox_spacing)
 
-
-
     return x_gradient, y_gradient, z_gradient
 
 
-def phys_to_vox_gradient(gx, gy, gz, affine):
+def phys_to_vox_coefs(gx, gy, gz, affine):
     """
-    Calculate the gradient along the voxel coordinates defined by ``affine`` with gradients in the physical
-    coordinate system
+    Calculate the vector sum along the image coordinates defined by ``affine`` with coefficients in the patient
+    coordinate system.
 
     Args:
-        gx (numpy.ndarray): 3D matrix containing the gradient along the x direction in the physical coordinate system
-        gy (numpy.ndarray): 3D matrix containing the gradient along the y direction in the physical coordinate system
-        gz (numpy.ndarray): 3D matrix containing the gradient along the z direction in the physical coordinate system
+        gx (numpy.ndarray): 3D matrix containing the coefs along the x direction in the patient coordinate system
+        gy (numpy.ndarray): 3D matrix containing the coefs along the y direction in the patient coordinate system
+        gz (numpy.ndarray): 3D matrix containing the coefs along the z direction in the patient coordinate system
         affine (numpy.ndarray): 4x4 array containing affine transformation
 
     Returns:
-        numpy.ndarray: 3D matrix containing the gradient along the x direction in the voxel coordinate system
-        numpy.ndarray: 3D matrix containing the gradient along the y direction in the voxel coordinate system
-        numpy.ndarray: 3D matrix containing the gradient along the z direction in the voxel coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the x direction in the image coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the y direction in the image coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the z direction in the image coordinate system
     """
 
     x_vox = 0
