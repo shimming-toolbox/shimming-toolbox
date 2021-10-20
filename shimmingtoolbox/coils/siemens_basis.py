@@ -112,13 +112,12 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
     Args:
-        x (numpy.ndarray): 3-D arrays of grid coordinates, "Right->Left" grid coordinates in the patient coordinate
-                           system (i.e. DICOM reference, units of mm)
-        y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Anterior->Posterior" grid coordinates in
-                           the patient coordinate system (i.e. DICOM reference, units of mm)
-
+        x (numpy.ndarray): 3-D arrays of grid coordinates, "Left->Right" grid coordinates in the patient coordinate
+                           system (i.e. NIfTI reference (RAS), units of mm)
+        y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Posterior->Anterior" grid coordinates in
+                           the patient coordinate system (i.e. NIfTI reference (RAS), units of mm)
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
-                           the patient coordinate system (i.e. DICOM reference, units of mm)
+                           the patient coordinate system (i.e. NIfTI reference, units of mm)
         orders (tuple): Degrees of the desired terms in the series expansion, specified
                        as a vector of non-negative integers (``(0:1:n)`` yields harmonics up to n-th order, implemented
                        1st and 2nd order)
