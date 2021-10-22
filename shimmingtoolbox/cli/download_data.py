@@ -34,19 +34,15 @@ for item in URL_DICT.items():
 
 @click.command(
     context_settings=CONTEXT_SETTINGS,
-    help=f"Download data from the internet. The available datasets are:{dataset_list_str}"
+    help=f"Download data from the internet.\n"
+         f"\nDATA: The data to be downloaded. Select a dataset from the list: {dataset_list_str}"
 )
 @click.option("--verbose", is_flag=True, help="Be more verbose.")
-@click.option("--output", help="Output folder.")
+@click.option('-o', "--output", help="Output folder.")
 @click.argument("data")
 def download_data(verbose, output, data):
     """
     Download data from the internet.
-
-    Args:
-        verbose: If true, increases output verbosity.
-        output: Output folder.
-        data: The data to be downloaded.
     """
     if verbose:
         logging.getLogger().setLevel(logging.INFO)

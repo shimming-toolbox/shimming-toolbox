@@ -7,7 +7,11 @@ import scipy.optimize as opt
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
 
-class LSQ_Optimizer(Optimizer):
+class LsqOptimizer(Optimizer):
+    """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
+        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
+        It supports bounds for each channel as well as a bound for the absolute sum of the channels.
+    """
 
     def _residuals(self, coef, unshimmed_vec, coil_mat):
         """
@@ -20,46 +24,66 @@ class LSQ_Optimizer(Optimizer):
 
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
-
         """
-        self._error_if(unshimmed_vec.shape[0] != coil_mat.shape[0],
-                       (f'Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape})'
-                        ' arrays do not align on axis 0'))
-        return unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)
+        if unshimmed_vec.shape[0] != coil_mat.shape[0]:
+            ValueError(f"Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape} arrays do not align on axis 0")
 
-    def optimize(self, unshimmed, mask, mask_origin=(0, 0, 0), bounds=None):
+        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))
+
+    def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            unshimmed (numpy.ndarray): 3D B0 map
             mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
-            mask_origin (tuple): Mask origin if mask volume does not cover unshimmed volume
-            bounds (list): List of ``(min, max)`` pairs for each coil channels. None
-               is used to specify no bound.
 
         Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function
-                           (coils.size)
+            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                           The shape of the array returned has shape corresponding to the total number of channels
         """
 
         # Check for sizing errors
-        self._check_sizing(unshimmed, mask, mask_origin=mask_origin, bounds=bounds)
+        self._check_sizing(mask)
 
-        mask_range = tuple([slice(mask_origin[i], mask_origin[i] + mask.shape[i]) for i in range(3)])
+        # Define coil profiles
+        n_channels = self.merged_coils.shape[3]
+
         mask_vec = mask.reshape((-1,))
 
-        # Simple pseudo-inverse optimization
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.coils[mask_range], axes=(3, 0, 1, 2)),
-                                (self.N, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(unshimmed[mask_range], (-1,))[mask_vec != 0]  # mV'
+        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+                              (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
 
-        # Set up output currents and optimize
-        currents_0 = np.zeros(self.N)
-        currents_sp = opt.least_squares(self._residuals, currents_0,
-                                        args=(unshimmed_vec, coil_mat), bounds=np.array(bounds).T)
+        def _apply_sum_constraint(inputs, indexes, coef_sum_max):
+            # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
+            return -1 * (np.sum(np.abs(inputs[indexes])) - coef_sum_max)
+
+        # Set up constraints for max current for each coils
+        constraints = []
+        start_index = 0
+        for i_coil in range(len(self.coils)):
+            coil = self.coils[i_coil]
+            end_index = start_index + coil.dim[3]
+            if coil.coef_sum_max != np.inf:
+                constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
+                                    'args': (range(start_index, end_index), coil.coef_sum_max)})
+            start_index = end_index
+
+        # Set up output currents
+        currents_0 = self.initial_guess_mean_bounds()
+
+        # Optimize
+        currents_sp = opt.minimize(self._residuals, currents_0,
+                                   args=(unshimmed_vec, coil_mat),
+                                   method='SLSQP',
+                                   bounds=self.merged_bounds,
+                                   constraints=tuple(constraints),
+                                   options={'maxiter': 500})
+
+        if not currents_sp.success:
+            raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
 
         currents = currents_sp.x
 

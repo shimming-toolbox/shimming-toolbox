@@ -133,3 +133,27 @@ def test_timing_images():
     #
     # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
     # fig.savefig(fname_figure)
+
+
+def test_pmu_fake_data():
+
+    # Get pressure values
+    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    pmu = PmuResp(fname_pmu)
+
+    pmu.data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
+    pmu.stop_time_mdh = 250 * (len(pmu.data) - 1)
+    pmu.start_time_mdh = 0
+
+    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+
+    # Fieldmap
+    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_fieldmap.nii.gz')
+    nii_fieldmap = nib.load(fname_fieldmap)
+
+    # Calc pressure
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+
+    assert np.all(acq_pressures == pmu.data)

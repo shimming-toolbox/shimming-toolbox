@@ -33,7 +33,14 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     for i_echo in range(len(phase)):
         # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
         if (phase[i_echo].max() > math.pi) or (phase[i_echo].min() < -math.pi):
-            raise RuntimeError("read_nii must range from -pi to pi.")
+
+            # If this is a rounding error from saving niftis, let it go, the algorithm can handle the difference.
+            if (phase[i_echo].max() > math.pi + 1e-6) or (phase[i_echo].min() < -math.pi - 1e-6):
+                raise RuntimeError("read_nii must range from -pi to pi.")
+            else:
+                pass
+                # phase[i_echo][phase[i_echo] > math.pi] = math.pi
+                # phase[i_echo][phase[i_echo] < -math.pi] = -math.pi
 
     # Check that the input echotimes are the appropriate size by looking at phase
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)

@@ -6,9 +6,14 @@ import os
 import pathlib
 import tempfile
 import pytest
+import nibabel as nib
+import numpy as np
+from shutil import copyfile
 
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
 from shimmingtoolbox import __dir_testing__
+
+PHASE_SCALING_SIEMENS = 4095
 
 
 @pytest.mark.prelude
@@ -22,7 +27,7 @@ def test_cli_prepare_fieldmap_1_echo():
                                  'sub-example_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', fname_output],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -41,8 +46,8 @@ def test_cli_prepare_fieldmap_2_echos():
 
         fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '-mag', fname_mag,
-                                                      '-output', fname_output], catch_exceptions=False)
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag,
+                                                      '--output', fname_output], catch_exceptions=False)
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
@@ -58,7 +63,7 @@ def test_cli_prepare_fieldmap_default_output():
 
     fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 
-    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '-mag', fname_mag],
+    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag],
                            catch_exceptions=False)
 
     assert result.exit_code == 0
@@ -79,10 +84,78 @@ def test_cli_prepare_fieldmap_gaussian():
                                  'sub-example_magnitude1.nii.gz')
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '-mag', fname_mag, '-output', fname_output,
-                                                      '-gaussian-filter', 'True', '-sigma', 1],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', fname_output,
+                                                      '--gaussian-filter', 'True', '--sigma', 1],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_autoscale():
+    """Tests the CLI with autoscale False"""
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        # Rescale input data to -pi to pi and save in tmp directory
+        fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_phasediff.nii.gz')
+        nii_phasediff = nib.load(fname_phasediff)
+        phasediff = nii_phasediff.get_fdata()
+        rescaled = phasediff * (2 * np.pi / PHASE_SCALING_SIEMENS) - np.pi
+        nii_rescaled = nib.Nifti1Image(rescaled, nii_phasediff.affine, header=nii_phasediff.header)
+        fname_rescaled = os.path.join(tmp, 'rescaled_phasediff.nii.gz')
+        nib.save(nii_rescaled, fname_rescaled)
+
+        # Copy the json file next to the new phase data (required by read_nii)
+        fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                  'sub-example_phasediff.json')
+        fname_json_tmp = os.path.join(tmp, 'rescaled_phasediff.json')
+        copyfile(fname_json, fname_json_tmp)
+
+        # Set up other paths
+        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                 'sub-example_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_rescaled, '--mag', fname_mag, '--output', fname_output,
+                                                      '--autoscale-phase', 'False'], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+
+
+def test_cli_prepare_fieldmap_wrong_ext():
+
+    runner = CliRunner()
+
+    fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                   'sub-example_phasediff.nii.gz')
+    fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                             'sub-example_magnitude1.nii.gz')
+    fname_output = 'fieldmap.txt'
+
+    with pytest.raises(ValueError, match="Output filename must have one of the following extensions: '.nii', '.nii.gz'"):
+        runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', fname_output],
+                      catch_exceptions=False)
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_default_fname_output():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                       'sub-example_phasediff.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
+                                 'sub-example_magnitude1.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag, '--output', tmp],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.nii.gz'))
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
