@@ -7,6 +7,8 @@ import os
 import tqdm
 import subprocess
 import logging
+import nibabel as nib
+import json
 
 
 def run_subprocess(cmd):
@@ -148,3 +150,24 @@ def create_fname_from_path(path, file_default):
         fname = path
 
     return os.path.abspath(fname)
+
+
+def save_nii_json(nii, json_data, fname_output):
+    """ Save the nii to a nifti file and dict to a json file.
+
+    Args:
+        nii (nib.Nifti1Image): Nibabel object containing data save.
+        json_data (dict): Dictionary containing the json sidecar associated with the nibabel object.
+        fname_output (str): Output filename, supported types : '.nii', '.nii.gz'
+    """
+    # Make sure output filename is valid
+    if fname_output[-4:] != '.nii' and fname_output[-7:] != '.nii.gz':
+        raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
+    # Save NIFTI
+    nib.save(nii, fname_output)
+
+    # Save json
+    fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json, 'w') as outfile:
+        json.dump(json_data, outfile, indent=2)
