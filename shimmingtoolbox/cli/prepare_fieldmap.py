@@ -4,12 +4,12 @@
 import click
 import os
 import nibabel as nib
-import json
 import logging
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 from shimmingtoolbox.utils import create_fname_from_path
+from shimmingtoolbox.utils import save_nii_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -49,11 +49,66 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
 
-    # Make sure output filename is valid
-    fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
-    if fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz':
-        raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+    prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold,
+                           gaussian_filter, sigma)
 
+
+def prepare_fieldmap_uncli(phase, fname_mag=None, unwrapper='prelude',
+                           fname_output=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT), autoscale=True,
+                           fname_mask=None, threshold=None, gaussian_filter=False, sigma=1):
+    """ Prepare fieldmap cli without the click decorators. This allows this function to be imported and called from
+    other python modules.
+
+    Args:
+        phase (list): Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
+        fname_mag (str): Input path of mag nifti file
+        unwrapper (str): Algorithm for unwrapping. Supported unwrapper: 'prelude'.
+        fname_output (str): Output filename for the fieldmap, supported types : '.nii', '.nii.gz'
+        autoscale (bool): Tells whether to auto rescale phase inputs according to manufacturer standards. If you have
+                          non siemens data not automatically converted from dcm2niix, you should set this to False and
+                          input phase data from -pi to pi.
+        fname_mask (str): Input path for a mask. Mask must be the same shape as the array of each PHASE input.
+                          Used for PRELUDE
+        threshold (float): Threshold for masking. Used for: PRELUDE
+        gaussian_filter (bool): Gaussian filter for B0 map
+        sigma (float): Standard deviation of gaussian filter. Used for: gaussian_filter
+    """
+    # Return fieldmap and json file
+    nii_fieldmap, json_fieldmap = prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask,
+                                                              threshold, gaussian_filter, sigma)
+
+    # Create filename for the output if it,s a path
+    fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
+
+    # Save fieldmap and json file to their respective filenames
+    save_nii_json(nii_fieldmap, json_fieldmap, fname_output_v2)
+
+    # Log output file
+    logger.info(f"Filename of the fieldmap is: {fname_output_v2}")
+
+
+def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask, threshold, gaussian_filter, sigma):
+    """Prepare fieldmap using click inputs
+
+    Args:
+        phase (list): Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
+        fname_mag (str): Input path of mag nifti file
+        unwrapper (str): Algorithm for unwrapping. Supported unwrapper: 'prelude'.
+        autoscale (bool): Tells whether to auto rescale phase inputs according to manufacturer standards. If you have
+                          non siemens data not automatically converted from dcm2niix, you should set this to False and
+                          input phase data from -pi to pi.
+        fname_mask (str): Input path for a mask. Mask must be the same shape as the array of each PHASE input.
+                          Used for PRELUDE
+        threshold (float): Threshold for masking. Used for: PRELUDE
+        gaussian_filter (bool): Gaussian filter for B0 map
+        sigma (float): Standard deviation of gaussian filter. Used for: gaussian_filter
+
+    Returns:
+        (tuple): tuple containing:
+
+            * nib.Nifti1Image: Nibabel object containing the fieldmap in hz.
+            * dict: Dictionary containing the json sidecar associated with the nibabel object fieldmap.
+    """
     # Import phase
     list_nii_phase = []
     echo_times = []
@@ -88,21 +143,18 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     else:
         mask = None
 
+    # Call api
     fieldmap_hz = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
                                    mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
                                    sigma=sigma)
 
-    # Save NIFTI
+    # Create nii
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
-    nib.save(nii_fieldmap, fname_output_v2)
 
-    # Save json
+    # Create dict/json for the fieldmap
     json_fieldmap = json_phase
     if len(phase) > 1:
         for i_echo in range(len(echo_times)):
             json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
-    fname_json = fname_output_v2.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_json, 'w') as outfile:
-        json.dump(json_fieldmap, outfile, indent=2)
 
-    logger.info(f"Filename of the fieldmap is: {fname_output_v2}")
+    return nii_fieldmap, json_fieldmap
