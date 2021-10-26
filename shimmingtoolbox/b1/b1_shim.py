@@ -1,15 +1,19 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import numpy as np
-import scipy.optimize
 import logging
+import numpy as np
+import os
+import scipy.optimize
+
+from matplotlib.figure import Figure
 from scipy.stats import variation as cov
+from shimmingtoolbox.utils import montage
 
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q_matrix=None, SED=1.5):
+def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=None, SED=1.5, path_output=None):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
@@ -18,16 +22,18 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         cp_weights (numpy.ndarray): 1D vector of length n_channels of complex weights corresponding to the CP mode of
         the coil. Must be normalized.
-        algo (int): Number from 1 to 5 specifying which algorithm to use for B1 optimization:
+        algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1 optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
                     3 - Maximizes the minimum B1+ value for better efficiency.
-        reg_param (float): RF power Tikhonov-regularization parameter used by algorithms 2 and 3. Default is 0.
-        target (float): Target B1+ value used by algorithm 2 in nT/V. Required by algorithm 2.
+        target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
         optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
         SED (float): Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR. SED
-        between 1 and 1.5 usually work with Siemens scanners
+        between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF shimming but might
+        result in SAR excess at the scanner.
+        path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is
+        provided.
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
@@ -37,6 +43,10 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
     else:
         raise ValueError(f"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\nActual: "
                          f"{b1_maps.ndim}")
+
+    if mask is None:
+        # If no mask is provided, shimming is performed over all non-zero values
+        mask = b1_maps.sum(axis=-1) != 0
 
     if b1_maps.shape[:-1] == mask.shape:
         b1_roi = np.reshape(b1_maps * mask[:, :, :, np.newaxis], [x * y * n_slices, n_channels])
@@ -48,33 +58,34 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
 
     if cp_weights is not None:
         if len(cp_weights) == b1_maps.shape[-1]:
-            if np.isclose(np.linalg.norm(cp_weights), 1, rtol=0.0001):
-                weights_init = complex_to_vector(cp_weights)
-            else:
+            if not np.isclose(np.linalg.norm(cp_weights), 1, rtol=0.0001):
                 logger.info("Normalizing the CP mode weights.")
-                weights_init = complex_to_vector(cp_weights / np.linalg.norm(cp_weights))
+                cp_weights /= np.linalg.norm(cp_weights)
         else:
             raise ValueError(f"The number of CP weights does not match the number of channels.\n"
                              f"Number of CP weights: {len(cp_weights)}\n"
                              f"Number of channels: {b1_maps.shape[-1]}")
     else:
-        weights_init = complex_to_vector(calc_cp(b1_maps))
+        cp_weights = calc_cp(b1_maps)
 
-    if algo == 1:
+    # Initial weights for optimization
+    weights_init = complex_to_vector(cp_weights)
+
+    if algorithm == 1:
         # CoV minimization
         def cost(weights):
             return cov(combine_maps(b1_roi, vector_to_complex(weights)))
 
-    elif algo == 2:
+    elif algorithm == 2:
         # MLS targeting value
         if target is None:
             raise ValueError(f"Algorithm 2 requires a target B1 value in nT/V.")
 
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            return np.square(np.linalg.norm(b1_abs - target)) + reg_param * (1 / np.mean(np.square(b1_abs)))
+            return np.square(np.linalg.norm(b1_abs - target))
 
-    elif algo == 3:
+    elif algorithm == 3:
         # Maximizing the minimum B1+ value to get better RF efficiency
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
@@ -92,6 +103,48 @@ def b1_shim(b1_maps, mask, cp_weights=None, algo=1, reg_param=0, target=None,  q
     else:
         logger.info(f"No Q matrix provided, performing unconstrained optimization.")
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
+
+    # Set up output of figures
+    if path_output is not None:
+        if not os.path.exists(path_output):
+            os.makedirs(path_output)
+
+        # Plot RF shimming results
+        single_pulse_weights = np.ones(8) / np.linalg.norm(np.ones(8))
+        b1_single_pulse = combine_maps(b1_maps, single_pulse_weights)  # Single pulse excitation
+        b1_single_pulse_roi = combine_maps(b1_roi, single_pulse_weights)
+        b1_cp = combine_maps(b1_maps, cp_weights)  # CP mode
+        b1_cp_roi = combine_maps(b1_roi, cp_weights)
+        b1_shimmed = combine_maps(b1_maps, shim_weights)  # Shimmed result
+        b1_shimmed_roi = combine_maps(b1_roi, shim_weights)
+        vmax = np.max(np.concatenate((b1_single_pulse, b1_cp, b1_shimmed)))
+
+        fig = Figure(figsize=(15, 15))
+        ax1 = fig.add_subplot(2, 2, 1)
+        im1 = ax1.imshow(montage(b1_single_pulse), vmax=vmax)
+        ax1.axis('off')
+        fig.colorbar(im1, fraction=0.05)
+        ax1.set_title(f"B1+ field (single pulse excitation)\nMean B1 in ROI: {b1_single_pulse_roi.mean():.3} nT/V\n"
+                      f"CoV in roi: {cov(b1_single_pulse_roi):.3}")
+        ax2 = fig.add_subplot(2, 2, 2)
+        im2 = ax2.imshow(montage(b1_cp), vmax=vmax)
+        ax2.axis('off')
+        fig.colorbar(im2, fraction=0.05)
+        ax2.set_title(f"B1+ field (CP mode)\nMean B1 in ROI: {b1_cp_roi.mean():.3} nT/V\nCoV in roi: "
+                      f"{cov(b1_cp_roi):.3}")
+        ax3 = fig.add_subplot(2, 2, 3)
+        im3 = ax3.imshow(montage(b1_shimmed), vmax=vmax)
+        ax3.axis('off')
+        fig.colorbar(im3, fraction=0.05)
+        ax3.set_title(f"B1+ field (RF shimming)\nMean B1 in ROI: {b1_shimmed_roi.mean():.3} nT/V\n"
+                      f"CoV in roi: {cov(b1_shimmed_roi):.3f}")
+        ax4 = fig.add_subplot(2, 2, 4)
+        ax4.imshow(montage(mask))
+        ax4.axis('off')
+        ax4.set_title(f"Mask")
+
+        fname_figure = os.path.join(path_output, 'b1_shim_results.png')
+        fig.savefig(fname_figure)
 
     return shim_weights
 
@@ -159,7 +212,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
         voxel_size (tuple): Size of the voxel.
 
     Returns:
-        numpy.ndarray: Complex 1D array of individual shim weights (length = n_channels).
+        numpy.ndarray: Complex 1D array of individual shim weights (length = n_channels). Norm = 1.
 
     """
     x, y, n_slices, n_channels = b1_maps.shape

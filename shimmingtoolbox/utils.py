@@ -111,7 +111,7 @@ def st_progress_bar(*args, **kwargs):
     return tqdm.tqdm(*args, **kwargs)
 
 
-def create_output_dir(path_output, is_file=False, output_folder_name="output"):
+def create_output_dir(path_output: object, is_file: object = False, output_folder_name: object = "output") -> object:
     """Given a path, create the directory if it doesn't exist.
 
     Args:
@@ -147,3 +147,28 @@ def create_fname_from_path(path, file_default):
         fname = path
 
     return os.path.abspath(fname)
+
+
+def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
+    """Concatenates images stored in a 3D array
+    Args:
+        X (numpy.ndarray): 3D array with the last dimension being the one in which the different images are stored
+        colormap (str): Colors in which the montage will be displayed.
+        title (str): Title to display above the figure.
+        vmin (float): Minimum display range value. If None, set the the min value of X.
+        vmax (float): Maximum display range value. If None, set the the max value of X.
+    """
+    X = np.rot90(X)
+    x, y, n_images = np.shape(X)
+    mm = np.ceil(np.sqrt(n_images)).astype(int)
+    nn = np.ceil(np.sqrt(n_images/mm)).astype(int)
+    result = np.zeros((mm * x, nn * y))
+    image_id = 0
+    for k in range(mm):
+        for j in range(nn):
+            if image_id >= n_images:
+                break
+            slice_m, slice_n = k * x, j * y
+            result[slice_m:slice_m + x, slice_n:slice_n + y] = X[:, :, image_id]
+            image_id += 1
+    return result

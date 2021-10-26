@@ -24,6 +24,8 @@ setup(
             "st_mask=shimmingtoolbox.cli.mask:mask_cli",
             "st_dicom_to_nifti=shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli",
             "st_prepare_fieldmap=shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli",
+            "st_prepare_b1_map=shimmingtoolbox.cli.prepare_b1_map:prepare_b1_map_cli",
+            "st_b1_shim=shimmingtoolbox.cli.b1_shim:b1_shim_cli",
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
             "st_image=shimmingtoolbox.cli.image:image_cli",

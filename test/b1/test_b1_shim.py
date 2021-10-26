@@ -1,7 +1,9 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
-import numpy as np
+
+import pathlib
 import pytest
+import tempfile
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.b1_shim import *
 from shimmingtoolbox.b1.load_vop import *
@@ -10,9 +12,9 @@ from shimmingtoolbox.load_nifti import read_nii
 
 logging.basicConfig(level=logging.INFO)
 
-fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'sub-01_run-10_TB1map.nii.gz')
-_, _, b1_maps = read_nii(fname_b1)
-mask = b1_maps[:, :, :, 0] != 0
+fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_axial.nii.gz')
+_, _, b1_maps = read_nii(fname_b1, auto_scale=True)
+mask = b1_maps.sum(axis=-1) != 0
 cp_weights = np.asarray([0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j,
                          0.3381+0.1034j, -0.1494+0.3204j])
 
@@ -27,24 +29,18 @@ def test_b1_shim(caplog):
 
 
 def test_b1_shim_algo_2(caplog):
-    shim_weights = b1_shim(b1_maps, mask, algo=2, target=20)
-    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1_shim_algo_2_regularized(caplog):
-    shim_weights = b1_shim(b1_maps, mask, algo=2, target=20, reg_param=10e5)
+    shim_weights = b1_shim(b1_maps, mask, algorithm=2, target=20)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1_shim_algo_2_no_target():
     with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
-        b1_shim(b1_maps, mask, algo=2)
+        b1_shim(b1_maps, mask, algorithm=2)
 
 
 def test_b1_shim_algo_3(caplog):
-    shim_weights = b1_shim(b1_maps, mask, algo=3)
+    shim_weights = b1_shim(b1_maps, mask, algorithm=3)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
@@ -67,8 +63,8 @@ def test_b1_shim_wrong_ndim():
 
 def test_b1_shim_wrong_mask_shape():
     with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching.\n"
-                                         r"Maps dimensions: \(64, 64, 16\)\n"
-                                         r"Mask dimensions: \(63, 64, 16\)"):
+                                         r"Maps dimensions: \(64, 44, 5\)\n"
+                                         r"Mask dimensions: \(63, 44, 5\)"):
         b1_shim(b1_maps, mask[:-1, :, :])
 
 
@@ -91,6 +87,11 @@ def test_b1_shim_cp_mode_wrong_length():
         b1_shim(b1_maps, mask, cp_weights[:-1])
 
 
+def test_b1_shim_output_figure(caplog):
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        b1_shim(b1_maps, mask, path_output=tmp)
+
+
 def test_vector_to_complex():
     assert np.isclose(vector_to_complex(np.asarray([1, 1, 1, 0, np.pi/2, np.pi])), np.asarray([1,  1j, -1])).all(),\
         "The function vector_to_complex returns unexpected results"
@@ -109,8 +110,8 @@ def test_complex_to_vector():
 def test_combine_maps():
     dummy_weights = np.asarray([1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j, 4-7j])
     combined_map = combine_maps(b1_maps, dummy_weights)
-    values = [combined_map[30, 30, 15], combined_map[20, 30, 7], combined_map[40, 15, 10], combined_map[30, 60, 7]]
-    values_to_match = [91.4696493618864, 306.7951929580235, 396.57494585161345, 212.46572478710647]
+    values = [combined_map[30, 30, 0], combined_map[20, 30, 2], combined_map[40, 15, 3], combined_map[30, 40, 4]]
+    values_to_match = [329.7406895062313, 237.49011367537193, 239.36672012680663, 209.72138461426627]
     assert np.isclose(values, values_to_match).all()
 
 
@@ -123,14 +124,14 @@ def test_combine_maps_wrong_weights_number():
 
 
 def test_calc_cp_no_size(caplog):
-    calc_cp(b1_maps, voxel_position=(32, 32, 8))
+    calc_cp(b1_maps, voxel_position=(32, 22, 2))
     assert r"No voxel size provided for CP computation. Default size set to (5, 5, 1)." in caplog.text
 
 
 def test_calc_cp_excessive_size():
     with pytest.raises(ValueError, match=r"The size of the voxel used for CP computation exceeds the size of the B1 "
                                          r"maps.\n"
-                                         r"B1 maps size: \(64, 64, 16\)\n"
+                                         r"B1 maps size: \(64, 44, 5\)\n"
                                          r"Voxel size: \(70, 32, 8\)"):
         calc_cp(b1_maps, voxel_size=(70, 32, 8))
 
@@ -143,21 +144,21 @@ def test_calc_cp_no_position(caplog):
 def test_calc_cp_small_b1(caplog):
     with pytest.raises(ValueError, match=r"Provided B1 maps are too small to compute CP phases.\n"
                                          r"Minimum size: \(5, 5, 1\)\n"
-                                         r"Actual size: \(4, 64, 16\)"):
+                                         r"Actual size: \(4, 44, 5\)"):
         calc_cp(b1_maps[:4, ...])
 
 
 def test_calc_cp_out_of_bounds_position():
     with pytest.raises(ValueError, match=r"The position of the voxel used to compute the CP mode exceeds the B1 maps "
                                          r"bounds.\n"
-                                         r"B1 maps size: \(64, 64, 16\)\n"
-                                         r"Voxel position: \(70, 32, 8\)"):
-        calc_cp(b1_maps, voxel_position=(70, 32, 8))
+                                         r"B1 maps size: \(64, 44, 5\)\n"
+                                         r"Voxel position: \(70, 32, 3\)"):
+        calc_cp(b1_maps, voxel_position=(70, 32, 3))
 
 
 def test_calc_cp_out_out_of_bounds_voxel():
     with pytest.raises(ValueError, match=r"Voxel bounds exceed the B1 maps."):
-        calc_cp(b1_maps, voxel_size=(20, 10, 2), voxel_position=(55, 32, 8))
+        calc_cp(b1_maps, voxel_size=(20, 10, 2), voxel_position=(55, 32, 3))
 
 
 def test_calc_approx_cp():
