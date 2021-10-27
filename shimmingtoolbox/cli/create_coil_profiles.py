@@ -27,11 +27,6 @@ logger = logging.getLogger(__name__)
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
 @click.option('--threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
-@click.option('--mask-method', 'mask_method', type=click.Choice(['0', '1', '2']),
-              help="Masking method to use for the channels: "
-                   "0: all different masks"
-                   "1: same mask, 'and' of all channels"
-                   "2: same mask, 'or' of all channels")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
@@ -41,8 +36,7 @@ logger = logging.getLogger(__name__)
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output path filename of coil profile nifti file. Supported types : '.nii', '.nii.gz'")
-def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, mask_method, gaussian_filter, sigma,
-                             fname_output):
+def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussian_filter, sigma, fname_output):
     """Create b0 coil profiles from acquisitions defined in the input json file"""
 
     # Get directory
@@ -60,55 +54,30 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, mask_m
     min_max_fmaps = []
     n_channels = len(phases)
 
-    # Masks
+    # Create a mask containing the threshold of all channels
     fname_mask = os.path.join(path_output, 'mask.nii.gz')
-    mask_method = int(mask_method)
-    if mask_method == 0:
-        # all different masks
-        # Handled in the loop
-        pass
-    elif mask_method == 1:
-        # same mask, 'and' of all channels
-        fname_mag = mags[0][0][0]
-        nii_mag = nib.load(fname_mag)
-        mask = np.full_like(nii_mag.get_fdata(), True, bool)
-        for i_channel in range(n_channels):
-            fname_mag = mags[i_channel][0][0]
-            mag = nib.load(fname_mag).get_fdata()
-            thresh_mask = mask_threshold(mag, threshold)
-            mask = np.logical_and(thresh_mask, mask)
+    fname_mag = mags[0][0][0]
+    nii_mag = nib.load(fname_mag)
+    mask = np.full_like(nii_mag.get_fdata(), True, bool)
+    for i_channel in range(n_channels):
+        # min
+        fname_mag = mags[i_channel][0][0]
+        mag = nib.load(fname_mag).get_fdata()
+        thresh_mask = mask_threshold(mag, threshold)
+        mask = np.logical_and(thresh_mask, mask)
+        # max
+        fname_mag = mags[i_channel][1][0]
+        mag = nib.load(fname_mag).get_fdata()
+        thresh_mask = mask_threshold(mag, threshold)
+        mask = np.logical_and(thresh_mask, mask)
 
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
-        nib.save(nii_mask, fname_mask)
-
-    else:  # method == 2:
-        # same mask, 'or' of all channels
-        fname_mag = mags[0][0][0]
-        nii_mag = nib.load(fname_mag)
-        mask = np.full_like(nii_mag.get_fdata(), False, bool)
-        for i_channel in range(n_channels):
-            fname_mag = mags[i_channel][0][0]
-            mag = nib.load(fname_mag).get_fdata()
-            thresh_mask = mask_threshold(mag, threshold)
-            mask = np.logical_or(thresh_mask, mask)
-
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
-        nib.save(nii_mask, fname_mask)
+    nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
+    nib.save(nii_mask, fname_mask)
 
     # For each channel
     for i_channel in range(n_channels):
         min_phases = phases[i_channel][0]
         max_phases = phases[i_channel][1]
-
-        # Masks
-        if mask_method == 0:
-            # Calculate new mask for each channel
-            fname_mag = mags[i_channel][0][0]
-            nii_mag = nib.load(fname_mag)
-            # Create mask using threshold algorithm
-            mask = mask_threshold(nii_mag.get_fdata(), threshold)
-            nii_mask = nib.Nifti1Image(mask, nii_mag.affine, header=nii_mag.header)
-            nib.save(nii_mask, fname_mask)
 
         # Calculate fieldmap for min and save to a file
         fname_min_output = os.path.join(path_output, f"channel{i_channel}_min_fieldmap.nii.gz")
