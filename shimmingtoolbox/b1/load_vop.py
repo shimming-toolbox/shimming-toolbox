@@ -22,9 +22,9 @@ def load_siemens_vop(path_sar_file):
         raise FileNotFoundError('The SarDataUser.mat file could not be found.')
     # Assert file exists
 
-    if 'ZZ' in sar_data:
-        return sar_data['ZZ']
-    else:
+    if 'ZZ' not in sar_data:
         raise ValueError('The SAR data does not contain the expected VOP values.')
+
+    return sar_data['ZZ']
     # Only return VOPs corresponding to 6 (body parts) and 8 (allowed forward power by channel)
     # return sar_data['ZZ'][:, :, np.argwhere(np.logical_or(sar_data['ZZtype'] == 6, sar_data['ZZtype'] == 8))[:, 1]]

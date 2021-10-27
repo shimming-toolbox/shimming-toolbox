@@ -4,8 +4,8 @@
 import os
 import pathlib
 import tempfile
-
 from click.testing import CliRunner
+
 from shimmingtoolbox.cli.b1_shim import b1_shim_cli
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_shimmingtoolbox__

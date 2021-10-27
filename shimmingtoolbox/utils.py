@@ -45,24 +45,25 @@ def add_suffix(fname, suffix):
     - ``add_suffix(t2.nii.gz, a)`` -> ``t2a.nii.gz``
     """
 
-    def _splitext(fname):
-        """
-        Split a fname (folder/file + ext) into a folder/file and extension.
-
-        Note: for .nii.gz the extension is understandably .nii.gz, not .gz
-        (``os.path.splitext()`` would want to do the latter, hence the special case).
-        """
-        dir, filename = os.path.split(fname)
-        for special_ext in ['.nii.gz', '.tar.gz']:
-            if filename.endswith(special_ext):
-                stem, ext = filename[:-len(special_ext)], special_ext
-                return os.path.join(dir, stem), ext
-        # If no special case, behaves like the regular splitext
-        stem, ext = os.path.splitext(filename)
-        return os.path.join(dir, stem), ext
-
-    stem, ext = _splitext(fname)
+    stem, ext = splitext(fname)
     return os.path.join(stem + suffix + ext)
+
+
+def splitext(fname):
+    """
+    Split a fname (folder/file + ext) into a folder/file and extension.
+
+    Note: for .nii.gz the extension is understandably .nii.gz, not .gz
+    (``os.path.splitext()`` would want to do the latter, hence the special case).
+    """
+    dir, filename = os.path.split(fname)
+    for special_ext in ['.nii.gz', '.tar.gz']:
+        if filename.endswith(special_ext):
+            stem, ext = filename[:-len(special_ext)], special_ext
+            return os.path.join(dir, stem), ext
+    # If no special case, behaves like the regular splitext
+    stem, ext = os.path.splitext(filename)
+    return os.path.join(dir, stem), ext
 
 
 def iso_times_to_ms(iso_times):

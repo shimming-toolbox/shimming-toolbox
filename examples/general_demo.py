@@ -27,9 +27,10 @@ import logging
 
 import nibabel as nib
 
-from shimmingtoolbox.unwrap import prelude
+from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.utils import run_subprocess
 from shimmingtoolbox import dicom_to_nifti
+from shimmingtoolbox.load_nifti import read_nii
 
 
 def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
@@ -55,12 +56,8 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     # Open phase data
     fname_phases = glob.glob(os.path.join(path_nifti, 'sub-01', 'fmap', '*phase*.nii.gz'))
 
-    nii_phase_e1 = nib.load(fname_phases[0])
-    nii_phase_e2 = nib.load(fname_phases[1])
-
-    # Scale phase to radians
-    phase_e1 = np.interp(nii_phase_e1.get_fdata(), [0, 4096], [-np.pi, np.pi])
-    phase_e2 = np.interp(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
+    nii_phase_e1, _, _ = read_nii(fname_phases[0])
+    nii_phase_e2, _, _ = read_nii(fname_phases[1])
 
     # Open mag data
     fname_mags = glob.glob(os.path.join(path_nifti, 'sub-01', 'fmap', '*magnitude*.nii.gz'))
@@ -69,8 +66,8 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     nii_mag_e2 = nib.load(fname_mags[1])
 
     # Call prelude to unwrap the phase
-    unwrapped_phase_e1 = prelude(phase_e1, nii_phase_e1.affine, mag=nii_mag_e1.get_fdata())
-    unwrapped_phase_e2 = prelude(phase_e2, nii_phase_e2.affine, mag=nii_mag_e2.get_fdata(), threshold=200)
+    unwrapped_phase_e1 = unwrap_phase(nii_phase_e1, 'prelude', mag=nii_mag_e1.get_fdata())
+    unwrapped_phase_e2 = unwrap_phase(nii_phase_e2, 'prelude', mag=nii_mag_e2.get_fdata(), threshold=200)
 
     # Plot results
     fig = Figure(figsize=(10, 10))
@@ -84,11 +81,11 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     fig.colorbar(im)
     ax.set_title("Mag e2")
     ax = fig.add_subplot(3, 2, 3)
-    im = ax.imshow(phase_e1[:-1, :-1, 0])
+    im = ax.imshow(nii_phase_e1.get_fdata()[:-1, :-1, 0])
     fig.colorbar(im)
     ax.set_title("Wrapped e1")
     ax = fig.add_subplot(3, 2, 4)
-    im = ax.imshow(phase_e2[:-1, :-1, 0])
+    im = ax.imshow(nii_phase_e2.get_fdata()[:-1, :-1, 0])
     fig.colorbar(im)
     ax.set_title("Wrapped e2")
     ax = fig.add_subplot(3, 2, 5)
