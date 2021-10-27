@@ -45,10 +45,11 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
                          f"{b1_maps.ndim}")
 
     if mask is None:
-        # If no mask is provided, shimming is performed over all non-zero values
-        mask = b1_maps.sum(axis=-1) != 0
+        # If no mask is provided, shimming is performed over all non-zero values (pixels are set to 1 in mask)
+        mask = np.abs(b1_maps.sum(axis=-1)) != 0
 
     if b1_maps.shape[:-1] == mask.shape:
+        # b1_roi will be a (n_pixels, n_channels) numpy array with the values present in the mask (values to shim).
         b1_roi = np.reshape(b1_maps * mask[:, :, :, np.newaxis], [x * y * n_slices, n_channels])
         b1_roi = b1_roi[b1_roi[:, 0] != 0, :]
     else:
@@ -94,6 +95,8 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
     else:
         raise ValueError(f"The specified algorithm does not exist. It must be an integer between 1 and 5.")
 
+    # Q matrices to compute the local SAR values for each 10g of tissue (or subgroups of pixels if VOP are used).
+    # If no Q matrix is provided, unconstrained optimization is performed
     if q_matrix is not None:
         if SED < 1:
             raise ValueError(f"The SAR factor must be equal to or greater than 1.")

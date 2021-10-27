@@ -20,7 +20,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
               help="3D nifti file used to define the static spatial region to shim. "
                    "The coordinate system should be the same as ``b1map``'s coordinate system.")
-@click.option('--cp', 'cp_weights', type=click.Path(exists=True), required=False,
+@click.option('--cp', 'fname_cp_weights', type=click.Path(exists=True), required=False,
               help="json file containing CP weights. See config/cp_mode.json for example.")
 @click.option('--algo', 'algorithm', type=int, default=1, show_default=True,
               help="Number from 1 to 3 specifying which algorithm to use for B1 optimization"
@@ -35,7 +35,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "shimming but might result in SAR excess at the scanner.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir),
               show_default=True, help="Directory to output shim weights text file and figures.")
-def b1_shim_cli(fname_b1_map, fname_mask, cp_weights=None, algorithm=1, target=None, q_matrix=None, SED=1.5,
+def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, SED=1.5,
                 path_output=None):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
@@ -52,15 +52,17 @@ def b1_shim_cli(fname_b1_map, fname_mask, cp_weights=None, algorithm=1, target=N
 
     # If a path to a cp json file is provided, read it and store the values as complex numbers
     # See example of json file in config/cp_mode.json (Do not add spaces within the complex values)
-    if cp_weights is not None:
-        f = open(cp_weights)
-        cp_json = json.load(f)
+    if fname_cp_weights is not None:
+        with open(fname_cp_weights) as json_file:
+            cp_json = json.load(json_file)
         n_cp_weights = len(cp_json["weights"])
         cp_weights = np.zeros(n_cp_weights, dtype=complex)
         i = 0
         for weight in cp_json["weights"]:
             cp_weights[i] = complex(weight)
             i += 1
+    else:
+        cp_weights = None
 
     create_output_dir(path_output)
 

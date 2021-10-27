@@ -5,6 +5,7 @@ import numpy as np
 import os
 import pytest
 import scipy
+
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.load_vop import load_siemens_vop
 

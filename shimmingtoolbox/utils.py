@@ -112,7 +112,7 @@ def st_progress_bar(*args, **kwargs):
     return tqdm.tqdm(*args, **kwargs)
 
 
-def create_output_dir(path_output: object, is_file: object = False, output_folder_name: object = "output") -> object:
+def create_output_dir(path_output, is_file=False, output_folder_name="output"):
     """Given a path, create the directory if it doesn't exist.
 
     Args:

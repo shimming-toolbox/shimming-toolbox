@@ -4,6 +4,7 @@
 import pathlib
 import pytest
 import tempfile
+
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.b1.b1_shim import *
 from shimmingtoolbox.b1.load_vop import *
