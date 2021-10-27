@@ -6,10 +6,12 @@ import json
 import os
 import logging
 import nibabel as nib
+import numpy as np
 
 from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
 from shimmingtoolbox.utils import create_output_dir, save_nii_json
+from shimmingtoolbox.masking.threshold import threshold as mask_threshold
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -25,6 +27,11 @@ logger = logging.getLogger(__name__)
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
 @click.option('--threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
+@click.option('--mask-method', 'mask_method', type=click.Choice(['0', '1', '2']),
+              help="Masking method to use for the channels: "
+                   "0: all different masks"
+                   "1: same mask, 'and' of all channels"
+                   "2: same mask, 'or' of all channels")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
@@ -34,7 +41,8 @@ logger = logging.getLogger(__name__)
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output path filename of coil profile nifti file. Supported types : '.nii', '.nii.gz'")
-def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussian_filter, sigma, fname_output):
+def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, mask_method, gaussian_filter, sigma,
+                             fname_output):
     """Create b0 coil profiles from acquisitions defined in the input json file"""
 
     # Get directory
@@ -50,27 +58,71 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     mags = json_data["mag"]
     list_diff = json_data["diff"]
     min_max_fmaps = []
+    n_channels = len(phases)
+
+    # Masks
+    fname_mask = os.path.join(path_output, 'mask.nii.gz')
+    mask_method = int(mask_method)
+    if mask_method == 0:
+        # all different masks
+        # Handled in the loop
+        pass
+    elif mask_method == 1:
+        # same mask, 'and' of all channels
+        fname_mag = mags[0][0][0]
+        nii_mag = nib.load(fname_mag)
+        mask = np.full_like(nii_mag.get_fdata(), True, bool)
+        for i_channel in range(n_channels):
+            fname_mag = mags[i_channel][0][0]
+            mag = nib.load(fname_mag).get_fdata()
+            thresh_mask = mask_threshold(mag, threshold)
+            mask = np.logical_and(thresh_mask, mask)
+
+        nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
+        nib.save(nii_mask, fname_mask)
+
+    else:  # method == 2:
+        # same mask, 'or' of all channels
+        fname_mag = mags[0][0][0]
+        nii_mag = nib.load(fname_mag)
+        mask = np.full_like(nii_mag.get_fdata(), False, bool)
+        for i_channel in range(n_channels):
+            fname_mag = mags[i_channel][0][0]
+            mag = nib.load(fname_mag).get_fdata()
+            thresh_mask = mask_threshold(mag, threshold)
+            mask = np.logical_or(thresh_mask, mask)
+
+        nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
+        nib.save(nii_mask, fname_mask)
 
     # For each channel
-    n_channels = len(phases)
     for i_channel in range(n_channels):
         min_phases = phases[i_channel][0]
         max_phases = phases[i_channel][1]
 
-        # TODO: Change mag for each unwrap? channel?
-        fname_mag = mags[i_channel][0][0]
+        # Masks
+        if mask_method == 0:
+            # Calculate new mask for each channel
+            fname_mag = mags[i_channel][0][0]
+            nii_mag = nib.load(fname_mag)
+            # Create mask using threshold algorithm
+            mask = mask_threshold(nii_mag.get_fdata(), threshold)
+            nii_mask = nib.Nifti1Image(mask, nii_mag.affine, header=nii_mag.header)
+            nib.save(nii_mask, fname_mask)
 
         # Calculate fieldmap for min and save to a file
         fname_min_output = os.path.join(path_output, f"channel{i_channel}_min_fieldmap.nii.gz")
         prepare_fieldmap_uncli(min_phases, fname_mag, unwrapper, fname_min_output, autoscale,
-                               threshold=threshold,
+                               # threshold=threshold,
+                               fname_mask=fname_mask,
                                gaussian_filter=gaussian_filter,
                                sigma=sigma)
 
         # Calculate fieldmap for max and save to a file
         fname_max_output = os.path.join(path_output, f"channel{i_channel}_max_fieldmap.nii.gz")
         prepare_fieldmap_uncli(max_phases, fname_mag, unwrapper, fname_max_output, autoscale,
-                               threshold=threshold,
+                               # threshold=threshold,
+                               fname_mask=fname_mask,
                                gaussian_filter=gaussian_filter,
                                sigma=sigma)
 
@@ -80,6 +132,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     profiles = create_coil_profiles(min_max_fmaps, list_diff=list_diff)
 
     # TODO: if not debug
+    os.remove(fname_mask)
     # For each channel
     for min_max in min_max_fmaps:
         # For each fieldmaps (min, max)
