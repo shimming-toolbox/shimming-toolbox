@@ -32,7 +32,7 @@ def test_b1_shim_cli_args():
         fname_cp_json = os.path.join(__dir_shimmingtoolbox__, 'config', 'cp_mode.json')
 
         # Specify output for text file and figures
-        path_output = '/Users/gaspard/Desktop/test_b1'
+        path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
         runner = CliRunner()
