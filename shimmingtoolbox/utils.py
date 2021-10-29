@@ -161,8 +161,8 @@ def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
     """
     X = np.rot90(X)
     x, y, n_images = np.shape(X)
-    mm = np.ceil(np.sqrt(n_images)).astype(int)
-    nn = np.ceil(np.sqrt(n_images/mm)).astype(int)
+    mm = np.floor(np.sqrt(n_images)).astype(int)
+    nn = np.ceil(n_images/mm).astype(int)
     result = np.zeros((mm * x, nn * y))
     image_id = 0
     for k in range(mm):
