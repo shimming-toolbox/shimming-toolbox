@@ -72,8 +72,10 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
     # Write to a text file
     fname_output = os.path.join(path_output, 'RF_shim_weights.txt')
     file_rf_shim_weights = open(fname_output, 'w')
+    file_rf_shim_weights.write(f'Channel\tmag\tphase (\u00b0)\n')
     for i_channel in range(len(shim_weights)):
-        file_rf_shim_weights.write(f'Tx{i_channel + 1} = {shim_weights[i_channel]:.6f}\n')
+        file_rf_shim_weights.write(f'Tx{i_channel + 1}\t{np.abs(shim_weights[i_channel]):.3f}\t'
+                                   f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
     file_rf_shim_weights.close()
 
     return shim_weights
