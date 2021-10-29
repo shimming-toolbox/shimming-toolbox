@@ -9,6 +9,7 @@ import scipy.optimize
 from matplotlib.figure import Figure
 from scipy.stats import variation as cov
 from shimmingtoolbox.utils import montage
+from shimmingtoolbox.masking.threshold import threshold
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
 
     if mask is None:
         # If no mask is provided, shimming is performed over all non-zero values (pixels are set to 1 in mask)
-        mask = np.abs(b1_maps.sum(axis=-1)) != 0
+        mask = threshold(b1_maps.sum(axis=-1), thr=0)
 
     if b1_maps.shape[:-1] == mask.shape:
         # b1_roi will be a (n_pixels, n_channels) numpy array with the values present in the mask (values to shim).

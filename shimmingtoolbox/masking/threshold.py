@@ -4,15 +4,6 @@
 Image thresholding API
 """
 
-import glob
-import os
-import nibabel as nib
-import pathlib
-import tempfile
-import logging
-
-from shimmingtoolbox.utils import run_subprocess
-
 
 def threshold(data, thr=30):
     """
@@ -25,4 +16,4 @@ def threshold(data, thr=30):
     Returns:
         numpy.ndarray: Boolean mask with same dimensions as data
     """
-    return data > thr
+    return abs(data) > thr
