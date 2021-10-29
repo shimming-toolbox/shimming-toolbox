@@ -14,7 +14,7 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=None, SED=1.5, path_output=None):
+def b1_shim(b1_maps, mask, path_output, cp_weights=None, algorithm=1, target=None,  q_matrix=None, SED=1.5, ):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
@@ -109,48 +109,43 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
         logger.info(f"No Q matrix provided, performing unconstrained optimization.")
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
 
-    # Set up output of figures
-    if path_output is not None:
-        if not os.path.exists(path_output):
-            os.makedirs(path_output)
+    # Plot RF shimming results
+    single_pulse_weights = np.ones(8) / np.linalg.norm(np.ones(8))
+    b1_single_pulse = combine_maps(b1_maps, single_pulse_weights)  # Single pulse excitation
+    b1_single_pulse_roi = combine_maps(b1_roi, single_pulse_weights)
+    b1_cp = combine_maps(b1_maps, cp_weights)  # CP mode
+    b1_cp_roi = combine_maps(b1_roi, cp_weights)
+    b1_shimmed = combine_maps(b1_maps, shim_weights)  # Shimmed result
+    b1_shimmed_roi = combine_maps(b1_roi, shim_weights)
+    vmax = np.max(np.concatenate((b1_single_pulse, b1_cp, b1_shimmed)))
 
-        # Plot RF shimming results
-        single_pulse_weights = np.ones(8) / np.linalg.norm(np.ones(8))
-        b1_single_pulse = combine_maps(b1_maps, single_pulse_weights)  # Single pulse excitation
-        b1_single_pulse_roi = combine_maps(b1_roi, single_pulse_weights)
-        b1_cp = combine_maps(b1_maps, cp_weights)  # CP mode
-        b1_cp_roi = combine_maps(b1_roi, cp_weights)
-        b1_shimmed = combine_maps(b1_maps, shim_weights)  # Shimmed result
-        b1_shimmed_roi = combine_maps(b1_roi, shim_weights)
-        vmax = np.max(np.concatenate((b1_single_pulse, b1_cp, b1_shimmed)))
+    fig = Figure(figsize=(15, 15))
+    ax1 = fig.add_subplot(2, 2, 1)
+    im1 = ax1.imshow(montage(b1_single_pulse), vmax=vmax)
+    ax1.axis('off')
+    ax1.set_title(f"B1+ field (single pulse excitation)\nMean B1 in ROI: {b1_single_pulse_roi.mean():.3} nT/V\n"
+                  f"CoV in roi: {cov(b1_single_pulse_roi):.3}")
+    ax2 = fig.add_subplot(2, 2, 2)
+    ax2.imshow(montage(b1_cp), vmax=vmax)
+    ax2.axis('off')
+    ax2.set_title(f"B1+ field (CP mode)\nMean B1 in ROI: {b1_cp_roi.mean():.3} nT/V\nCoV in roi: "
+                  f"{cov(b1_cp_roi):.3}")
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax3.imshow(montage(b1_shimmed), vmax=vmax)
+    ax3.axis('off')
+    ax3.set_title(f"B1+ field (RF shimming)\nMean B1 in ROI: {b1_shimmed_roi.mean():.3} nT/V\n"
+                  f"CoV in roi: {cov(b1_shimmed_roi):.3f}")
+    ax4 = fig.add_subplot(2, 2, 4)
+    ax4.imshow(montage(mask))
+    ax4.axis('off')
+    ax4.set_title(f"Mask")
 
-        fig = Figure(figsize=(15, 15))
-        ax1 = fig.add_subplot(2, 2, 1)
-        im1 = ax1.imshow(montage(b1_single_pulse), vmax=vmax)
-        ax1.axis('off')
-        ax1.set_title(f"B1+ field (single pulse excitation)\nMean B1 in ROI: {b1_single_pulse_roi.mean():.3} nT/V\n"
-                      f"CoV in roi: {cov(b1_single_pulse_roi):.3}")
-        ax2 = fig.add_subplot(2, 2, 2)
-        im2 = ax2.imshow(montage(b1_cp), vmax=vmax)
-        ax2.axis('off')
-        ax2.set_title(f"B1+ field (CP mode)\nMean B1 in ROI: {b1_cp_roi.mean():.3} nT/V\nCoV in roi: "
-                      f"{cov(b1_cp_roi):.3}")
-        ax3 = fig.add_subplot(2, 2, 3)
-        im3 = ax3.imshow(montage(b1_shimmed), vmax=vmax)
-        ax3.axis('off')
-        ax3.set_title(f"B1+ field (RF shimming)\nMean B1 in ROI: {b1_shimmed_roi.mean():.3} nT/V\n"
-                      f"CoV in roi: {cov(b1_shimmed_roi):.3f}")
-        ax4 = fig.add_subplot(2, 2, 4)
-        ax4.imshow(montage(mask))
-        ax4.axis('off')
-        ax4.set_title(f"Mask")
+    fig.subplots_adjust(left=0.05, right=0.88, bottom=0.05, top=0.9)
+    colorbar_ax = fig.add_axes([0.91, 0.05, 0.02, 0.85])
+    fig.colorbar(im1, cax=colorbar_ax).ax.set_title('nT/V', fontsize=10)
 
-        fig.subplots_adjust(left=0.05, right=0.88, bottom=0.05, top=0.9)
-        colorbar_ax = fig.add_axes([0.91, 0.05, 0.02, 0.85])
-        fig.colorbar(im1, cax=colorbar_ax).ax.set_title('nT/V', fontsize=10)
-
-        fname_figure = os.path.join(path_output, 'b1_shim_results.png')
-        fig.savefig(fname_figure)
+    fname_figure = os.path.join(path_output, 'b1_shim_results.png')
+    fig.savefig(fname_figure)
 
     return shim_weights
 

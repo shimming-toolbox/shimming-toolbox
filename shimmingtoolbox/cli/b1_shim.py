@@ -10,7 +10,6 @@ import os
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.b1.b1_shim import b1_shim
 from shimmingtoolbox.utils import create_output_dir
-
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
@@ -33,8 +32,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR."
                    "SED between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF"
                    "shimming but might result in SAR excess at the scanner.")
-@click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir),
-              show_default=True, help="Directory to output shim weights text file and figures.")
+@click.option('-o', '--output', 'path_output', type=click.Path(),
+              default=os.path.join(os.curdir, 'b1_shim_results'), show_default=True,
+              help="Directory to output shim weights text file and figures.")
 def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, SED=1.5,
                 path_output=None):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
@@ -42,7 +42,19 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
     """
 
     # Load B1 map
-    _, _, b1_map = read_nii(fname_b1_map)
+    nii_b1, json_b1, b1_map = read_nii(fname_b1_map)
+
+    create_output_dir(path_output)
+
+    # Save uncombined B1 map as nifti
+    nii_b1.header["datatype"] = 32  # 32 corresponds to complex data
+    # s_form are bogus with tfl_rfmap so use qform instead when creating NIfTI image (makes it readable in fsleyes)
+    nii_b1 = nib.Nifti1Image(b1_map, nii_b1.header.get_qform())
+    json_b1["ImageComments"] = 'Complex uncombined B1 map (nT/V)'
+    fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii')
+    nib.save(nii_b1, fname_nii_b1)
+    file_json_b1 = open(os.path.join(path_output, 'TB1maps_uncombined.json'), mode='w')
+    json.dump(json_b1, file_json_b1)
 
     # Load static anatomical mask
     if fname_mask is not None:
@@ -63,8 +75,6 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
             i += 1
     else:
         cp_weights = None
-
-    create_output_dir(path_output)
 
     shim_weights = b1_shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
                            q_matrix=q_matrix, SED=SED, path_output=path_output)
