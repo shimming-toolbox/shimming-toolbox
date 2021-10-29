@@ -101,9 +101,10 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
     if q_matrix is not None:
         if SED < 1:
             raise ValueError(f"The SAR factor must be equal to or greater than 1.")
-        max_sar = SED * sar(vector_to_complex(weights_init), q_matrix)
-        cons = ({'type': 'ineq', 'fun': lambda w: -sar(vector_to_complex(w), q_matrix) + max_sar})  # SAR constraint
-        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=cons).x)
+        sar_limit = SED * max_sar(vector_to_complex(weights_init), q_matrix)
+        # Create SAR constraint
+        sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
+        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=sar_constraint).x)
     else:
         logger.info(f"No Q matrix provided, performing unconstrained optimization.")
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
@@ -282,7 +283,7 @@ def calc_approx_cp(n_channels):
         np.linalg.norm(np.ones(n_channels))
 
 
-def sar(weights, q_matrix):
+def max_sar(weights, q_matrix):
     """
     Returns the maximum local SAR corresponding to a set of shim weight and a set of Q matrices
     Args:
