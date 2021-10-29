@@ -46,13 +46,13 @@ def b1_shim(b1_maps, mask, path_output, cp_weights=None, algorithm=1, target=Non
                          f"{b1_maps.ndim}")
 
     if mask is None:
-        # If no mask is provided, shimming is performed over all non-zero values (pixels are set to 1 in mask)
+        # If no mask provided, mask = 1 for every pixel where b1_maps values are non-zero
         mask = threshold(b1_maps.sum(axis=-1), thr=0)
 
     if b1_maps.shape[:-1] == mask.shape:
-        # b1_roi will be a (n_pixels, n_channels) numpy array with the values present in the mask (values to shim).
+        # b1_roi will be a (n_pixels, n_channels) numpy array with all zero-valued pixel removed
         b1_roi = np.reshape(b1_maps * mask[:, :, :, np.newaxis], [x * y * n_slices, n_channels])
-        b1_roi = b1_roi[b1_roi[:, 0] != 0, :]
+        b1_roi = b1_roi[b1_roi.sum(axis=-1) != 0, :]  # Remove all zero values from the ROI
     else:
         raise ValueError(f"Mask and maps dimensions not matching.\n"
                          f"Maps dimensions: {b1_maps.shape[:-1]}\n"
