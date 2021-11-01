@@ -47,7 +47,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
 
     if mask is None:
         # If no mask provided, mask = 1 for every pixel where b1_maps values are non-zero
-        mask = threshold(b1_maps.sum(axis=-1), thr=0)
+        mask = threshold(b1_maps.sum(axis=-1), thr=0, b1map=True)
 
     if b1_maps.shape[:-1] == mask.shape:
         # b1_roi will be a (n_pixels, n_channels) numpy array with all zero-valued pixel removed
