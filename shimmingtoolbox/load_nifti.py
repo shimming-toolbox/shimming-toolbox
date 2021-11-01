@@ -183,7 +183,8 @@ def read_nii(fname_nifti, auto_scale=True):
             image = scale_tfl_b1(image, json_data)
             nii.header["datatype"] = 32  # 32 corresponds to complex data
             # s_form are bogus with tfl_rfmap so use qform when creating NIfTI image (makes it readable in fsleyes)
-            nii.set_affine = nii.header.get_qform()
+            nii.header.set_sform(nii.get_qform())
+            nii = nib.Nifti1Image(image, nii.header.get_qform(), header=nii.header)
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
@@ -194,11 +195,13 @@ def read_nii(fname_nifti, auto_scale=True):
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2))
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
+
+            # Create new nibabel object with updated image
+            nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
         else:
             logger.info("Unknown nifti type: No scaling applied")
 
-        # Create new nibabel object with updated image
-        nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
+
 
     else:
         logger.info("No scaling applied to selected nifti")
