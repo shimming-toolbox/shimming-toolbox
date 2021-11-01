@@ -181,6 +181,9 @@ def read_nii(fname_nifti, auto_scale=True):
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
             image = scale_tfl_b1(image, json_data)
+            nii.header["datatype"] = 32  # 32 corresponds to complex data
+            # s_form are bogus with tfl_rfmap so use qform when creating NIfTI image (makes it readable in fsleyes)
+            nii.set_affine = nii.header.get_qform()
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \

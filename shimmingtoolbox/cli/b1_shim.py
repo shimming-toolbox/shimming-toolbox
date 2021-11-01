@@ -47,9 +47,6 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
     create_output_dir(path_output)
 
     # Save uncombined B1 map as nifti
-    nii_b1.header["datatype"] = 32  # 32 corresponds to complex data
-    # s_form are bogus with tfl_rfmap so use qform instead when creating NIfTI image (makes it readable in fsleyes)
-    nii_b1 = nib.Nifti1Image(b1_map, nii_b1.header.get_qform())
     json_b1["ImageComments"] = 'Complex uncombined B1 map (nT/V)'
     fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii')
     nib.save(nii_b1, fname_nii_b1)
