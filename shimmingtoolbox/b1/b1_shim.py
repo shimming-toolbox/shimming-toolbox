@@ -14,7 +14,7 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=None, SED=1.5, path_output=None ):
+def b1_shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_matrix=None, SED=1.5, path_output=None ):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
@@ -47,6 +47,7 @@ def b1_shim(b1_maps, mask, cp_weights=None, algorithm=1, target=None,  q_matrix=
 
     if mask is None:
         # If no mask provided, mask = 1 for every pixel where b1_maps values are non-zero
+        logger.info("No mask provided, masking all zero-valued pixels.")
         mask = threshold(b1_maps.sum(axis=-1), thr=0, b1map=True)
 
     if b1_maps.shape[:-1] == mask.shape:

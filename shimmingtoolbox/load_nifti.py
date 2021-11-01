@@ -182,6 +182,7 @@ def read_nii(fname_nifti, auto_scale=True):
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
             image = scale_tfl_b1(image, json_data)
             nii.header["datatype"] = 32  # 32 corresponds to complex data
+            nii.header["aux_file"] = 'Uncombined B1+ maps'
             # s_form are bogus with tfl_rfmap so use qform when creating NIfTI image (makes it readable in fsleyes)
             nii.header.set_sform(nii.get_qform())
             nii = nib.Nifti1Image(image, nii.header.get_qform(), header=nii.header)

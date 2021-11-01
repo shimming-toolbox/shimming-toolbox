@@ -24,10 +24,10 @@ vop = load_siemens_vop(path_sar_file)
 
 
 def test_b1_shim(caplog):
-    shim_weights = b1_shim(b1_maps, mask)
+    shim_weights = b1_shim(b1_maps)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
+    assert r"No mask provided, masking all zero-valued pixels." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
 
 def test_b1_shim_algo_2(caplog):
     shim_weights = b1_shim(b1_maps, mask, algorithm=2, target=20)
