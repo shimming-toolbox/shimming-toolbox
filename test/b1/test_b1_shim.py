@@ -53,7 +53,7 @@ def test_b1_shim_constrained():
 
 def test_b1_shim_constrained_factor_too_small():
     with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
-        b1_shim(b1_maps, mask, q_matrix=vop, SED=0.9)
+        b1_shim(b1_maps, mask, q_matrix=vop, sed=0.9)
 
 
 def test_b1_shim_wrong_ndim():
