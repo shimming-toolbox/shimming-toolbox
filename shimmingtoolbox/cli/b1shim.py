@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from shimmingtoolbox.load_nifti import read_nii
-from shimmingtoolbox.b1.b1_shim import b1_shim
+from shimmingtoolbox.b1.b1shim import b1shim
 from shimmingtoolbox.utils import create_output_dir
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -35,7 +35,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-o', '--output', 'path_output', type=click.Path(),
               default=os.path.join(os.curdir, 'b1_shim_results'), show_default=True,
               help="Directory to output shim weights text file and figures.")
-def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, sed=1.5,
+def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, sed=1.5,
                 path_output=None):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
@@ -73,7 +73,7 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
     else:
         cp_weights = None
 
-    shim_weights = b1_shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
+    shim_weights = b1shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
                            q_matrix=q_matrix, sed=sed, path_output=path_output)
 
     # Write to a text file

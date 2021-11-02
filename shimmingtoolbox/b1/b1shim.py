@@ -14,7 +14,7 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1_shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_matrix=None, sed=1.5, path_output=None):
+def b1shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_matrix=None, sed=1.5, path_output=None):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 

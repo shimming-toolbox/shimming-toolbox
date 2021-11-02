@@ -6,7 +6,7 @@ import pytest
 import tempfile
 
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.b1.b1_shim import *
+from shimmingtoolbox.b1.b1shim import *
 from shimmingtoolbox.b1.load_vop import *
 from shimmingtoolbox.load_nifti import read_nii
 
@@ -23,74 +23,75 @@ path_sar_file = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser.mat
 vop = load_siemens_vop(path_sar_file)
 
 
-def test_b1_shim(caplog):
-    shim_weights = b1_shim(b1_maps)
+def test_b1shim(caplog):
+    shim_weights = b1shim(b1_maps)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert r"No mask provided, masking all zero-valued pixels." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
-def test_b1_shim_algo_2(caplog):
-    shim_weights = b1_shim(b1_maps, mask, algorithm=2, target=20)
+
+def test_b1shim_algo_2(caplog):
+    shim_weights = b1shim(b1_maps, mask, algorithm=2, target=20)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_algo_2_no_target():
+def test_b1shim_algo_2_no_target():
     with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
-        b1_shim(b1_maps, mask, algorithm=2)
+        b1shim(b1_maps, mask, algorithm=2)
 
 
-def test_b1_shim_algo_3(caplog):
-    shim_weights = b1_shim(b1_maps, mask, algorithm=3)
+def test_b1shim_algo_3(caplog):
+    shim_weights = b1shim(b1_maps, mask, algorithm=3)
     assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_constrained():
-    shim_weights = b1_shim(b1_maps, mask, q_matrix=vop)
+def test_b1shim_constrained():
+    shim_weights = b1shim(b1_maps, mask, q_matrix=vop)
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_constrained_factor_too_small():
+def test_b1shim_constrained_factor_too_small():
     with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
-        b1_shim(b1_maps, mask, q_matrix=vop, sed=0.9)
+        b1shim(b1_maps, mask, q_matrix=vop, sed=0.9)
 
 
-def test_b1_shim_wrong_ndim():
+def test_b1shim_wrong_ndim():
     with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\n"
                                          r"Actual: 3"):
-        b1_shim(b1_maps[:, :, :, 0], mask)
+        b1shim(b1_maps[:, :, :, 0], mask)
 
 
-def test_b1_shim_wrong_mask_shape():
+def test_b1shim_wrong_mask_shape():
     with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching.\n"
                                          r"Maps dimensions: \(64, 44, 5\)\n"
                                          r"Mask dimensions: \(63, 44, 5\)"):
-        b1_shim(b1_maps, mask[:-1, :, :])
+        b1shim(b1_maps, mask[:-1, :, :])
 
 
-def test_b1_shim_cp_mode():
-    shim_weights = b1_shim(b1_maps, mask, cp_weights)
+def test_b1shim_cp_mode():
+    shim_weights = b1shim(b1_maps, mask, cp_weights)
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_cp_mode_not_normalized(caplog):
+def test_b1shim_cp_mode_not_normalized(caplog):
     cp_weights_not_normalized = np.asarray([2*cp_weights[i] for i in range(len(cp_weights))])
-    shim_weights = b1_shim(b1_maps, mask, cp_weights_not_normalized)
+    shim_weights = b1shim(b1_maps, mask, cp_weights_not_normalized)
     assert r"Normalizing the CP mode weights." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1_shim_cp_mode_wrong_length():
+def test_b1shim_cp_mode_wrong_length():
     with pytest.raises(ValueError, match=r"The number of CP weights does not match the number of channels.\n"
                                          r"Number of CP weights: 7\n"
                                          r"Number of channels: 8"):
-        b1_shim(b1_maps, mask, cp_weights[:-1])
+        b1shim(b1_maps, mask, cp_weights[:-1])
 
 
-def test_b1_shim_output_figure(caplog):
+def test_b1shim_output_figure(caplog):
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        b1_shim(b1_maps, mask, path_output=tmp)
+        b1shim(b1_maps, mask, path_output=tmp)
 
 
 def test_vector_to_complex():
