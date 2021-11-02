@@ -37,7 +37,7 @@ def test_b1_shim_cli_args():
         # Run the CLI
         runner = CliRunner()
         result = runner.invoke(b1_shim_cli, ['--b1map', fname_b1_map, '--cp', fname_cp_json, '--algo', 2, '--target',
-                                             20, '--SED', 1.2, '--output', path_output], catch_exceptions=True)
+                                             20, '--sed', 1.2, '--output', path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
 
