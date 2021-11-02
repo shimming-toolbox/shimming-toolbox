@@ -28,14 +28,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "3 - Maximizes the minimum B1+ value for better efficiency.")
 @click.option('--target', 'target', type=float, required=False,
               help="Target B1+ value used by algorithm 2 in nT/V")
-@click.option('--SED', 'SED', type=float, required=False,
+@click.option('--sed', 'sed', type=float, required=False,
               help="Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR."
                    "SED between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF"
                    "shimming but might result in SAR excess at the scanner.")
 @click.option('-o', '--output', 'path_output', type=click.Path(),
               default=os.path.join(os.curdir, 'b1_shim_results'), show_default=True,
               help="Directory to output shim weights text file and figures.")
-def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, SED=1.5,
+def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, sed=1.5,
                 path_output=None):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
@@ -74,7 +74,7 @@ def b1_shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, ta
         cp_weights = None
 
     shim_weights = b1_shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
-                           q_matrix=q_matrix, SED=SED, path_output=path_output)
+                           q_matrix=q_matrix, sed=sed, path_output=path_output)
 
     # Write to a text file
     fname_output = os.path.join(path_output, 'RF_shim_weights.txt')
