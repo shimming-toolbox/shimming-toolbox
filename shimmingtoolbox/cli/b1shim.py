@@ -8,7 +8,7 @@ import numpy as np
 import os
 
 from shimmingtoolbox.load_nifti import read_nii
-from shimmingtoolbox.b1.b1shim import b1shim
+from shimmingtoolbox.shim.b1shim import b1shim
 from shimmingtoolbox.utils import create_output_dir
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
