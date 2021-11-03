@@ -27,7 +27,7 @@ setup(
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
             "st_image=shimmingtoolbox.cli.image:image_cli",
-            "st_maths=shimmingtoolbox.cli.maths:maths_cli"
+            "st_maths=shimmingtoolbox.cli.maths:maths_cli",
             "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:create_coil_profiles_cli"
         ]
     },
