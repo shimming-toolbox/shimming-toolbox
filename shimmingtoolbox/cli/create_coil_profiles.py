@@ -15,7 +15,6 @@ from shimmingtoolbox.masking.threshold import threshold as mask_threshold
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +37,8 @@ logger = logging.getLogger(__name__)
               help="Output path filename of coil profile nifti file. Supported types : '.nii', '.nii.gz'")
 def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussian_filter, sigma, fname_output):
     """Create b0 coil profiles from acquisitions defined in the input json file"""
+
+    # Todo: Set logger level according to --log level. Remove line about basic config
 
     # Get directory
     path_output = os.path.dirname(os.path.abspath(fname_output))
@@ -120,3 +121,19 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     # Save nii and json
     save_nii_json(nii_profiles, fname_json_phase, fname_output)
     logger.info(f"\n\n Filename of the coil profiles is: {fname_output}")
+
+    # Create coil config file
+    coil_name = json_data['name']
+
+    config_coil = {
+        'name': coil_name,
+        'coef_channel_minmax': json_data['coef_channel_minmax'],
+        'coef_sum_max': json_data['coef_sum_max']
+    }
+
+    # write json
+    fname_coil_config = os.path.join(path_output, coil_name + '_config.json')
+    with open(fname_coil_config, mode='w') as f:
+        json.dump(config_coil, f, indent=4)
+
+    logger.info(f"Filename of the coil config file is: {fname_coil_config}")
