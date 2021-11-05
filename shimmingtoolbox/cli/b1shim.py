@@ -8,35 +8,35 @@ import numpy as np
 import os
 
 from shimmingtoolbox.load_nifti import read_nii
-from shimmingtoolbox.shim.b1shim import b1shim
+from shimmingtoolbox.shim.b1shim import b1shim, load_siemens_vop
 from shimmingtoolbox.utils import create_output_dir
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--b1map', 'fname_b1_map', required=True, type=click.Path(exists=True),
-              help="Path to B1 nifti as returned by st_dicom_to_nifti.")  # TODO consider using pre scaled B1 maps here
+              help="Path to B1 nifti as returned by st_dicom_to_nifti.")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
-              help="3D nifti file used to define the static spatial region to shim. "
-                   "The coordinate system should be the same as ``b1map``'s coordinate system.")
+              help="3D nifti file used to define the static spatial region to shim. The coordinate system should be the"
+                   " same as ``b1map``'s coordinate system.")
 @click.option('--cp', 'fname_cp_weights', type=click.Path(exists=True), required=False,
               help="json file containing CP weights. See config/cp_mode.json for example.")
 @click.option('--algo', 'algorithm', type=int, default=1, show_default=True,
-              help="Number from 1 to 3 specifying which algorithm to use for B1 optimization"
-                   "1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field."
-                   "2 - Magnitude least square optimization targeting a specific B1+ value. Target value required."
+              help="Number from 1 to 3 specifying which algorithm to use for B1 optimization.\n"
+                   "1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.\n"
+                   "2 - Magnitude least square optimization targeting a specific B1+ value. Target value required.\n"
                    "3 - Maximizes the minimum B1+ value for better efficiency.")
-@click.option('--target', 'target', type=float, required=False,
-              help="Target B1+ value used by algorithm 2 in nT/V")
-@click.option('--sed', 'sed', type=float, required=False,
+@click.option('--target', 'target', type=float, required=False, help="Target B1+ value used by algorithm 2 in nT/V.")
+@click.option('--vop', 'fname_vop', type=click.Path(exists=True), required=False,
+              help="Path to the SarDataUser.mat file containing the VOP used for SAR constraint. This file can be found"
+                   " on the scanner in C:/MedcomMriProduct/PhysConfig.")
+@click.option('--sed', 'sed', type=float, required=False, default=1.5,
               help="Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR."
                    "SED between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF"
                    "shimming but might result in SAR excess at the scanner.")
-@click.option('-o', '--output', 'path_output', type=click.Path(),
-              default=os.path.join(os.curdir, 'b1_shim_results'), show_default=True,
-              help="Directory to output shim weights text file and figures.")
-def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, target=None, q_matrix=None, sed=1.5,
-                path_output=None):
+@click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir, 'b1_shim_results'),
+              show_default=True, help="Directory to output shim weights text file and figures.")
+def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights, algorithm, target, fname_vop, sed, path_output):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
     """
@@ -73,8 +73,13 @@ def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights=None, algorithm=1, tar
     else:
         cp_weights = None
 
+    if fname_vop is not None:
+        vop = load_siemens_vop(fname_vop)
+    else:
+        vop = None
+
     shim_weights = b1shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
-                           q_matrix=q_matrix, sed=sed, path_output=path_output)
+                          q_matrix=vop, sed=sed, path_output=path_output)
 
     # Write to a text file
     fname_output = os.path.join(path_output, 'RF_shim_weights.txt')
