@@ -46,6 +46,12 @@ def test_b1shim_algo_3(caplog):
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
+def test_b1shim_algo_wrong_algo():
+    with pytest.raises(ValueError, match=r"The specified algorithm does not exist. It must be an integer between 1 "
+                                         r"and 3."):
+        b1shim(b1_maps, mask, algorithm=4)
+
+
 def test_b1shim_constrained():
     shim_weights = b1shim(b1_maps, mask, q_matrix=vop)
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
@@ -172,7 +178,6 @@ def test_calc_approx_cp():
 
 
 def test_load_siemens_vop():
-    vop = load_siemens_vop(path_sar_file)
     assert np.isclose(vop[:, 4, 55], [0.00028431 - 2.33700119e-04j,  0.00039449 - 3.11945268e-04j,
                                       0.00052208 - 1.17153693e-03j,  0.00104146 - 1.76284793e-03j,
                                       0.00169108 + 2.29006638e-21j,  0.00051032 + 4.99291087e-04j,
