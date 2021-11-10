@@ -96,7 +96,7 @@ def b1shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_mat
             return 1 / np.min(b1_abs)
 
     else:
-        raise ValueError(f"The specified algorithm does not exist. It must be an integer between 1 and 5.")
+        raise ValueError(f"The specified algorithm does not exist. It must be an integer between 1 and 3.")
 
     # Q matrices to compute the local SAR values for each 10g of tissue (or subgroups of pixels if VOP are used).
     # If no Q matrix is provided, unconstrained optimization is performed
