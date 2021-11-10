@@ -108,8 +108,10 @@ def b1shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_mat
         sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=sar_constraint).x)
     else:
-        logger.info(f"No Q matrix provided, performing unconstrained optimization.")
-        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
+        norm_cons = ({'type': 'eq', 'fun': lambda x: np.linalg.norm(vector_to_complex(x)) - 1})  # Norm constraint
+        logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
+                    f"normalized.")
+        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=norm_cons).x)
 
     # Plot RF shimming results
     if path_output is not None:
