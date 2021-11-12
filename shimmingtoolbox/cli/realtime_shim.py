@@ -89,7 +89,8 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     corr_riro_vox = (riro_xcorrection, riro_ycorrection, riro_zcorrection)
     freq_riro_corr, phase_riro_corr, slice_riro_corr = [corr_riro_vox[dim] for dim in dim_info]
 
-    # To output to the proper coord system, axes need some inversions
+    # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is defined by
+    # the frequency, phase and slice encode directions.
     # TODO: More thorough tests
     phase_encode_is_positive = _get_phase_encode_direction_sign(fname_anat)
     if not phase_encode_is_positive:
@@ -130,7 +131,7 @@ def _get_phase_encode_direction_sign(fname_nii):
     """ Returns the phase encode direction sign
 
     Args:
-        fname_nii (str): Filename to a nifti file with its corresponding json file
+        fname_nii (str): Filename to a NIfTI file with its corresponding json file.
 
     Returns:
         bool: Returns whether the encoding direction is positive (True) or negative (False)
