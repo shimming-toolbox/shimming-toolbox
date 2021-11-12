@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(),
-              help="B0 fieldmap in hertz. This should be a 4d file (4th dimension being time")
+              help="B0 fieldmap in Hertz. This should be a 4d file (4th dimension being time")
 @click.option('--anat', 'fname_anat', type=click.Path(), required=True,
               help="Filename of the anatomical image to apply the correction.")
 @click.option('--resp', 'fname_resp', type=click.Path(), required=True,
@@ -34,9 +34,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               show_default=True,
               help="Directory to output gradient text file and figures.")
 def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
-    """ Perform realtime xyz-shimming. This function will generate textfiles containing static and dynamic (due to
+    """ Perform realtime xyz-shimming. This function will generate text files containing static and dynamic (due to
     respiration) Gx, Gy, Gz components based on a fieldmap time series and respiratory trace information obtained from
-    Siemens bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitiude image is used to
+    Siemens bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitude image is used to
     resample the static and dynamic Gx, Gy, Gz component maps to match the MGRE image. Lastly the mean Gx, Gy, Gz
     values within the ROI are computed for each slice. The mean pressure is also generated in the text file to be used
     to shim.
@@ -51,7 +51,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     if dim_info[2] != 2:
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
-        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
     # Load static anatomical mask
     if fname_mask_anat_static is not None:
