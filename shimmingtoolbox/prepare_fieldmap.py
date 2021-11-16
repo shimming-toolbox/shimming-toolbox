@@ -2,24 +2,24 @@
 # -*- coding: utf-8 -*
 
 import math
+import nibabel
 import numpy as np
 from skimage.filters import gaussian
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 
 
-def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, mask=None, threshold=None,
+def prepare_fieldmap(list_nii_phase, echo_times, unwrapper='prelude', mag=None, mask=None, threshold=None,
                      gaussian_filter=False, sigma=1):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
 
     Args:
-        phase (list): List of phase values in a numpy.ndarray. The numpy array can be [x, y], [x, y, z] or [x, y, z, t].
-                      The values must range from [-pi to pi].
+        list_nii_phase (list): List of nib.Nifti1Image phase values. The array can be [x, y], [x, y, z] or [x, y, z, t].
+                               The values must range from [-pi to pi].
         echo_times (list): List of echo times in seconds for each echo. The number of echotimes must match the number of
                            echoes. It input is a phasediff (1 phase), input 2 echotimes.
-        affine (numpy.ndarray): 4x4 affine matrix.
         unwrapper (str): Unwrapper to use for phase unwrapping. Supported: prelude.
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
         mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
@@ -29,6 +29,9 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     Returns
         numpy.ndarray: Unwrapped fieldmap in Hz.
     """
+
+    phase = [nii_phase.get_fdata() for nii_phase in list_nii_phase]
+
     # Check inputs
     for i_echo in range(len(phase)):
         # Check that the output phase is in radian (Note: the test below is not 100% bullet proof)
@@ -36,7 +39,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
 
             # If this is a rounding error from saving niftis, let it go, the algorithm can handle the difference.
             if (phase[i_echo].max() > math.pi + 1e-6) or (phase[i_echo].min() < -math.pi - 1e-6):
-                raise RuntimeError("read_nii must range from -pi to pi.")
+                raise ValueError("Values must range from -pi to pi.")
             else:
                 pass
                 # phase[i_echo][phase[i_echo] > math.pi] = math.pi
@@ -46,23 +49,23 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
     is_phasediff = (len(phase) == 1 and len(echo_times) == 2)
     if not is_phasediff:
         if len(phase) != len(echo_times) or (len(phase) == 1 and len(echo_times) == 1):
-            raise RuntimeError("Phasediff must have 2 echotime points. Otherwise the number of echoes must match the"
-                               " number of echo times.")
+            raise ValueError("The number of echoes must match the number of echo times unless there is 1 echo, which "
+                             "requires 2 echo_times")
 
     # Make sure mag is the right shape
     if mag is not None:
         if mag.shape != phase[0].shape:
-            raise RuntimeError("mag and phase must have the same dimensions.")
+            raise ValueError("mag and phase must have the same dimensions.")
 
     # Make sure mask has the right shape
     if mask is not None:
         if mask.shape != phase[0].shape:
-            raise RuntimeError("Shape of mask and phase must match.")
+            raise ValueError("Shape of mask and phase must match.")
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
         # phase should be a phasediff
-        phasediff = phase[0]
+        nii_phasediff = list_nii_phase[0]
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
 
     elif len(phase) == 2:
@@ -73,6 +76,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
         comp_0 = np.ones_like(echo_0) * np.exp(-1j * echo_0)
         comp_1 = np.ones_like(echo_1) * np.exp(1j * echo_1)
         phasediff = np.angle(comp_0 * comp_1)
+        nii_phasediff = nibabel.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
 
         # Calculate the echo time difference
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
@@ -83,7 +87,7 @@ def prepare_fieldmap(phase, echo_times, affine, unwrapper='prelude', mag=None, m
         raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
 
     # Run the unwrapper
-    phasediff_unwrapped = unwrap_phase(phasediff, affine, unwrapper=unwrapper, mag=mag, mask=mask, threshold=threshold)
+    phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask, threshold=threshold)
 
     # TODO: correct for potential wraps between time points
 

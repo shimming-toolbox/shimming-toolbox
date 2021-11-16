@@ -64,32 +64,32 @@ class TestCore(object):
         nii_mag_e1 = nib.load(fname_mags[0])
         nii_mag_e2 = nib.load(fname_mags[1])
 
-        # Make tests fater by having the last dim only be 1
-        self.phase_e1 = np.expand_dims(phase_e1[..., 0], -1)
-        self.phase_e2 = np.expand_dims(phase_e2[..., 0], -1)
+        # Make tests faster by having the last dim only be 1
+        self.nii_phase_e1 = nib.Nifti1Image(np.expand_dims(phase_e1[..., 0], -1), nii_phase_e1.affine,
+                                            header=nii_phase_e1.header)
+        self.nii_phase_e2 = nib.Nifti1Image(np.expand_dims(phase_e2[..., 0], -1), nii_phase_e1.affine,
+                                            header=nii_phase_e1.header)
         self.mag_e1 = np.expand_dims(nii_mag_e1.get_fdata()[..., 0], -1)
         self.mag_e2 = np.expand_dims(nii_mag_e2.get_fdata()[..., 0], -1)
-        self.affine_phase_e1 = nii_phase_e1.affine
-        self.affine_phase_e2 = nii_phase_e2.affine
 
     def test_default_works(self):
         """
         Runs prelude and check output integrity.
         """
         # default prelude call
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1)
+        unwrapped_phase_e1 = prelude(self.nii_phase_e1)
 
-        assert (unwrapped_phase_e1.shape == self.phase_e1.shape)
+        assert (unwrapped_phase_e1.shape == self.nii_phase_e1.shape)
 
     def test_non_default_mask(self):
         """
         Check prelude function with input binary mask.
         """
         # Create mask with all ones
-        mask = np.ones(self.phase_e1.shape)
+        mask = np.ones(self.nii_phase_e1.shape)
 
         # Call prelude with mask (is_unwrapping_in_2d is also used because it is significantly faster)
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, mask=mask,
+        unwrapped_phase_e1 = prelude(self.nii_phase_e1, mag=self.mag_e1, mask=mask,
                                      is_unwrapping_in_2d=True)
 
         # Make sure the phase is not 0. When there isn't a mask, the phase is 0
@@ -99,68 +99,34 @@ class TestCore(object):
         # Create mask with wrong dimensions
         mask = np.ones([4, 4, 4])
 
-        # Call prelude with mask
-        try:
-            prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, mask=mask)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour since the mask is the wrong dimensions
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print('\nWrong dimensions for mask does not throw an error')
-        assert False
+        with pytest.raises(ValueError, match="Mask must be the same shape as wrapped_phase"):
+            prelude(self.nii_phase_e1, mag=self.mag_e1, mask=mask)
 
     def test_wrong_phase_dimensions(self):
         # Call prelude phase with wrong dimensions
-        phase_e1 = np.ones([4, 4])
+        phase_e1 = np.ones([4])
+        nii = nib.Nifti1Image(phase_e1, self.nii_phase_e1.affine, header=self.nii_phase_e1.header)
 
-        try:
-            prelude(phase_e1, self.affine_phase_e1, mag=self.mag_e1)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print('\nWrong dimensions for phase input')
-        assert False
+        with pytest.raises(ValueError, match="Wrapped_phase must be 2d or 3d"):
+            prelude(nii, mag=self.mag_e1)
 
     def test_wrong_mag_dimensions(self):
         # Call prelude phase with wrong dimensions
         mag_e1 = np.ones([4, 4, 4])
 
-        try:
-            prelude(self.phase_e1, self.affine_phase_e1, mag=mag_e1)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print('\nWrong dimensions for mag input')
-        assert False
-
-    def test_wrong_mag_and_phase_dimensions(self):
-        # Call prelude phase with wrong dimensions
-        mag_e1 = np.ones([4, 4, 4])
-        phase_e1 = np.ones([4])
-
-        try:
-            prelude(phase_e1, self.affine_phase_e1, mag=mag_e1)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print('\nWrong dimensions both mag and phase input')
-        assert False
+        with pytest.raises(ValueError, match=r"The magnitude image \(mag\) must be the same shape as wrapped_phase"):
+            prelude(self.nii_phase_e1, mag=mag_e1)
 
     def test_phase_2d(self):
         """
         Call prelude with a 2D phase and mag array
         """
         # Get first slice
-        phase_e1_2d = self.phase_e1[:, :, 0]
+        phase_e1_2d = self.nii_phase_e1.get_fdata()[:, :, 0]
         mag_e1_2d = self.mag_e1[:, :, 0]
-        unwrapped_phase_e1 = prelude(phase_e1_2d, self.affine_phase_e1, mag=mag_e1_2d)
+        nii = nib.Nifti1Image(phase_e1_2d, self.nii_phase_e1.affine, header=self.nii_phase_e1.header)
+
+        unwrapped_phase_e1 = prelude(nii, mag=mag_e1_2d)
 
         assert(unwrapped_phase_e1.shape == phase_e1_2d.shape)
 
@@ -168,8 +134,8 @@ class TestCore(object):
         """
         Call prelude with a threshold for masking
         """
-        unwrapped_phase_e1 = prelude(self.phase_e1, self.affine_phase_e1, mag=self.mag_e1, threshold=200)
-        assert(unwrapped_phase_e1.shape == self.phase_e1.shape)
+        unwrapped_phase_e1 = prelude(self.nii_phase_e1, mag=self.mag_e1, threshold=200)
+        assert(unwrapped_phase_e1.shape == self.nii_phase_e1.shape)
 
     def test_3rd_dim_singleton(self):
         """
@@ -177,10 +143,11 @@ class TestCore(object):
         """
 
         # Prepare singleton
-        phase_singleton = np.expand_dims(self.phase_e1[..., 0], -1)
+        phase_singleton = np.expand_dims(self.nii_phase_e1.get_fdata()[..., 0], -1)
         mag_singleton = np.expand_dims(self.mag_e1[..., 0], -1)
+        nii = nib.Nifti1Image(phase_singleton, self.nii_phase_e1.affine, header=self.nii_phase_e1.header)
 
-        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+        unwrapped_phase_singleton = prelude(nii, mag=mag_singleton)
 
         assert unwrapped_phase_singleton.ndim == 3
 
@@ -190,10 +157,11 @@ class TestCore(object):
         """
 
         # Prepare singleton
-        phase_singleton = np.expand_dims(self.phase_e1[:, 0, 0], -1)
+        phase_singleton = np.expand_dims(self.nii_phase_e1.get_fdata()[:, 0, 0], -1)
         mag_singleton = np.expand_dims(self.mag_e1[:, 0, 0], -1)
+        nii = nib.Nifti1Image(phase_singleton, self.nii_phase_e1.affine, header=self.nii_phase_e1.header)
 
-        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+        unwrapped_phase_singleton = prelude(nii, mag=mag_singleton)
 
         assert unwrapped_phase_singleton.ndim == 2
 
@@ -203,9 +171,10 @@ class TestCore(object):
         """
 
         # Prepare singleton
-        phase_singleton = np.expand_dims(np.expand_dims(self.phase_e1[:, 0, 0], -1), -1)
+        phase_singleton = np.expand_dims(np.expand_dims(self.nii_phase_e1.get_fdata()[:, 0, 0], -1), -1)
         mag_singleton = np.expand_dims(np.expand_dims(self.mag_e1[:, 0, 0], -1), -1)
+        nii = nib.Nifti1Image(phase_singleton, self.nii_phase_e1.affine, header=self.nii_phase_e1.header)
 
-        unwrapped_phase_singleton = prelude(phase_singleton, self.affine_phase_e1, mag=mag_singleton)
+        unwrapped_phase_singleton = prelude(nii, mag=mag_singleton)
 
         assert unwrapped_phase_singleton.ndim == 3

@@ -17,8 +17,8 @@ class TestPrepareFieldmap(object):
         fname_phase = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                    'sub-example_phasediff.nii.gz')
         nii_phase = nib.load(fname_phase)
-        self.phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]
-        self.affine = nii_phase.affine
+        phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]
+        self.nii_phase = nib.Nifti1Image(phase, nii_phase.affine, header=nii_phase.header)
         fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                                  'sub-example_magnitude1.nii.gz')
         nii_mag = nib.load(fname_mag)
@@ -27,18 +27,18 @@ class TestPrepareFieldmap(object):
 
     def test_prepare_fieldmap_1_echo(self):
         """Test default works."""
-        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine)
+        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times)
 
-        assert fieldmap.shape == self.phase.shape
+        assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
-                                 np.array([18.51355514, 13.84794053,  9.48013154,  5.11232207,  0.64524454])))
+                                 np.array([18.51407573, 13.85066883,  9.47872498,  5.11298149,  0.64801652])))
 
     def test_prepare_fieldmap_with_mag(self):
         """Test mag works."""
-        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mag=self.mag)
+        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, mag=self.mag)
 
-        assert fieldmap.shape == self.phase.shape
+        assert fieldmap.shape == self.nii_phase.shape
 
     def test_prepare_fieldmap_2_echoes(self):
         """Test 2 echoes works."""
@@ -47,9 +47,11 @@ class TestPrepareFieldmap(object):
         fname_phase1 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         nii_phase1 = nib.load(fname_phase1)
         phase1 = (nii_phase1.get_fdata() * 2 * math.pi / 4095) - math.pi
+        nii_phase1_re = nib.Nifti1Image(phase1, nii_phase1.affine, header=nii_phase1.header)
         fname_phase2 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
         nii_phase2 = nib.load(fname_phase2)
         phase2 = (nii_phase2.get_fdata() * 2 * math.pi / 4095) - math.pi
+        nii_phase1_re = nib.Nifti1Image(phase2, nii_phase2.affine, header=nii_phase2.header)
 
         # Load mag data to speed it prelude
         fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
@@ -57,105 +59,58 @@ class TestPrepareFieldmap(object):
 
         echo_times = [0.0025, 0.0055]
 
-        fieldmap = prepare_fieldmap([phase1, phase2], echo_times, nii_phase1.affine, mag=mag)
+        fieldmap = prepare_fieldmap([nii_phase1_re, nii_phase1_re], echo_times, mag=mag)
 
         assert fieldmap.shape == phase1.shape
 
     # Tests that should throw errors
     def test_prepare_fieldmap_wrong_range(self):
         """Test error when range is not between -pi and pi."""
-
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase - math.pi], self.echo_times, self.affine)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nRange is not between -pi and pi but does not throw an error.")
-        assert False
+        nii = nib.Nifti1Image(self.nii_phase.get_fdata() - math.pi, self.nii_phase.affine, header=self.nii_phase.header)
+        with pytest.raises(ValueError, match="Values must range from -pi to pi."):
+            fieldmap = prepare_fieldmap([nii], self.echo_times)
 
     def test_prepare_fieldmap_wrong_echo_times(self):
         """Wrong number of echo times."""
 
         echo_times = [0.001, 0.002, 0.003]
-
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase], echo_times, self.affine)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nEcho_times has too many elements but does not throw an error.")
-        assert False
+        with pytest.raises(ValueError, match="The number of echoes must match the number of echo times unless there is "
+                                             "1 echo"):
+            prepare_fieldmap([self.nii_phase], echo_times)
 
     def test_prepare_fieldmap_mag_wrong_shape(self):
         """Mag has the wrong shape."""
 
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mag=np.zeros_like([5, 5]))
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nMag has the wrong shape but does not throw an error.")
-        assert False
+        with pytest.raises(ValueError, match="mag and phase must have the same dimensions."):
+            prepare_fieldmap([self.nii_phase], self.echo_times, mag=np.zeros_like([5, 5]))
 
     def test_prepare_fieldmap_mask_wrong_shape(self):
         """Mask has the wrong shape."""
 
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, mask=np.zeros_like([5, 5]))
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nMask has the wrong shape but does not throw an error.")
-        assert False
+        with pytest.raises(ValueError, match="Shape of mask and phase must match."):
+            prepare_fieldmap([self.nii_phase], self.echo_times, mask=np.zeros_like([5, 5]))
 
     def test_prepare_fieldmap_phasediff_1_echotime(self):
         """EchoTime of length one for phasediff should fail."""
 
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase], [self.echo_times[0]], self.affine)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\necho_time has the wrong shape but does not throw an error.")
-        assert False
+        with pytest.raises(ValueError, match="The number of echoes must match the number of echo times unless there is "
+                                             "1 echo"):
+            prepare_fieldmap([self.nii_phase], [self.echo_times[0]])
 
     def test_prepare_fieldmap_3_echoes(self):
         """3 echoes are not implemented so the test should fail."""
 
         echo_times = [0.001, 0.002, 0.003]
 
-        # This should return an error
-        try:
-            fieldmap = prepare_fieldmap([self.phase, self.phase, self.phase], echo_times, self.affine)
-        except NotImplementedError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\n3 echoes are not implemented.")
-        assert False
+        with pytest.raises(NotImplementedError, match="This number of phase input is not supported:"):
+            prepare_fieldmap([self.nii_phase, self.nii_phase, self.nii_phase], echo_times)
 
     def test_prepare_fieldmap_gaussian_filter(self):
         """ Test output of gaussian filter optional argument"""
 
-        fieldmap = prepare_fieldmap([self.phase], self.echo_times, self.affine, gaussian_filter=True, sigma=1)
+        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, gaussian_filter=True, sigma=1)
 
-        assert fieldmap.shape == self.phase.shape
+        assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
-                                 np.array([19.46307638, 15.46251356, 11.05021768,  6.28096375,  1.30868717])))
+                                 np.array([19.46321364, 15.46275223, 11.0505227 ,  6.28134902,  1.30906534])))

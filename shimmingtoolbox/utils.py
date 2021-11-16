@@ -45,24 +45,25 @@ def add_suffix(fname, suffix):
     - ``add_suffix(t2.nii.gz, a)`` -> ``t2a.nii.gz``
     """
 
-    def _splitext(fname):
-        """
-        Split a fname (folder/file + ext) into a folder/file and extension.
-
-        Note: for .nii.gz the extension is understandably .nii.gz, not .gz
-        (``os.path.splitext()`` would want to do the latter, hence the special case).
-        """
-        dir, filename = os.path.split(fname)
-        for special_ext in ['.nii.gz', '.tar.gz']:
-            if filename.endswith(special_ext):
-                stem, ext = filename[:-len(special_ext)], special_ext
-                return os.path.join(dir, stem), ext
-        # If no special case, behaves like the regular splitext
-        stem, ext = os.path.splitext(filename)
-        return os.path.join(dir, stem), ext
-
-    stem, ext = _splitext(fname)
+    stem, ext = splitext(fname)
     return os.path.join(stem + suffix + ext)
+
+
+def splitext(fname):
+    """
+    Split a fname (folder/file + ext) into a folder/file and extension.
+
+    Note: for .nii.gz the extension is understandably .nii.gz, not .gz
+    (``os.path.splitext()`` would want to do the latter, hence the special case).
+    """
+    dir, filename = os.path.split(fname)
+    for special_ext in ['.nii.gz', '.tar.gz']:
+        if filename.endswith(special_ext):
+            stem, ext = filename[:-len(special_ext)], special_ext
+            return os.path.join(dir, stem), ext
+    # If no special case, behaves like the regular splitext
+    stem, ext = os.path.splitext(filename)
+    return os.path.join(dir, stem), ext
 
 
 def iso_times_to_ms(iso_times):
@@ -171,3 +172,28 @@ def set_all_loggers(verbose, list_exclude=('matplotlib',)):
 
     for a_logger in loggers:
         a_logger.setLevel(verbose.upper())
+
+
+def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
+    """Concatenates images stored in a 3D array
+    Args:
+        X (numpy.ndarray): 3D array with the last dimension being the one in which the different images are stored
+        colormap (str): Colors in which the montage will be displayed.
+        title (str): Title to display above the figure.
+        vmin (float): Minimum display range value. If None, set the the min value of X.
+        vmax (float): Maximum display range value. If None, set the the max value of X.
+    """
+    X = np.rot90(X)
+    x, y, n_images = np.shape(X)
+    mm = np.floor(np.sqrt(n_images)).astype(int)
+    nn = np.ceil(n_images/mm).astype(int)
+    result = np.zeros((mm * x, nn * y))
+    image_id = 0
+    for k in range(mm):
+        for j in range(nn):
+            if image_id >= n_images:
+                break
+            slice_m, slice_n = k * x, j * y
+            result[slice_m:slice_m + x, slice_n:slice_n + y] = X[:, :, image_id]
+            image_id += 1
+    return result
