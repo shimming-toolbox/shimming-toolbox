@@ -27,7 +27,7 @@ def _define_inputs(fmap_dim):
 
     fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                               'sub-example_fieldmap.json')
-    data = json.load(open(fname_json))
+    fm_data = json.load(open(fname_json))
 
     if fmap_dim == 4:
         nii_fmap = nii
@@ -42,6 +42,11 @@ def _define_inputs(fmap_dim):
     fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
                               'sub-example_unshimmed_e1.nii.gz')
     nii_anat = nib.load(fname_anat)
+
+    fname_anat_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
+                                   'sub-example_unshimmed_e1.json')
+    anat_data = json.load(open(fname_anat_json))
+
     anat = nii_anat.get_fdata()
 
     # Set up mask: Cube
@@ -54,31 +59,58 @@ def _define_inputs(fmap_dim):
 
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
 
-    return nii_fmap, nii_anat, nii_mask, data
+    return nii_fmap, nii_anat, nii_mask, fm_data, anat_data
+
+
+def _save_inputs(nii_fmap=None, fname_fmap=None,
+                 nii_anat=None, fname_anat=None,
+                 nii_mask=None, fname_mask=None,
+                 fm_data=None, fname_fm_json=None,
+                 anat_data=None, fname_anat_json=None):
+    """Save inputs if they are not None, use the respective fnames for the different inputs to save"""
+    if nii_fmap is not None:
+        # Save the fieldmap
+        nib.save(nii_fmap, fname_fmap)
+
+    if fm_data is not None:
+        # Save json
+        with open(fname_fm_json, 'w', encoding='utf-8') as f:
+            json.dump(fm_data, f, indent=4)
+
+    if nii_anat is not None:
+        # Save the anat
+        nib.save(nii_anat, fname_anat)
+
+    if anat_data is not None:
+        # Save json
+        with open(fname_anat_json, 'w', encoding='utf-8') as f:
+            json.dump(anat_data, f, indent=4)
+
+    if nii_mask is not None:
+        # Save the mask
+        nib.save(nii_mask, fname_mask)
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_anat,nii_mask,data", [(
+    "nii_fmap,nii_anat,nii_mask,fm_data,anat_data", [(
             _define_inputs(fmap_dim=3)
     )]
 )
 class TestCliStatic(object):
-    def test_cli_static_sph(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -92,19 +124,18 @@ class TestCliStatic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_no_mask(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the anat
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -117,22 +148,20 @@ class TestCliStatic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_coils(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
                                              nii_fmap.affine, header=nii_fmap.header)
@@ -152,22 +181,20 @@ class TestCliStatic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
 
-    def test_cli_static_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil and scanner coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
                                              nii_fmap.affine, header=nii_fmap.header)
@@ -189,22 +216,20 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_siemens_gradient_coil.txt"))
 
-    def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with chronological-coil oformat"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -221,22 +246,20 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
             # There should be 10 x 4 values
 
-    def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with hronological_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -256,22 +279,20 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_siemens_gradient_coil.txt"))
             # There should be 4 x 10 x 1 value
 
-    def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with slicewise_ch oformat"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -290,22 +311,20 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_siemens_gradient_coil.txt"))
 
-    def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -326,22 +345,20 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the modified fieldmap (one volume)
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
 
@@ -353,7 +370,7 @@ class TestCliStatic(object):
                                            '--output', tmp],
                               catch_exceptions=False)
 
-    # def test_cli_static_order_0(self, nii_fmap, nii_anat, nii_mask, data):
+    # def test_cli_static_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
     #     """Test cli with scanner coil profiles of order 1 with default constraints"""
     #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
     #         # Save the modified fieldmap (one volume)
@@ -384,34 +401,27 @@ class TestCliStatic(object):
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_anat,nii_mask,data", [(
+    "nii_fmap,nii_anat,nii_mask,fm_data,anat_data", [(
             _define_inputs(fmap_dim=4)
     )]
 )
 class TestCLIRealtime(object):
-    def test_cli_rt_sph(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_rt_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the fieldmap
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
             fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-
-            # Copy fieldmap json to tmp
-            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                           'sub-example_fieldmap.json')
-            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -431,29 +441,22 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_siemens_gradient_coil.txt"))
 
-    def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the fieldmap
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
             fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-
-            # Copy fieldmap json to tmp
-            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                           'sub-example_fieldmap.json')
-            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -480,26 +483,20 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the fieldmap
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the anat
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
             fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-
-            # Copy fieldmap json to tmp
-            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                           'sub-example_fieldmap.json')
-            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -517,29 +514,22 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_siemens_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_siemens_gradient_coil.txt"))
 
-    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, data):
+    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            # Save the fieldmap
+            # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-            nib.save(nii_fmap, fname_fmap)
-            # Save json
-            fname_json = os.path.join(tmp, 'fmap.json')
-            with open(fname_json, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=4)
-            # Save the mask
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
-            nib.save(nii_mask, fname_mask)
-            # Save the anat
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
-            nib.save(nii_anat, fname_anat)
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
             fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-
-            # Copy fieldmap json to tmp
-            fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                           'sub-example_fieldmap.json')
-            copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -619,32 +609,26 @@ def test_cli_define_slices_wrong_output():
                                               '-o', fname_output],
                           catch_exceptions=False)
 
+
 # def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
 #     """Test to compare grad vs fieldmap realtime shim"""
-#     nii_fmap, nii_anat, nii_mask, data = _define_inputs(4)
+#     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(4)
 #
 #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the fieldmap
+#         # Save the inputs to the new directory
 #         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         nib.save(nii_fmap, fname_fmap)
-#         # Save json
-#         fname_json = os.path.join(tmp, 'fmap.json')
-#         with open(fname_json, 'w', encoding='utf-8') as f:
-#             json.dump(data, f, indent=4)
-#         # Save the mask
+#         fname_fm_json = os.path.join(tmp, 'fmap.json')
 #         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         nib.save(nii_mask, fname_mask)
-#         # Save the anat
 #         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         nib.save(nii_anat, fname_anat)
+#         fname_anat_json = os.path.join(tmp, 'anat.json')
+#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+#                      nii_anat=nii_anat, fname_anat=fname_anat,
+#                      nii_mask=nii_mask, fname_mask=fname_mask,
+#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
+#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         # Input pmu fname
 #         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-#
-#         # Copy fieldmap json to tmp
-#         fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-#                                        'sub-example_fieldmap.json')
-#         copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 #
 #         runner = CliRunner()
 #
@@ -675,8 +659,7 @@ def test_cli_define_slices_wrong_output():
 #
 #
 # def test_grad_vs_fieldmap_known_result():
-#
-#     nii_fmap, nii_anat, nii_mask, data = _define_inputs(4)
+#     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(4)
 #
 #     def create_fieldmap(n_slices=3):
 #         # Set up 2-dimensional unshimmed fieldmaps
@@ -704,43 +687,36 @@ def test_cli_define_slices_wrong_output():
 #     nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
 #
 #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the fieldmap
+#         # Save the inputs to the new directory
 #         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         nib.save(nii_fmap, fname_fmap)
-#         # Save json
-#         fname_json = os.path.join(tmp, 'fmap.json')
-#         with open(fname_json, 'w', encoding='utf-8') as f:
-#             json.dump(data, f, indent=4)
-#         # Save the mask
+#         fname_fm_json = os.path.join(tmp, 'fmap.json')
 #         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         nib.save(nii_mask, fname_mask)
-#         # Save the anat
 #         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         nib.save(nii_anat, fname_anat)
+#         fname_anat_json = os.path.join(tmp, 'anat.json')
+#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+#                      nii_anat=nii_anat, fname_anat=fname_anat,
+#                      nii_mask=nii_mask, fname_mask=fname_mask,
+#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
+#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         # Input pmu fname
 #         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-#
-#         # Copy fieldmap json to tmp
-#         fname_fmap_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-#                                        'sub-example_fieldmap.json')
-#         copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 #
 #         runner = CliRunner()
 #
 #         # fieldmap rt shim
 #         runner.invoke(b0shim_cli, ['fieldmap_realtime',
-#                                  '--fmap', fname_fmap,
-#                                  '--anat', fname_anat,
-#                                  '--mask-static', fname_mask,
-#                                  '--mask-riro', fname_mask,
-#                                  '--resp', fname_resp,
-#                                  '--slice-factor', '1',
-#                                  '--mask-dilation-kernel-size', '3',
-#                                  '--optimizer-method', 'least_squares',
-#                                  '--scanner-coil-order', '1',
-#                                  '--output', os.path.join(tmp, 'fmap'),
-#                                  '-v', 'debug'],
+#                                    '--fmap', fname_fmap,
+#                                    '--anat', fname_anat,
+#                                    '--mask-static', fname_mask,
+#                                    '--mask-riro', fname_mask,
+#                                    '--resp', fname_resp,
+#                                    '--slice-factor', '1',
+#                                    '--mask-dilation-kernel-size', '3',
+#                                    '--optimizer-method', 'least_squares',
+#                                    '--scanner-coil-order', '1',
+#                                    '--output', os.path.join(tmp, 'fmap'),
+#                                    '-v', 'debug'],
 #                       catch_exceptions=False)
 #
 #         # grad rt shim
@@ -751,7 +727,7 @@ def test_cli_define_slices_wrong_output():
 #                                                    '--output', os.path.join(tmp, 'grad'),
 #                                                    '--resp', fname_resp],
 #                                catch_exceptions=False)
-#         a=1
+#         a = 1
 #
 #
 # def test_static_shim_known_real_input():
@@ -770,10 +746,14 @@ def test_cli_define_slices_wrong_output():
 #     fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
 #     nii_anat = nib.load(fname_anat)
 #     anat = nii_anat.get_fdata()
-#     # fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     # fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     data = json.load(open(fname_json))
+#     # fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
+#     # fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
+#     fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
+#     fm_data = json.load(open(fname_fm_json))
+#     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
+#     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
+#     fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
+#     anat_data = json.load(open(fname_fm_json))
 #
 #     # # TODO: validate using anat in difference space than fmap
 #     # anat = np.ones_like(nii_fmap.get_fdata())
@@ -793,19 +773,17 @@ def test_cli_define_slices_wrong_output():
 #     nii_mask = nib.Nifti1Image(mask, nii_anat.affine, header=nii_anat.header)
 #
 #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the fieldmap
+#         # Save the inputs to the new directory
 #         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         nib.save(nii_fmap, fname_fmap)
-#         # Save json
-#         fname_json = os.path.join(tmp, 'fmap.json')
-#         with open(fname_json, 'w', encoding='utf-8') as f:
-#             json.dump(data, f, indent=4)
-#         # Save the mask
+#         fname_fm_json = os.path.join(tmp, 'fmap.json')
 #         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         nib.save(nii_mask, fname_mask)
-#         # Save the anat
 #         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         nib.save(nii_anat, fname_anat)
+#         fname_anat_json = os.path.join(tmp, 'anat.json')
+#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+#                      nii_anat=nii_anat, fname_anat=fname_anat,
+#                      nii_mask=nii_mask, fname_mask=fname_mask,
+#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
+#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         runner = CliRunner()
 #         runner.invoke(b0shim_cli, ['fieldmap_static',
@@ -821,7 +799,7 @@ def test_cli_define_slices_wrong_output():
 #
 #         a=1
 #
-#
+
 # def test_rt_shim_known_real_input():
 #     """Test to validate using acdc82
 #
@@ -885,11 +863,11 @@ def test_cli_define_slices_wrong_output():
 #                                  '-v', 'debug'],
 #                       catch_exceptions=False)
 #
-#         # result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
-#         #                                            '--anat', fname_anat,
-#         #                                            '--mask-static', fname_mask,
-#         #                                            '--mask-riro', fname_mask,
-#         #                                            '--output', os.path.join(tmp, 'grad'),
-#         #                                            '--resp', fname_resp],
-#         #                        catch_exceptions=False)
+#         result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
+#                                                    '--anat', fname_anat,
+#                                                    '--mask-static', fname_mask,
+#                                                    '--mask-riro', fname_mask,
+#                                                    '--output', os.path.join(tmp, 'grad'),
+#                                                    '--resp', fname_resp],
+#                                catch_exceptions=False)
 #         a=1
