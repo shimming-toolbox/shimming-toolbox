@@ -10,8 +10,8 @@ import numpy as np
 from shutil import copy
 import json
 
-from shimmingtoolbox.cli.shim import define_slices_cli
-from shimmingtoolbox.cli.shim import shim_cli
+from shimmingtoolbox.cli.b0shim import define_slices_cli
+from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
@@ -81,12 +81,12 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -107,11 +107,11 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--scanner-coil-order', '1',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--scanner-coil-order', '1',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -141,12 +141,12 @@ class TestCliStatic(object):
 
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -176,13 +176,13 @@ class TestCliStatic(object):
 
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -207,14 +207,14 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '--slice-factor', '2',
-                                           '--output-file-format-scanner', 'chronological-coil',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'chronological-coil',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -239,14 +239,14 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '--slice-factor', '2',
-                                           '--output-file-format-scanner', 'chronological-ch',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'chronological-ch',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -274,14 +274,14 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '--slice-factor', '2',
-                                           '--output-file-format-scanner', 'slicewise-ch',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'slicewise-ch',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -308,13 +308,13 @@ class TestCliStatic(object):
             nib.save(nii_anat, fname_anat)
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_static',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask', fname_mask,
-                                           '--scanner-coil-order', '1',
-                                           '-v', 'debug',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '-v', 'debug',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -346,11 +346,11 @@ class TestCliStatic(object):
             runner = CliRunner()
 
             with pytest.raises(RuntimeError, match="No custom or scanner coils were selected."):
-                runner.invoke(shim_cli, ['fieldmap_static',
-                                         '--fmap', fname_fmap,
-                                         '--anat', fname_anat,
-                                         '--mask', fname_mask,
-                                         '--output', tmp],
+                runner.invoke(b0shim_cli, ['fieldmap_static',
+                                           '--fmap', fname_fmap,
+                                           '--anat', fname_anat,
+                                           '--mask', fname_mask,
+                                           '--output', tmp],
                               catch_exceptions=False)
 
     # def test_cli_static_order_0(self, nii_fmap, nii_anat, nii_mask, data):
@@ -371,7 +371,7 @@ class TestCliStatic(object):
     #         nib.save(nii_anat, fname_anat)
     #
     #         runner = CliRunner()
-    #         runner.invoke(shim_cli, ['fieldmap_static',
+    #         runner.invoke(b0shim_cli, ['fieldmap_static',
     #                                  '--fmap', fname_fmap,
     #                                  '--anat', fname_anat,
     #                                  '--mask', fname_mask,
@@ -414,15 +414,15 @@ class TestCLIRealtime(object):
             copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_realtime',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask-static', fname_mask,
-                                           '--mask-riro', fname_mask,
-                                           '--resp', fname_resp,
-                                           '--slice-factor', '2',
-                                           '--scanner-coil-order', '1',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -456,16 +456,16 @@ class TestCLIRealtime(object):
             copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_realtime',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask-static', fname_mask,
-                                           '--mask-riro', fname_mask,
-                                           '--resp', fname_resp,
-                                           '--slice-factor', '2',
-                                           '--scanner-coil-order', '1',
-                                           '-v', 'debug',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '-v', 'debug',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -502,13 +502,13 @@ class TestCLIRealtime(object):
             copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_realtime',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--resp', fname_resp,
-                                           '--slice-factor', '2',
-                                           '--scanner-coil-order', '1',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -542,16 +542,16 @@ class TestCLIRealtime(object):
             copy(fname_fmap_json, os.path.join(tmp, 'fmap.json'))
 
             runner = CliRunner()
-            res = runner.invoke(shim_cli, ['fieldmap_realtime',
-                                           '--fmap', fname_fmap,
-                                           '--anat', fname_anat,
-                                           '--mask-static', fname_mask,
-                                           '--mask-riro', fname_mask,
-                                           '--resp', fname_resp,
-                                           '--slice-factor', '2',
-                                           '--scanner-coil-order', '1',
-                                           '--output-file-format', 'chronological-ch',
-                                           '--output', tmp],
+            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--output-file-format', 'chronological-ch',
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -619,7 +619,6 @@ def test_cli_define_slices_wrong_output():
                                               '-o', fname_output],
                           catch_exceptions=False)
 
-
 # def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
 #     """Test to compare grad vs fieldmap realtime shim"""
 #     nii_fmap, nii_anat, nii_mask, data = _define_inputs(4)
@@ -650,7 +649,7 @@ def test_cli_define_slices_wrong_output():
 #         runner = CliRunner()
 #
 #         # fieldmap rt shim
-#         runner.invoke(shim_cli, ['fieldmap_realtime',
+#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
 #                                  '--fmap', fname_fmap,
 #                                  '--anat', fname_anat,
 #                                  '--mask-static', fname_mask,
@@ -730,7 +729,7 @@ def test_cli_define_slices_wrong_output():
 #         runner = CliRunner()
 #
 #         # fieldmap rt shim
-#         runner.invoke(shim_cli, ['fieldmap_realtime',
+#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
 #                                  '--fmap', fname_fmap,
 #                                  '--anat', fname_anat,
 #                                  '--mask-static', fname_mask,
@@ -809,7 +808,7 @@ def test_cli_define_slices_wrong_output():
 #         nib.save(nii_anat, fname_anat)
 #
 #         runner = CliRunner()
-#         runner.invoke(shim_cli, ['fieldmap_static',
+#         runner.invoke(b0shim_cli, ['fieldmap_static',
 #                                  '--fmap', fname_fmap,
 #                                  '--anat', fname_anat,
 #                                  '--mask', fname_mask,
@@ -871,7 +870,7 @@ def test_cli_define_slices_wrong_output():
 #         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
 #
 #         runner = CliRunner()
-#         runner.invoke(shim_cli, ['fieldmap_realtime',
+#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
 #                                  '--fmap', fname_fmap,
 #                                  '--anat', fname_anat,
 #                                  '--mask-static', fname_mask,

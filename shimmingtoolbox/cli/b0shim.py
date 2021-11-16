@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Shim according to the specified algorithm as an argument e.g. st_shim xxxxx")
-def shim_cli():
+def b0shim_cli():
     pass
 
 
@@ -753,7 +753,7 @@ def _get_current_shim_settings(fname_json):
     return current_coefs
 
 
-shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-shim_cli.add_command(static_cli, 'fieldmap_static')
-shim_cli.add_command(realtime_cli, 'fieldmap_realtime')
+b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
+b0shim_cli.add_command(static_cli, 'fieldmap_static')
+b0shim_cli.add_command(realtime_cli, 'fieldmap_realtime')
 # shim_cli.add_command(define_slices_cli, 'define_slices')

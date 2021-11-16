@@ -29,7 +29,7 @@ setup(
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
             "st_image=shimmingtoolbox.cli.image:image_cli",
             "st_maths=shimmingtoolbox.cli.maths:maths_cli",
-            "st_shim=shimmingtoolbox.cli.shim:shim_cli"
+            "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli"
         ]
     },
     packages=find_packages(exclude=["docs"]),
