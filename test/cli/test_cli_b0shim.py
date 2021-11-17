@@ -7,7 +7,6 @@ import pathlib
 import os
 import nibabel as nib
 import numpy as np
-from shutil import copy
 import json
 
 from shimmingtoolbox.cli.b0shim import define_slices_cli
@@ -731,7 +730,7 @@ def test_cli_define_slices_wrong_output():
 #
 #
 # def test_static_shim_known_real_input():
-#     """Test to validate using acdc82
+#     """Test to validate using acdc143p
 #
 #     Currently validated the output for order 1 using an anat in the same space as fmap, anat in different space as fmap
 #     (raised mask problems if fmap has bigger voxels than anat)
@@ -753,7 +752,7 @@ def test_cli_define_slices_wrong_output():
 #     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
 #     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
 #     fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
-#     anat_data = json.load(open(fname_fm_json))
+#     anat_data = json.load(open(fname_anat_json))
 #
 #     # # TODO: validate using anat in difference space than fmap
 #     # anat = np.ones_like(nii_fmap.get_fdata())
@@ -796,7 +795,6 @@ def test_cli_define_slices_wrong_output():
 #                                  '--output', tmp,
 #                                  '-v', 'debug'],
 #                       catch_exceptions=False)
-#
 #         a=1
 #
 
