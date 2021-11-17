@@ -14,7 +14,7 @@ from click.testing import CliRunner
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.cli.realtime_shim import _get_phase_encode_direction_sign
+from shimmingtoolbox.cli.realtime_shim import get_phase_encode_direction_sign
 
 
 def test_cli_realtime_shim():
@@ -102,7 +102,7 @@ def test_phase_encode_sign():
     # Using this acquisition because it has a positive phase encode direction
     fname_nii = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
                              'sub-example_phasediff.nii.gz')
-    phase_encode_is_positive = _get_phase_encode_direction_sign(fname_nii)
+    phase_encode_is_positive = get_phase_encode_direction_sign(fname_nii)
 
     assert phase_encode_is_positive is True
 
@@ -128,7 +128,7 @@ def test_phase_encode_wrong_dim():
 
         with pytest.raises(RuntimeError,
                            match="Inconsistency between dim_info of fieldmap and PhaseEncodeDirection tag in the json"):
-            _get_phase_encode_direction_sign(fname_nii)
+            get_phase_encode_direction_sign(fname_nii)
 
 
 def test_phase_encode_wrong_tag_value():
@@ -152,4 +152,4 @@ def test_phase_encode_wrong_tag_value():
 
         with pytest.raises(ValueError,
                            match="Unexpected value for PhaseEncodingDirection:"):
-            _get_phase_encode_direction_sign(fname_nii)
+            get_phase_encode_direction_sign(fname_nii)
