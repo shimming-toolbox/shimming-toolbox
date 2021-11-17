@@ -24,6 +24,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
+from shimmingtoolbox.shim.shim_utils import get_phase_encode_direction_sign
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -204,9 +205,18 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
             order1 = coefs[..., -3 - offset:coefs.shape[-1] - offset]
             curr_freq, curr_phase, curr_slice = [order1[..., dim] for dim in dim_info]
 
-            # TODO: Phase encode direction
-            coefs[..., -3 - offset] = curr_freq
-            coefs[..., -2 - offset] = curr_phase
+            # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
+            # defined by the frequency, phase and slice encode directions.
+            # TODO: More thorough tests
+            phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
+            if phase_encode_is_positive:
+                coefs[..., -3 - offset] = curr_freq
+                coefs[..., -2 - offset] = curr_phase
+            else:
+                coefs[..., -3 - offset] = -curr_freq
+                coefs[..., -2 - offset] = -curr_phase
+
+            # Slice orientation is not affected by phase encode direction
             coefs[..., -1 - offset] = curr_slice
 
         list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices,
@@ -482,19 +492,31 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
             # Convert from image to freq, phase, slice encoding direction
             logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
-            # TODO: Phase encode direction
             dim_info = nii_anat.header.get_dim_info()
             # static
             order1_static = currents_static[..., -3 - offset:currents_static.shape[-1] - offset]
             curr_static_freq, curr_static_phase, curr_static_slice = [order1_static[..., dim] for dim in dim_info]
-            currents_static[..., -3 - offset] = curr_static_freq
-            currents_static[..., -2 - offset] = curr_static_phase
-            currents_static[..., -1 - offset] = curr_static_slice
             # riro
             order1_riro = currents_riro[..., -3 - offset:currents_riro.shape[-1] - offset]
             curr_riro_freq, curr_riro_phase, curr_riro_slice = [order1_riro[..., dim] for dim in dim_info]
-            currents_riro[..., -3 - offset] = curr_riro_freq
-            currents_riro[..., -2 - offset] = curr_riro_phase
+
+            # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
+            # defined by the frequency, phase and slice encode directions.
+            # TODO: More thorough tests
+            phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
+            if phase_encode_is_positive:
+                currents_static[..., -3 - offset] = curr_static_freq
+                currents_static[..., -2 - offset] = curr_static_phase
+                currents_riro[..., -3 - offset] = curr_riro_freq
+                currents_riro[..., -2 - offset] = curr_riro_phase
+            else:
+                currents_static[..., -3 - offset] = -curr_static_freq
+                currents_static[..., -2 - offset] = -curr_static_phase
+                currents_riro[..., -3 - offset] = -curr_riro_freq
+                currents_riro[..., -2 - offset] = -curr_riro_phase
+
+            # Slice orientation is not affected by phase encode direction
+            currents_static[..., -1 - offset] = curr_static_slice
             currents_riro[..., -1 - offset] = curr_riro_slice
 
     _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format)
