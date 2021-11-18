@@ -7,6 +7,7 @@ import nibabel as nib
 import numpy as np
 import os
 
+from nibabel.processing import resample_from_to
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.shim.b1shim import b1shim, load_siemens_vop
 from shimmingtoolbox.utils import create_output_dir
@@ -52,12 +53,15 @@ def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights, algorithm, target, fn
     nib.save(nii_b1, fname_nii_b1)
     file_json_b1 = open(os.path.join(path_output, 'TB1maps_uncombined.json'), mode='w')
     json.dump(json_b1, file_json_b1)
+    b1_map_combined = b1_map.sum(axis=-1)
+    nii_b1_map_combined = nib.Nifti1Image(b1_map_combined, nii_b1.affine, header=nii_b1.header)
 
     # Load static anatomical mask
     if fname_mask is not None:
         nii_mask = nib.load(fname_mask)
+        mask_resampled = resample_from_to(nii_mask, nii_b1_map_combined, order=1, mode='grid-constant').get_fdata()
     else:
-        nii_mask = None
+        mask_resampled = None
 
     # If a path to a cp json file is provided, read it and store the values as complex numbers
     # See example of json file in config/cp_mode.json (Do not add spaces within the complex values)
@@ -78,7 +82,7 @@ def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights, algorithm, target, fn
     else:
         vop = None
 
-    shim_weights = b1shim(b1_map, mask=nii_mask, cp_weights=cp_weights, algorithm=algorithm, target=target,
+    shim_weights = b1shim(b1_map, mask=mask_resampled, cp_weights=cp_weights, algorithm=algorithm, target=target,
                           q_matrix=vop, sed=sed, path_output=path_output)
 
     # Write to a text file
