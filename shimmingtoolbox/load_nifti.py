@@ -181,11 +181,23 @@ def read_nii(fname_nifti, auto_scale=True):
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
             image = scale_tfl_b1(image, json_data)
-            nii.header["datatype"] = 32  # 32 corresponds to complex data
-            nii.header["aux_file"] = 'Uncombined B1+ maps'
-            # s_form are bogus with tfl_rfmap so use qform when creating NIfTI image (makes it readable in fsleyes)
-            nii.header.set_sform(nii.get_qform())
-            nii = nib.Nifti1Image(image, nii.header.get_qform(), header=nii.header)
+            nii.header['datatype'] = 32  # 32 corresponds to complex data
+            nii.header['aux_file'] = 'Uncombined B1+ maps'
+            # sform and qfrom matrices are bogus with tfl_rfmap so we rebuild them from scratch
+            qfac = nii.header['pixdim'][0]
+            xa, xb, xc, ya, yb, yc = np.asarray(json_data["ImageOrientationPatientDICOM"])
+
+            R = [[-xa, -ya,  qfac*(xb * yc + xc * yb)],
+                 [-xb,  yb,  qfac*(xc * ya - xa * yc)],
+                 [-xc, -yc,  qfac*(-xa * yb - xb * ya)]]
+
+            affine = np.zeros((4, 4))
+            affine[:3, :3] = R * nii.header['pixdim'][1:4]
+            affine[3, :] = [0, 0, 0, 1]
+            affine[:3, 3] = [nii.header['qoffset_x'], nii.header['qoffset_y'], nii.header['qoffset_z']]
+
+            nii.header.set_sform(affine)
+            nii = nib.Nifti1Image(image, affine, header=nii.header)
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
