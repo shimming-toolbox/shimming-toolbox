@@ -17,9 +17,8 @@ import math
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
-from shimmingtoolbox.coils.coil import Coil
-from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_to_vox_coefs
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
+from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
@@ -140,9 +139,18 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         ]
         _save_nii_to_new_dir(list_fname, path_output)
 
-    # Get current coefs
+    # Open json of the fmap
     fname_json = fname_fmap.split('.nii')[0] + '.json'
-    initial_coefs = _get_current_shim_settings(fname_json)
+    # Read from json file
+    if os.path.isfile(fname_json):
+        json_fm_data = json.load(open(fname_json))
+    else:
+        raise OSError("Missing json file")
+
+    # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
+    json_coefs = _get_current_shim_settings(json_fm_data)
+    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
+    initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
@@ -160,17 +168,22 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                            path_output=path_output)
 
     if output_value_format == 'absolute':
-        raise NotImplementedError("absolute not yet implemented")
+
         # TODO: Returned values change depending on the scanner as well as the shim order.
         #  Ryan has the units sorted out for the prisma fit
         # https://github.com/shimming-toolbox/shimming-toolbox-matlab/blob/master/Coils/Shim_Siemens/Shim_Prisma/Shim_IUGM_Prisma_fit/ShimSpecs_IUGM_Prisma_fit.m
 
-        # order_mapping = {0: 1,
-        #                  1: 4,
-        #                  2: 9}
-        # n_channels = order_mapping[scanner_coil_order]
-        # for i_channel in range(n_channels):
-        #     coefs[:, -n_channels + i_channel] = coefs[:, -n_channels + i_channel] + initial_coefs[i_channel]
+        scanner_coil = list_coils[-1]
+
+        if type(scanner_coil) != ScannerCoil:
+            raise RuntimeError("absolute option only valid for scanner coils")
+
+        order_mapping = {0: 1,
+                         1: 4,
+                         2: 9}
+        n_channels = order_mapping[scanner_coil_order]
+        for i_channel in range(n_channels):
+            coefs[:, -n_channels + i_channel] = coefs[:, -n_channels + i_channel] + initial_coefs[i_channel]
 
     # Output
     if scanner_coil_order >= 0:
@@ -381,7 +394,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load json associated with the fieldmap
     fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json) as json_file:
-        json_data = json.load(json_file)
+        json_fm_data = json.load(json_file)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -407,9 +420,18 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
         nii_mask_anat_riro = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine,
                                              header=nii_anat.header)
 
-    # Get current coefs
+    # Open json of the fmap
     fname_json = fname_fmap.split('.nii')[0] + '.json'
-    initial_coefs = _get_current_shim_settings(fname_json)
+    # Read from json file
+    if os.path.isfile(fname_json):
+        json_fm_data = json.load(open(fname_json))
+    else:
+        raise OSError("Missing json file")
+
+    # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
+    json_coefs = _get_current_shim_settings(json_fm_data)
+    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
+    initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
@@ -432,7 +454,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load PMU
     pmu = PmuResp(fname_resp)
 
-    out = shim_realtime_pmu_sequencer(nii_fmap, json_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
+    out = shim_realtime_pmu_sequencer(nii_fmap, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
                                       mask_dilation_kernel=dilation_kernel,
@@ -641,7 +663,6 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
         order (int): Order of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
-        initial_coefs (list): 1d array of the initial coefficients of the scanner coil profiles
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
@@ -657,19 +678,6 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
     # Create the spherical harmonic coil profiles of the scanner
     if 0 <= order <= 2:
 
-        # Define profile for Tx (constant volume)
-        profile_order_0 = np.ones(nii_fmap.shape[:3])
-
-        # define the coil profiles
-        if order == 0:
-            # f0 --> [1]
-            sph_coil_profile = profile_order_0[..., np.newaxis]
-        else:
-            # f0, orders
-            mesh1, mesh2, mesh3 = generate_meshgrid(nii_fmap.shape[:3], nii_fmap.affine)
-            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, order + 1)))
-            sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
-
         if os.path.isfile(fname_constraints):
             sph_contraints = json.load(open(fname_constraints))
 
@@ -683,24 +691,17 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
                         raise RuntimeError(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
                                            f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
-            # TODO: Implement once units are sorted out
-            # _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
+            _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
+            # Set the bounds to what they should be by taking into accounts that the fieldmap was acquired using some
+            # shimming
             sph_contraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                              sph_contraints['coef_channel_minmax'])[0]
         else:
             raise OSError("Missing json file")
 
-        # Restrict constraint coefficient size/bounds depending on the order
-        if order == 0:
-            # f0 --> [1]
-            sph_coil_profile = sph_coil_profile[..., :1]
-            sph_contraints['coef_channel_minmax'] = sph_contraints['coef_channel_minmax'][:1]
-        # f0, x, y, z -- > [4]
-        elif order == 1:
-            # Order 1 only requires the first 3 channels + Tx
-            sph_contraints['coef_channel_minmax'] = sph_contraints['coef_channel_minmax'][:4]
-
-        list_coils.append(Coil(sph_coil_profile, nii_fmap.affine, sph_contraints))
+        # Create a ScannerCoil object
+        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints, order)
+        list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
     if len(list_coils) == 0:
@@ -758,14 +759,7 @@ def define_slices_cli(slices, factor, method, fname_output):
     logger.info(f"The slices to shim are: {list_slices}")
 
 
-def _get_current_shim_settings(fname_json):
-
-    # Read from json file
-    if os.path.isfile(fname_json):
-        json_data = json.load(open(fname_json))
-    else:
-        raise OSError("Missing json file")
-
+def _get_current_shim_settings(json_data):
     # Get the current coefficients of the spherical harmonics coil profiles
     current_coefs = json_data['ShimSetting']
     f0 = json_data['ImagingFrequency'] * 1e6
