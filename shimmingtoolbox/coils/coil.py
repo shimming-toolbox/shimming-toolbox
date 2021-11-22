@@ -4,6 +4,9 @@
 import numpy as np
 from typing import Tuple
 
+from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.coordinates import generate_meshgrid
+
 required_constraints = [
     "name",
     "coef_channel_minmax",
@@ -107,3 +110,74 @@ class Coil(object):
                 setattr(self, key_name, constraints[key_name])
             else:
                 raise KeyError(f"Missing required constraint: {key_name}")
+
+
+class ScannerCoil(Coil):
+    """Coil class for scanner coils as they require extra arguments"""
+    def __init__(self, coord_system, dim_volume, affine, constraints, order):
+
+        self.order = order
+        self.coord_system = coord_system
+        self.affine = affine
+
+        # Create the spherical harmonics with the correct order, dim and affine
+        # Todo: add coord system
+        sph_coil_profile = self._create_coil_profile(dim_volume)
+        # Restricts the constraints to the specified order
+        sph_constraints = self._restrict_constraints(constraints)
+
+        super().__init__(sph_coil_profile, affine, sph_constraints)
+
+    def _restrict_constraints(self, in_contraints):
+        # Restrict constraint coefficient size/bounds depending on the order
+        out_constraints = in_contraints
+        if self.order == 0:
+            # f0 --> [1]
+            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:1]
+        elif self.order == 1:
+            # f0, ch1, ch2, ch3 -- > [4]
+            # Order 1 only requires the first 3 channels + Tx
+            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:4]
+        elif self.order == 2:
+            # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
+            # Order 2 requires 8 channels + Tx
+            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:9]
+        else:
+            raise NotImplementedError("Scanner coils are not implemented for order 3 and up")
+
+        return out_constraints
+
+    def _create_coil_profile(self, dim):
+        # Define profile for Tx (constant volume)
+        profile_order_0 = np.ones(dim)
+
+        # define the coil profiles
+        if self.order == 0:
+            # f0 --> [1]
+            sph_coil_profile = profile_order_0[..., np.newaxis]
+        else:
+            # f0, orders
+            mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
+            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+            sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
+
+        return sph_coil_profile
+
+
+def convert_to_mp(shim_setting, manufacturers_model_name):
+    # look into json for the tag: ManufacturersModelName
+
+    if manufacturers_model_name == "Prisma_fit":
+        # One can use the Siemens commandline AdjValidate tool to get all the values below:
+        max_current_mp = np.array([2300, 2300, 2300, 4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
+        max_current_dcm = np.array([14436, 14265, 14045, 9998, 9998, 9998, 9998, 9998])
+
+        shim_setting = np.array(shim_setting) * max_current_mp / max_current_dcm
+
+        if np.any(np.abs(shim_setting) > max_current_mp):
+            raise ValueError("Multipole values exceed known system limits.")
+
+    else:
+        raise RuntimeError("Manufacturer not recognized, could not convert units to multipole")
+
+    return list(shim_setting)
