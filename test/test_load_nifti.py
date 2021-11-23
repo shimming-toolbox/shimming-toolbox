@@ -625,7 +625,7 @@ class TestCore(object):
             json.dump(self._json_b1_no_orientation, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation.nii')
-        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationPatientDICOM'"):
+        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationText'. Check dcm2niix version."):
             read_nii(fname_b1)
 
     def test_read_nii_b1_no_scaling(self):

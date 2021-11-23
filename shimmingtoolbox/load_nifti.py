@@ -183,13 +183,17 @@ def read_nii(fname_nifti, auto_scale=True):
             image = scale_tfl_b1(image, json_data)
             nii.header['datatype'] = 32  # 32 corresponds to complex data
             nii.header['aux_file'] = 'Uncombined B1+ maps'
-            # sform and qfrom matrices are bogus with tfl_rfmap so we rebuild them from scratch
+            # Affine matrices are bogus with tfl_rfmap so we rebuild them from scratch
             qfac = nii.header['pixdim'][0]
             xa, xb, xc, ya, yb, yc = np.asarray(json_data["ImageOrientationPatientDICOM"])
+            # The following values seem to be inverted in the DICOM tags. Correcting them yields a correct affine matrix
+            xa = -xa
+            xb = -xb
+            yc = -yc
 
-            R = [[-xa, -ya,  qfac*(xb * yc + xc * yb)],
-                 [-xb,  yb,  qfac*(xc * ya - xa * yc)],
-                 [-xc, -yc,  qfac*(-xa * yb - xb * ya)]]
+            R = [[xa, ya, qfac * (xb * yc - xc * yb)],
+                 [xb, yb, qfac * (xc * ya - xa * yc)],
+                 [xc, yc, qfac * (xa * yb - xb * ya)]]
 
             affine = np.zeros((4, 4))
             affine[:3, :3] = R * nii.header['pixdim'][1:4]
@@ -261,22 +265,22 @@ def scale_tfl_b1(image, json_data):
     # Reorder data shuffled by dm2niix into shape (x, y , n_slices*n_channels)
     b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
     b1_phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
-    if 'ImageOrientationPatientDICOM' in json_data:
-        orientation = json_data['ImageOrientationPatientDICOM']
-        # Axial or Coronal cases
-        if orientation[:3] == [1, 0, 0]:
+    if 'ImageOrientationText' in json_data:
+        orientation = json_data['ImageOrientationText']
+        # Axial or coronal cases (+ tilted)
+        if orientation[:3] in ['Tra', 'Cor']:
             for i in range(n_channels):
                 b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
                 b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-        # Sagittal case
-        elif orientation[:3] == [0, 1, 0] and orientation[5] != 0:
+        # Sagittal case (+ tilted)
+        elif orientation[:3] == 'Sag':
             for i in range(n_channels):
                 b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
                 b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
         else:
             raise ValueError("Unknown slice orientation")
     else:
-        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'")
+        raise KeyError("Missing json tag: 'ImageOrientationText'. Check dcm2niix version.")
 
     # Reorder data shuffled by dm2niix into shape (x, y, n_slices, n_channels)
     b1_mag_ordered = np.zeros_like(b1_mag)
