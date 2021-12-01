@@ -12,11 +12,14 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
 
+fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
+fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime', 'sub-realtime_PMUresp_signal.resp')
+nii_fieldmap = nib.load(fname_fieldmap)
+# Get the pressure values
+pmu = PmuResp(fname_resp)
+
 
 def test_read_resp():
-    fname = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname)
-
     expected_first_data = np.array([1667, 1667, 1682, 1682, 1667]) + 2048
     expected_last_data = np.array([-2048, -2048, -2048, -2048, -2048]) + 2048
     expected_start_time_mdh = 44294387
@@ -35,9 +38,6 @@ def test_read_resp():
 
 
 def test_interp_resp_trace():
-    fname = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname)
-
     # Create time series to interpolate the PMU to
     num_points = 20
     acq_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, num_points)
@@ -54,18 +54,11 @@ def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
 
     # Get fieldmap
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    nii_fieldmap = nib.load(fname_fieldmap)
     fieldmap = nii_fieldmap.get_fdata()
 
-    # Get the pressure values
-    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname_pmu)
-
     # Get acquisition timestamps
-    fname_phase_diff_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                         'sub-example_phasediff.json')
+    fname_phase_diff_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap',
+                                         'sub-realtime_phasediff.json')
     with open(fname_phase_diff_json) as json_file:
         json_data = json.load(json_file)
     fieldmap_timestamps = get_acquisition_times(nii_fieldmap, json_data)
@@ -103,54 +96,13 @@ def test_timing_images():
 
     assert(np.isclose(pearson[0, 1], 0.6031485150782748))
 
-    # # Plot results
-    # fig = Figure(figsize=(10, 10))
-    # ax = fig.add_subplot(211)
-    # ax.plot(fieldmap_timestamps / 1000, acquisition_pressures, label='Interpolated pressures')
-    # # ax.plot(pmu_times, pmu.data, label='Raw pressures')
-    # ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
-    # ax.legend()
-    # ax.set_title("Pressure [-2048, 2047] vs time (s) ")
-    # ax = fig.add_subplot(212)
-    # ax.plot(fieldmap_timestamps / 1000, fieldmap_avg, label='Mean B0')
-    # ax.legend()
-    # ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
-    #
-    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'pmu_plot.png')
-    # fig.savefig(fname_figure)
-    #
-    # # Plot mask
-    # fig = Figure(figsize=(10, 10))
-    # ax = fig.add_subplot(211)
-    # im = ax.imshow(fieldmap_masked[:, :, 0, 0])
-    # fig.colorbar(im)
-    # ax.set_title("Mask (Hz)")
-    #
-    # ax = fig.add_subplot(212)
-    # im = ax.imshow(fieldmap[:, :, 0, 0])
-    # fig.colorbar(im)
-    # ax.set_title("Fieldmap (Hz)")
-    #
-    # fname_figure = os.path.join(__dir_shimmingtoolbox__, 'mask.png')
-    # fig.savefig(fname_figure)
-
 
 def test_pmu_fake_data():
-
-    # Get pressure values
-    fname_pmu = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-    pmu = PmuResp(fname_pmu)
-
     pmu.data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
     pmu.stop_time_mdh = 250 * (len(pmu.data) - 1)
     pmu.start_time_mdh = 0
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
-
-    # Fieldmap
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
-    nii_fieldmap = nib.load(fname_fieldmap)
 
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)

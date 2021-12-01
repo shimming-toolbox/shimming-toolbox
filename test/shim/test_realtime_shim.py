@@ -17,14 +17,12 @@ from shimmingtoolbox.shim.realtime_shim import realtime_shim
 class TestRealtimeShim(object):
     def setup(self):
         # Fieldmap
-        fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                      'sub-example_fieldmap.nii.gz')
+        fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
         nii_fieldmap = nib.load(fname_fieldmap)
         self.nii_fieldmap = nii_fieldmap
 
         # anat image
-        fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                                  'sub-example_unshimmed_e1.nii.gz')
+        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         nii_anat = nib.load(fname_anat)
         self.nii_anat = nii_anat
 
@@ -49,13 +47,13 @@ class TestRealtimeShim(object):
         self.nii_mask_riro = nii_mask_riro
 
         # Pmu
-        fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+        fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                  'sub-realtime_PMUresp_signal.resp')
         pmu = PmuResp(fname_resp)
         self.pmu = pmu
 
         # Path for json file
-        fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_magnitude1.json')
+        fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.json')
         with open(fname_json) as json_file:
             json_data = json.load(json_file)
 

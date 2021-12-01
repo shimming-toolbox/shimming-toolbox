@@ -35,7 +35,7 @@ def test_siemens_basis_resample():
     """
     Output spherical harmonics in a discrete space corresponding to an image
     """
-    fname = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+    fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
     nii = nibabel.load(fname)
     # affine = np.linalg.inv(nib.affine)
     affine = nii.affine
