@@ -1,13 +1,12 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import os
-import logging
-import numpy as np
-import nibabel as nib
 import json
+import logging
 import math
-import warnings
+import nibabel as nib
+import numpy as np
+import os
 
 from shimmingtoolbox.utils import iso_times_to_ms
 
@@ -185,7 +184,8 @@ def read_nii(fname_nifti, auto_scale=True):
             nii.header['aux_file'] = 'Uncombined B1+ maps'
             # Affine matrices are bogus with tfl_rfmap so we rebuild them from scratch
             qfac = nii.header['pixdim'][0]
-            if not 'ImageOrientationPatientDICOM' in json_data:
+
+            if 'ImageOrientationPatientDICOM' not in json_data:
                 raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
 
             xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])

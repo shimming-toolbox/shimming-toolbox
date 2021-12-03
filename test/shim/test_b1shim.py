@@ -6,8 +6,8 @@ import pytest
 import tempfile
 
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.shim.b1shim import *
 from shimmingtoolbox.load_nifti import read_nii
+from shimmingtoolbox.shim.b1shim import *
 
 
 logging.basicConfig(level=logging.INFO)

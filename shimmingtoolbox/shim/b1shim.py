@@ -2,15 +2,15 @@
 # -*- coding: utf-8
 
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import scipy.io
 import scipy.optimize
-import matplotlib.pyplot as plt
 
 from scipy.stats import variation as cov
-from shimmingtoolbox.utils import montage
 from shimmingtoolbox.masking.threshold import threshold
+from shimmingtoolbox.utils import montage
 
 logger = logging.getLogger(__name__)
 
@@ -300,11 +300,11 @@ def load_siemens_vop(path_sar_file):
         numpy.ndarray: VOP matrices (n_coils, n_coils, n_VOPs)
 
     """
+    # Check that the file exists
     if os.path.exists(path_sar_file):
         sar_data = scipy.io.loadmat(path_sar_file)
     else:
         raise FileNotFoundError('The SarDataUser.mat file could not be found.')
-    # Assert file exists
 
     if 'ZZ' not in sar_data:
         raise ValueError('The SAR data does not contain the expected VOP values.')

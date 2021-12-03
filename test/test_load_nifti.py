@@ -11,8 +11,7 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti
-from shimmingtoolbox.load_nifti import read_nii
+from shimmingtoolbox.load_nifti import load_nifti, read_nii
 from shimmingtoolbox import __dir_testing__
 
 
