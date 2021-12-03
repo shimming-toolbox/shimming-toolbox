@@ -611,18 +611,6 @@ class TestCore(object):
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_sagittal, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
-    def test_read_nii_b1_wrong_orientation(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation'))
-        self._json_b1_wrong_orientation = self._json_b1_axial.copy()
-        self._json_b1_wrong_orientation['ImageOrientationPatientDICOM'] = [0, 0, 0, 0, 0, 0]
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation.json'), 'w') as json_file:
-            json.dump(self._json_b1_wrong_orientation, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation.nii')
-        with pytest.raises(ValueError, match="Unknown slice orientation"):
-            read_nii(fname_b1)
-
     def test_read_nii_b1_no_orientation(self):
         dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
         nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_orientation'))
@@ -632,6 +620,18 @@ class TestCore(object):
             json.dump(self._json_b1_no_orientation, json_file)
 
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation.nii')
+        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version."):
+            read_nii(fname_b1)
+
+    def test_read_nii_b1_no_orientation_text(self):
+        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
+        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text'))
+        self._json_b1_no_orientation = self._json_b1_axial.copy()
+        del self._json_b1_no_orientation['ImageOrientationText']
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.json'), 'w') as json_file:
+            json.dump(self._json_b1_no_orientation, json_file)
+
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.nii')
         with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationText'. Check dcm2niix version."):
             read_nii(fname_b1)
 

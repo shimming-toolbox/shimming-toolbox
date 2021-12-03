@@ -185,7 +185,10 @@ def read_nii(fname_nifti, auto_scale=True):
             nii.header['aux_file'] = 'Uncombined B1+ maps'
             # Affine matrices are bogus with tfl_rfmap so we rebuild them from scratch
             qfac = nii.header['pixdim'][0]
-            xa, xb, xc, ya, yb, yc = np.asarray(json_data["ImageOrientationPatientDICOM"])
+            if not 'ImageOrientationPatientDICOM' in json_data:
+                raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
+
+            xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])
             # The following values seem to be inverted in the DICOM tags. Correcting them yields a correct affine matrix
             xa = -xa
             xb = -xb
@@ -217,8 +220,6 @@ def read_nii(fname_nifti, auto_scale=True):
             nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
         else:
             logger.info("Unknown nifti type: No scaling applied")
-
-
 
     else:
         logger.info("No scaling applied to selected nifti")
