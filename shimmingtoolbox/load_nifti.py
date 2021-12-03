@@ -245,13 +245,7 @@ def scale_tfl_b1(image, json_data):
     else:
         raise KeyError("Missing json tag: 'ShimSetting'")
 
-    if 'SliceTiming' in json_data:
-        n_slices = len(json_data['SliceTiming'])
-        if image.shape[2] != n_slices:
-            raise ValueError("Wrong array dimension: number of slices not matching")
-    else:
-        warnings.warn("Missing json tag: 'SliceTiming', slices number cannot be checked.")
-        n_slices = image.shape[2]
+    n_slices = image.shape[2]
 
     # Magnitude values are stored in the first half of the 4th dimension
     b1_mag = image[:, :, :, :image.shape[3] // 2]

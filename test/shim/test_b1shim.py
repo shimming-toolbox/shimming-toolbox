@@ -12,26 +12,29 @@ from shimmingtoolbox.load_nifti import read_nii
 
 logging.basicConfig(level=logging.INFO)
 
-fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_axial.nii.gz')
+fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
 _, _, b1_maps = read_nii(fname_b1, auto_scale=True)
 mask = b1_maps.sum(axis=-1) != 0
 cp_weights = np.asarray([0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j,
                          0.3381+0.1034j, -0.1494+0.3204j])
 
-path_sar_file = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser.mat')
+path_sar_file = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
+                             'sub-tb1tfl_SarDataUser.mat')
 vop = load_siemens_vop(path_sar_file)
 
 
 def test_b1shim(caplog):
     shim_weights = b1shim(b1_maps)
-    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
+    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+           r"normalized." in caplog.text
     assert r"No mask provided, masking all zero-valued pixels." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1shim_algo_2(caplog):
     shim_weights = b1shim(b1_maps, mask, algorithm=2, target=20)
-    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
+    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+           r"normalized." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
@@ -42,7 +45,8 @@ def test_b1shim_algo_2_no_target():
 
 def test_b1shim_algo_3(caplog):
     shim_weights = b1shim(b1_maps, mask, algorithm=3)
-    assert r"No Q matrix provided, performing unconstrained optimization." in caplog.text
+    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+           r"normalized." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
@@ -192,7 +196,8 @@ def test_load_siemens_vop_wrong_path():
 def test_load_siemens_vop_no_vop():
     data_no_vop = scipy.io.loadmat(path_sar_file)
     data_no_vop.pop('ZZ')
-    path_sar_file_no_vop = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser_no_vop.mat')
+    path_sar_file_no_vop = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
+                                        'SarDataUser_no_vop.mat')
     scipy.io.savemat(path_sar_file_no_vop, data_no_vop)
     with pytest.raises(ValueError, match='The SAR data does not contain the expected VOP values.'):
         load_siemens_vop(path_sar_file_no_vop)

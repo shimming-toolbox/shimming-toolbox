@@ -16,7 +16,6 @@ from requests.packages.urllib3.util import Retry
 
 from shimmingtoolbox.utils import st_progress_bar
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -62,7 +61,8 @@ def download_data(urls):
 
             with open(tmp_path, 'wb') as tmp_file:
                 total = int(response.headers.get('content-length', 1))
-                progress_bar = st_progress_bar(total=total, unit='B', unit_scale=True, desc="Status", ascii=False, position=0)
+                progress_bar = st_progress_bar(total=total, unit='B', unit_scale=True, desc="Status", ascii=False,
+                                               position=0)
 
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -82,8 +82,8 @@ def download_data(urls):
 
 def unzip(compressed, dest_folder):
     """
-    Extract compressed file to the ``dest_folder``. Can handle ``.zip``, ``.tar.gz``. If none of this extension is found, simply
-    copy the file in ``dest_folder``.
+    Extract compressed file to the ``dest_folder``. Can handle ``.zip``, ``.tar.gz``. If none of this extension is
+    found, simply copy the file in ``dest_folder``.
 
     Args:
         compressed: the compressed ``.zip`` or ``.tar.gz`` file
@@ -177,7 +177,7 @@ def install_data(url, dest_folder, keep=False):
     for cwd, ds, fs in os.walk(bundle_folder):
         ds.sort()
         fs.sort()
-        ds[:] = [ d for d in ds if d not in ("__MACOSX",) ]
+        ds[:] = [d for d in ds if d not in ("__MACOSX",)]
         for d in ds:
             srcpath = os.path.join(cwd, d)
             relpath = os.path.relpath(srcpath, bundle_folder)

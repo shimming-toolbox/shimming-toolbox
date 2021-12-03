@@ -6,8 +6,8 @@ import numpy as np
 import os
 import scipy.io
 import scipy.optimize
+import matplotlib.pyplot as plt
 
-from matplotlib.figure import Figure
 from scipy.stats import variation as cov
 from shimmingtoolbox.utils import montage
 from shimmingtoolbox.masking.threshold import threshold
@@ -108,44 +108,36 @@ def b1shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_mat
         sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=sar_constraint).x)
     else:
-        logger.info(f"No Q matrix provided, performing unconstrained optimization.")
-        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init).x)
+        norm_cons = ({'type': 'eq', 'fun': lambda x: np.linalg.norm(vector_to_complex(x)) - 1})  # Norm constraint
+        logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
+                    f"normalized.")
+        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=norm_cons).x)
 
     # Plot RF shimming results
     if path_output is not None:
-        single_pulse_weights = np.ones(8) / np.linalg.norm(np.ones(8))
-        b1_single_pulse = combine_maps(b1_maps, single_pulse_weights)  # Single pulse excitation
-        b1_single_pulse_roi = combine_maps(b1_roi, single_pulse_weights)
         b1_cp = combine_maps(b1_maps, cp_weights)  # CP mode
         b1_cp_roi = combine_maps(b1_roi, cp_weights)
         b1_shimmed = combine_maps(b1_maps, shim_weights)  # Shimmed result
         b1_shimmed_roi = combine_maps(b1_roi, shim_weights)
-        vmax = np.max(np.concatenate((b1_single_pulse, b1_cp, b1_shimmed)))
+        vmax = np.percentile(np.concatenate((b1_cp, b1_shimmed)), 99)
 
-        fig = Figure(figsize=(15, 15))
-        ax1 = fig.add_subplot(2, 2, 1)
-        im1 = ax1.imshow(montage(b1_single_pulse), vmax=vmax)
-        ax1.axis('off')
-        ax1.set_title(f"B1+ field (single pulse excitation)\nMean B1 in ROI: {b1_single_pulse_roi.mean():.3} nT/V\n"
-                      f"CoV in roi: {cov(b1_single_pulse_roi):.3}")
-        ax2 = fig.add_subplot(2, 2, 2)
-        ax2.imshow(montage(b1_cp), vmax=vmax)
-        ax2.axis('off')
-        ax2.set_title(f"B1+ field (CP mode)\nMean B1 in ROI: {b1_cp_roi.mean():.3} nT/V\nCoV in roi: "
-                      f"{cov(b1_cp_roi):.3}")
-        ax3 = fig.add_subplot(2, 2, 3)
-        ax3.imshow(montage(b1_shimmed), vmax=vmax)
-        ax3.axis('off')
-        ax3.set_title(f"B1+ field (RF shimming)\nMean B1 in ROI: {b1_shimmed_roi.mean():.3} nT/V\n"
-                      f"CoV in roi: {cov(b1_shimmed_roi):.3f}")
-        ax4 = fig.add_subplot(2, 2, 4)
-        ax4.imshow(montage(mask))
-        ax4.axis('off')
-        ax4.set_title(f"Mask")
+        fig, (ax_cp, ax_shim, ax_mask) = plt.subplots(1, 3)
+        fig.set_size_inches(15, 7)
+        im_cp = ax_cp.imshow(montage(b1_cp), vmax=vmax)
+        ax_cp.axis('off')
+        ax_cp.set_title(f"$B_1^+$ field (CP mode)\nMean $B_1^+$ in ROI: {b1_cp_roi.mean():.3} nT/V\nCoV in roi: "
+                        f"{cov(b1_cp_roi):.3}")
+        ax_shim.imshow(montage(b1_shimmed), vmax=vmax)
+        ax_shim.axis('off')
+        ax_shim.set_title(f"$B_1^+$ field after RF shimming\nMean $B_1^+$ in ROI: {b1_shimmed_roi.mean():.3} nT/V\n"
+                          f"CoV in roi: {cov(b1_shimmed_roi):.3f}")
+        ax_mask.imshow(montage(mask))
+        ax_mask.axis('off')
+        ax_mask.set_title(f"Mask")
 
-        fig.subplots_adjust(left=0.05, right=0.88, bottom=0.05, top=0.9)
-        colorbar_ax = fig.add_axes([0.91, 0.05, 0.02, 0.85])
-        fig.colorbar(im1, cax=colorbar_ax).ax.set_title('nT/V', fontsize=10)
+        fig.subplots_adjust(left=0.05, right=0.90)
+        colorbar_ax = fig.add_axes([0.92, 0.05, 0.02, 0.85])
+        fig.colorbar(im_cp, cax=colorbar_ax).ax.set_title('nT/V', fontsize=10)
 
         fname_figure = os.path.join(path_output, 'b1_shim_results.png')
         fig.savefig(fname_figure)
