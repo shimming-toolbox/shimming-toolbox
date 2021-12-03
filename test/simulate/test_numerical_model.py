@@ -1,10 +1,5 @@
 # coding: utf-8
 
-import pytest
-import os
-from pathlib import Path
-import json
-import numpy as np
 from shimmingtoolbox.simulate import *
 from phantominator import shepp_logan
 
@@ -418,11 +413,7 @@ class TestCore(object):
         deltaB0 = 2
         gamma = 42.58 * 10 ** 6
         handedness = "left"
-
-        if handedness == "left":
-            sign = -1
-        elif handedness == "right":
-            sign = 1
+        sign = -1
 
         actual_signal = NumericalModel.generate_signal(
             proton_density, T2star, FA, TE, deltaB0, gamma, handedness

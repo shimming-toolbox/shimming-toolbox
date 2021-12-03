@@ -14,13 +14,11 @@ from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 @pytest.mark.prelude
 class TestPrepareFieldmap(object):
     def setup(self):
-        fname_phase = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                   'sub-example_phasediff.nii.gz')
+        fname_phase = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
         nii_phase = nib.load(fname_phase)
         phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]
         self.nii_phase = nib.Nifti1Image(phase, nii_phase.affine, header=nii_phase.header)
-        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                 'sub-example_magnitude1.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
         nii_mag = nib.load(fname_mag)
         self.mag = nii_mag.get_fdata()
         self.echo_times = [0.00246, 0.00492]
@@ -44,17 +42,17 @@ class TestPrepareFieldmap(object):
         """Test 2 echoes works."""
 
         # Import 2 echoes and rescale
-        fname_phase1 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
+        fname_phase1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
         nii_phase1 = nib.load(fname_phase1)
         phase1 = (nii_phase1.get_fdata() * 2 * math.pi / 4095) - math.pi
         nii_phase1_re = nib.Nifti1Image(phase1, nii_phase1.affine, header=nii_phase1.header)
-        fname_phase2 = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
+        fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
         nii_phase2 = nib.load(fname_phase2)
         phase2 = (nii_phase2.get_fdata() * 2 * math.pi / 4095) - math.pi
         nii_phase1_re = nib.Nifti1Image(phase2, nii_phase2.affine, header=nii_phase2.header)
 
         # Load mag data to speed it prelude
-        fname_mag = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
         mag = nib.load(fname_mag).get_fdata()
 
         echo_times = [0.0025, 0.0055]

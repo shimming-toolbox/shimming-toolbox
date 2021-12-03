@@ -4,7 +4,6 @@
 import pytest
 import re
 from click.testing import CliRunner
-import os
 
 import shimmingtoolbox.cli.check_env as st_ce
 

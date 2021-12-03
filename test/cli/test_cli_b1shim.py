@@ -11,8 +11,9 @@ from shimmingtoolbox.cli.b1shim import b1shim_cli
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_shimmingtoolbox__
 
-fname_b1_nifti = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_axial.nii.gz')
-path_sar_file = os.path.join(__dir_testing__, 'b1_maps', 'vop', 'SarDataUser.mat')
+fname_b1_nifti = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
+path_sar_file = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
+                             'sub-tb1tfl_SarDataUser.mat')
 
 
 def test_b1shim_cli():
