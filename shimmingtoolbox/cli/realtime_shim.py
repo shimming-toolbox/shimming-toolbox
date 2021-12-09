@@ -117,12 +117,18 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
         freq_riro_corr = -freq_riro_corr
         phase_riro_corr = -phase_riro_corr
 
+    # Avoid division by 0
+    if not np.isclose(pressure_rms, 0):
+        slice_riro_corr /= pressure_rms
+        phase_riro_corr /= pressure_rms
+        freq_riro_corr /= pressure_rms
+
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_zcorrections, 'w')
     for i_slice in range(slice_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {slice_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {slice_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {slice_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -130,7 +136,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients = open(fname_ycorrections, 'w')
     for i_slice in range(phase_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {phase_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {phase_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {phase_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -138,7 +144,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients = open(fname_xcorrections, 'w')
     for i_slice in range(freq_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {freq_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {freq_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {freq_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
