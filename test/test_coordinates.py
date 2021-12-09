@@ -227,3 +227,32 @@ def test_resample_from_to_5d():
     # If there isn't an error, then there is a problem
     print('\nWrong dimensions but does not throw an error.')
     assert False
+
+
+import json
+from shimmingtoolbox.coils.coordinates import get_main_orientation
+def test_get_main_orientation_tra():
+    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    assert orientation == 'TRA'
+
+
+def test_get_main_orientation_sag():
+    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    assert orientation == 'SAG'
+
+
+def test_get_main_orientation_cor():
+    cor_orientation = [1, 0, 0, 0, 0, -1]
+    orientation = get_main_orientation(cor_orientation)
+
+    assert orientation == 'COR'
