@@ -229,7 +229,6 @@ def get_main_orientation(cosines: list):
     # list containing where the max cosine is
     index_max = np.where(slice_abs == slice_abs.max())[0]
 
-    # If there is more than one max (slice at 45 degrees
     if len(index_max) != 1:
         raise NotImplementedError("Ambiguous slice orientation")
 
