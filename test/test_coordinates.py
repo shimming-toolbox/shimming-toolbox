@@ -5,11 +5,10 @@ import numpy as np
 import math
 import os
 import nibabel as nib
+import json
 
-from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.coils.coordinates import phys_gradient
-from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
-from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_gradient, phys_to_vox_gradient, resample_from_to
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 from shimmingtoolbox import __dir_testing__
 
 
@@ -229,8 +228,6 @@ def test_resample_from_to_5d():
     assert False
 
 
-import json
-from shimmingtoolbox.coils.coordinates import get_main_orientation
 def test_get_main_orientation_tra():
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
     with open(fname_json) as json_file:
