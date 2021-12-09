@@ -10,6 +10,7 @@ import json
 from shimmingtoolbox.shim.realtime_shim import realtime_shim
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -92,6 +93,23 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is defined by
     # the frequency, phase and slice encode directions.
     # TODO: More thorough tests
+
+    # Load json
+    fname_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    if orientation == 'SAG':
+        slice_static_corr = -slice_static_corr
+        slice_riro_corr = -slice_riro_corr
+    elif orientation == 'COR':
+        freq_static_corr = -freq_static_corr
+        freq_riro_corr = -freq_riro_corr
+    else:
+        # TRA
+        pass
+
     phase_encode_is_positive = _get_phase_encode_direction_sign(fname_anat)
     if not phase_encode_is_positive:
         freq_static_corr = -freq_static_corr
