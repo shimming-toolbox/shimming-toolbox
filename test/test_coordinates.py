@@ -7,6 +7,8 @@ import os
 import nibabel as nib
 import json
 
+import pytest
+
 from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_gradient, phys_to_vox_gradient, resample_from_to
 from shimmingtoolbox.coils.coordinates import get_main_orientation
 from shimmingtoolbox import __dir_testing__
@@ -253,3 +255,10 @@ def test_get_main_orientation_cor():
     orientation = get_main_orientation(cor_orientation)
 
     assert orientation == 'COR'
+
+
+def test_get_main_orientation_not_imp():
+    cor_orientation = [1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0, 0, -1]
+
+    with pytest.raises(NotImplementedError, match="Ambiguous slice orientation"):
+        get_main_orientation(cor_orientation)
