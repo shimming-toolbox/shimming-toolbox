@@ -303,8 +303,7 @@ def assert_results(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
 
 def define_rt_sim_inputs():
     # anat image
-    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                              'sub-example_unshimmed_e1.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_anat = nib.load(fname_anat)
 
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
@@ -332,7 +331,8 @@ def define_rt_sim_inputs():
     nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Pmu
-    fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                              'sub-realtime_PMUresp_signal.resp')
     pmu = PmuResp(fname_resp)
     # Change pmu so that it uses fake data. The fake data is essentially a sinusoid with 4 points
     pmu.data = np.array([3000, 2000, 1000, 2000])
@@ -526,13 +526,11 @@ class TestShimRTpmuSimData(object):
 def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     """Tests for realtime Sequencer with real data"""
     # Fieldmap
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
+    fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
 
     # anat image
-    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                              'sub-example_unshimmed_e1.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_anat = nib.load(fname_anat)
 
     # Set up mask
@@ -545,12 +543,12 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     nii_mask_riro = nib.Nifti1Image(riro_mask.astype(int), nii_anat.affine, header=nii_anat.header)
 
     # Pmu
-    fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+    fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                              'sub-realtime_PMUresp_signal.resp')
     pmu = PmuResp(fname_resp)
 
     # Path for json file
-    fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                              'sub-example_magnitude1.json')
+    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.json')
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
 

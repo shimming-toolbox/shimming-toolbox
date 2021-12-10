@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import click
+import json
+import nibabel as nib
 import numpy as np
 import os
-import nibabel as nib
-import json
 
 from shimmingtoolbox.shim.realtime_shim import realtime_shim
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import create_output_dir
 from shimmingtoolbox.shim.shim_utils import get_phase_encode_direction_sign
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -93,6 +94,32 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is defined by
     # the frequency, phase and slice encode directions.
     # TODO: More thorough tests
+
+    # Load json
+    fname_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    if 'ImageOrientationText' in json_data:
+        # Tag in private dicom header (0051,100E) indicates the slice orientation, if it exists, it will appear in the
+        # json under 'ImageOrientationText' tag
+        orientation_text = json_data['ImageOrientationText']
+        orientation = orientation_text[:3].upper()
+    else:
+        # Find orientation with the ImageOrientationPatientDICOM tag, this is less reliable since it can fail if there
+        # are 2 highest cosines. It will raise an exception if there is a problem
+        orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    if orientation == 'SAG':
+        slice_static_corr = -slice_static_corr
+        slice_riro_corr = -slice_riro_corr
+    elif orientation == 'COR':
+        freq_static_corr = -freq_static_corr
+        freq_riro_corr = -freq_riro_corr
+    else:
+        # TRA
+        pass
+
     phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
     if not phase_encode_is_positive:
         freq_static_corr = -freq_static_corr
@@ -100,12 +127,18 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
         freq_riro_corr = -freq_riro_corr
         phase_riro_corr = -phase_riro_corr
 
+    # Avoid division by 0 so there are no nans in the output text file. Nans can brick the sequence.
+    if not np.isclose(pressure_rms, 0):
+        slice_riro_corr /= pressure_rms
+        phase_riro_corr /= pressure_rms
+        freq_riro_corr /= pressure_rms
+
     # Write to a text file
     fname_zcorrections = os.path.join(fname_output, 'zshim_gradients.txt')
     file_gradients = open(fname_zcorrections, 'w')
     for i_slice in range(slice_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {slice_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {slice_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {slice_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -113,7 +146,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients = open(fname_ycorrections, 'w')
     for i_slice in range(phase_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {phase_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {phase_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {phase_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 
@@ -121,7 +154,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients = open(fname_xcorrections, 'w')
     for i_slice in range(freq_static_corr.shape[-1]):
         file_gradients.write(f'corr_vec[0][{i_slice}]= {freq_static_corr[i_slice]:.6f}\n')
-        file_gradients.write(f'corr_vec[1][{i_slice}]= {freq_riro_corr[i_slice] / pressure_rms:.12f}\n')
+        file_gradients.write(f'corr_vec[1][{i_slice}]= {freq_riro_corr[i_slice]:.12f}\n')
         file_gradients.write(f'corr_vec[2][{i_slice}]= {mean_p:.3f}\n')
     file_gradients.close()
 

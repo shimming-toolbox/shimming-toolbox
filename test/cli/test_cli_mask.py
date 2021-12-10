@@ -10,14 +10,15 @@ import pytest
 from click.testing import CliRunner
 from shimmingtoolbox.cli.mask import mask_cli
 from shimmingtoolbox import __dir_testing__
-# from shimmingtoolbox
+
+inp = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+fname_input = os.path.join(__dir_testing__, 'ds_spine', 'sub-01', 'anat', 'sub-01_t2.nii.gz')
 
 
 def test_cli_mask_box():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
         out = os.path.join(tmp, 'mask.nii.gz')
         size1 = 10
         size2 = 20
@@ -43,7 +44,6 @@ def test_cli_mask_rect():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
         out = os.path.join(tmp, 'mask.nii.gz')
         size1 = 10
         size2 = 20
@@ -70,7 +70,6 @@ def test_cli_mask_threshold():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        inp = os.path.join(__dir_testing__, 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
         out = os.path.join(tmp, 'mask.nii.gz')
         thr = 780
         result = runner.invoke(mask_cli, ['threshold', '--input', inp, '--output', out, '--thr', thr])
@@ -94,7 +93,6 @@ def test_cli_mask_sct_default():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
         result = runner.invoke(mask_cli, f"sct --input {fname_input} --output {fname_output} --remove-tmp 0",
@@ -110,7 +108,6 @@ def test_cli_mask_sct_all_flags():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        fname_input = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
         fname_output = os.path.join(tmp, 'mask.nii.gz')
 
         result = runner.invoke(mask_cli, f"sct --input {fname_input} --output {fname_output} --size 11 --shape gaussian"
@@ -127,7 +124,7 @@ def test_cli_mask_sct_4d():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        fname_3d = os.path.join(__dir_testing__, 't2', 't2.nii.gz')
+        fname_3d = os.path.join(__dir_testing__, 'ds_spine', 'sub-01', 'anat', 'sub-01_t2.nii.gz')
         nii_3d = nib.load(fname_3d)
         data_4d = np.expand_dims(nii_3d.get_fdata(), 3)
         data_4d = np.append(data_4d, data_4d, 3)

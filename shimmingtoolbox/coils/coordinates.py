@@ -205,3 +205,33 @@ def _resample_3d(nii_3d, nii_to_vox_map, order, mode, cval, out_class):
     nii_resampled_3d = nib_resample_from_to(nii_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
                                             out_class=out_class)
     return nii_resampled_3d.get_fdata()
+
+
+def get_main_orientation(cosines: list):
+    """ Returns the orientation of the slice axis by looking at the ImageOrientationPatientDICOM JSON tag
+
+    Args:
+        cosines (list): list of 6 elements. The first 3 represent the x, y, z cosines of the first row. The last 3
+        represent the x, y, z cosines of the first column. This can be found in ImageOrientationPatientDICOM so it
+        should be LPS coordinates.
+
+    Returns:
+        str: 'SAG', 'COR' or 'TRA'
+
+    """
+    cosines_row = cosines[:3]
+    cosines_col = cosines[3:]
+    cosines_slice = np.cross(cosines_row, cosines_col)
+
+    slice_abs = np.abs(cosines_slice)
+    # list containing where the max cosine is
+    index_max = np.where(slice_abs == slice_abs.max())[0]
+
+    if len(index_max) != 1:
+        raise NotImplementedError("Ambiguous slice orientation")
+
+    orientations = {0: 'SAG',
+                    1: 'COR',
+                    2: 'TRA'}
+
+    return orientations[index_max[0]]

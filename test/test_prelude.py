@@ -6,7 +6,6 @@ import os
 import glob
 import nibabel as nib
 import numpy as np
-import logging
 import pytest
 
 from shimmingtoolbox.unwrap import prelude
@@ -44,7 +43,7 @@ class TestCore(object):
         path_data = glob.glob(os.path.join(self.toolbox_path, 'testing_data*'))[0]
 
         # Open phase data
-        fname_phases = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
+        fname_phases = glob.glob(os.path.join(path_data, 'ds_b0', 'sub-fieldmap', 'fmap', '*phase*.nii.gz'))
         if len(fname_phases) > 2:
             raise IndexError('Phase data parsing is wrongly parsed')
 
@@ -56,7 +55,7 @@ class TestCore(object):
         phase_e2 = np.interp(nii_phase_e2.get_fdata(), [0, 4096], [-np.pi, np.pi])
 
         # Open mag data
-        fname_mags = glob.glob(os.path.join(path_data, 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
+        fname_mags = glob.glob(os.path.join(path_data, 'ds_b0', 'sub-fieldmap', 'fmap', '*magnitude*.nii.gz'))
 
         if len(fname_mags) > 2:
             raise IndexError('Mag data parsing is wrongly parsed')

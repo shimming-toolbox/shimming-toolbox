@@ -14,13 +14,11 @@ from shimmingtoolbox import __dir_testing__
 @pytest.mark.prelude
 class TestUnwrapPhase(object):
     def setup(self):
-        fname_phase = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                   'sub-example_phasediff.nii.gz')
+        fname_phase = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
         nii_phase = nib.load(fname_phase)
         phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]
         self.nii_phase = nib.Nifti1Image(phase, nii_phase.affine, header=nii_phase.header)
-        fname_mag = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                 'sub-example_magnitude1.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
         nii_mag = nib.load(fname_mag)
         self.mag = nii_mag.get_fdata()
 
