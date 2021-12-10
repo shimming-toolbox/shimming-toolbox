@@ -1,17 +1,15 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
+import nibabel as nib
 import numpy as np
 import math
 import os
-import nibabel as nib
-import json
-
 import pytest
 
+from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_gradient, phys_to_vox_gradient, resample_from_to
 from shimmingtoolbox.coils.coordinates import get_main_orientation
-from shimmingtoolbox import __dir_testing__
 
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
@@ -231,21 +229,15 @@ def test_resample_from_to_5d():
 
 
 def test_get_main_orientation_tra():
-    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
-    with open(fname_json) as json_file:
-        json_data = json.load(json_file)
-
-    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+    tra_orientation = [1, 0, 0, 0, 1, 0]
+    orientation = get_main_orientation(tra_orientation)
 
     assert orientation == 'TRA'
 
 
 def test_get_main_orientation_sag():
-    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
-    with open(fname_json) as json_file:
-        json_data = json.load(json_file)
-
-    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+    sag_orientation = [0, 0, 1, 0, 1, 0]
+    orientation = get_main_orientation(sag_orientation)
 
     assert orientation == 'SAG'
 
