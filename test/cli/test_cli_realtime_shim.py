@@ -132,3 +132,59 @@ def test_phase_encode_wrong_tag_value():
         with pytest.raises(ValueError,
                            match="Unexpected value for PhaseEncodingDirection:"):
             _get_phase_encode_direction_sign(fname_nii)
+
+
+def test_cli_realtime_shim_sag_anat():
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Change json to have an orientation that is SAGITAL
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationPatientDICOM'] = [0, 1, 0, 0, 0, -1]
+        fname_json_sag = os.path.join(tmp, 'anat_sag.json')
+        with open(fname_json_sag, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_sag = os.path.join(tmp, 'anat_sag.nii.gz')
+        nib.save(nii, fname_anat_sag)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_sag],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
+
+
+def test_cli_realtime_shim_cor_anat():
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Change json to have an orientation that is CORONAL
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationPatientDICOM'] = [1, 0, 0, 0, 0, -1]
+        fname_json_cor = os.path.join(tmp, 'anat_cor.json')
+        with open(fname_json_cor, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_cor = os.path.join(tmp, 'anat_cor.nii.gz')
+        nib.save(nii, fname_anat_cor)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_cor],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
