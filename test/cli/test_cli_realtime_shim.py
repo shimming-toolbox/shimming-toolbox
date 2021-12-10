@@ -135,6 +135,7 @@ def test_phase_encode_wrong_tag_value():
 
 
 def test_cli_realtime_shim_sag_anat():
+    """We do not have a sagittal orientation in testing_data so we change the json manually to test for the SAG case"""
     runner = CliRunner()
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # Specify output for text file and figures
@@ -163,6 +164,7 @@ def test_cli_realtime_shim_sag_anat():
 
 
 def test_cli_realtime_shim_cor_anat():
+    """We do not have a coronal orientation in testing_data so we change the json manually to test for the COR case"""
     runner = CliRunner()
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # Specify output for text file and figures
@@ -191,6 +193,7 @@ def test_cli_realtime_shim_cor_anat():
 
 
 def test_cli_realtime_shim_tra_orient_text():
+    """Add a json tag ImageOrientationText with 'Tra'"""
     runner = CliRunner()
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # Specify output for text file and figures
