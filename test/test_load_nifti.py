@@ -186,7 +186,7 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "j-",
-        "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+        "ImageOrientationPatientDICOM": [-1, 0, 0, 0, 1, 0],
         "ImageOrientationText": "Tra",
         "InPlanePhaseEncodingDirectionDICOM": "COL",
         "ConversionSoftware": "dcm2niix",
@@ -247,7 +247,7 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "i",
-        "ImageOrientationPatientDICOM": [0, 1, 0, 0, 0, -1],
+        "ImageOrientationPatientDICOM": [0, -1, 0, 0, 0, 1],
         "ImageOrientationText": "Sag",
         "InPlanePhaseEncodingDirectionDICOM": "ROW",
         "ConversionSoftware": "dcm2niix",
@@ -308,7 +308,7 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "i",
-        "ImageOrientationPatientDICOM": [1, 0, 0, 0, 0, -1],
+        "ImageOrientationPatientDICOM": [-1, 0, 0, 0, 0, 1],
         "ImageOrientationText": "Cor",
         "InPlanePhaseEncodingDirectionDICOM": "ROW",
         "ConversionSoftware": "dcm2niix",
@@ -621,7 +621,7 @@ class TestCore(object):
         with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version."):
             read_nii(fname_b1)
 
-    def test_read_nii_b1_no_orientation_text(self):
+    def test_read_nii_b1_no_orientation_text(self, caplog):
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.nii')
         nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
         self._json_b1_no_orientation = self._json_b1_axial.copy()
@@ -629,8 +629,10 @@ class TestCore(object):
         del self._json_b1_no_orientation['ImageOrientationText']
         with open(os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.json'), 'w') as json_file:
             json.dump(self._json_b1_no_orientation, json_file)
-        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationText'. Check dcm2niix version."):
-            read_nii(fname_b1)
+
+        read_nii(fname_b1)
+        assert "No 'ImageOrientationText' tag. Slice orientation determined from 'ImageOrientationPatientDICOM'." in \
+               caplog.text
 
     def test_read_nii_b1_unknown_orientation(self):
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_unknown_orientation.nii')

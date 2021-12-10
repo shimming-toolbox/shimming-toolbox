@@ -6,9 +6,9 @@ import pathlib
 import shutil
 import tempfile
 
+from shimmingtoolbox import __dir_testing__, __dir_shimmingtoolbox__
 from click.testing import CliRunner
 from shimmingtoolbox.cli.b1shim import b1shim_cli
-from shimmingtoolbox import __dir_testing__, __dir_shimmingtoolbox__
 
 fname_b1_axial = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
 fname_b1_coronal = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_coronal.nii.gz')
