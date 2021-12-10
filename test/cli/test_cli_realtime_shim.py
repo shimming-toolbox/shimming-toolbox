@@ -140,7 +140,7 @@ def test_cli_realtime_shim_sag_anat():
         # Specify output for text file and figures
         path_output = os.path.join(tmp, 'test_realtime_shim')
 
-        # Change json to have an orientation that is SAGITAL
+        # Change json to have an orientation that is SAGITTAL
         nii = nib.load(fname_anat)
         with open(fname_json) as json_file:
             json_data = json.load(json_file)
