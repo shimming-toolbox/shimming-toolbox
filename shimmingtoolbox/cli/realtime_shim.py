@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import click
+import json
+import nibabel as nib
 import numpy as np
 import os
-import nibabel as nib
-import json
 
 from shimmingtoolbox.shim.realtime_shim import realtime_shim
 from shimmingtoolbox.pmu import PmuResp
@@ -126,7 +126,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
         freq_riro_corr = -freq_riro_corr
         phase_riro_corr = -phase_riro_corr
 
-    # Avoid division by 0
+    # Avoid division by 0 so there are no nans in the output text file. Nans can brick the sequence.
     if not np.isclose(pressure_rms, 0):
         slice_riro_corr /= pressure_rms
         phase_riro_corr /= pressure_rms
