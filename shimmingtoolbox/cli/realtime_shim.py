@@ -98,7 +98,16 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     fname_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
-    orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    if 'ImageOrientationText' in json_data:
+        # Tag in private dicom header (0051,100E) indicates the slice orientation, if it exists, it will appear in the
+        # json under 'ImageOrientationText' tag
+        orientation_text = json_data['ImageOrientationText']
+        orientation = orientation_text[:3].upper()
+    else:
+        # Find orientation with the ImageOrientationPatientDICOM tag, this is less reliable since it can fail if there
+        # are 2 highest cosines. It will raise an exception if there is a problem
+        orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
 
     if orientation == 'SAG':
         slice_static_corr = -slice_static_corr

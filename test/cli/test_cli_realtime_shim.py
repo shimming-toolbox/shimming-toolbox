@@ -188,3 +188,31 @@ def test_cli_realtime_shim_cor_anat():
 
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
+
+
+def test_cli_realtime_shim_tra_orient_text():
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Add tag to json that says it is axial
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationText'] = 'Tra'
+        fname_json_text = os.path.join(tmp, 'anat_text.json')
+        with open(fname_json_text, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_text = os.path.join(tmp, 'anat_text.nii.gz')
+        nib.save(nii, fname_anat_text)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_text],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
