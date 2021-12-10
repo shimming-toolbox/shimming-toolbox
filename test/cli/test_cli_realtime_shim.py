@@ -132,3 +132,90 @@ def test_phase_encode_wrong_tag_value():
         with pytest.raises(ValueError,
                            match="Unexpected value for PhaseEncodingDirection:"):
             _get_phase_encode_direction_sign(fname_nii)
+
+
+def test_cli_realtime_shim_sag_anat():
+    """We do not have a sagittal orientation in testing_data so we change the json manually to test for the SAG case"""
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Change json to have an orientation that is SAGITTAL
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationPatientDICOM'] = [0, 1, 0, 0, 0, -1]
+        fname_json_sag = os.path.join(tmp, 'anat_sag.json')
+        with open(fname_json_sag, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_sag = os.path.join(tmp, 'anat_sag.nii.gz')
+        nib.save(nii, fname_anat_sag)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_sag],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
+
+
+def test_cli_realtime_shim_cor_anat():
+    """We do not have a coronal orientation in testing_data so we change the json manually to test for the COR case"""
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Change json to have an orientation that is CORONAL
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationPatientDICOM'] = [1, 0, 0, 0, 0, -1]
+        fname_json_cor = os.path.join(tmp, 'anat_cor.json')
+        with open(fname_json_cor, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_cor = os.path.join(tmp, 'anat_cor.nii.gz')
+        nib.save(nii, fname_anat_cor)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_cor],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
+
+
+def test_cli_realtime_shim_tra_orient_text():
+    """Add a json tag ImageOrientationText with 'Tra'"""
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        # Add tag to json that says it is axial
+        nii = nib.load(fname_anat)
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+        json_data['ImageOrientationText'] = 'Tra'
+        fname_json_text = os.path.join(tmp, 'anat_text.json')
+        with open(fname_json_text, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+        fname_anat_text = os.path.join(tmp, 'anat_text.nii.gz')
+        nib.save(nii, fname_anat_text)
+
+        # Run the CLI
+        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                                   '--output', path_output,
+                                                   '--resp', fname_resp,
+                                                   '--anat', fname_anat_text],
+                               catch_exceptions=False)
+
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
