@@ -1,16 +1,15 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
+import nibabel as nib
 import numpy as np
 import math
 import os
-import nibabel as nib
+import pytest
 
-from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.coils.coordinates import phys_gradient
-from shimmingtoolbox.coils.coordinates import phys_to_vox_gradient
-from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox.coils.coordinates import generate_meshgrid, phys_gradient, phys_to_vox_gradient, resample_from_to
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
@@ -227,3 +226,31 @@ def test_resample_from_to_5d():
     # If there isn't an error, then there is a problem
     print('\nWrong dimensions but does not throw an error.')
     assert False
+
+
+def test_get_main_orientation_tra():
+    tra_orientation = [1, 0, 0, 0, 1, 0]
+    orientation = get_main_orientation(tra_orientation)
+
+    assert orientation == 'TRA'
+
+
+def test_get_main_orientation_sag():
+    sag_orientation = [0, 0, 1, 0, 1, 0]
+    orientation = get_main_orientation(sag_orientation)
+
+    assert orientation == 'SAG'
+
+
+def test_get_main_orientation_cor():
+    cor_orientation = [1, 0, 0, 0, 0, -1]
+    orientation = get_main_orientation(cor_orientation)
+
+    assert orientation == 'COR'
+
+
+def test_get_main_orientation_not_imp():
+    cor_orientation = [1 / np.sqrt(2), 1 / np.sqrt(2), 0, 0, 0, -1]
+
+    with pytest.raises(NotImplementedError, match="Ambiguous slice orientation"):
+        get_main_orientation(cor_orientation)
