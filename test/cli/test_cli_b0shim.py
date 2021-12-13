@@ -20,12 +20,10 @@ from shimmingtoolbox.simulate.numerical_model import NumericalModel
 
 def _define_inputs(fmap_dim):
     # fname for fmap
-    fname_fmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                              'sub-example_fieldmap.nii.gz')
+    fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
 
-    fname_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                              'sub-example_fieldmap.json')
+    fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
     fm_data = json.load(open(fname_json))
 
     if fmap_dim == 4:
@@ -38,12 +36,10 @@ def _define_inputs(fmap_dim):
         raise ValueError("Supported Dimensions are 2, 3 or 4")
 
     # fname for anat
-    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                              'sub-example_unshimmed_e1.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_anat = nib.load(fname_anat)
 
-    fname_anat_json = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                                   'sub-example_unshimmed_e1.json')
+    fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
     anat_data = json.load(open(fname_anat_json))
 
     anat = nii_anat.get_fdata()
@@ -420,7 +416,8 @@ class TestCLIRealtime(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
-            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -455,7 +452,8 @@ class TestCLIRealtime(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
-            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -495,7 +493,8 @@ class TestCLIRealtime(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
-            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -528,7 +527,8 @@ class TestCLIRealtime(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             # Input pmu fname
-            fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
@@ -569,8 +569,7 @@ def test_cli_define_slices_anat():
     """Test using an anatomical file"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
-        fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                                  'sub-example_unshimmed_e1.nii.gz')
+        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', fname_anat,
                                                 '--factor', '5',
@@ -627,7 +626,8 @@ def test_cli_define_slices_wrong_output():
 #                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         # Input pmu fname
-#         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+# fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+#                           'sub-realtime_PMUresp_signal.resp')
 #
 #         runner = CliRunner()
 #
@@ -699,7 +699,8 @@ def test_cli_define_slices_wrong_output():
 #                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         # Input pmu fname
-#         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
+# fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+#                           'sub-realtime_PMUresp_signal.resp')
 #
 #         runner = CliRunner()
 #
