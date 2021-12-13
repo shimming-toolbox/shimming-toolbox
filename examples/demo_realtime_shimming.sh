@@ -9,23 +9,29 @@
 # Download example data
 st_download_data testing_data
 
+# Store testing_data path
+TESTING_DATA_PATH="$(cd "$(dirname "testing_data")"; pwd)/$(basename "testing_data")"
+
 # Go inside folder
-cd testing_data/realtime_zshimming_data || exit
+cd testing_data/ds_b0/sub-realtime/sourcedata || exit
 
 # dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti --input "." --output "../rt_shim_nifti" --subject "sub-example" || exit
-cd ../rt_shim_nifti/sub-example/fmap || exit
+st_dicom_to_nifti --input "." --output "../.." --subject "sub-gradient_realtime" || exit
+cd ../../sub-gradient_realtime/fmap || exit
 
 # Create fieldmap
-st_prepare_fieldmap "sub-example_phasediff.nii.gz" --mag "sub-example_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-example_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
+st_prepare_fieldmap "sub-gradient_realtime_phasediff.nii.gz" --mag "sub-gradient_realtime_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-gradient_realtime_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
 
 # Mask anatomical image
-st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 15 15 20 --output "sub-example_anat_mask.nii.gz" || exit
+mkdir "../../derivatives/sub-gradient_realtime"
+st_mask box --input "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" || exit
 
 # Shim
-st_realtime_shim --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../realtime_zshimming_data/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --output "." || exit
-# st_shim fieldmap_realtime --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../realtime_zshimming_data/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --scanner-coil-order "1" --output-file-format "eva" --output "."  -v debug|| exit
-# st_realtime_shim will:
+st_b0shim gradient_realtime --fmap "sub-gradient_realtime_fieldmap.nii.gz" --anat "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradient_realtime/gradient_realtime" || exit
+
+echo -e "\n\033[0;32mOutput is located here: ${TESTING_DATA_PATH}/ds_b0/derivatives/sub-gradient_realtime/gradient_realtime"
+
+# st_b0shim gradient_realtime will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap
 # - Calculate a static offset component

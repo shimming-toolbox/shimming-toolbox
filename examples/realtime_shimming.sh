@@ -7,24 +7,29 @@
 # slice.
 #
 # The first variable should include the input path of the data to process
-# The second should include the output path
 
 # Go inside input path
-cd "$1" || exit
+INPUT_PATH="$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+cd "${INPUT_PATH}" || exit
 
 # dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti --input "." --output "../rt_shim_nifti" --subject "sub-example" || exit
+st_dicom_to_nifti --input "${INPUT_PATH}" --output "../rt_shim_nifti" --subject "sub-example" || exit
 cd ../rt_shim_nifti/sub-example/fmap || exit
 
 # Create fieldmap
 st_prepare_fieldmap "sub-example_phasediff.nii.gz" --mag "sub-example_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-example_fieldmap.nii.gz" || exit
 
 # Mask anatomical image
-st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 20 20 14 --output "sub-example_anat_mask.nii.gz" || exit
+mkdir "../../derivatives/sub-example"
+st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 20 20 14 --output "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" || exit
 
 # Shim
-st_realtime_shim --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "../../../${1}/PMUresp_signal.resp" --mask-static "sub-example_anat_mask.nii.gz" --mask-riro "sub-example_anat_mask.nii.gz" --output "."|| exit
-# st_realtime_zshim will:
+st_b0shim gradient_realtime --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "${INPUT_PATH}/PMUresp_signal.resp" --mask-static "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --output "../../derivatives/sub-example/gradient_realtime" || exit
+
+OUTPUT_PATH="$(dirname "${INPUT_PATH}")/rt_shim_nifti/derivatives/sub-example"
+echo -e "\n\033[0;32mOutput is located here: ${OUTPUT_PATH}"
+
+# st_b0shim gradient_realtime  will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
 # - Calculate voxelwise gradients for the fieldmap
 # - Calculate a static offset component
