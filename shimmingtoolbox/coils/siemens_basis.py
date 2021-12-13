@@ -80,11 +80,6 @@ def _get_scaling_factors():
     # distance from iso/origin to adopted reference point[units: mm]
     r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
 
-    # invert polarity TODO: Check acdc-82p to make sure 2nd order is correct
-    # Link to document on gdrive:
-    # https://docs.google.com/document/d/1g8H2KxZ5NNIPmhCu9VIDr34VgskPOHVJBfOqMX7BHR8/edit#heading=h.q5ns257dbqga
-    sh[:, :, :, [X, Z, ZX, XY]] = -sh[:, :, :, [X, Z, ZX, XY]]
-
     # scaling:
     orders = [1, 1, 1, 2, 2, 2, 2, 2]
 
@@ -98,8 +93,8 @@ def _get_scaling_factors():
 def siemens_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
-    harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*, ``basis`` is
-    then:
+    harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*,
+    ``basis``is then:
 
         - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
 
