@@ -18,12 +18,11 @@ import math
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
-from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
-from shimmingtoolbox.shim.shim_utils import get_phase_encode_direction_sign
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -90,9 +89,11 @@ def b0shim_cli():
                                       "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
                                       "specify whether to output one txt file per coil system or coil channel.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
-              help="Format of the scanner coil output. Delta: Outputs the change of coefficients. Absolute: Outputs "
-                   "the coefficient directly by taking into account the current shim settings. This is effectively "
-                   "initial + delta")
+              show_default=True,
+              help="Format of the scanner coil output. Delta: Outputs the change of shim coefficients, The scanner "
+                   "coil coefs will be in the Gradient coordinate system. Absolute: Outputs the coefficient directly "
+                   "by taking into account the current shim settings. This is effectively initial + delta. Scanner "
+                   "coil coefficients will be in the Shim coordinate system")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils, dilation_kernel,
                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
@@ -132,11 +133,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_fname = [
-            fname_fmap,
-            fname_anat,
-            fname_mask_anat
-        ]
+        list_fname = [fname_fmap, fname_anat, fname_mask_anat]
         _save_nii_to_new_dir(list_fname, path_output)
 
     # Open json of the fmap
@@ -167,76 +164,51 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                            mask_dilation_kernel_size=dilation_kernel_size,
                            path_output=path_output)
 
-    if output_value_format == 'absolute':
-
-        # TODO: Returned values change depending on the scanner as well as the shim order.
-        #  Ryan has the units sorted out for the prisma fit
-        # https://github.com/shimming-toolbox/shimming-toolbox-matlab/blob/master/Coils/Shim_Siemens/Shim_Prisma/Shim_IUGM_Prisma_fit/ShimSpecs_IUGM_Prisma_fit.m
-
-        scanner_coil = list_coils[-1]
-
-        if type(scanner_coil) != ScannerCoil:
-            raise RuntimeError("absolute option only valid for scanner coils")
-
-        order_mapping = {0: 1,
-                         1: 4,
-                         2: 9}
-        n_channels = order_mapping[scanner_coil_order]
-        for i_channel in range(n_channels):
-            coefs[:, -n_channels + i_channel] = coefs[:, -n_channels + i_channel] + initial_coefs[i_channel]
-
     # Output
     if scanner_coil_order >= 0:
-        n_channels = list_coils[-1].dim[3]
+        # n_channels for the spherical harmonics
+        n_sph_channels = list_coils[-1].dim[3]
 
-        if scanner_coil_order >= 1:
-            # TODO: Fix for 2nd order
-            # Convert coef of 1st order sph harmonics to voxel coord system
+        if output_value_format == 'delta' and scanner_coil_order >= 1:
+            logger.debug("Converting scanner coil from ShimCS to Gradient CS")
+            # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+            # Convert coef of 1st order sph harmonics to Gradient coord system
 
-            # offset by 5 channels if using 2nd order
-            if scanner_coil_order == 2:
-                offset = 5
+            coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs[..., -n_sph_channels + 1],
+                                                                       coefs[..., -n_sph_channels + 2],
+                                                                       coefs[..., -n_sph_channels + 3], fname_anat)
+
+            coefs[..., -n_sph_channels + 1] = coefs_freq
+            coefs[..., -n_sph_channels + 2] = coefs_phase
+            coefs[..., -n_sph_channels + 3] = coefs_slice
+
+        else:  # output_value_format == 'absolute'
+
+            # Load anat json
+            fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+            with open(fname_anat_json) as json_file:
+                json_anat_data = json.load(json_file)
+
+            if json_anat_data['Manufacturer'] == 'Siemens':
+                # Change from RAS to LAI (ShimCS)
+                # x
+                coefs[..., -n_sph_channels + 1] = -coefs[..., -n_sph_channels + 1]
+                # z
+                coefs[..., -n_sph_channels + 3] = -coefs[..., -n_sph_channels + 3]
             else:
-                offset = 0
+                raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
+                                          f"absolute format")
 
-            # Invert coefficients of the 1st order, scanner shim coefficients (LAI) --> NIfTI coefficients (RAS)
-            # x
-            coefs[..., -3 - offset] = -coefs[..., -3 - offset]
-            # z
-            coefs[..., -1 - offset] = -coefs[..., -1 - offset]
+            for i_channel in range(n_sph_channels):
+                # abs_coef = delta + initial
+                coefs[:, -n_sph_channels + i_channel] = coefs[:, -n_sph_channels + i_channel] + initial_coefs[i_channel]
 
-            # Convert from patient coordinates to image coordinates
-            scanner_coil_coef_vox = phys_to_vox_coefs(coefs[..., -3 - offset], coefs[..., -2 - offset],
-                                                      coefs[..., -1 - offset], nii_anat.affine)
-            coefs[..., -3 - offset] = scanner_coil_coef_vox[0]
-            coefs[..., -2 - offset] = scanner_coil_coef_vox[1]
-            coefs[..., -1 - offset] = scanner_coil_coef_vox[2]
-
-            # Convert from image to freq, phase, slice encoding direction
-            logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
-            dim_info = nii_anat.header.get_dim_info()
-            order1 = coefs[..., -3 - offset:coefs.shape[-1] - offset]
-            curr_freq, curr_phase, curr_slice = [order1[..., dim] for dim in dim_info]
-
-            # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
-            # defined by the frequency, phase and slice encode directions.
-            # TODO: More thorough tests
-            phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
-            if phase_encode_is_positive:
-                coefs[..., -3 - offset] = curr_freq
-                coefs[..., -2 - offset] = curr_phase
-            else:
-                coefs[..., -3 - offset] = -curr_freq
-                coefs[..., -2 - offset] = -curr_phase
-
-            # Slice orientation is not affected by phase encode direction
-            coefs[..., -1 - offset] = curr_slice
-
-        list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_channels:], list_slices,
+        list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_sph_channels:], list_slices,
                                                       path_output, o_format_sph)
+
         if len(list_coils) > 1:
-            fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_channels], list_slices, path_output,
-                                                  o_format_coil, start_coil_number=1)
+            fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_sph_channels], list_slices,
+                                                  path_output, o_format_coil, start_coil_number=1)
             # Concat list
             list_fname_output = list_fname_output + fname_tmp
     else:
@@ -363,9 +335,10 @@ def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_for
                                       "per row in the order that the shim will be performed.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
               default='delta', show_default=True,
-              help="Format of the scanner coil output. Delta: Outputs the change of coefficients. Absolute: Outputs "
-                   "the coefficient directly by taking into account the current shim settings. This is effectively "
-                   "initial + delta")
+              help="Format of the scanner coil output. Delta: Outputs the change of shim coefficients, The scanner "
+                   "coil coefs will be in the Gradient coordinate system. Absolute: Outputs the coefficient directly "
+                   "by taking into account the current shim settings. This is effectively initial + delta. Scanner "
+                   "coil coefficients will be in the Shim coordinate system")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
@@ -379,6 +352,11 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     Example of use: st_shim fieldmap_static --coil coil1.nii coil1_config.json
     --coil coil2.nii coil2_config.json --fmap fmap.nii --anat anat.nii --mask-static mask.nii
     """
+
+    # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
+    if output_value_format == 'absolute' and o_format == 'eva':
+        raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: {o_format}")
+
     # Set logger level
     set_all_loggers(verbose)
 
@@ -438,12 +416,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_fname = [
-            fname_fmap,
-            fname_anat,
-            fname_mask_anat_static,
-            fname_mask_anat_riro
-        ]
+        list_fname = [fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro]
         _save_nii_to_new_dir(list_fname, path_output)
 
     # Get the shim slice ordering
@@ -463,83 +436,56 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     currents_static, currents_riro, mean_p, p_rms = out
 
-    if output_value_format == 'absolute':
-        raise NotImplementedError("absolute not yet implemented")
-        # TODO: Returned values change depending on the scanner as well as the shim order.
-        #  Ryan has the units sorted out for the prisma fit
-        # https://github.com/shimming-toolbox/shimming-toolbox-matlab/blob/master/Coils/Shim_Siemens/Shim_Prisma/Shim_IUGM_Prisma_fit/ShimSpecs_IUGM_Prisma_fit.m
-
-        # order_mapping = {0: 1,
-        #                  1: 4,
-        #                  2: 9}
-        # n_channels = order_mapping[scanner_coil_order]
-        # for i_channel in range(n_channels):
-        #     currents_static[:, -n_channels + i_channel] = currents_static[:, -n_channels + i_channel] + \
-        #                                                   initial_coefs[i_channel]
-
     # Output
-    # TODO: Fix for 2nd order
-
     if scanner_coil_order >= 0:
-        if scanner_coil_order >= 1:
-            # offset by 5 channels if using 2nd order
-            if scanner_coil_order == 2:
-                offset = 5
+        # n_channels for the spherical harmonics
+        n_sph_channels = list_coils[-1].dim[3]
+
+        if output_value_format == 'delta' and scanner_coil_order >= 1:
+            # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+            logger.debug("Converting scanner coil from ShimCS to Gradient CS")
+
+            coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                                                                       currents_static[..., -n_sph_channels + 1],
+                                                                       currents_static[..., -n_sph_channels + 2],
+                                                                       currents_static[..., -n_sph_channels + 3],
+                                                                       fname_anat)
+            currents_static[..., -n_sph_channels + 1] = coefs_st_freq
+            currents_static[..., -n_sph_channels + 2] = coefs_st_phase
+            currents_static[..., -n_sph_channels + 3] = coefs_st_slice
+
+            coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                                                                       currents_riro[..., -n_sph_channels + 1],
+                                                                       currents_riro[..., -n_sph_channels + 2],
+                                                                       currents_riro[..., -n_sph_channels + 3],
+                                                                       fname_anat)
+            currents_riro[..., -n_sph_channels + 1] = coefs_riro_freq
+            currents_riro[..., -n_sph_channels + 2] = coefs_riro_phase
+            currents_riro[..., -n_sph_channels + 3] = coefs_riro_slice
+
+        else:  # output_value_format == 'absolute'
+            # Load anat json
+            fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+            with open(fname_anat_json) as json_file:
+                json_anat_data = json.load(json_file)
+
+            if json_anat_data['Manufacturer'] == 'Siemens':
+                # Change from RAS to LAI (ShimCS)
+                # x
+                currents_static[..., -n_sph_channels + 1] = -currents_static[..., -n_sph_channels + 1]
+                currents_riro[..., -n_sph_channels + 1] = -currents_riro[..., -n_sph_channels + 1]
+                # z
+                currents_static[..., -n_sph_channels + 3] = -currents_static[..., -n_sph_channels + 3]
+                currents_riro[..., -n_sph_channels + 3] = -currents_riro[..., -n_sph_channels + 3]
             else:
-                offset = 0
+                raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
+                                          f"absolute format")
 
-            logger.debug("Converting scanner coil from phys x, y, z to voxel x, y, z")
-            # Invert coefficients of the 1st order, scanner shim coefficients (LAI) --> NIfTI coefficients (RAS)
-            # x
-            currents_static[..., -3 - offset] = -currents_static[..., -3 - offset]
-            currents_riro[..., -3 - offset] = -currents_riro[..., -3 - offset]
-            # z
-            currents_static[..., -1 - offset] = -currents_static[..., -1 - offset]
-            currents_riro[..., -1 - offset] = -currents_riro[..., -1 - offset]
-
-            # Convert static from patient to image coord system
-            scanner_coil_coef_vox = phys_to_vox_coefs(currents_static[..., -3 - offset],
-                                                      currents_static[..., -2 - offset],
-                                                      currents_static[..., -1 - offset], nii_anat.affine)
-            currents_static[..., -3 - offset] = scanner_coil_coef_vox[0]
-            currents_static[..., -2 - offset] = scanner_coil_coef_vox[1]
-            currents_static[..., -1 - offset] = scanner_coil_coef_vox[2]
-
-            # Convert riro to voxel coord system
-            scanner_coil_coef_vox = phys_to_vox_coefs(currents_riro[..., -3 - offset], currents_riro[..., -2 - offset],
-                                                      currents_riro[..., -1 - offset], nii_anat.affine)
-            currents_riro[..., -3 - offset] = scanner_coil_coef_vox[0]
-            currents_riro[..., -2 - offset] = scanner_coil_coef_vox[1]
-            currents_riro[..., -1 - offset] = scanner_coil_coef_vox[2]
-
-            # Convert from image to freq, phase, slice encoding direction
-            logger.debug("Converting scanner coil from voxel x, y, z to freq, phase and slice encoding direction")
-            dim_info = nii_anat.header.get_dim_info()
-            # static
-            order1_static = currents_static[..., -3 - offset:currents_static.shape[-1] - offset]
-            curr_static_freq, curr_static_phase, curr_static_slice = [order1_static[..., dim] for dim in dim_info]
-            # riro
-            order1_riro = currents_riro[..., -3 - offset:currents_riro.shape[-1] - offset]
-            curr_riro_freq, curr_riro_phase, curr_riro_slice = [order1_riro[..., dim] for dim in dim_info]
-
-            # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
-            # defined by the frequency, phase and slice encode directions.
-            # TODO: More thorough tests
-            phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
-            if phase_encode_is_positive:
-                currents_static[..., -3 - offset] = curr_static_freq
-                currents_static[..., -2 - offset] = curr_static_phase
-                currents_riro[..., -3 - offset] = curr_riro_freq
-                currents_riro[..., -2 - offset] = curr_riro_phase
-            else:
-                currents_static[..., -3 - offset] = -curr_static_freq
-                currents_static[..., -2 - offset] = -curr_static_phase
-                currents_riro[..., -3 - offset] = -curr_riro_freq
-                currents_riro[..., -2 - offset] = -curr_riro_phase
-
-            # Slice orientation is not affected by phase encode direction
-            currents_static[..., -1 - offset] = curr_static_slice
-            currents_riro[..., -1 - offset] = curr_riro_slice
+            for i_channel in range(n_sph_channels):
+                # abs_coef = delta + initial
+                currents_static[:, -n_sph_channels + i_channel] = currents_static[:, -n_sph_channels + i_channel] + \
+                                                                  initial_coefs[i_channel]
+                # riro does not change
 
     _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format)
 
@@ -596,12 +542,22 @@ def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, li
                     n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                     for i_slice in range(n_slices):
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
-                        # Divide by 1000 for mt/m units
-                        f.write(f"corr_vec[0][{i_slice}]= "
-                                f"{currents_static[i_shim, start_channel + i_channel] / 1000:.6f}\n")
-                        f.write(f"corr_vec[1][{i_slice}]= "
-                                f"{currents_riro[i_shim, start_channel + i_channel] / 1000:.12f}\n")
-                        f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+
+                        if i_channel == 0:
+                            # f0, Output is in Hz
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{currents_static[i_shim, start_channel + i_channel]:.6f}\n")
+                            f.write(f"corr_vec[1][{i_slice}]= "
+                                    f"{currents_riro[i_shim, start_channel + i_channel]:.12f}\n")
+                            f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+
+                        else:
+                            # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{currents_static[i_shim, start_channel + i_channel] / 1000:.6f}\n")
+                            f.write(f"corr_vec[1][{i_slice}]= "
+                                    f"{currents_riro[i_shim, start_channel + i_channel] / 1000:.12f}\n")
+                            f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
 
@@ -659,10 +615,11 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
     """ Loads the Coil objects from filenames
 
     Args:
-        coils (list): List of tuples(fname_nii, fname_json) os coil profiles and constraints
+        coils (list): List of tuples(fname_nii, fname_json) of coil profiles and constraints
         order (int): Order of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
+        initial_coefs (list): List of coefficients corresponding to the scanner coil.
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
