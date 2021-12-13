@@ -165,7 +165,17 @@ class ScannerCoil(Coil):
 
 
 def convert_to_mp(shim_setting, manufacturers_model_name):
-    # look into json for the tag: ManufacturersModelName
+    """ Converts the ShimSettings tag from the json BIDS sidecar to the scanner units.
+        (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
+
+    Args:
+        shim_setting (list): List of coefficients. Found in the json BIDS sidecar under 'ShimSetting'.
+        manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
+                                        ManufacturersModelName'. Supported names: 'Prisma_fit'.
+
+    Returns:
+        list: Coefficients with units converted.
+    """
 
     if manufacturers_model_name == "Prisma_fit":
         # One can use the Siemens commandline AdjValidate tool to get all the values below:
@@ -178,6 +188,6 @@ def convert_to_mp(shim_setting, manufacturers_model_name):
             raise ValueError("Multipole values exceed known system limits.")
 
     else:
-        raise RuntimeError("Manufacturer not recognized, could not convert units to multipole")
+        raise NotImplementedError("Manufacturer model not recognized, could not convert units")
 
     return list(shim_setting)
