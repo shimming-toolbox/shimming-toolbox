@@ -23,19 +23,19 @@ def b1shim(b1_maps, mask=None, cp_weights=None, algorithm=1, target=None,  q_mat
         b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1 field. (x, y, n_slices, n_channels)
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         cp_weights (numpy.ndarray): 1D vector of length n_channels of complex weights corresponding to the CP mode of
-        the coil. Must be normalized.
+            the coil. Must be normalized
         algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1 optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
                     3 - Maximizes the minimum B1+ value for better efficiency.
         target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
-        optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
+            optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
         sed (float): Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR. SED
-        between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF shimming but might
-        result in SAR excess at the scanner.
+            between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF shimming but
+            might result in SAR excess at the scanner.
         path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is
-        provided.
+            provided.
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
@@ -202,6 +202,7 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
     """
     Reads in B1 maps and returns the individual shim weights for each channel that correspond to a circular polarization
     (CP) mode, computed in the specified voxel.
+
     Args:
         b1_maps (numpy.ndarray): Complex B1 field for different channels. (x, y, n_slices, n_channels)
         voxel_position (tuple): Position of the center of the voxel considered to compute the CP mode.
@@ -260,7 +261,8 @@ def calc_cp(b1_maps, voxel_position=None, voxel_size=None):
 def calc_approx_cp(n_channels):
     """
     Returns a approximation of a circular polarization based on the number of transmit elements. Assumes a circular coil
-    with regularly spaced transmit elements
+    with regularly spaced transmit elements.
+
     Args:
         n_channels (int): Number of transmit elements to consider.
 
@@ -276,7 +278,8 @@ def calc_approx_cp(n_channels):
 
 def max_sar(weights, q_matrix):
     """
-    Returns the maximum local SAR corresponding to a set of shim weight and a set of Q matrices
+    Returns the maximum local SAR corresponding to a set of shim weight and a set of Q matrices.
+
     Args:
         weights (numpy.ndarray): 1D vector of complex shim weights. (length: n_channel)
         q_matrix (numpy.ndarray): Q matrices used to compute the local energy deposition in the tissues.
@@ -291,10 +294,11 @@ def max_sar(weights, q_matrix):
 
 def load_siemens_vop(path_sar_file):
     """
+    Reads in a Matlab file in which the VOP matrices are stored and returns them as a numpy array.
 
     Args:
         path_sar_file: Path to the 'SarDataUser.mat' file containing the scanner's VOPs. This file should be available
-        at the scanner in 'C:/Medcom/MriProduct/PhysConfig'
+            at the scanner in 'C:/Medcom/MriProduct/PhysConfig'.
 
     Returns:
         numpy.ndarray: VOP matrices (n_coils, n_coils, n_VOPs)
