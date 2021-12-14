@@ -10,7 +10,7 @@
 st_download_data testing_data
 
 # Store testing_data path
-TESTING_DATA_PATH="$(cd "$(dirname "testing_data")"; pwd)/$(basename "testing_data")"
+TESTING_DATA_PATH="$(cd "$(dirname "testing_data")" || exit; pwd)/$(basename "testing_data")"
 
 # Go inside folder
 cd testing_data/ds_b0/sub-realtime/sourcedata || exit
