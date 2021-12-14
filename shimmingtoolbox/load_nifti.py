@@ -189,7 +189,6 @@ def read_nii(fname_nifti, auto_scale=True):
             if 'ImageOrientationPatientDICOM' not in json_data:
                 raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
 
-            print(json_data['ImageOrientationPatientDICOM'][4])
             # These values are inverted in ImageOrientationPatientDICOM. Correcting them yields a correct affine matrix
             json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]
             json_data['ImageOrientationPatientDICOM'][1] = -json_data['ImageOrientationPatientDICOM'][1]
