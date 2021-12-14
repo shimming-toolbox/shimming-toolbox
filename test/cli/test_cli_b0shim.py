@@ -609,7 +609,7 @@ def test_cli_define_slices_wrong_output():
 
 
 # def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
-#     """Test to compare grad vs fieldmap realtime shim"""
+#     """Test to compare grad vs fieldmap realtime shim. Both output in the Gradient CS"""
 #     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(4)
 #
 #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -626,81 +626,8 @@ def test_cli_define_slices_wrong_output():
 #                      anat_data=anat_data, fname_anat_json=fname_anat_json)
 #
 #         # Input pmu fname
-# fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
-#                           'sub-realtime_PMUresp_signal.resp')
-#
-#         runner = CliRunner()
-#
-#         # fieldmap rt shim
-#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
-#                                  '--fmap', fname_fmap,
-#                                  '--anat', fname_anat,
-#                                  '--mask-static', fname_mask,
-#                                  '--mask-riro', fname_mask,
-#                                  '--resp', fname_resp,
-#                                  '--slice-factor', '1',
-#                                  '--mask-dilation-kernel-size', '3',
-#                                  '--optimizer-method', 'least_squares',
-#                                  '--scanner-coil-order', '1',
-#                                  '--output', os.path.join(tmp, 'fmap'),
-#                                  '-v', 'debug'],
-#                       catch_exceptions=False)
-#
-#         # grad rt shim
-#         result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
-#                                                    '--anat', fname_anat,
-#                                                    '--mask-static', fname_mask,
-#                                                    '--mask-riro', fname_mask,
-#                                                    '--output', os.path.join(tmp, 'grad'),
-#                                                    '--resp', fname_resp],
-#                                catch_exceptions=False)
-#         a=1
-#
-#
-# def test_grad_vs_fieldmap_known_result():
-#     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(4)
-#
-#     def create_fieldmap(n_slices=3):
-#         # Set up 2-dimensional unshimmed fieldmaps
-#         num_vox = 100
-#         model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
-#         model_obj.generate_deltaB0('linear', [1, 0])
-#         tr = 0.025  # in s
-#         te = [0.004, 0.008]  # in s
-#         model_obj.simulate_measurement(tr, te)
-#         phase_meas1 = model_obj.get_phase()
-#         phase_e1 = phase_meas1[:, :, 0, 0]
-#         phase_e2 = phase_meas1[:, :, 0, 1]
-#         b0_map = ((phase_e2 - phase_e1) / (te[1] - te[0])) / (2 * np.pi)
-#
-#         # Construct a 3-dimensional synthetic field map by stacking different z-slices along the 3rd dimension. Each
-#         # slice is subjected to a manipulation of model_obj across slices (e.g. rotation, squared) in order to test
-#         # various shim configurations.
-#         unshimmed = np.zeros([num_vox, num_vox, n_slices])
-#         for i_n in range(n_slices):
-#             unshimmed[:, :, i_n] = b0_map
-#
-#         return unshimmed
-#
-#     fmap = np.repeat(create_fieldmap(3)[..., np.newaxis], 10, 3)
-#     nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
-#
-#     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the inputs to the new directory
-#         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         fname_fm_json = os.path.join(tmp, 'fmap.json')
-#         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         fname_anat_json = os.path.join(tmp, 'anat.json')
-#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-#                      nii_anat=nii_anat, fname_anat=fname_anat,
-#                      nii_mask=nii_mask, fname_mask=fname_mask,
-#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
-#
-#         # Input pmu fname
-# fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
-#                           'sub-realtime_PMUresp_signal.resp')
+#         fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+#                                   'sub-realtime_PMUresp_signal.resp')
 #
 #         runner = CliRunner()
 #
@@ -715,6 +642,7 @@ def test_cli_define_slices_wrong_output():
 #                                    '--mask-dilation-kernel-size', '3',
 #                                    '--optimizer-method', 'least_squares',
 #                                    '--scanner-coil-order', '1',
+#                                    '--output-file-format', 'eva',
 #                                    '--output', os.path.join(tmp, 'fmap'),
 #                                    '-v', 'debug'],
 #                       catch_exceptions=False)
@@ -727,146 +655,3 @@ def test_cli_define_slices_wrong_output():
 #                                                    '--output', os.path.join(tmp, 'grad'),
 #                                                    '--resp', fname_resp],
 #                                catch_exceptions=False)
-#         a = 1
-#
-#
-# def test_static_shim_known_real_input():
-#     """Test to validate using acdc143p
-#
-#     Currently validated the output for order 1 using an anat in the same space as fmap, anat in different space as fmap
-#     (raised mask problems if fmap has bigger voxels than anat)
-#     """
-#     # fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
-#     # fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
-#     fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.nii.gz"
-#     nii_fmap = nib.load(fname_fmap)
-#     nii_fmap = nib.Nifti1Image(np.mean(nii_fmap.get_fdata(), axis=3), nii_fmap.affine, header=nii_fmap.header)
-#     # fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
-#     # fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
-#     fname_anat = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
-#     nii_anat = nib.load(fname_anat)
-#     anat = nii_anat.get_fdata()
-#     # fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     # fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     fname_fm_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/fmap/sub-example_fieldmap.json"
-#     fm_data = json.load(open(fname_fm_json))
-#     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gx/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
-#     # fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gy/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
-#     fname_anat_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_143p/Gz/rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.json"
-#     anat_data = json.load(open(fname_anat_json))
-#
-#     # # TODO: validate using anat in difference space than fmap
-#     # anat = np.ones_like(nii_fmap.get_fdata())
-#     # anat[0, 0, 0] = 0
-#     # anat_affine = [[-1, 0, 0, 100],
-#     #                [0, 1, 0, -130],
-#     #                [0, 0, 2.25, -177],
-#     #                [0, 0, 0, 1]]
-#     # nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
-#
-#     nx, ny, nz = anat.shape
-#     mask = shapes(anat, 'cube',
-#                   center_dim1=int(nx / 2),
-#                   center_dim2=int(ny / 2),
-#                   len_dim1=20, len_dim2=20, len_dim3=nz)
-#
-#     nii_mask = nib.Nifti1Image(mask, nii_anat.affine, header=nii_anat.header)
-#
-#     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the inputs to the new directory
-#         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         fname_fm_json = os.path.join(tmp, 'fmap.json')
-#         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         fname_anat_json = os.path.join(tmp, 'anat.json')
-#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-#                      nii_anat=nii_anat, fname_anat=fname_anat,
-#                      nii_mask=nii_mask, fname_mask=fname_mask,
-#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
-#
-#         runner = CliRunner()
-#         runner.invoke(b0shim_cli, ['fieldmap_static',
-#                                  '--fmap', fname_fmap,
-#                                  '--anat', fname_anat,
-#                                  '--mask', fname_mask,
-#                                  '--scanner-coil-order', '1',
-#                                  '--slice-factor', '1',
-#                                  '--optimizer-method', 'least_squares',
-#                                  '--output', tmp,
-#                                  '-v', 'debug'],
-#                       catch_exceptions=False)
-#         a=1
-#
-
-# def test_rt_shim_known_real_input():
-#     """Test to validate using acdc82
-#
-#     Currently validated the output for order 1 using an anat in the same space as fmap, anat in different space as fmap
-#     (raised mask problems if fmap has bigger voxels than anat)
-#     """
-#     fname_fmap = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_82p_nifti/Gz+50/derivatives/fieldmap-Gz+50.nii.gz"
-#     nii = nib.load(fname_fmap)
-#     fmap = np.repeat(nii.get_fdata()[..., np.newaxis], 4, 3)
-#     nii_fmap = nib.Nifti1Image(fmap, nii.affine, header=nii.header)
-#     fname_json = "/Users/alex/Documents/School/Polytechnique/Master/project/Data/acdc_82p_nifti/Gz+50/derivatives/fieldmap-Gz+50.json"
-#     data = json.load(open(fname_json))
-#
-#     anat = np.ones(nii_fmap.shape[:3])
-#     anat[0, 0, 0] = 0
-#     anat_affine = [[0, -1, 0, 60],
-#                    [0, 0, -2, 20],
-#                    [-4, 0, 0, 240],
-#                    [0, 0, 0, 1]]
-#     nii_anat = nib.Nifti1Image(anat, anat_affine, header=nii_fmap.header)
-#
-#     nx, ny, nz = anat.shape
-#     mask = shapes(anat, 'cube',
-#                   center_dim1=int(nx / 2),
-#                   center_dim2=int(ny / 2),
-#                   len_dim1=20, len_dim2=40, len_dim3=int(nz/2))
-#
-#     nii_mask = nib.Nifti1Image(mask, nii_anat.affine, header=nii_anat.header)
-#
-#     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the fieldmap
-#         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         nib.save(nii_fmap, fname_fmap)
-#         # Save json
-#         fname_json = os.path.join(tmp, 'fmap.json')
-#         with open(fname_json, 'w', encoding='utf-8') as f:
-#             json.dump(data, f, indent=4)
-#         # Save the mask
-#         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         nib.save(nii_mask, fname_mask)
-#         # Save the anat
-#         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         nib.save(nii_anat, fname_anat)
-#
-#         # Input pmu fname
-#         fname_resp = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'PMUresp_signal.resp')
-#
-#         runner = CliRunner()
-#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
-#                                  '--fmap', fname_fmap,
-#                                  '--anat', fname_anat,
-#                                  '--mask-static', fname_mask,
-#                                  '--mask-riro', fname_mask,
-#                                  '--resp', fname_resp,
-#                                  '--slice-factor', '10',
-#                                  '--mask-dilation-kernel-size', '3',
-#                                  '--optimizer-method', 'least_squares',
-#                                  '--scanner-coil-order', '1',
-#                                  '--output-file-format', 'chronological-ch',
-#                                  '--output', os.path.join(tmp, 'fmap'),
-#                                  '-v', 'debug'],
-#                       catch_exceptions=False)
-#
-#         result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
-#                                                    '--anat', fname_anat,
-#                                                    '--mask-static', fname_mask,
-#                                                    '--mask-riro', fname_mask,
-#                                                    '--output', os.path.join(tmp, 'grad'),
-#                                                    '--resp', fname_resp],
-#                                catch_exceptions=False)
-#         a=1
