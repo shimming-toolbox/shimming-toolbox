@@ -94,7 +94,7 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*,
-    ``basis``is then:
+    ``basis`` is then:
 
         - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
 
@@ -113,9 +113,8 @@ def siemens_basis(x, y, z, orders=(1, 2)):
                            the patient coordinate system (i.e. NIfTI reference (RAS), units of mm)
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
                            the patient coordinate system (i.e. NIfTI reference, units of mm)
-        orders (tuple): Degrees of the desired terms in the series expansion, specified
-                       as a vector of non-negative integers (``(0:1:n)`` yields harmonics up to n-th order, implemented
-                       1st and 2nd order)
+        orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
+                        integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
