@@ -9,7 +9,7 @@
 # The first variable should include the input path of the data to process
 
 # Go inside input path
-INPUT_PATH="$(cd "$(dirname "$1")"; pwd)/$(basename "$1")"
+INPUT_PATH="$(cd "$(dirname "$1")" || exit; pwd)/$(basename "$1")"
 cd "${INPUT_PATH}" || exit
 
 # dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
