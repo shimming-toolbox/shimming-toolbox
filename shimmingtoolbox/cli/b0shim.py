@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS,
-             help="Shim according to the specified algorithm as an argument e.g. st_shim xxxxx")
+             help="Shim according to the specified algorithm as an argument e.g. st_b0shim xxxxx")
 def b0shim_cli():
     pass
 
@@ -45,57 +45,65 @@ def b0shim_cli():
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
-              help="Nifti filename of the B0 fieldmap. This file should contain a 3d array.")
+              help="Static B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
-              help="Nifti filename of the anatomical image to apply the correction onto."
-                   "This file should contain a 3d array.")
+              help="Anatomical image to apply the correction onto.")
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
-              help="Nifti file used to define the spatial region to shim. This file should contain a 3d array."
+              help="Mask defining the spatial region to shim."
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.INT, default=-1, show_default=True,
-              help="Maximum order of the shim system, allowed values are 0, 1, 2. Note that specifying 2 will return "
-                   "orders 0, 1 and 2. The 0th order is the f0 frequency.")
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+              help="Maximum order of the shim system. Note that specifying 1 will return "
+                   "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
-              help="Constraints for the 1st and 2nd order scanner coils")
+              help="Constraints for the scanner coil.")
 @click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
-              default='sequential', show_default=True, help="Defines the slice ordering")
+              default='sequential', show_default=True, help="Defines the slice ordering.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shim for 'interleaved' and 'sequential'")
+              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
+                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
+                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
-              default='least_squares', show_default=True, help="Method used by the optimizer. LS will respect the "
-                                                               "constraints, PS will not respect the constraints")
-@click.option('--mask-dilation-kernel', 'dilation_kernel',
-              type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), required=False, default='sphere',
-              show_default=True, help="Kernel used to dilate the mask to expand the roi")
+              default='least_squares', show_default=True,
+              help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
-              help="Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel of size 3"
-                   "will dilate the mask by 1 pixel, 5->2 pixels")
+              help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
+                   "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
+                   "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
+                   "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
               type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
               default='slicewise-coil',
-              show_default=True, help="Format of the output txt file(s) for the custom coils. slicewise will output "
-                                      "one slice per row in the txt file, chronological will output one set of shim "
-                                      "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
-                                      "specify whether to output one txt file per coil system or coil channel.")
+              show_default=True, help="Syntax used to describe the sequence of shim events for custom coils. "
+                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
+                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
+                                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
+                                      "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
               default='slicewise-coil',
-              show_default=True, help="Format of the output txt file(s) for the custom coils. slicewise will output "
-                                      "one slice per row in the txt file, chronological will output one set of shim "
-                                      "per row in the order that the shim will be performed. Use 'ch' or 'coil' to "
-                                      "specify whether to output one txt file per coil system or coil channel.")
+              show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
+                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
+                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
+                                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
+                                      "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
               show_default=True,
-              help="Format of the scanner coil output. Delta: Outputs the change of shim coefficients, The scanner "
-                   "coil coefs will be in the Gradient coordinate system. Absolute: Outputs the coefficient directly "
-                   "by taking into account the current shim settings. This is effectively initial + delta. Scanner "
-                   "coil coefficients will be in the Shim coordinate system")
+              help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
+                   "scanner coil coefficients will be in the Gradient coordinate system. Absolute: Outputs the "
+                   "absolute coefficient by taking into account the current shim settings. This is effectively "
+                   "initial + shim. Scanner coil coefficients will be in the Shim coordinate system.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils, dilation_kernel,
+def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
                output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
@@ -109,6 +117,9 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
     # Prepare the output
     create_output_dir(path_output)
+
+    # Input can be a string
+    scanner_coil_order = int(scanner_coil_order)
 
     # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
     # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
@@ -160,7 +171,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
-                           mask_dilation_kernel=dilation_kernel,
+                           mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
                            path_output=path_output)
 
@@ -213,8 +224,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                     # abs_coef = delta + initial
                     coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
-        list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
-                                                       coil_number=i_coil)
+            list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
+                                                           coil_number=i_coil)
+        else:
+            list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
+                                                           coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
@@ -289,56 +303,58 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
-              help="Nifti filename of the B0 fieldmap. This file should contain a 4d array. 4th diension being the "
-                   "time.")
+              help="Timeseries of B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
-              help="Nifti filename of the anatomical image to apply the correction onto."
-                   "This file should contain a 3d array.")
+              help="Anatomical image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
-              help="Nifti file used to define the static region to shim. This file should contain a 3d array."
+              help="Mask defining the static spatial region to shim."
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
-              help="Nifti file used to define the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
-                   "region to shim. This file should contain a 3d array. The coordinate system should be the same as "
-                   "``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.INT, default=-1, show_default=True,
-              help="Maximum order of the shim system, allowed values are 0, 1, 2. Note that specifying 2 will return "
-                   "orders 0, 1 and 2. The 0th order is the f0 frequency.")
+              help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
+                   "region to shim. The coordinate system should be the same as ``anat``'s coordinate system.")
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+              help="Maximum order of the shim system. Note that specifying 1 will return "
+                   "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
-              help="Constraints for the 1st and 2nd order scanner coils")
+              help="Constraints for the scanner coil.")
 @click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
               default='sequential', show_default=True, help="Defines the slice ordering")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shim for 'interleaved' and 'sequential'")
+              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
+                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
+                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
-              default='least_squares', show_default=True, help="Method used by the optimizer. LS will respect the "
-                                                               "constraints, PS will not respect the constraints")
-@click.option('--mask-dilation-kernel', 'dilation_kernel',
-              type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), required=False, default='sphere',
-              show_default=True, help="Kernel used to dilate the mask to expand the roi")
+              default='least_squares', show_default=True,
+              help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
-              help="Length of a side of the 3d kernel to dilate the mask. Must be odd. For example, a kernel of size 3"
-                   "will dilate the mask by 1 pixel, 5->2 pixels")
-@click.option('--output-file-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch', 'eva']),
-              default='slicewise-ch',
-              show_default=True, help="Format of the output txt file(s) of the coils. slicewise will output "
-                                      "one slice per row in the txt file, chronological will output one set of shim "
-                                      "per row in the order that the shim will be performed.")
-@click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
-              default='delta', show_default=True,
-              help="Format of the scanner coil output. Delta: Outputs the change of shim coefficients, The scanner "
-                   "coil coefs will be in the Gradient coordinate system. Absolute: Outputs the coefficient directly "
-                   "by taking into account the current shim settings. This is effectively initial + delta. Scanner "
-                   "coil coefficients will be in the Shim coordinate system")
+              help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
+                   "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
+                   "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
+                   "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
+@click.option('--output-file-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch', 'eva']),
+              default='slicewise-ch',
+              show_default=True, help="Syntax used to describe the sequence of shim events. "
+                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                                      "captured by the controller of the shim amplifier. There will be one output "
+                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                                      "time-varying and mean pressure are encoded in the columns of each file.")
+@click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
+              default='delta', show_default=True,
+              help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
+                   "scanner coil coefficients will be in the Gradient coordinate system. Absolute: Outputs the "
+                   "absolute coefficient by taking into account the current shim settings. This is effectively "
+                   "initial + shim. Scanner coil coefficients will be in the Shim coordinate system.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
-                 slice_factor, coils, dilation_kernel, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
+                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
                  path_output, o_format, output_value_format, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
@@ -351,6 +367,9 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
     if output_value_format == 'absolute' and o_format == 'eva':
         raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: {o_format}")
+
+    # Input can be a string
+    scanner_coil_order = int(scanner_coil_order)
 
     # Set logger level
     set_all_loggers(verbose)
@@ -420,7 +439,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     out = shim_realtime_pmu_sequencer(nii_fmap, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
-                                      mask_dilation_kernel=dilation_kernel,
+                                      mask_dilation_kernel='sphere',
                                       mask_dilation_kernel_size=dilation_kernel_size,
                                       path_output=path_output)
 
