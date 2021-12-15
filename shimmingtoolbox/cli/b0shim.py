@@ -213,15 +213,8 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                     # abs_coef = delta + initial
                     coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
-            # Save to
-            list_fname_tmp = _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
+        list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                        coil_number=i_coil)
-
-        else:
-            list_fname_tmp = _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
-                                                       coil_number=i_coil)
-
-        list_fname_output += list_fname_tmp
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
@@ -371,11 +364,6 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     fmap_required_dims = 4
     nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
 
-    # Load json associated with the fieldmap
-    fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_json) as json_file:
-        json_fm_data = json.load(json_file)
-
     # Load the anat
     nii_anat = nib.load(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
@@ -499,9 +487,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                     coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
                     # riro does not change
 
-        list_fname_tmp = _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                               path_output, o_format, i_coil)
-        list_fname_output += list_fname_tmp
+        list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                   path_output, o_format, i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
