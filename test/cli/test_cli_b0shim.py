@@ -108,7 +108,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -133,7 +133,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--scanner-coil-order', '1',
@@ -165,7 +165,7 @@ class TestCliStatic(object):
 
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
@@ -198,7 +198,7 @@ class TestCliStatic(object):
 
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
@@ -227,7 +227,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -257,7 +257,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -290,7 +290,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -322,7 +322,7 @@ class TestCliStatic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_static',
+            res = runner.invoke(b0shim_cli, ['static',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -358,7 +358,7 @@ class TestCliStatic(object):
             runner = CliRunner()
 
             with pytest.raises(RuntimeError, match="No custom or scanner coils were selected."):
-                runner.invoke(b0shim_cli, ['fieldmap_static',
+                runner.invoke(b0shim_cli, ['static',
                                            '--fmap', fname_fmap,
                                            '--anat', fname_anat,
                                            '--mask', fname_mask,
@@ -383,7 +383,7 @@ class TestCliStatic(object):
     #         nib.save(nii_anat, fname_anat)
     #
     #         runner = CliRunner()
-    #         runner.invoke(b0shim_cli, ['fieldmap_static',
+    #         runner.invoke(b0shim_cli, ['static',
     #                                  '--fmap', fname_fmap,
     #                                  '--anat', fname_anat,
     #                                  '--mask', fname_mask,
@@ -420,7 +420,7 @@ class TestCLIRealtime(object):
                                       'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+            res = runner.invoke(b0shim_cli, ['realtime',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask-static', fname_mask,
@@ -456,7 +456,7 @@ class TestCLIRealtime(object):
                                       'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+            res = runner.invoke(b0shim_cli, ['realtime',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask-static', fname_mask,
@@ -497,7 +497,7 @@ class TestCLIRealtime(object):
                                       'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+            res = runner.invoke(b0shim_cli, ['realtime',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--resp', fname_resp,
@@ -531,7 +531,7 @@ class TestCLIRealtime(object):
                                       'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['fieldmap_realtime',
+            res = runner.invoke(b0shim_cli, ['realtime',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask-static', fname_mask,
@@ -632,7 +632,7 @@ def test_cli_define_slices_wrong_output():
 #         runner = CliRunner()
 #
 #         # fieldmap rt shim
-#         runner.invoke(b0shim_cli, ['fieldmap_realtime',
+#         runner.invoke(b0shim_cli, ['realtime',
 #                                    '--fmap', fname_fmap,
 #                                    '--anat', fname_anat,
 #                                    '--mask-static', fname_mask,
