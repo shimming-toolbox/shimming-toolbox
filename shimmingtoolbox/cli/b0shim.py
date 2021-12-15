@@ -165,122 +165,124 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                            path_output=path_output)
 
     # Output
-    if scanner_coil_order >= 0:
-        # n_channels for the spherical harmonics
-        n_sph_channels = list_coils[-1].dim[3]
+    list_fname_output = []
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
 
-        if output_value_format == 'delta' and scanner_coil_order >= 1:
-            logger.debug("Converting scanner coil from ShimCS to Gradient CS")
-            # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
-            # Convert coef of 1st order sph harmonics to Gradient coord system
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
+        n_channels = coil.dim[3]
+        start_channel = end_channel
+        end_channel = start_channel + n_channels
 
-            coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs[..., -n_sph_channels + 1],
-                                                                       coefs[..., -n_sph_channels + 2],
-                                                                       coefs[..., -n_sph_channels + 3], fname_anat)
+        # Select the coefficients for a coil
+        coefs_coil = coefs[:, start_channel:end_channel]
 
-            coefs[..., -n_sph_channels + 1] = coefs_freq
-            coefs[..., -n_sph_channels + 2] = coefs_phase
-            coefs[..., -n_sph_channels + 3] = coefs_slice
+        # If it's a scanner
+        if type(coil) == ScannerCoil:
 
-        else:  # output_value_format == 'absolute'
+            if output_value_format == 'delta' and scanner_coil_order >= 1:
+                logger.debug("Converting scanner coil from ShimCS to Gradient CS")
+                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+                # Convert coef of 1st order sph harmonics to Gradient coord system
 
-            # Load anat json
-            fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-            with open(fname_anat_json) as json_file:
-                json_anat_data = json.load(json_file)
+                coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
+                                                                           coefs_coil[:, 2],
+                                                                           coefs_coil[:, 3], fname_anat)
 
-            if json_anat_data['Manufacturer'] == 'Siemens':
-                # Change from RAS to LAI (ShimCS)
-                # x
-                coefs[..., -n_sph_channels + 1] = -coefs[..., -n_sph_channels + 1]
-                # z
-                coefs[..., -n_sph_channels + 3] = -coefs[..., -n_sph_channels + 3]
+                coefs_coil[:, 1] = coefs_freq
+                coefs_coil[:, 2] = coefs_phase
+                coefs_coil[:, 3] = coefs_slice
+
             else:
-                raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                          f"absolute format")
+                # Load anat json
+                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+                with open(fname_anat_json) as json_file:
+                    json_anat_data = json.load(json_file)
 
-            for i_channel in range(n_sph_channels):
-                # abs_coef = delta + initial
-                coefs[:, -n_sph_channels + i_channel] = coefs[:, -n_sph_channels + i_channel] + initial_coefs[i_channel]
+                if json_anat_data['Manufacturer'] == 'Siemens':
+                    # Change from RAS to LAI (ShimCS)
+                    # x
+                    coefs_coil[:, 1] = -coefs_coil[:, 1]
+                    # z
+                    coefs_coil[:, 3] = -coefs_coil[:, 3]
+                else:
+                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
+                                              f"absolute format")
 
-        list_fname_output = _save_to_text_file_static(list_coils[-1:], coefs[..., -n_sph_channels:], list_slices,
-                                                      path_output, o_format_sph)
+                for i_channel in range(n_channels):
+                    # abs_coef = delta + initial
+                    coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
-        if len(list_coils) > 1:
-            fname_tmp = _save_to_text_file_static(list_coils[:-1], coefs[..., :-n_sph_channels], list_slices,
-                                                  path_output, o_format_coil, start_coil_number=1)
-            # Concat list
-            list_fname_output = list_fname_output + fname_tmp
-    else:
-        # The case where there is no custom coil or scanner coil is already checked in load_coils so no need to check
-        # again i.e. there must be a custom coil at this point
-        list_fname_output = _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format_coil)
+            # Save to
+            list_fname_tmp = _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
+                                                       coil_number=i_coil)
+
+        else:
+            list_fname_tmp = _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
+                                                       coil_number=i_coil)
+
+        list_fname_output += list_fname_tmp
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
-def _save_to_text_file_static(list_coils, coefs, list_slices, path_output, o_format, start_coil_number=0):
+def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, coil_number):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil'"""
 
-    end_channel = 0
+    n_channels = coil.dim[3]
     list_fname_output = []
-    for i_coil in range(len(list_coils)):
-        start_channel = end_channel
-        coil = list_coils[i_coil]
-        n_channels = coil.dim[3]
-        end_channel = start_channel + n_channels
+    if o_format[-5:] == '-coil':
 
-        if o_format[-5:] == '-coil':
+        fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            # (len(slices) x n_channels)
 
-            fname_output = os.path.join(path_output, f"coefs_coil{start_coil_number + i_coil}_{coil.name}.txt")
-            with open(fname_output, 'w', encoding='utf-8') as f:
-                # (len(slices) x n_channels)
+            if o_format == 'chronological-coil':
+                # Output per shim (chronological), output all channels for a particular shim, then repeat
+                for i_shim in range(len(list_slices)):
+                    for i_channel in range(n_channels):
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
+                        if i_channel != n_channels:
+                            f.write(", ")
+                    f.write("\n")
 
-                if o_format == 'chronological-coil':
-                    # Output per shim (chronological), output all channels for a particular shim, then repeat
+            elif o_format == 'slicewise-coil':
+                # Output per slice, output all channels for a particular slice, then repeat
+                # Assumes all slices are in list_slices once which is the case for sequential, interleaved and
+                # volume
+                n_slices = np.sum([len(a_shim) for a_shim in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
+                    for i_channel in range(n_channels):
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
+                        if i_channel != n_channels:
+                            f.write(", ")
+                    f.write("\n")
+
+        list_fname_output.append(os.path.abspath(fname_output))
+
+    else:
+        # o_format[-3:] == '-ch':
+        # Write a file for each channel
+        for i_channel in range(n_channels):
+            fname_output = os.path.abspath(os.path.join(path_output,
+                                                        f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt"))
+
+            if o_format == 'chronological-ch':
+                with open(fname_output, 'w', encoding='utf-8') as f:
+                    # Each row will have one coef representing the shim in chronological order
                     for i_shim in range(len(list_slices)):
-                        for i_channel in range(n_channels):
-                            f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
-                            if i_channel != n_channels:
-                                f.write(", ")
-                        f.write("\n")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
-                elif o_format == 'slicewise-coil':
-                    # Output per slice, output all channels for a particular slice, then repeat
-                    # Assumes all slices are in list_slices once which is the case for sequential, interleaved and
-                    # volume
-                    n_slices = np.sum([len(a_shim) for a_shim in list_slices])
+            if o_format == 'slicewise-ch':
+                with open(fname_output, 'w', encoding='utf-8') as f:
+                    # Each row will have one coef representing the shim in slicewise order
+                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                     for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
-                        for i_channel in range(n_channels):
-                            f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}")
-                            if i_channel != n_channels:
-                                f.write(", ")
-                        f.write("\n")
+                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
-                list_fname_output.append(os.path.abspath(fname_output))
-
-        else:
-            # o_format[-3:] == '-ch':
-            # Write a file for each channel
-            for i_channel in range(n_channels):
-                fname_output = os.path.join(path_output, f"coefs_coil{i_coil}_ch{i_channel}_{coil.name}.txt")
-
-                if o_format == 'chronological-ch':
-                    with open(fname_output, 'w', encoding='utf-8') as f:
-                        # Each row will have one coef representing the shim in chronological order
-                        for i_shim in range(len(list_slices)):
-                            f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}\n")
-
-                if o_format == 'slicewise-ch':
-                    with open(fname_output, 'w', encoding='utf-8') as f:
-                        # Each row will have one coef representing the shim in slicewise order
-                        n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-                        for i_slice in range(n_slices):
-                            i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
-                            f.write(f"{coefs[i_shim, start_channel + i_channel]:.6f}\n")
-
-                list_fname_output.append(os.path.abspath(fname_output))
+            list_fname_output.append(os.path.abspath(fname_output))
 
     return list_fname_output
 
@@ -434,134 +436,143 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                                       mask_dilation_kernel_size=dilation_kernel_size,
                                       path_output=path_output)
 
-    currents_static, currents_riro, mean_p, p_rms = out
+    coefs_static, coefs_riro, mean_p, p_rms = out
 
-    # Output
-    if scanner_coil_order >= 0:
-        # n_channels for the spherical harmonics
-        n_sph_channels = list_coils[-1].dim[3]
-
-        if output_value_format == 'delta' and scanner_coil_order >= 1:
-            # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
-            logger.debug("Converting scanner coil from ShimCS to Gradient CS")
-
-            coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                                                                       currents_static[..., -n_sph_channels + 1],
-                                                                       currents_static[..., -n_sph_channels + 2],
-                                                                       currents_static[..., -n_sph_channels + 3],
-                                                                       fname_anat)
-            currents_static[..., -n_sph_channels + 1] = coefs_st_freq
-            currents_static[..., -n_sph_channels + 2] = coefs_st_phase
-            currents_static[..., -n_sph_channels + 3] = coefs_st_slice
-
-            coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                                                                       currents_riro[..., -n_sph_channels + 1],
-                                                                       currents_riro[..., -n_sph_channels + 2],
-                                                                       currents_riro[..., -n_sph_channels + 3],
-                                                                       fname_anat)
-            currents_riro[..., -n_sph_channels + 1] = coefs_riro_freq
-            currents_riro[..., -n_sph_channels + 2] = coefs_riro_phase
-            currents_riro[..., -n_sph_channels + 3] = coefs_riro_slice
-
-        else:  # output_value_format == 'absolute'
-            # Load anat json
-            fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-            with open(fname_anat_json) as json_file:
-                json_anat_data = json.load(json_file)
-
-            if json_anat_data['Manufacturer'] == 'Siemens':
-                # Change from RAS to LAI (ShimCS)
-                # x
-                currents_static[..., -n_sph_channels + 1] = -currents_static[..., -n_sph_channels + 1]
-                currents_riro[..., -n_sph_channels + 1] = -currents_riro[..., -n_sph_channels + 1]
-                # z
-                currents_static[..., -n_sph_channels + 3] = -currents_static[..., -n_sph_channels + 3]
-                currents_riro[..., -n_sph_channels + 3] = -currents_riro[..., -n_sph_channels + 3]
-            else:
-                raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                          f"absolute format")
-
-            for i_channel in range(n_sph_channels):
-                # abs_coef = delta + initial
-                currents_static[:, -n_sph_channels + i_channel] = currents_static[:, -n_sph_channels + i_channel] + \
-                                                                  initial_coefs[i_channel]
-                # riro does not change
-
-    _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format)
-
-
-def _save_to_text_file_rt(list_coils, currents_static, currents_riro, mean_p, list_slices, path_output, o_format):
-    """o_format can either be 'chronological-ch', 'chronological-coil'"""
-
-    end_channel = 0
     list_fname_output = []
-    n_coils = len(list_coils)
-    for i_coil in range(n_coils):
-        start_channel = end_channel
-        coil = list_coils[i_coil]
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
+
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
         n_channels = coil.dim[3]
+        start_channel = end_channel
         end_channel = start_channel + n_channels
 
-        # o_format[-3:] == '-ch':
-        # Write a file for each channel
-        for i_channel in range(n_channels):
-            fname_output = os.path.join(path_output, f"coefs_coil{i_coil}_ch{i_channel}_{coil.name}.txt")
+        # Select the coefficients for a coil
+        coefs_coil_static = coefs_static[:, start_channel:end_channel]
+        coefs_coil_riro = coefs_riro[:, start_channel:end_channel]
 
-            if o_format == 'chronological-ch':
-                with open(fname_output, 'w', encoding='utf-8') as f:
-                    # Each row will have 3 coef representing the static, riro and mean_p in chronological order
-                    for i_shim in range(len(list_slices)):
-                        f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
-                        f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
-                        f.write(f"{mean_p:.4f}\n")
+        # If it's a scanner
+        if type(coil) == ScannerCoil:
 
-            if o_format == 'slicewise-ch':
-                with open(fname_output, 'w', encoding='utf-8') as f:
-                    # Each row will have one coef representing the static, riro and mean_p in slicewise order
-                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-                    for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
-                        f.write(f"{currents_static[i_shim, start_channel + i_channel]:.6f}, ")
-                        f.write(f"{currents_riro[i_shim, start_channel + i_channel]:.12f}, ")
-                        f.write(f"{mean_p:.4f}\n")
+            if output_value_format == 'delta' and scanner_coil_order >= 1:
+                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+                logger.debug("Converting scanner coil from ShimCS to Gradient CS")
 
-            # TODO: Remove once implemented in more streamlined way
-            if o_format == 'eva':
+                coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                    coefs_coil_static[:, 1],
+                    coefs_coil_static[:, 2],
+                    coefs_coil_static[:, 3],
+                    fname_anat)
+                coefs_coil_static[:, 1] = coefs_st_freq
+                coefs_coil_static[:, 2] = coefs_st_phase
+                coefs_coil_static[:, 3] = coefs_st_slice
 
-                # Make sure there are 4 channels
-                if n_channels != 4:
-                    raise RuntimeError("Eva's output format should only be used with 1st order scanner coils")
+                coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                    coefs_coil_riro[:, 1],
+                    coefs_coil_riro[:, 2],
+                    coefs_coil_riro[:, 3],
+                    fname_anat)
+                coefs_coil_riro[:, 1] = coefs_riro_freq
+                coefs_coil_riro[:, 2] = coefs_riro_phase
+                coefs_coil_riro[:, 3] = coefs_riro_slice
 
-                name = {0: 'f0',
-                        1: 'x',
-                        2: 'y',
-                        3: 'z'}
+            else:  # output_value_format == 'absolute'
+                # Load anat json
+                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+                with open(fname_anat_json) as json_file:
+                    json_anat_data = json.load(json_file)
 
-                fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
-                with open(fname_output, 'w', encoding='utf-8') as f:
-                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-                    for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                if json_anat_data['Manufacturer'] == 'Siemens':
+                    # Change from RAS to LAI (ShimCS)
+                    # x
+                    coefs_coil_static[:, 1] = -coefs_coil_static[:, 1]
+                    coefs_coil_riro[:, 1] = -coefs_coil_riro[:, 1]
+                    # z
+                    coefs_coil_static[:, 3] = -coefs_coil_static[:, 3]
+                    coefs_coil_riro[:, 3] = -coefs_coil_riro[:, 3]
+                else:
+                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
+                                              f"absolute format")
 
-                        if i_channel == 0:
-                            # f0, Output is in Hz
-                            f.write(f"corr_vec[0][{i_slice}]= "
-                                    f"{currents_static[i_shim, start_channel + i_channel]:.6f}\n")
-                            f.write(f"corr_vec[1][{i_slice}]= "
-                                    f"{currents_riro[i_shim, start_channel + i_channel]:.12f}\n")
-                            f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+                for i_channel in range(n_channels):
+                    # abs_coef = delta + initial
+                    coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
+                    # riro does not change
 
-                        else:
-                            # For Gx, Gy, Gz: Divide by 1000 for mt/m
-                            f.write(f"corr_vec[0][{i_slice}]= "
-                                    f"{currents_static[i_shim, start_channel + i_channel] / 1000:.6f}\n")
-                            f.write(f"corr_vec[1][{i_slice}]= "
-                                    f"{currents_riro[i_shim, start_channel + i_channel] / 1000:.12f}\n")
-                            f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
-
-            list_fname_output.append(os.path.abspath(fname_output))
+        list_fname_tmp = _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                               path_output, o_format, i_coil)
+        list_fname_output += list_fname_tmp
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+
+
+def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
+                          coil_number):
+    """o_format can either be 'chronological-ch', 'chronological-coil'"""
+
+    list_fname_output = []
+    n_channels = coil.dim[3]
+
+    # o_format[-3:] == '-ch':
+    # Write a file for each channel
+    for i_channel in range(n_channels):
+        fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
+
+        if o_format == 'chronological-ch':
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                # Each row will have 3 coef representing the static, riro and mean_p in chronological order
+                for i_shim in range(len(list_slices)):
+                    f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                    f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+                    f.write(f"{mean_p:.4f}\n")
+
+        elif o_format == 'slicewise-ch':
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                # Each row will have one coef representing the static, riro and mean_p in slicewise order
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                    f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                    f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+                    f.write(f"{mean_p:.4f}\n")
+
+        # TODO: Remove once implemented in more streamlined way
+        else:  # o_format == 'eva':
+
+            # Make sure there are 4 channels
+            if n_channels != 4:
+                raise RuntimeError("Eva's output format should only be used with 1st order scanner coils")
+
+            name = {0: 'f0',
+                    1: 'x',
+                    2: 'y',
+                    3: 'z'}
+
+            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+
+                    if i_channel == 0:
+                        # f0, Output is in Hz
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{currents_static[i_shim, i_channel]:.6f}\n")
+                        f.write(f"corr_vec[1][{i_slice}]= "
+                                f"{currents_riro[i_shim, i_channel]:.12f}\n")
+                        f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+
+                    else:
+                        # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{currents_static[i_shim, i_channel] / 1000:.6f}\n")
+                        f.write(f"corr_vec[1][{i_slice}]= "
+                                f"{currents_riro[i_shim, i_channel] / 1000:.12f}\n")
+                        f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+
+        list_fname_output.append(os.path.abspath(fname_output))
+
+    return list_fname_output
 
 
 def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
