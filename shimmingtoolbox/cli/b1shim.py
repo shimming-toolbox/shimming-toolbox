@@ -20,8 +20,6 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
               help="3D nifti file used to define the static spatial region to shim. The coordinate system should be the"
                    " same as ``b1map``'s coordinate system.")
-@click.option('--cp', 'fname_cp_weights', type=click.Path(exists=True), required=False,
-              help="json file containing CP weights. See config/cp_mode.json for example.")
 @click.option('--algo', 'algorithm', type=int, default=1, show_default=True,
               help="Number from 1 to 3 specifying which algorithm to use for B1 optimization.\n"
                    "1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.\n"
@@ -37,7 +35,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "shimming but might result in SAR excess at the scanner.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir, 'b1_shim_results'),
               show_default=True, help="Directory to output shim weights text file and figures.")
-def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights, algorithm, target, fname_vop, sed, path_output):
+def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path_output):
     """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
     """
@@ -63,26 +61,12 @@ def b1shim_cli(fname_b1_map, fname_mask, fname_cp_weights, algorithm, target, fn
     else:
         mask_resampled = None
 
-    # If a path to a cp json file is provided, read it and store the values as complex numbers
-    # See example of json file in config/cp_mode.json (Do not add spaces within the complex values)
-    if fname_cp_weights is not None:
-        with open(fname_cp_weights) as json_file:
-            cp_json = json.load(json_file)
-        n_cp_weights = len(cp_json["weights"])
-        cp_weights = np.zeros(n_cp_weights, dtype=complex)
-        i = 0
-        for weight in cp_json["weights"]:
-            cp_weights[i] = complex(weight)
-            i += 1
-    else:
-        cp_weights = None
-
     if fname_vop is not None:
         vop = load_siemens_vop(fname_vop)
     else:
         vop = None
 
-    shim_weights = b1shim(b1_map, mask=mask_resampled, cp_weights=cp_weights, algorithm=algorithm, target=target,
+    shim_weights = b1shim(b1_map, mask=mask_resampled, algorithm=algorithm, target=target,
                           q_matrix=vop, sed=sed, path_output=path_output)
 
     # Write to a text file

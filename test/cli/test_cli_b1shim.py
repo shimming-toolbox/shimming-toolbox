@@ -6,7 +6,7 @@ import pathlib
 import shutil
 import tempfile
 
-from shimmingtoolbox import __dir_testing__, __dir_shimmingtoolbox__
+from shimmingtoolbox import __dir_testing__
 from click.testing import CliRunner
 from shimmingtoolbox.cli.b1shim import b1shim_cli
 
@@ -16,7 +16,6 @@ fname_b1_sagittal = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap'
 
 path_sar_file = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                              'sub-tb1tfl_SarDataUser.mat')
-fname_cp_json = os.path.join(__dir_shimmingtoolbox__, 'config', 'cp_mode.json')
 fname_mask = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                           'sub-tb1tfl_mask.nii.gz')
 
@@ -37,9 +36,9 @@ def test_b1shim_cli_args():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_axial, '--mask', fname_mask, '--cp', fname_cp_json,
-                                                 '--algo', 2, '--target', 20, '--vop', path_sar_file, '--sed', 1.2,
-                                                 '--output', path_output], catch_exceptions=True)
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_axial, '--mask', fname_mask, '--algo', 2,
+                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+                                                 path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
 
@@ -51,9 +50,9 @@ def test_b1shim_cli_coronal():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_coronal, '--mask', fname_mask, '--cp',
-                                                 fname_cp_json, '--algo', 2, '--target', 20, '--vop', path_sar_file,
-                                                 '--sed', 1.2, '--output', path_output], catch_exceptions=True)
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_coronal, '--mask', fname_mask, '--algo', 2,
+                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+                                                 path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
 
@@ -65,8 +64,8 @@ def test_b1shim_cli_sagittal():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_sagittal, '--mask', fname_mask, '--cp',
-                                                 fname_cp_json, '--algo', 2, '--target', 20, '--vop', path_sar_file,
-                                                 '--sed', 1.2, '--output', path_output], catch_exceptions=True)
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_sagittal, '--mask', fname_mask, '--algo', 2,
+                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+                                                 path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
