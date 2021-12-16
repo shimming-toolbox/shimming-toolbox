@@ -476,7 +476,7 @@ def _plot_currents(static, path_output: str, riro=None):
         for i_channel in range(n_channels):
             ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shims")
     ax.set_xlabel('i_shims')
-    ax.set_ylabel('Coefficients')
+    ax.set_ylabel('Coefficients (Physical CS [RAS])')
     ax.legend()
     ax.set_title("Currents through shims")
     fname_figure = os.path.join(path_output, 'fig_currents.png')

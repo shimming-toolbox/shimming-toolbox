@@ -208,4 +208,4 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
     else:
         raise ValueError("Use of non supported algorithm for dilating the mask")
 
-    return mask_dilated.astype(int)
+    return mask_dilated
