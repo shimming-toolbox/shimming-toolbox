@@ -133,6 +133,9 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     if not (x.shape == y.shape == z.shape):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
+    if max(orders) >= 3:
+        raise NotImplementedError("Spherical harmonics not implemented for order 3 and up")
+
     # Create spherical harmonics from first to second order
     all_orders = np.array(range(1, 3))
     spher_harm = spherical_harmonics(all_orders, x, y, z)

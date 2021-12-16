@@ -142,8 +142,6 @@ class ScannerCoil(Coil):
             # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
             # Order 2 requires 8 channels + Tx
             out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:9]
-        else:
-            raise NotImplementedError("Scanner coils are not implemented for order 3 and up")
 
         return out_constraints
 

@@ -40,6 +40,13 @@ def test_siemens_basis(x, y, z):
     assert np.all(basis.shape == (3, 3, 3, 3))
 
 
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_create_scanner_coil_order3(x, y, z):
+
+    with pytest.raises(NotImplementedError, match="Spherical harmonics not implemented for order 3 and up"):
+        siemens_basis(x, y, z, orders=(3,))
+
+
 def test_siemens_basis_resample():
     """
     Output spherical harmonics in a discrete space corresponding to an image

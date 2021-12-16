@@ -21,10 +21,11 @@ st_prepare_fieldmap "sub-example_phasediff.nii.gz" --mag "sub-example_magnitude1
 
 # Mask anatomical image
 mkdir "../../derivatives/sub-example"
-st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 20 20 14 --output "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" || exit
+st_mask box --input "../anat/sub-example_unshimmed_e1.nii.gz" --size 40 40 14 --output "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" || exit
 
 # Shim
 st_b0shim gradient_realtime --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --resp "${INPUT_PATH}/PMUresp_signal.resp" --mask-static "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --output "../../derivatives/sub-example/gradient_realtime" || exit
+st_b0shim realtime --fmap "sub-example_fieldmap.nii.gz" --anat "../anat/sub-example_unshimmed_e1.nii.gz" --mask-static "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-example/sub-example_anat_mask.nii.gz" --resp "../../../${1}/PMUresp_signal.resp" --scanner-coil-order '1' --output-file-format "slicewise-ch" --verbose "debug" --output "../../derivatives/sub-example/fieldmap_realtime" || exit
 
 OUTPUT_PATH="$(dirname "${INPUT_PATH}")/rt_shim_nifti/derivatives/sub-example"
 echo -e "\n\033[0;32mOutput is located here: ${OUTPUT_PATH}"
