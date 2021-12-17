@@ -14,11 +14,11 @@ multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resamp
 component maps to match the MGRE image. Lastly the average Gx, Gy, Gz values within the ROI are computed for each
 slice.
 
-demo_b1_shimming.sh
---------------------------
+B1+ shimming
+------------
 
 This  `shell script <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_b1_shimming.sh>`__
-calls different shimming-toolbox command lines functions to perform a B1+ shimming scenario. Text files, scaled B1 maps
+calls different shimming-toolbox command lines functions to perform a B1+ shimming scenario. Text files, scaled B1+ maps
 and results figures are generated in the `testing-data` folder.
 
 This script shows how to perform a B1+ shimming experiment using the command lines functions. In this example, a
