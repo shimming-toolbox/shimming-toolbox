@@ -192,7 +192,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         if type(coil) == ScannerCoil:
 
             if output_value_format == 'delta' and scanner_coil_order >= 1:
-                logger.debug("Converting scanner coil from ShimCS to Gradient CS")
+                logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
                 # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
                 # Convert coef of 1st order sph harmonics to Gradient coord system
 
@@ -463,7 +463,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
             if output_value_format == 'delta' and scanner_coil_order >= 1:
                 # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
-                logger.debug("Converting scanner coil from ShimCS to Gradient CS")
+                logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
 
                 coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
                     coefs_coil_static[:, 1],
