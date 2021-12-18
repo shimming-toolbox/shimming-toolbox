@@ -133,7 +133,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     if dim_info[2] != 2:
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
-        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
     # Load mask
     if fname_mask_anat is not None:
@@ -153,7 +153,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     if os.path.isfile(fname_json):
         json_fm_data = json.load(open(fname_json))
     else:
-        raise OSError("Missing json file")
+        raise OSError("Missing fieldmap json file")
 
     # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
     json_coefs = _get_current_shim_settings(json_fm_data)
@@ -389,7 +389,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     if dim_info[2] != 2:
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
-        raise RuntimeError("Slice encode direction must be the 3rd dimension of the nifti")
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
     # Load static mask
     if fname_mask_anat_static is not None:
@@ -413,7 +413,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     if os.path.isfile(fname_json):
         json_fm_data = json.load(open(fname_json))
     else:
-        raise OSError("Missing json file")
+        raise OSError("Missing fieldmap json file")
 
     # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
     json_coefs = _get_current_shim_settings(json_fm_data)

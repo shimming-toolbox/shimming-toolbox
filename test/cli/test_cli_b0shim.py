@@ -11,11 +11,9 @@ import json
 
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
-from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
-from shimmingtoolbox.simulate.numerical_model import NumericalModel
 
 
 def _define_inputs(fmap_dim):
@@ -340,6 +338,34 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
+    def test_cli_static_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--output-value-format', 'absolute',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
+
     def test_cli_static_no_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -365,34 +391,56 @@ class TestCliStatic(object):
                                            '--output', tmp],
                               catch_exceptions=False)
 
-    # def test_cli_static_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
-    #     """Test cli with scanner coil profiles of order 1 with default constraints"""
-    #     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-    #         # Save the modified fieldmap (one volume)
-    #         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-    #         nib.save(nii_fmap, fname_fmap)
-    #         # Save json
-    #         fname_json = os.path.join(tmp, 'fmap.json')
-    #         with open(fname_json, 'w', encoding='utf-8') as f:
-    #             json.dump(data, f, indent=4)
-    #         # Save the mask
-    #         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-    #         nib.save(nii_mask, fname_mask)
-    #         # Save the anat
-    #         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-    #         nib.save(nii_anat, fname_anat)
-    #
-    #         runner = CliRunner()
-    #         runner.invoke(b0shim_cli, ['static',
-    #                                  '--fmap', fname_fmap,
-    #                                  '--anat', fname_anat,
-    #                                  '--mask', fname_mask,
-    #                                  '--scanner-coil-order', '0',
-    #                                  '--output-value-format', 'absolute',
-    #                                  '--output', tmp],
-    #                       catch_exceptions=False)
-    #
-    #         assert os.path.isfile(os.path.join(tmp, "coefs_coil0_siemens_gradient_coil.txt"))
+    def test_cli_static_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            nii_anat.header.set_dim_info(2, 1, 0)
+
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            with pytest.raises(RuntimeError,
+                               match="Slice encode direction must be the 3rd dimension of the NIfTI file."):
+                runner.invoke(b0shim_cli, ['static',
+                                           '--fmap', fname_fmap,
+                                           '--anat', fname_anat,
+                                           '--mask', fname_mask,
+                                           '--scanner-coil-order', '1',
+                                           '--output', tmp],
+                              catch_exceptions=False)
+
+    def test_cli_static_no_fmap_json(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+
+            with pytest.raises(OSError, match="Missing fieldmap json file"):
+                runner.invoke(b0shim_cli, ['static',
+                                           '--fmap', fname_fmap,
+                                           '--anat', fname_anat,
+                                           '--mask', fname_mask,
+                                           '--scanner-coil-order', '1',
+                                           '--output', tmp],
+                              catch_exceptions=False)
 
 
 @pytest.mark.parametrize(
@@ -549,6 +597,145 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
+    def test_cli_rt_eva(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--output-file-format', 'eva',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+
+    def test_cli_rt_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--output-value-format', 'absolute',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
+
+    def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            nii_anat.header.set_dim_info(2, 1, 0)
+
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            with pytest.raises(RuntimeError,
+                               match="Slice encode direction must be the 3rd dimension of the NIfTI file."):
+                runner.invoke(b0shim_cli, ['realtime',
+                                           '--fmap', fname_fmap,
+                                           '--anat', fname_anat,
+                                           '--mask-static', fname_mask,
+                                           '--mask-riro', fname_mask,
+                                           '--resp', fname_resp,
+                                           '--slice-factor', '2',
+                                           '--scanner-coil-order', '1',
+                                           '--output', tmp],
+                              catch_exceptions=False)
+
+    def test_cli_realtime_no_fmap_json(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+
+            with pytest.raises(OSError, match="Missing fieldmap json file"):
+                runner.invoke(b0shim_cli, ['realtime',
+                                           '--fmap', fname_fmap,
+                                           '--anat', fname_anat,
+                                           '--mask-static', fname_mask,
+                                           '--mask-riro', fname_mask,
+                                           '--resp', fname_resp,
+                                           '--slice-factor', '2',
+                                           '--scanner-coil-order', '1',
+                                           '--output', tmp],
+                              catch_exceptions=False)
+
 
 def test_cli_define_slices_def():
     """Test using a number for the number of slices"""
@@ -606,52 +793,3 @@ def test_cli_define_slices_wrong_output():
                                               '--method', 'sequential',
                                               '-o', fname_output],
                           catch_exceptions=False)
-
-
-# def test_grad_realtime_shim_vs_fieldmap_realtime_shim():
-#     """Test to compare grad vs fieldmap realtime shim. Both output in the Gradient CS"""
-#     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(4)
-#
-#     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-#         # Save the inputs to the new directory
-#         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
-#         fname_fm_json = os.path.join(tmp, 'fmap.json')
-#         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-#         fname_anat = os.path.join(tmp, 'anat.nii.gz')
-#         fname_anat_json = os.path.join(tmp, 'anat.json')
-#         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-#                      nii_anat=nii_anat, fname_anat=fname_anat,
-#                      nii_mask=nii_mask, fname_mask=fname_mask,
-#                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-#                      anat_data=anat_data, fname_anat_json=fname_anat_json)
-#
-#         # Input pmu fname
-#         fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
-#                                   'sub-realtime_PMUresp_signal.resp')
-#
-#         runner = CliRunner()
-#
-#         # fieldmap rt shim
-#         runner.invoke(b0shim_cli, ['realtime',
-#                                    '--fmap', fname_fmap,
-#                                    '--anat', fname_anat,
-#                                    '--mask-static', fname_mask,
-#                                    '--mask-riro', fname_mask,
-#                                    '--resp', fname_resp,
-#                                    '--slice-factor', '1',
-#                                    '--mask-dilation-kernel-size', '3',
-#                                    '--optimizer-method', 'least_squares',
-#                                    '--scanner-coil-order', '1',
-#                                    '--output-file-format', 'eva',
-#                                    '--output', os.path.join(tmp, 'fmap'),
-#                                    '-v', 'debug'],
-#                       catch_exceptions=False)
-#
-#         # grad rt shim
-#         result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fmap,
-#                                                    '--anat', fname_anat,
-#                                                    '--mask-static', fname_mask,
-#                                                    '--mask-riro', fname_mask,
-#                                                    '--output', os.path.join(tmp, 'grad'),
-#                                                    '--resp', fname_resp],
-#                                catch_exceptions=False)

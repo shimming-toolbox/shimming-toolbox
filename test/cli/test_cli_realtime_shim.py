@@ -7,7 +7,6 @@ import nibabel as nib
 import pytest
 import json
 
-
 from click.testing import CliRunner
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -116,7 +115,6 @@ def test_phase_encode_wrong_dim():
 
 def test_phase_encode_wrong_tag_value():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-
         nii = nib.load(fname_anat)
         with open(fname_json) as json_file:
             json_data = json.load(json_file)
@@ -219,3 +217,23 @@ def test_cli_realtime_shim_tra_orient_text():
 
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
+
+
+def test_realtime_shim_cli_dim_info():
+    runner = CliRunner()
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Specify output for text file and figures
+        path_output = os.path.join(tmp, 'test_realtime_shim')
+
+        nii = nib.load(fname_anat)
+        nii.header.set_dim_info(2, 1, 0)
+        fname_new_anat = os.path.join(tmp, 'anat.nii.gz')
+        nib.save(nii, fname_new_anat)
+
+        with pytest.raises(RuntimeError, match="Slice encode direction must be the 3rd dimension of the NIfTI file."):
+            # Run the CLI
+            runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+                                              '--output', path_output,
+                                              '--resp', fname_resp,
+                                              '--anat', fname_new_anat],
+                          catch_exceptions=False)
