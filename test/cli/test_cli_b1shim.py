@@ -36,8 +36,8 @@ def test_b1shim_cli_args():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_axial, '--mask', fname_mask, '--algo', 2,
-                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_axial, '--mask', fname_mask, '--algo', '2',
+                                                 '--target', '20', '--vop', path_sar_file, '--sed', '1.2', '--output',
                                                  path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
@@ -50,8 +50,8 @@ def test_b1shim_cli_coronal():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_coronal, '--mask', fname_mask, '--algo', 2,
-                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_coronal, '--mask', fname_mask, '--algo', '2',
+                                                 '--target', '20', '--vop', path_sar_file, '--sed', '1.2', '--output',
                                                  path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
@@ -64,8 +64,8 @@ def test_b1shim_cli_sagittal():
         path_output = os.path.join(tmp, 'b1_shim_results')
 
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_sagittal, '--mask', fname_mask, '--algo', 2,
-                                                 '--target', 20, '--vop', path_sar_file, '--sed', 1.2, '--output',
+        result = CliRunner().invoke(b1shim_cli, ['--b1map', fname_b1_sagittal, '--mask', fname_mask, '--algo', '2',
+                                                 '--target', '20', '--vop', path_sar_file, '--sed', '1.2', '--output',
                                                  path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0

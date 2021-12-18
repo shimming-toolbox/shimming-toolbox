@@ -63,6 +63,7 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5
     # The complex shim weights must be reshaped as a real vector during the optimization
     weights_init = complex_to_vector(weights_phase_only)
 
+    algorithm = int(algorithm)
     if algorithm == 1:
         # CoV minimization
         def cost(weights):
