@@ -17,10 +17,7 @@ slice.
 B1+ shimming
 ------------
 
-This  `shell script <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_b1_shimming.sh>`__
-calls different shimming-toolbox command lines functions to perform a B1+ shimming scenario. Text files, scaled B1+ maps
-and results figures are generated in the `testing-data` folder.
-
-This script shows how to perform a B1+ shimming experiment using the command lines functions. In this example, a
-magnitude least square algorithm is used to target a B1+ value specified by the user. This scenario assumes that the
-B1 maps have already been converted into NIfTI files.
+This  `shell script <demo_b1_shimming.sh>`__
+calls different command lines functions to perform static B1+ shimming. Text files, scaled B1 mapsand result figures are
+generated in the `testing-data` folder. In this example, a magnitude least square algorithm is used to target a B1+
+value specified by the user. This scenario assumes that the B1 maps have already been converted into NIfTI files.
