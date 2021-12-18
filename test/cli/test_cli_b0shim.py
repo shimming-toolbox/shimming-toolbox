@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
+import copy
+
 import pytest
 from click.testing import CliRunner
 import tempfile
@@ -393,7 +395,8 @@ class TestCliStatic(object):
 
     def test_cli_static_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            nii_anat.header.set_dim_info(2, 1, 0)
+            nii_new_anat = copy.deepcopy(nii_anat)
+            nii_new_anat.header.set_dim_info(2, 1, 0)
 
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -402,7 +405,7 @@ class TestCliStatic(object):
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             fname_anat_json = os.path.join(tmp, 'anat.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_anat=nii_new_anat, fname_anat=fname_anat,
                          nii_mask=nii_mask, fname_mask=fname_mask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
@@ -673,7 +676,8 @@ class TestCLIRealtime(object):
 
     def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            nii_anat.header.set_dim_info(2, 1, 0)
+            nii_new_anat = copy.deepcopy(nii_anat)
+            nii_new_anat.header.set_dim_info(2, 1, 0)
 
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -682,7 +686,7 @@ class TestCLIRealtime(object):
             fname_anat = os.path.join(tmp, 'anat.nii.gz')
             fname_anat_json = os.path.join(tmp, 'anat.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_anat=nii_new_anat, fname_anat=fname_anat,
                          nii_mask=nii_mask, fname_mask=fname_mask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
