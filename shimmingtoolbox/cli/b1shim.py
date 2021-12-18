@@ -21,10 +21,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--algo', 'algorithm', type=click.Choice(['1', '2', '3']), default='1', show_default=True,
               help="""\b
               Number specifying the B1+ shimming algorithm:
-                   1 - Reduce B1+ coefficient of variation.
-                   2 - Target a specified B1+ value. Target value required.
-                   3 - Maximize minimum B1+ for higher signal.
-                   """)
+              1 - Reduce B1+ coefficient of variation.
+              2 - Target a specified B1+ value. Target value required.
+              3 - Maximize minimum B1+ for higher signal.
+              """)
 @click.option('--target', 'target', type=float, required=False, help="B1+ value (nT/V) targeted by algorithm 2.")
 @click.option('--vop', 'fname_vop', type=click.Path(exists=True), required=False,
               help="SarDataUser.mat file containing VOP matrices used for SAR constraint. Found on the scanner in "
