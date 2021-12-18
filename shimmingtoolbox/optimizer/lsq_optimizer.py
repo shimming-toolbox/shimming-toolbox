@@ -3,6 +3,7 @@
 
 import numpy as np
 import scipy.optimize as opt
+import warnings
 
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 
@@ -75,12 +76,20 @@ class LsqOptimizer(Optimizer):
         currents_0 = self.initial_guess_mean_bounds()
 
         # Optimize
-        currents_sp = opt.minimize(self._residuals, currents_0,
-                                   args=(unshimmed_vec, coil_mat),
-                                   method='SLSQP',
-                                   bounds=self.merged_bounds,
-                                   constraints=tuple(constraints),
-                                   options={'maxiter': 500})
+        # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
+        # warning
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', message="Values in x were outside bounds during a "
+                                                      "minimize step, clipping to bounds",
+                                    category=RuntimeWarning,
+                                    module='scipy')
+
+            currents_sp = opt.minimize(self._residuals, currents_0,
+                                       args=(unshimmed_vec, coil_mat),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(constraints),
+                                       options={'maxiter': 500})
 
         if not currents_sp.success:
             raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
