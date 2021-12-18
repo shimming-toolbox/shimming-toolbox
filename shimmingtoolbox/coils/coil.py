@@ -10,7 +10,7 @@ from shimmingtoolbox.coils.coordinates import generate_meshgrid
 required_constraints = [
     "name",
     "coef_channel_minmax",
-    "coef_sum_max",
+    "coef_sum_max"
 ]
 
 

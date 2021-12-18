@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import logging
 import nibabel as nib
 import numpy as np
-import logging
-from scipy.ndimage import binary_dilation, binary_opening, generate_binary_structure, iterate_structure
 import os
+from scipy.ndimage import binary_dilation, binary_opening, generate_binary_structure, iterate_structure
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 

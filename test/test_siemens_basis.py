@@ -1,14 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
-import os
-import numpy as np
-import pytest
 import math
-import pathlib
-import tempfile
-
 import nibabel as nib
+import numpy as np
+import os
+import pytest
 
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid

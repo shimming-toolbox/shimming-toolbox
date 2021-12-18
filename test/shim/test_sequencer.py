@@ -1,6 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import json
+import logging
+import nibabel as nib
+import numpy as np
+import os
+import pytest
+
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coil import Coil
@@ -17,13 +24,6 @@ from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.shim.sequencer import extend_slice
 from shimmingtoolbox.shim.sequencer import update_affine_for_ap_slices
 from shimmingtoolbox.utils import set_all_loggers
-
-import numpy as np
-import pytest
-import os
-import nibabel as nib
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 set_all_loggers('info')
@@ -74,7 +74,7 @@ def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
     constraints = {
                 "name": "test",
                 "coef_sum_max": sum_coef,
-                "coef_channel_minmax": bounds,
+                "coef_channel_minmax": bounds
             }
     return constraints
 

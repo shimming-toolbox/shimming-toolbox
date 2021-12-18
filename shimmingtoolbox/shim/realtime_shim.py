@@ -109,7 +109,6 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     for it in range(nt):
         gradient[:][..., it] = phys_gradient(g * fieldmap[:, :, :, it], nii_fieldmap.affine)  # [mT / mm]
     gradient *= 1000  # [mT / m]
-    # gradient *= 1000  # [uT / m]
 
     if is_outputting_figures:
         nii_gz_gradient = nib.Nifti1Image(gradient[2], nii_fieldmap.affine, header=nii_fieldmap.header)
