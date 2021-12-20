@@ -6,8 +6,8 @@ import pytest
 import tempfile
 
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.shim.b1shim import *
 from shimmingtoolbox.load_nifti import read_nii
+from shimmingtoolbox.shim.b1shim import *
 
 
 logging.basicConfig(level=logging.INFO)
@@ -79,25 +79,6 @@ def test_b1shim_wrong_mask_shape():
         b1shim(b1_maps, mask[:-1, :, :])
 
 
-def test_b1shim_cp_mode():
-    shim_weights = b1shim(b1_maps, mask, cp_weights)
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1shim_cp_mode_not_normalized(caplog):
-    cp_weights_not_normalized = np.asarray([2*cp_weights[i] for i in range(len(cp_weights))])
-    shim_weights = b1shim(b1_maps, mask, cp_weights_not_normalized)
-    assert r"Normalizing the CP mode weights." in caplog.text
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
-
-
-def test_b1shim_cp_mode_wrong_length():
-    with pytest.raises(ValueError, match=r"The number of CP weights does not match the number of channels.\n"
-                                         r"Number of CP weights: 7\n"
-                                         r"Number of channels: 8"):
-        b1shim(b1_maps, mask, cp_weights[:-1])
-
-
 def test_b1shim_output_figure(caplog):
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         b1shim(b1_maps, mask, path_output=tmp)
@@ -132,53 +113,6 @@ def test_combine_maps_wrong_weights_number():
                                          f"Number of shim weights: 7\n"
                                          f"Number of channels: 8"):
         combine_maps(b1_maps, dummy_weights)
-
-
-def test_calc_cp_no_size(caplog):
-    calc_cp(b1_maps, voxel_position=(32, 22, 2))
-    assert r"No voxel size provided for CP computation. Default size set to (5, 5, 1)." in caplog.text
-
-
-def test_calc_cp_excessive_size():
-    with pytest.raises(ValueError, match=r"The size of the voxel used for CP computation exceeds the size of the B1 "
-                                         r"maps.\n"
-                                         r"B1 maps size: \(64, 44, 5\)\n"
-                                         r"Voxel size: \(70, 32, 8\)"):
-        calc_cp(b1_maps, voxel_size=(70, 32, 8))
-
-
-def test_calc_cp_no_position(caplog):
-    calc_cp(b1_maps, voxel_size=(10, 10, 2))
-    assert r"No voxel position provided for CP computation. Default set to the center of the B1 maps." in caplog.text
-
-
-def test_calc_cp_small_b1(caplog):
-    with pytest.raises(ValueError, match=r"Provided B1 maps are too small to compute CP phases.\n"
-                                         r"Minimum size: \(5, 5, 1\)\n"
-                                         r"Actual size: \(4, 44, 5\)"):
-        calc_cp(b1_maps[:4, ...])
-
-
-def test_calc_cp_out_of_bounds_position():
-    with pytest.raises(ValueError, match=r"The position of the voxel used to compute the CP mode exceeds the B1 maps "
-                                         r"bounds.\n"
-                                         r"B1 maps size: \(64, 44, 5\)\n"
-                                         r"Voxel position: \(70, 32, 3\)"):
-        calc_cp(b1_maps, voxel_position=(70, 32, 3))
-
-
-def test_calc_cp_out_out_of_bounds_voxel():
-    with pytest.raises(ValueError, match=r"Voxel bounds exceed the B1 maps."):
-        calc_cp(b1_maps, voxel_size=(20, 10, 2), voxel_position=(55, 32, 3))
-
-
-def test_calc_approx_cp():
-    approx_weights = calc_approx_cp(8)
-    assert np.isclose(approx_weights,
-                      np.asarray([3.53553391e-01+0.00000000e+00j,  2.50000000e-01-2.50000000e-01j,
-                                 2.16489014e-17-3.53553391e-01j, -2.50000000e-01-2.50000000e-01j,
-                                 -3.53553391e-01-4.32978028e-17j, -2.50000000e-01+2.50000000e-01j,
-                                 -6.49467042e-17+3.53553391e-01j,  2.50000000e-01+2.50000000e-01j])).all()
 
 
 def test_load_siemens_vop():

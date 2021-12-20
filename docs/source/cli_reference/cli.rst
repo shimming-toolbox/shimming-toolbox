@@ -21,6 +21,9 @@ Shimming
 .. click:: shimmingtoolbox.cli.realtime_shim:realtime_shim_cli
    :prog: st_realtime_shim
 
+.. click:: shimmingtoolbox.cli.b1shim:b1shim_cli
+   :prog: st_b1shim
+
 Masking
 -------
 

@@ -61,6 +61,9 @@ Shim
 .. automodule:: shimmingtoolbox.shim.sequencer
    :members:
 
+.. automodule:: shimmingtoolbox.shim.b1shim
+   :members:
+
 Optimizer
 ---------
 

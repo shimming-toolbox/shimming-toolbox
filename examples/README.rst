@@ -13,3 +13,11 @@ series (magnitude and phase images) and respiratory trace information obtained f
 multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resample the static and dynamic Gx, Gy, Gz
 component maps to match the MGRE image. Lastly the average Gx, Gy, Gz values within the ROI are computed for each
 slice.
+
+B1+ shimming
+------------
+
+This  `shell script <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_b1_shimming.sh>`__
+calls different command lines functions to perform static B1+ shimming. Text files, scaled B1 mapsand result figures are
+generated in the `testing-data` folder. In this example, a magnitude least square algorithm is used to target a B1+
+value specified by the user. This scenario assumes that the B1 maps have already been converted into NIfTI files.
