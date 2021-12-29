@@ -15,25 +15,25 @@ from shimmingtoolbox.utils import montage
 logger = logging.getLogger(__name__)
 
 
-def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5, path_output=None):
+def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5):
     """
     Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
 
     Args:
         b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1 field. (x, y, n_slices, n_channels)
+        path_output (str): Path to output figures and RF shim weights.
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1 optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
-                    3 - Maximizes the minimum B1+ value for better efficiency.
+                    3 - Maximizes the SAR efficiency (B1+/sqrt(SAR)). Q matrices required.
         target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
             optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
         sed (float): Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR. SED
             between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF shimming but
             might result in SAR excess at the scanner.
-        path_output (str): Path to output figures and temporary variables. If none is provided, no debug output is
-            provided.
+
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
@@ -72,20 +72,24 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5
     elif algorithm == 2:
         # MLS targeting value
         if target is None:
-            raise ValueError(f"Algorithm 2 requires a target B1 value in nT/V.")
+            raise ValueError("Algorithm 2 requires a target B1 value in nT/V.")
 
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            return np.square(np.linalg.norm(b1_abs - target))
+            return np.sum((b1_abs - target)**2)
 
     elif algorithm == 3:
+        if q_matrix is None:
+            raise ValueError("Algorithm 3 requires Q matrices to perform SAR efficiency shimming.")
+
         # Maximizing the minimum B1+ value to get better RF efficiency
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            return 1 / np.min(b1_abs)
+            # Return inverse of mean SAR efficiency
+            return np.sqrt(max_sar(vector_to_complex(weights), q_matrix)) / np.mean(b1_abs)
 
     else:
-        raise ValueError(f"The specified algorithm does not exist. It must be an integer between 1 and 3.")
+        raise ValueError("The specified algorithm does not exist. It must be an integer between 1 and 3.")
 
     # Q matrices to compute the local SAR values for each 10g of tissue (or subgroups of pixels if VOP are used).
     # If no Q matrix is provided, unconstrained optimization is performed
@@ -97,43 +101,43 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5
         sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=sar_constraint).x)
     else:
-        norm_cons = ({'type': 'eq', 'fun': lambda x: np.linalg.norm(vector_to_complex(x)) - 1})  # Norm constraint
+        norm_cons = ({'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1})  # Norm constraint
         logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
                     f"normalized.")
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=norm_cons).x)
 
     # Plot RF shimming results
-    if path_output is not None:
-        b1_phase_only = montage(combine_maps(b1_maps, weights_phase_only))  # Phase-only shimming result
-        b1_phase_only_masked = b1_phase_only*montage(mask)
-        b1_phase_only_masked[b1_phase_only_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
-        b1_shimmed = montage(combine_maps(b1_maps, shim_weights))  # RF-shimming result
-        b1_shimmed_masked = b1_shimmed*montage(mask)
-        b1_shimmed_masked[b1_shimmed_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
-        vmax = np.percentile(np.concatenate((b1_phase_only, b1_shimmed)), 99)  # Reduce high values influence on display
-        vmax = 5*np.ceil(vmax/5)  # Ceil max range value to next multiple of 5 for good colorbar display
+    b1_phase_only = montage(combine_maps(b1_maps, weights_phase_only))  # Phase-only shimming result
+    b1_phase_only_masked = b1_phase_only*montage(mask)
+    b1_phase_only_masked[b1_phase_only_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
+    b1_shimmed = montage(combine_maps(b1_maps, shim_weights))  # RF-shimming result
+    b1_shimmed_masked = b1_shimmed*montage(mask)
+    b1_shimmed_masked[b1_shimmed_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
+    vmax = np.percentile(np.concatenate((b1_phase_only, b1_shimmed)), 99)  # Reduce high values influence on display
+    vmax = 5*np.ceil(vmax/5)  # Ceil max range value to next multiple of 5 for good colorbar display
 
-        fig, ax = plt.subplots(1, 2)
-        plt.tight_layout(pad=0)
-        ax[0].imshow(b1_phase_only, vmax=vmax, cmap='gray')
-        im = ax[0].imshow(b1_phase_only_masked, vmin=0, vmax=vmax, cmap="jet")
-        ax[0].axis('off')
-        ax[0].set_title(f"$B_1^+$ field (phase-only shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_phase_only_masked):.3} nT/V\nCoV in ROI: "
-                        f"{cov(b1_phase_only_masked[~np.isnan(b1_phase_only_masked)]):.3}")
+    fig, ax = plt.subplots(1, 2)
+    plt.tight_layout(pad=0)
+    ax[0].imshow(b1_phase_only, vmax=vmax, cmap='gray')
+    im = ax[0].imshow(b1_phase_only_masked, vmin=0, vmax=vmax, cmap="jet")
+    ax[0].axis('off')
+    ax[0].set_title(f"$B_1^+$ field (phase-only shimming)\nMean $B_1^+$ in ROI: "
+                    f"{np.nanmean(b1_phase_only_masked):.3} nT/V\nCoV in ROI: "
+                    f"{cov(b1_phase_only_masked[~np.isnan(b1_phase_only_masked)]):.3}")
 
-        ax[1].imshow(b1_shimmed, vmax=vmax, cmap='gray')
-        ax[1].imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")
-        ax[1].axis('off')
-        ax[1].set_title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
-                        f"CoV in ROI: {cov(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
+    ax[1].imshow(b1_shimmed, vmax=vmax, cmap='gray')
+    ax[1].imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")
+    ax[1].axis('off')
+    ax[1].set_title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
+                    f"CoV in ROI: {cov(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
-        cax = fig.add_axes([ax[0].get_position().x0, ax[0].get_position().y0 - 0.025,
-                            ax[1].get_position().x1-ax[0].get_position().x0, 0.02])
-        cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
-        cbar.ax.set_title('nT/V', fontsize=12, y=-4)
-        cbar.ax.tick_params(size=0)
-        fname_figure = os.path.join(path_output, 'b1_shim_results.png')
-        fig.savefig(fname_figure)
+    cax = fig.add_axes([ax[0].get_position().x0, ax[0].get_position().y0 - 0.025,
+                        ax[1].get_position().x1-ax[0].get_position().x0, 0.02])
+    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
+    cbar.ax.set_title('nT/V', fontsize=12, y=-4)
+    cbar.ax.tick_params(size=0)
+    fname_figure = os.path.join(path_output, 'b1_shim_results.png')
+    fig.savefig(fname_figure)
 
     return shim_weights
 

@@ -24,64 +24,81 @@ vop = load_siemens_vop(path_sar_file)
 
 
 def test_b1shim(caplog):
-    shim_weights = b1shim(b1_maps)
-    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
-           r"normalized." in caplog.text
-    assert r"No mask provided, masking all zero-valued pixels." in caplog.text
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        shim_weights = b1shim(b1_maps, tmp)
+        assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+               r"normalized." in caplog.text
+        assert r"No mask provided, masking all zero-valued pixels." in caplog.text
+        assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+        assert os.listdir(tmp), "Output files were not generated."
+
+
+def test_b1shim_mask(caplog):
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        shim_weights = b1shim(b1_maps, tmp, mask)
+        assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+               r"normalized." in caplog.text
+        assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1shim_algo_2(caplog):
-    shim_weights = b1shim(b1_maps, mask, algorithm=2, target=20)
-    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
-           r"normalized." in caplog.text
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        shim_weights = b1shim(b1_maps, tmp, algorithm=2, target=20)
+        assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+               r"normalized." in caplog.text
+        assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
 def test_b1shim_algo_2_no_target():
-    with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
-        b1shim(b1_maps, mask, algorithm=2)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
+            b1shim(b1_maps, tmp, algorithm=2)
 
 
 def test_b1shim_algo_3(caplog):
-    shim_weights = b1shim(b1_maps, mask, algorithm=3)
-    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
-           r"normalized." in caplog.text
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        shim_weights = b1shim(b1_maps, tmp, algorithm=3, q_matrix=vop)
+        assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1shim_algo_wrong_algo():
-    with pytest.raises(ValueError, match=r"The specified algorithm does not exist. It must be an integer between 1 "
-                                         r"and 3."):
-        b1shim(b1_maps, mask, algorithm=4)
+def test_b1shim_algo_3_no_q_matrix():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        with pytest.raises(ValueError, match=r"Algorithm 3 requires Q matrices to perform SAR efficiency shimming."):
+            b1shim(b1_maps, tmp, algorithm=3)
+
+
+def test_b1shim_wrong_algo():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        with pytest.raises(ValueError, match=r"The specified algorithm does not exist. It must be an integer between 1 "
+                                             r"and 3."):
+            b1shim(b1_maps, tmp, mask, algorithm=4)
 
 
 def test_b1shim_constrained():
-    shim_weights = b1shim(b1_maps, mask, q_matrix=vop)
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        shim_weights = b1shim(b1_maps, tmp, q_matrix=vop)
+        assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils."
 
 
 def test_b1shim_constrained_factor_too_small():
-    with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
-        b1shim(b1_maps, mask, q_matrix=vop, sed=0.9)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
+            b1shim(b1_maps, tmp, q_matrix=vop, sed=0.9)
 
 
 def test_b1shim_wrong_ndim():
-    with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\n"
-                                         r"Actual: 3"):
-        b1shim(b1_maps[:, :, :, 0], mask)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of "
+                                             r"dimensions.\nExpected: 4\nActual: 3"):
+            b1shim(b1_maps[:, :, :, 0], tmp)
 
 
 def test_b1shim_wrong_mask_shape():
-    with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching.\n"
-                                         r"Maps dimensions: \(64, 44, 5\)\n"
-                                         r"Mask dimensions: \(63, 44, 5\)"):
-        b1shim(b1_maps, mask[:-1, :, :])
-
-
-def test_b1shim_output_figure(caplog):
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        b1shim(b1_maps, mask, path_output=tmp)
+        with pytest.raises(ValueError, match=r"Mask and maps dimensions not matching.\n"
+                                             r"Maps dimensions: \(64, 44, 5\)\n"
+                                             r"Mask dimensions: \(63, 44, 5\)"):
+            b1shim(b1_maps, tmp, mask[:-1, :, :])
 
 
 def test_vector_to_complex():
