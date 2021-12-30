@@ -30,10 +30,9 @@ def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=
         target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
             optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
-        sed (float): Factor (=> 1) to which the local SAR after optimization can exceed the CP mode local SAR. SED
-            between 1 and 1.5 usually work with Siemens scanners. Higher SED allows more liberty for RF shimming but
-            might result in SAR excess at the scanner.
-
+        sed (float): Factor (=> 1) to which the maximum local SAR after shimming can exceed the phase-only shimming
+            maximum local SAR. SED between 1 and 1.5 usually work with Siemens scanners. Higher SED gives more shimming
+            freedom but might result in SAR excess at the scanner.
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
