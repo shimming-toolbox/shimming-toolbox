@@ -29,7 +29,7 @@ supported_optimizers = {
 
 
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=os.curdir):
+                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -53,7 +53,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
-        path_output (str): Path to the directory to output figures. Set logging level to debug to output them.
+        path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
+                           artefacts.
 
     Returns:
         numpy.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
@@ -125,7 +126,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
                      f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
-    if logger.level <= getattr(logging, 'DEBUG'):
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         _plot_currents(coef, path_output)
 
         # Save correction
@@ -144,7 +145,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
-                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=os.curdir):
+                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -174,7 +175,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
-        path_output (str): Path to the directory to output figures. Set logging level to debug to output them.
+        path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
+                           artefacts.
 
     Returns:
         (tuple): tuple containing:
@@ -403,7 +405,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         if i_shim >= n_shim - 1:
             break
 
-    if logger.level <= getattr(logging, 'DEBUG'):
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
                           shimmed_static_riro, path_output, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
         _plot_currents(coef_static, path_output, riro=coef_riro * pressure_rms)
@@ -619,7 +621,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
 
 
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-              dilation_kernel='sphere', dilation_size=3, path_output=os.curdir):
+              dilation_kernel='sphere', dilation_size=3, path_output=None):
 
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
