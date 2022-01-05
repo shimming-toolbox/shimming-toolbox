@@ -196,10 +196,18 @@ class TestCliStatic(object):
             fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
             nib.save(nii_dummy_coil, fname_dummy_coil)
 
+            # Change values of constraints
+            constraints_data = json.load(open(__dir_config_scanner_constraints__))
+            constraints_data['coef_channel_minmax'][0] = [-1000, 1000]
+            constraints_data['name'] = 'dummy_coil'
+            fname_constraints = os.path.join(tmp, 'constraints.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(constraints_data, f, indent=4)
+
             runner = CliRunner()
             # TODO: use actual coil files (These are just dummy files to test if the code works)
             res = runner.invoke(b0shim_cli, ['static',
-                                             '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                             '--coil', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -208,7 +216,7 @@ class TestCliStatic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_dummy_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_gradient_coil.txt"))
 
     def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
