@@ -41,8 +41,9 @@ def b0shim_cli():
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
-                   "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
-                   "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
+                   "profiles must be in Hz/unit_shim). If using the scanner's gradient/shim coils, the coil profiles "
+                   "must be in Hz/unit_shim and fieldmaps must be in Hz. If you want to shim using the scanner's "
+                   "gradient/shim coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
