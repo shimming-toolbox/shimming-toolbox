@@ -6,14 +6,15 @@ the gradient method in a st_shim CLI with the argument being:
 - fieldmap_realtime
 - gradient_realtime
 """
-
 import click
-import os
+import copy
+import json
+import math
 import nibabel as nib
 import numpy as np
 import logging
-import json
-import math
+import os
+from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
@@ -23,7 +24,6 @@ from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_seq
 from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
-
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -119,7 +119,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Prepare the output
     create_output_dir(path_output)
 
-    # Input can be a string
+    # Input scanner_coil_order can be a string
     scanner_coil_order = int(scanner_coil_order)
 
     # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
@@ -187,7 +187,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         end_channel = start_channel + n_channels
 
         # Select the coefficients for a coil
-        coefs_coil = coefs[:, start_channel:end_channel]
+        coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
@@ -196,7 +196,6 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
                 # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
                 # Convert coef of 1st order sph harmonics to Gradient coord system
-
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
                                                                            coefs_coil[:, 2],
                                                                            coefs_coil[:, 3], fname_anat)
@@ -205,7 +204,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 coefs_coil[:, 2] = coefs_phase
                 coefs_coil[:, 3] = coefs_slice
 
-            else:
+                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "Gradient CS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs[:, start_channel:end_channel], path_output, i_coil, units=units)
+
+            else:  # output_value_format == 'absolute'
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:
@@ -217,9 +220,18 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                     coefs_coil[:, 1] = -coefs_coil[:, 1]
                     # z
                     coefs_coil[:, 3] = -coefs_coil[:, 3]
+
+                    # Bounds also change from RAS to LAI
+                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                    bounds_shim_cs[1] = -bounds_shim_cs[1]
+                    bounds_shim_cs[3] = -bounds_shim_cs[3]
                 else:
                     raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
                                               f"absolute format")
+
+                # # Plot a figure of the coefficients (Delta), order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "ShimCS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, units=units, bounds=bounds_shim_cs)
 
                 for i_channel in range(n_channels):
                     # abs_coef = delta + initial
@@ -230,6 +242,8 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         else:
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            coil_number=i_coil)
+            # Plot a figure of the coefficients
+            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
@@ -456,8 +470,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
         end_channel = start_channel + n_channels
 
         # Select the coefficients for a coil
-        coefs_coil_static = coefs_static[:, start_channel:end_channel]
-        coefs_coil_riro = coefs_riro[:, start_channel:end_channel]
+        coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
+        coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
@@ -484,6 +498,11 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 coefs_coil_riro[:, 2] = coefs_riro_phase
                 coefs_coil_riro[:, 3] = coefs_riro_slice
 
+                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "Gradient CS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units)
+
             else:  # output_value_format == 'absolute'
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
@@ -498,14 +517,31 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                     # z
                     coefs_coil_static[:, 3] = -coefs_coil_static[:, 3]
                     coefs_coil_riro[:, 3] = -coefs_coil_riro[:, 3]
+
+                    # Bounds also change from RAS to LAI
+                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                    bounds_shim_cs[1] = -bounds_shim_cs[1]
+                    bounds_shim_cs[3] = -bounds_shim_cs[3]
                 else:
                     raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
                                               f"absolute format")
+
+                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "ShimCS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
+                #             bounds=bounds_shim_cs)
 
                 for i_channel in range(n_channels):
                     # abs_coef = delta + initial
                     coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
                     # riro does not change
+
+        else:  # Custom coil
+            # Plot a figure of the coefficients
+            _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                        pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
+                        bounds=coil.coef_channel_minmax)
 
         list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
                                                    path_output, o_format, i_coil)
@@ -667,7 +703,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
                                            f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
             _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
-            # Set the bounds to what they should be by taking into accounts that the fieldmap was acquired using some
+            # Set the bounds to what they should be by taking into account that the fieldmap was acquired using some
             # shimming
             sph_contraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                              sph_contraints['coef_channel_minmax'])[0]
@@ -742,6 +778,117 @@ def _get_current_shim_settings(json_data):
     current_coefs.insert(0, int(f0))
 
     return current_coefs
+
+
+def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
+                pres_probe_max=None, units='', bounds=None):
+    n_shims = static_coefs.shape[0]
+    fig = Figure(figsize=(8, 4 * n_shims), tight_layout=True)
+
+    # Find min and max values of the plots
+    # Calculate the min and max of the bounds if its an input
+    if bounds is not None:
+        bounds = np.array(bounds)
+        min_y = bounds.min()
+        max_y = bounds.max()
+    else:
+        min_y = None
+        max_y = None
+
+    # Calculate the min and max coefficient for the combined static + riro * (acq_pressure - mean_p)
+    # It can expand the min/max of the bounds if necessary
+    if rt_coefs is not None:
+        for i_shim in range(n_shims):
+            n_channels = static_coefs.shape[1]
+            for i_channel in range(n_channels):
+                coef = rt_coefs[i_shim, i_channel]
+                if coef > 0:
+                    temp_min = static_coefs[i_shim, i_channel] + coef * pres_probe_min
+                    temp_max = static_coefs[i_shim, i_channel] + coef * pres_probe_max
+                else:
+                    temp_min = static_coefs[i_shim, i_channel] + coef * pres_probe_max
+                    temp_max = static_coefs[i_shim, i_channel] + coef * pres_probe_min
+
+                if min_y is None or min_y > temp_min:
+                    min_y = temp_min
+                if max_y is None or max_y < temp_max:
+                    max_y = temp_max
+
+    # If its static optimization, find the min and max. It can expand the bounds.
+    else:
+        temp_min = np.array(static_coefs).min()
+        if min_y is None or min_y > temp_min:
+            min_y = temp_min
+        temp_max = np.array(static_coefs).max()
+        if max_y is None or max_y < temp_max:
+            max_y = np.array(static_coefs).max()
+
+    # Create a plot for each shim group
+    for i_shim in range(n_shims):
+        ax = fig.add_subplot(n_shims + 1, 1, i_shim + 1)
+        n_channels = static_coefs.shape[1]
+
+        # Add realtime component as an errorbar
+        if rt_coefs is not None:
+            rt_coef_ishim = rt_coefs[i_shim]
+            riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
+            ax.errorbar(range(n_channels), static_coefs[i_shim], yerr=riro, fmt='o', elinewidth=4, capsize=6,
+                        label='static-riro')
+        # Add static component
+        else:
+            ax.scatter(range(n_channels), static_coefs[i_shim], marker='o', label='static')
+
+        # Draw a black line at y=0
+        ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
+
+        delta_y = max_y - min_y
+
+        # Add bounds on the graph
+        if bounds is not None:
+            # Channel 0 used for the legend
+            len_vline_bounds = 0.01
+            len_hline_bounds = 0.4
+            # min
+            ax.hlines(bounds[0, 0], -len_hline_bounds, len_hline_bounds, colors='r', label='bounds',
+                      capstyle='projecting')
+            ax.vlines(-len_hline_bounds, bounds[0, 0], bounds[0, 0] + (delta_y * len_vline_bounds), colors='r',
+                      capstyle='projecting')
+            ax.vlines(len_hline_bounds, bounds[0, 0], bounds[0, 0] + (delta_y * len_vline_bounds), colors='r',
+                      capstyle='projecting')
+            # max
+            ax.hlines(bounds[0, 1], -len_hline_bounds, len_hline_bounds, colors='r', capstyle='projecting')
+            ax.vlines(-len_hline_bounds, bounds[0, 1] - (delta_y * len_vline_bounds), bounds[0, 1], colors='r',
+                      capstyle='projecting')
+            ax.vlines(len_hline_bounds, bounds[0, 1] - (delta_y * len_vline_bounds), bounds[0, 1], colors='r',
+                      capstyle='projecting')
+            # All other channels
+            for i_channel in range(1, n_channels):
+                # min
+                ax.hlines(bounds[i_channel, 0], i_channel - len_hline_bounds, i_channel + len_hline_bounds, colors='r',
+                          capstyle='projecting')
+                ax.vlines(i_channel - len_hline_bounds, bounds[i_channel, 0],
+                          bounds[i_channel, 0] + (delta_y * len_vline_bounds), colors='r', capstyle='projecting')
+                ax.vlines(i_channel + len_hline_bounds, bounds[i_channel, 0],
+                          bounds[i_channel, 0] + (delta_y * len_vline_bounds), colors='r', capstyle='projecting')
+                # max
+                ax.hlines(bounds[i_channel, 1], i_channel - len_hline_bounds, i_channel + len_hline_bounds, colors='r',
+                          capstyle='projecting')
+                ax.vlines(i_channel - len_hline_bounds, bounds[i_channel, 1] - (delta_y * len_vline_bounds),
+                          bounds[i_channel, 1], colors='r', capstyle='projecting')
+                ax.vlines(i_channel + len_hline_bounds, bounds[i_channel, 1] - (delta_y * len_vline_bounds),
+                          bounds[i_channel, 1], colors='r', capstyle='projecting')
+
+        # Set the extent of the plot
+        ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
+               xticks=range(n_channels))
+        ax.legend()
+        ax.set_title(f"Slices: {slices[i_shim]}")
+        ax.set_xlabel('Channels')
+        ax.set_ylabel(f"Coefficients {units}")
+
+    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
+    fig.savefig(fname_figure, bbox_inches='tight')
+    logger.debug(f"Saved figure: {fname_figure}")
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')

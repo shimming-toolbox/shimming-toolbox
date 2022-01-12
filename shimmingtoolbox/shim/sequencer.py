@@ -95,22 +95,10 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Optimize slice by slice
     coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
-                     dilation_size=mask_dilation_kernel_size, path_output=path_output)
+                      dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
     _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coefs, slices, path_output)
-
-    if path_output is not None:
-        start_channel = 0
-        for i_coil, coil in enumerate(coils):
-            n_channels = coil.dim[3]
-            end_channel = start_channel + n_channels
-            # Get the coefficients for a particular coil
-            coil_coefs = coefs[:, start_channel:end_channel]
-
-            # Plot a figure of the coefficients
-            _plot_coefs(coil, slices, coil_coefs, path_output, i_coil)
-            start_channel = end_channel
 
     return coefs
 
@@ -207,6 +195,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     if nii_fieldmap.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
     fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
+
     # Extend the fieldmap if there are axes that are 1d
     if 1 in fieldmap_shape:
         list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
@@ -282,7 +271,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     y = fieldmap.reshape(-1, fieldmap.shape[-1]).T
     reg = LinearRegression().fit(x, y)
 
-    # TODO: Safety check for linear regression if the pressure and fieldmap fits, also make sure the above code works
+    # TODO: Safety check for linear regression if the pressure and fieldmap fits
     # It should work since I am expecting taking the mask and dilating all the slices should include all the slices
     # resampled and dilated individually
     # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
@@ -331,21 +320,6 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Evaluate theoretical shim
     _eval_rt_shim(optimizer, nii_fieldmap, nii_static_mask, coef_static, coef_riro, mean_p,
                   acq_pressures, slices, pressure_rms, pmu, path_output)
-
-    if path_output is not None:
-        start_channel = 0
-        for i_coil, coil in enumerate(coils):
-            n_channels = coil.dim[3]
-            end_channel = start_channel + n_channels
-            # Get the coefficients for a particular coil
-            coil_static_coefs = coef_static[:, start_channel:end_channel]
-            coil_riro_coefs = coef_riro[:, start_channel:end_channel]
-
-            # Plot a figure of the coefficients
-            _plot_coefs(coil, slices, coil_static_coefs, path_output, i_coil, coil_riro_coefs,
-                        pres_probe_max=pmu.max - mean_p,
-                        pres_probe_min=pmu.min - mean_p)
-            start_channel = end_channel
 
     return coef_static, coef_riro, mean_p, pressure_rms
 
@@ -563,59 +537,6 @@ def _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shi
     logger.debug(f"Saved figure: {fname_figure}")
 
 
-def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
-                pres_probe_max=None):
-    n_shims = static_coefs.shape[0]
-    fig = Figure(figsize=(8, 4 * n_shims), tight_layout=True)
-
-    # Find min and max values of the plots
-    if rt_coefs is not None:
-        min_y = None
-        max_y = None
-        for i_shim in range(n_shims):
-            n_channels = static_coefs.shape[1]
-            for i_channel in range(n_channels):
-                temp_min = static_coefs[i_shim, i_channel] + rt_coefs[i_shim, i_channel] * -pres_probe_min
-                temp_max = static_coefs[i_shim, i_channel] + rt_coefs[i_shim, i_channel] * pres_probe_max
-
-                if min_y is None or min_y > temp_min:
-                    min_y = temp_min
-                if max_y is None or max_y < temp_max:
-                    max_y = temp_max
-
-        max_y = np.array(static_coefs).max() + np.array(rt_coefs).max() * pres_probe_max
-        min_y = np.array(static_coefs).min() + np.array(rt_coefs).min() * -pres_probe_min
-    else:
-        max_y = np.array(static_coefs).max()
-        min_y = np.array(static_coefs).min()
-
-    # Create each plots
-    for i_shim in range(n_shims):
-
-        ax = fig.add_subplot(n_shims + 1, 1, i_shim + 1)
-        n_channels = static_coefs.shape[1]
-
-        ax.bar(range(n_channels), static_coefs[i_shim], label='static')
-        ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
-
-        # Add realtime component as an errorbar
-        if rt_coefs is not None:
-            rt_coef_ishim = rt_coefs[i_shim]
-            riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
-            ax.errorbar(range(n_channels), static_coefs[i_shim], yerr=riro, fmt=',c', elinewidth=5, label='riro')
-
-        # TODO: Add bounds if close?
-        ax.set(ylim=(min_y, max_y), xlim=(-0.75, n_channels - 0.25), xticks=range(n_channels))
-        ax.legend()
-        ax.set_title(f"Slices: {slices[i_shim]}")
-        ax.set_xlabel('Channels')
-        ax.set_ylabel('Coefficients')
-
-    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_ch{coil_number}_{coil.name}.png")
-    fig.savefig(fname_figure, bbox_inches='tight')
-    logger.debug(f"Saved figure: {fname_figure}")
-
-
 def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap):
     """Print to the console metrics about the realtime and static shim. These metrics isolate temporal and static
     components
@@ -664,7 +585,7 @@ def new_bounds_from_currents(currents, old_bounds):
                            optimization.
 
     Returns:
-        list: 2d list (n_shims x n_channels) of bounds (min, max) corresponding to each shim and channel.
+        list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
 
     new_bounds = []
