@@ -16,6 +16,8 @@ from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox import __dir_config_scanner_constraints__
+from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 
 def _define_inputs(fmap_dim):
@@ -55,35 +57,6 @@ def _define_inputs(fmap_dim):
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
 
     return nii_fmap, nii_anat, nii_mask, fm_data, anat_data
-
-
-def _save_inputs(nii_fmap=None, fname_fmap=None,
-                 nii_anat=None, fname_anat=None,
-                 nii_mask=None, fname_mask=None,
-                 fm_data=None, fname_fm_json=None,
-                 anat_data=None, fname_anat_json=None):
-    """Save inputs if they are not None, use the respective fnames for the different inputs to save"""
-    if nii_fmap is not None:
-        # Save the fieldmap
-        nib.save(nii_fmap, fname_fmap)
-
-    if fm_data is not None:
-        # Save json
-        with open(fname_fm_json, 'w', encoding='utf-8') as f:
-            json.dump(fm_data, f, indent=4)
-
-    if nii_anat is not None:
-        # Save the anat
-        nib.save(nii_anat, fname_anat)
-
-    if anat_data is not None:
-        # Save json
-        with open(fname_anat_json, 'w', encoding='utf-8') as f:
-            json.dump(anat_data, f, indent=4)
-
-    if nii_mask is not None:
-        # Save the mask
-        nib.save(nii_mask, fname_mask)
 
 
 @pytest.mark.parametrize(
@@ -158,15 +131,19 @@ class TestCliStatic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
-                                             nii_fmap.affine, header=nii_fmap.header)
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
             fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
             nib.save(nii_dummy_coil, fname_dummy_coil)
 
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
             runner = CliRunner()
-            # TODO: use actual coil files (These are just dummy files to test if the code works)
             res = runner.invoke(b0shim_cli, ['static',
-                                             '--coil', fname_dummy_coil, __dir_config_scanner_constraints__,
+                                             '--coil', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
@@ -174,7 +151,7 @@ class TestCliStatic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
     def test_cli_static_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil and scanner coil"""
@@ -191,21 +168,17 @@ class TestCliStatic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            nii_dummy_coil = nib.Nifti1Image(np.repeat(nii_fmap.get_fdata()[..., np.newaxis], 9, axis=3),
-                                             nii_fmap.affine, header=nii_fmap.header)
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
             fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
             nib.save(nii_dummy_coil, fname_dummy_coil)
 
-            # Change values of constraints
-            constraints_data = json.load(open(__dir_config_scanner_constraints__))
-            constraints_data['coef_channel_minmax'][0] = [-1000, 1000]
-            constraints_data['name'] = 'dummy_coil'
-            fname_constraints = os.path.join(tmp, 'constraints.json')
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
             with open(fname_constraints, 'w', encoding='utf-8') as f:
-                json.dump(constraints_data, f, indent=4)
+                json.dump(dummy_coil_constraints, f, indent=4)
 
             runner = CliRunner()
-            # TODO: use actual coil files (These are just dummy files to test if the code works)
             res = runner.invoke(b0shim_cli, ['static',
                                              '--coil', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
@@ -216,7 +189,7 @@ class TestCliStatic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_dummy_coil.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_gradient_coil.txt"))
 
     def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -495,6 +468,50 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
+
+    def test_cli_rt_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            for i_channel in range(9):
+                assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_ch{i_channel}_Dummy_coil.txt"))
 
     def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -805,3 +822,55 @@ def test_cli_define_slices_wrong_output():
                                               '--method', 'sequential',
                                               '-o', fname_output],
                           catch_exceptions=False)
+
+
+def _save_inputs(nii_fmap=None, fname_fmap=None,
+                 nii_anat=None, fname_anat=None,
+                 nii_mask=None, fname_mask=None,
+                 fm_data=None, fname_fm_json=None,
+                 anat_data=None, fname_anat_json=None):
+    """Save inputs if they are not None, use the respective fnames for the different inputs to save"""
+    if nii_fmap is not None:
+        # Save the fieldmap
+        nib.save(nii_fmap, fname_fmap)
+
+    if fm_data is not None:
+        # Save json
+        with open(fname_fm_json, 'w', encoding='utf-8') as f:
+            json.dump(fm_data, f, indent=4)
+
+    if nii_anat is not None:
+        # Save the anat
+        nib.save(nii_anat, fname_anat)
+
+    if anat_data is not None:
+        # Save json
+        with open(fname_anat_json, 'w', encoding='utf-8') as f:
+            json.dump(anat_data, f, indent=4)
+
+    if nii_mask is not None:
+        # Save the mask
+        nib.save(nii_mask, fname_mask)
+
+
+def _create_dummy_coil(nii_fmap):
+    """Create coil profiles and constraints following sph harmonics 0, 1, 2 order. This is useful for testing custom
+    coils
+    """
+    shape = nii_fmap.shape[:3]
+    mesh_x, mesh_y, mesh_z = generate_meshgrid(shape, nii_fmap.affine)
+    profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
+    profile_order_0 = np.ones(shape)
+    sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profiles), axis=3)
+    nii_dummy_coil = nib.Nifti1Image(sph_coil_profile, nii_fmap.affine, header=nii_fmap.header)
+
+    # Dummy constraints
+    dummy_coil_constraints = {
+        "name": "Dummy_coil",
+        "coef_channel_minmax": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845),
+                                (-4252.2, 5665.8),
+                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)],
+        "coef_sum_max": None
+    }
+
+    return nii_dummy_coil, dummy_coil_constraints
