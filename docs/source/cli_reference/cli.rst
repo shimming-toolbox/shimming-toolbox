@@ -18,8 +18,10 @@ Fieldmapping
 Shimming
 --------
 
-.. click:: shimmingtoolbox.cli.realtime_shim:realtime_shim_cli
-   :prog: st_realtime_shim
+
+.. click:: shimmingtoolbox.cli.b0shim:b0shim_cli
+   :prog: st_b0shim
+   :nested: full
 
 Masking
 -------

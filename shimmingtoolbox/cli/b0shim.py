@@ -110,8 +110,8 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
-    Example of use: st_shim fieldmap_static --coil coil1.nii coil1_config.json
-    --coil coil2.nii coil2_config.json --fmap fmap.nii --anat anat.nii --mask mask.nii
+    Example of use: st_b0shim static --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
     # Set logger level
     set_all_loggers(verbose)
@@ -375,8 +375,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
 
-    Example of use: st_shim fieldmap_static --coil coil1.nii coil1_config.json
-    --coil coil2.nii coil2_config.json --fmap fmap.nii --anat anat.nii --mask-static mask.nii
+    Example of use: st_b0shim realtime --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
 
     # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
