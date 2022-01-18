@@ -37,6 +37,7 @@ class LsqOptimizer(Optimizer):
 
     def _define_scipy_coef_sum_max_constraint(self):
         """Constraint on each coil about the maximum current of all channels"""
+
         def _apply_sum_constraint(inputs, indexes, coef_sum_max):
             # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
             return -1 * (np.sum(np.abs(inputs[indexes])) - coef_sum_max)
@@ -59,7 +60,7 @@ class LsqOptimizer(Optimizer):
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
                                    constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 500})
+                                   options={'maxiter': 1000})
         return currents_sp
 
     def optimize(self, mask):
@@ -202,14 +203,18 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         constraints = []
         for i_bound, bound in enumerate(self.merged_bounds):
-            constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
-                                'args': (i_bound, bound[0], -delta_pressure)})
-            constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
-                                'args': (i_bound, bound[1], delta_pressure)})
-            constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
-                                'args': (i_bound, bound[0], delta_pressure)})
-            constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
-                                'args': (i_bound, bound[1], -delta_pressure)})
+            # No point in adding a constraint if the bound is infinite
+            if not bound[0] == -np.inf:
+                constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
+                                    'args': (i_bound, bound[0], -delta_pressure)})
+                constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
+                                    'args': (i_bound, bound[0], delta_pressure)})
+            # No point in adding a constraint if the bound is infinite
+            if not bound[1] == np.inf:
+                constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
+                                    'args': (i_bound, bound[1], delta_pressure)})
+                constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
+                                    'args': (i_bound, bound[1], -delta_pressure)})
 
         return constraints
 
