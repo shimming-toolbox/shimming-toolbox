@@ -11,7 +11,7 @@ from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
 
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
+from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -23,6 +23,7 @@ ListCoil = List[Coil]
 logger = logging.getLogger(__name__)
 
 supported_optimizers = {
+    'least_squares_rt': PmuLsqOptimizer,
     'least_squares': LsqOptimizer,
     'pseudo_inverse': Optimizer
 }
@@ -222,7 +223,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     if not (np.all(riro_mask.shape == anat.shape) and np.all(static_mask.shape == anat.shape)):
         raise ValueError(f"Shape of riro mask: {riro_mask.shape} and static mask: {static_mask.shape} "
                          f"must be the same as the shape of anat: {anat.shape}")
-    if not(np.all(nii_riro_mask.affine == nii_anat.affine) and np.all(nii_static_mask.affine == nii_anat.affine)):
+    if not (np.all(nii_riro_mask.affine == nii_anat.affine) and np.all(nii_static_mask.affine == nii_anat.affine)):
         raise ValueError(f"Affine of riro mask:\n{nii_riro_mask.affine}\nand static mask: {nii_static_mask.affine}\n"
                          f"must be the same as the affine of anat:\n{nii_anat.affine}")
 
@@ -289,28 +290,20 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                             dilation_size=mask_dilation_kernel_size,
                             path_output=path_output)
 
+    # RIRO optimization
+
     # Use the currents to define a list of new coil bounds for the riro optimization
     bounds = new_bounds_from_currents(coef_static, optimizer.merged_bounds)
 
-    # Riro shim
-    # We multiply by the max offset of the siemens pmu e.g. [max - min = 4095] so that the bounds take effect on the
-    # maximum value that the pressure probe can acquire. The equation "riro(i_vox) * (acq_pressures - mean_p)" becomes
-    # "riro(i_vox) * max_offset" which is the maximum riro shim we will have. We solve for that to make sure the coils
-    # can support it. The units of riro * max_offset are: [unit_shim], ex: [Hz]
-    max_offset = max((pmu.max - pmu.min) - mean_p, mean_p)
+    if opt_method == 'least_squares':
+        opt_method = 'least_squares_rt'
 
-    # Set the riro map to shim
-    # TODO: make sure max_offset could not bust with negative offset
-    # TODO: Add safety factor? If someone takes a deep breath, the average could go up
-    optimizer.set_unshimmed(riro * max_offset, affine_fieldmap)
-    coef_max_riro = _optimize(optimizer, nii_riro_mask, slices,
-                              shimwise_bounds=bounds,
-                              dilation_kernel=mask_dilation_kernel,
-                              dilation_size=mask_dilation_kernel_size,
-                              path_output=path_output)
-    # Once the coefficients are solved, we divide by max_offset to return to units of
-    # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
-    coef_riro = coef_max_riro / max_offset
+    optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, pmu)
+    coef_riro = _optimize(optimizer, nii_riro_mask, slices,
+                          shimwise_bounds=bounds,
+                          dilation_kernel=mask_dilation_kernel,
+                          dilation_size=mask_dilation_kernel_size,
+                          path_output=path_output)
 
     # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
     # between scans. This allows to compare results between scans.
@@ -326,7 +319,6 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
 def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, coef_riro, mean_p,
                   acq_pressures, slices, pressure_rms, pmu: PmuResp, path_output):
-
     logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
 
     # Calculate theoretical shimmed map
@@ -363,7 +355,8 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
 
             # Calculate masked shim
             masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
+            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[
+                ..., i_t, i_shim]
             masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
             masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
 
@@ -374,7 +367,6 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
             sum_unshimmed = np.sum(np.abs(masked_unshimmed[..., i_t, i_shim]))
 
             if sum_shimmed_static_riro > sum_unshimmed:
-                # TODO: Remove if too many
                 logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                                f"i_shim: {i_shim}, i_t: {i_t}")
 
@@ -409,7 +401,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
 
     if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
-                          shimmed_static_riro, path_output, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
+                          shimmed_static_riro, path_output, slices, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
         _plot_currents(coef_static, path_output, riro=coef_riro * pressure_rms)
         _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro,
                             path_output)
@@ -427,7 +419,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
 
 
 def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed, shimmed_static,
-                      shimmed_static_riro, path_output, i_t=0, i_slice=0, i_shim=0):
+                      shimmed_static_riro, path_output, slices, i_t=0, i_slice=0, i_shim=0):
     """Plot Static and RIRO fieldmap for a perticular fieldmap slice, anat shim and timepoint"""
 
     min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
@@ -437,8 +429,10 @@ def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_r
                     masked_shim_static[..., i_slice, i_t, i_shim].max(),
                     masked_unshimmed[..., i_slice, i_t, i_shim].max())
 
+    index_slice_to_show = slices[i_shim][i_slice]
+
     fig = Figure(figsize=(15, 10))
-    fig.suptitle(f"Maps for shim: {i_shim}, slice: {i_slice}, timepoint: {i_t}")
+    fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
     ax = fig.add_subplot(2, 3, 1)
     im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
     fig.colorbar(im)
@@ -599,15 +593,17 @@ def new_bounds_from_currents(currents, old_bounds):
     return new_bounds
 
 
-def select_optimizer(method, unshimmed, affine, coils: ListCoil):
+def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = None):
     """
     Select and initialize the optimizer
 
     Args:
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'least_squares_rt'
         unshimmed (numpy.ndarray): 3D B0 map
         affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         coils (ListCoil): List of Coils containing the coil profiles
+        pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
+                       'least_squares_rt'.
 
     Returns:
         Optimizer: Initialized Optimizer object
@@ -615,7 +611,16 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
 
     # global supported_optimizers
     if method in supported_optimizers:
-        optimizer = supported_optimizers[method](coils, unshimmed, affine)
+        if method == 'least_squares_rt':
+
+            # Make sure pmu is defined
+            if pmu is None:
+                raise ValueError(f"pmu parameter is required if using the optimization method: {method}")
+
+            # Add pmu to the realtime optimizer(s)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, pmu)
+        else:
+            optimizer = supported_optimizers[method](coils, unshimmed, affine)
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
@@ -624,7 +629,6 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil):
 
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
-
     # Count number of channels
     n_channels = optimizer.merged_coils.shape[3]
 
