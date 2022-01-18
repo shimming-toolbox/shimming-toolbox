@@ -857,7 +857,8 @@ def _create_dummy_coil(nii_fmap):
     """Create coil profiles and constraints following sph harmonics 0, 1, 2 order. This is useful for testing custom
     coils
     """
-    shape = nii_fmap.shape[:3]
+    shape = list(nii_fmap.shape[:3])
+    shape[2] += 5
     mesh_x, mesh_y, mesh_z = generate_meshgrid(shape, nii_fmap.affine)
     profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
     profile_order_0 = np.ones(shape)
@@ -867,8 +868,7 @@ def _create_dummy_coil(nii_fmap):
     # Dummy constraints
     dummy_coil_constraints = {
         "name": "Dummy_coil",
-        "coef_channel_minmax": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845),
-                                (-4252.2, 5665.8),
+        "coef_channel_minmax": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
                                 (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)],
         "coef_sum_max": None
     }
