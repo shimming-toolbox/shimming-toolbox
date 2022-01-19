@@ -239,45 +239,31 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
     x = acq_pressures.reshape(-1, 1) - mean_p
 
-    # Safety check for linear regression if the pressure and fieldmap fits
-    # TODO: Validate the code is indeed a good assessment
-    # It should work since I am expecting taking the mask and dilating all the slices should include all the slices
-    # resampled and dilated individually
-    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    # Mask the voxels not being shimmed for static
-    nii_3dfmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
-    fmap_mask_static = resample_mask(nii_static_mask, nii_3dfmap, tuple(range(anat.shape[2])),
-                                     dilation_kernel=mask_dilation_kernel,
-                                     dilation_size=mask_dilation_kernel_size).get_fdata()
-    masked_fieldmap_static = np.repeat(fmap_mask_static[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
-    y = masked_fieldmap_static.reshape(-1, fieldmap.shape[-1]).T
-
-    # Warn if lower than a threshold?
-    reg_static = LinearRegression().fit(x, y)
-    logger.debug(f"Linear fit of the static masked fieldmap and pressure got a R2 score of: "
-                 f"{reg_static.score(x, y)}")
-
+    # Safety check for linear regression if the pressure and fieldmap fit well
     # Mask the voxels not being shimmed for riro
+    nii_3dfmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
     fmap_mask_riro = resample_mask(nii_riro_mask, nii_3dfmap, tuple(range(anat.shape[2])),
                                    dilation_kernel=mask_dilation_kernel,
                                    dilation_size=mask_dilation_kernel_size).get_fdata()
     masked_fieldmap_riro = np.repeat(fmap_mask_riro[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
     y = masked_fieldmap_riro.reshape(-1, fieldmap.shape[-1]).T
-    # Warn if lower than a threshold?
-    reg_riro = LinearRegression().fit(x, y)
-    logger.debug(f"Linear fit of the riro masked fieldmap and pressure got a R2 score of: "
-                 f"{reg_riro.score(x, y)}")
 
-    # Fit to the linear model
+    reg_riro = LinearRegression().fit(x, y)
+    # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
+    score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
+    logger.debug(f"Linear fit of the RIRO masked fieldmap and pressure got a R2 score of: {score_riro}")
+
+    # Warn if lower than a threshold
+    # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
+    threshold_score = 0.7
+    if score_riro < threshold_score:
+        logger.warning(f"Linear fit of the RIRO masked fieldmap and pressure got a low R2 score: {score_riro} "
+                       f"(less than {threshold_score}). This indicates a bad fit between the pressure data and the "
+                       f"fieldmap values")
+
+    # Fit to the linear model (no mask)
     y = fieldmap.reshape(-1, fieldmap.shape[-1]).T
     reg = LinearRegression().fit(x, y)
-
-    # TODO: Safety check for linear regression if the pressure and fieldmap fits
-    # It should work since I am expecting taking the mask and dilating all the slices should include all the slices
-    # resampled and dilated individually
-    # https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LinearRegression.html
-    # Warn if lower than a threshold?
-    logger.debug(f"Linear fit of the fieldmap and pressure got a R2 score of: {reg.score(x, y)}")
 
     # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
@@ -291,7 +277,6 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                             path_output=path_output)
 
     # RIRO optimization
-
     # Use the currents to define a list of new coil bounds for the riro optimization
     bounds = new_bounds_from_currents(coef_static, optimizer.merged_bounds)
 
