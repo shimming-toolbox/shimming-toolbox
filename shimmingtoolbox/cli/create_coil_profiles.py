@@ -40,6 +40,16 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
 
     # Todo: Set logger level according to --log level. Remove line about basic config
 
+    # Config file is set up:
+    # phase[i_channel][min_max][i_echo]
+    # mag[i_channel][min_max][i_echo]
+    #   "diff": [1, 1, 1, 1, 1, 1, 1],
+    #   "name": "greg_coil",
+    #   "n_channels": 7,
+    #   "units": "A",
+    #   "coef_channel_minmax": [i_channel][min_max]
+    #   "coef_sum_max": null
+
     # Get directory
     path_output = os.path.dirname(os.path.abspath(fname_output))
     create_output_dir(path_output)
@@ -62,6 +72,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     mask = np.full_like(nii_mag.get_fdata(), True, bool)
     for i_channel in range(n_channels):
         # min
+        # This is using all channels but echo 1 and min current
         fname_mag = mags[i_channel][0][0]
         mag = nib.load(fname_mag).get_fdata()
         thresh_mask = mask_threshold(mag, threshold)
