@@ -163,25 +163,6 @@ class Optimizer(object):
 
         return bounds
 
-    def initial_guess_mean_bounds(self):
-        """
-        Calculates the initial guess from the bounds, sets it to the mean of the bounds
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
-
-        """
-        current_0 = []
-        for bounds in self.merged_bounds:
-            avg = np.mean(bounds)
-
-            if np.isnan(avg):
-                current_0.append(0)
-            else:
-                current_0.append(avg)
-
-        return np.array(current_0)
-
     def _check_sizing(self, mask):
         """
         Helper function to check array sizing

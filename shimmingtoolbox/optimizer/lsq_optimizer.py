@@ -3,10 +3,14 @@
 
 import numpy as np
 import scipy.optimize as opt
+from typing import List
 import warnings
 
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.coils.coil import Coil
+
+ListCoil = List[Coil]
 
 
 class LsqOptimizer(Optimizer):
@@ -14,6 +18,30 @@ class LsqOptimizer(Optimizer):
         Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
+
+    def __init__(self, coils: ListCoil, unshimmed, affine):
+        """
+        Initializes coils according to input list of Coil
+
+        Args:
+            coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
+            unshimmed (numpy.ndarray): 3d array of unshimmed volume
+            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+        """
+        super().__init__(coils, unshimmed, affine)
+        self._initial_guess_method = 'mean'
+
+    @property
+    def initial_guess_method(self):
+        return self._initial_guess_method
+
+    @initial_guess_method.setter
+    def initial_guess_method(self, method):
+        allowed_methods = ['mean', 'zeros']
+        if method not in allowed_methods:
+            raise ValueError(f"Initial_guess_methos not supported. Supported methods are: {allowed_methods}")
+
+        self._initial_guess_method = method
 
     def _residuals(self, coef, unshimmed_vec, coil_mat):
         """
@@ -63,6 +91,53 @@ class LsqOptimizer(Optimizer):
                                    options={'maxiter': 1000})
         return currents_sp
 
+    def get_initial_guess(self):
+        """ Calculates the initial guess according to the `self.initial_guess_method`
+
+        Returns:
+            np.ndarray: 1d array (n_channels) containing the initial guess for the optimization
+        """
+
+        allowed_guess_method = {
+            'mean': self._initial_guess_mean_bounds,
+            'zeros': self._initial_guess_zeros
+        }
+
+        initial_guess = allowed_guess_method[self.initial_guess_method]()
+
+        return initial_guess
+
+    def _initial_guess_mean_bounds(self):
+        """
+        Calculates the initial guess from the bounds, sets it to the mean of the bounds
+
+        Returns:
+            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
+
+        """
+        current_0 = []
+        for bounds in self.merged_bounds:
+            avg = np.mean(bounds)
+
+            if np.isnan(avg):
+                current_0.append(0)
+            else:
+                current_0.append(avg)
+
+        return np.array(current_0)
+
+    def _initial_guess_zeros(self):
+        """
+        Return a numpy array with zeros.
+
+        Returns:
+            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
+
+        """
+        current_0 = np.zeros(len(self.merged_bounds))
+
+        return current_0
+
     def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
@@ -92,7 +167,7 @@ class LsqOptimizer(Optimizer):
         scipy_constraints = self._define_scipy_constraints()
 
         # Set up output currents
-        currents_0 = self.initial_guess_mean_bounds()
+        currents_0 = self.get_initial_guess()
 
         # Optimize
         # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
@@ -136,6 +211,7 @@ class PmuLsqOptimizer(LsqOptimizer):
         super().__init__(coils, unshimmed, affine)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
+        self.initial_guess_method = 'zeros'
 
     def _define_scipy_constraints(self):
         """Redefines from super() to include more constraints"""
