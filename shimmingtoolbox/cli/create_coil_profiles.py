@@ -64,6 +64,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     list_diff = json_data["diff"]
     min_max_fmaps = []
     n_channels = len(phases)
+    n_echoes = len(phases[0][0])
 
     # Create a mask containing the threshold of all channels
     fname_mask = os.path.join(path_output, 'mask.nii.gz')
@@ -71,18 +72,31 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     nii_mag = nib.load(fname_mag)
     mask = np.full_like(nii_mag.get_fdata(), True, bool)
     for i_channel in range(n_channels):
-        # min
-        # This is using all channels but echo 1 and min current
-        fname_mag = mags[i_channel][0][0]
-        mag = nib.load(fname_mag).get_fdata()
-        thresh_mask = mask_threshold(mag, threshold)
-        mask = np.logical_and(thresh_mask, mask)
-        # max
-        fname_mag = mags[i_channel][1][0]
-        mag = nib.load(fname_mag).get_fdata()
-        thresh_mask = mask_threshold(mag, threshold)
+        # Calculate the average mag image for a channel using all echoes for both min and max currents
+        mag_min_mean = np.zeros_like(nii_mag.get_fdata)
+        mag_max_mean = np.zeros_like(nii_mag.get_fdata)
+        for i_echo in range(n_echoes):
+            # min
+            fname_mag = mags[i_channel][0][i_echo]
+            mag = nib.load(fname_mag).get_fdata()
+            mag_min_mean += mag
+            # max
+            fname_mag = mags[i_channel][1][i_echo]
+            mag = nib.load(fname_mag).get_fdata()
+            mag_max_mean += mag
+
+        mag_min_mean /= n_channels
+        mag_max_mean /= n_channels
+
+        # Calculate threshold for min current
+        thresh_mask = mask_threshold(mag_min_mean, threshold)
         mask = np.logical_and(thresh_mask, mask)
 
+        # Calculate threshold for min current
+        thresh_mask = mask_threshold(mag_max_mean, threshold)
+        mask = np.logical_and(thresh_mask, mask)
+
+    # Mask contains the region where all channels get enough signal
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
     nib.save(nii_mask, fname_mask)
 
