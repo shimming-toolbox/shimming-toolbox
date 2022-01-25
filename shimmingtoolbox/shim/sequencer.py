@@ -269,6 +269,16 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     static = reg.intercept_.reshape(fieldmap.shape[:-1])
     riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
+    # Log the static and riro maps to fit
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        # Save static
+        nii_static = nib.Nifti1Image(static, nii_fieldmap.affine, header=nii_fieldmap.header)
+        nib.save(nii_static, os.path.join(path_output, 'fig_static_fmap_component.nii.gz'))
+
+        # Save riro
+        nii_riro = nib.Nifti1Image(riro, nii_fieldmap.affine, header=nii_fieldmap.header)
+        nib.save(nii_riro, os.path.join(path_output, 'fig_riro_fmap_component.nii.gz'))
+
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
     coef_static = _optimize(optimizer, nii_static_mask, slices,
