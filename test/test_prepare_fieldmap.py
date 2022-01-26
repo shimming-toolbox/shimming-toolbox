@@ -25,18 +25,12 @@ class TestPrepareFieldmap(object):
 
     def test_prepare_fieldmap_1_echo(self):
         """Test default works."""
-        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times)
+        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag)
 
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
                                  np.array([18.51407573, 13.85066883,  9.47872498,  5.11298149,  0.64801652])))
-
-    def test_prepare_fieldmap_with_mag(self):
-        """Test mag works."""
-        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, mag=self.mag)
-
-        assert fieldmap.shape == self.nii_phase.shape
 
     def test_prepare_fieldmap_2_echoes(self):
         """Test 2 echoes works."""
@@ -66,7 +60,7 @@ class TestPrepareFieldmap(object):
         """Test error when range is not between -pi and pi."""
         nii = nib.Nifti1Image(self.nii_phase.get_fdata() - math.pi, self.nii_phase.affine, header=self.nii_phase.header)
         with pytest.raises(ValueError, match="Values must range from -pi to pi."):
-            fieldmap = prepare_fieldmap([nii], self.echo_times)
+            prepare_fieldmap([nii], self.echo_times, self.mag)
 
     def test_prepare_fieldmap_wrong_echo_times(self):
         """Wrong number of echo times."""
@@ -74,7 +68,7 @@ class TestPrepareFieldmap(object):
         echo_times = [0.001, 0.002, 0.003]
         with pytest.raises(ValueError, match="The number of echoes must match the number of echo times unless there is "
                                              "1 echo"):
-            prepare_fieldmap([self.nii_phase], echo_times)
+            prepare_fieldmap([self.nii_phase], echo_times, self.mag)
 
     def test_prepare_fieldmap_mag_wrong_shape(self):
         """Mag has the wrong shape."""
@@ -86,14 +80,14 @@ class TestPrepareFieldmap(object):
         """Mask has the wrong shape."""
 
         with pytest.raises(ValueError, match="Shape of mask and phase must match."):
-            prepare_fieldmap([self.nii_phase], self.echo_times, mask=np.zeros_like([5, 5]))
+            prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, mask=np.zeros_like([5, 5]))
 
     def test_prepare_fieldmap_phasediff_1_echotime(self):
         """EchoTime of length one for phasediff should fail."""
 
         with pytest.raises(ValueError, match="The number of echoes must match the number of echo times unless there is "
                                              "1 echo"):
-            prepare_fieldmap([self.nii_phase], [self.echo_times[0]])
+            prepare_fieldmap([self.nii_phase], [self.echo_times[0]], self.mag)
 
     def test_prepare_fieldmap_3_echoes(self):
         """3 echoes are not implemented so the test should fail."""
@@ -101,12 +95,18 @@ class TestPrepareFieldmap(object):
         echo_times = [0.001, 0.002, 0.003]
 
         with pytest.raises(NotImplementedError, match="This number of phase input is not supported:"):
-            prepare_fieldmap([self.nii_phase, self.nii_phase, self.nii_phase], echo_times)
+            prepare_fieldmap([self.nii_phase, self.nii_phase, self.nii_phase], echo_times, self.mag)
+
+    def test_prepare_fieldmap_wrong_threshold(self):
+        """EchoTime of length one for phasediff should fail."""
+
+        with pytest.raises(ValueError, match="Threshold should range from 0 to 1. Input value was:"):
+            prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, threshold=2)
 
     def test_prepare_fieldmap_gaussian_filter(self):
         """ Test output of gaussian filter optional argument"""
 
-        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, gaussian_filter=True, sigma=1)
+        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, gaussian_filter=True, sigma=1)
 
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:

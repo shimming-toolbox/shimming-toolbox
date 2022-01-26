@@ -20,6 +20,7 @@ fname_mag_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fma
 fname_phase1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
 fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
 
+
 @pytest.mark.prelude
 def test_cli_prepare_fieldmap_1_echo():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
