@@ -1,6 +1,9 @@
 ###############################################################################
 #                           configure testing suite                           #
 ###############################################################################
+from multiprocessing import set_start_method
+set_start_method("spawn")
+
 import sys
 import os
 import logging
