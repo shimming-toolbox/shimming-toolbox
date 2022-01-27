@@ -11,6 +11,7 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 ListCoil = List[Coil]
+logger = logging.getLogger(__name__)
 
 
 class Optimizer(object):
@@ -127,6 +128,12 @@ class Optimizer(object):
         # Define the nibabel unshimmed array
         nii_unshimmed = nib.Nifti1Image(unshimmed, affine)
 
+        # # Make sure all the coils have the same units
+        # units = [coil.units for coil in self.coils]
+        # if units.count(units[0]) != len(units):
+        #     names = [coil.name for coil in self.coils]
+        #     logger.warning(f"The coils don't have matching units: {list(zip(names, units))}")
+
         for coil in self.coils:
             nii_coil = nib.Nifti1Image(coil.profile, coil.affine)
 
@@ -155,25 +162,6 @@ class Optimizer(object):
                 bounds.append(a_bound)
 
         return bounds
-
-    def initial_guess_mean_bounds(self):
-        """
-        Calculates the initial guess from the bounds, sets it to the mean of the bounds
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
-
-        """
-        current_0 = []
-        for bounds in self.merged_bounds:
-            avg = np.mean(bounds)
-
-            if np.isnan(avg):
-                current_0.append(0)
-            else:
-                current_0.append(avg)
-
-        return np.array(current_0)
 
     def _check_sizing(self, mask):
         """

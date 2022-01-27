@@ -86,14 +86,12 @@ class TestDilateBinaryMask(object):
 def test_resample_mask():
     """Test for function that resamples a mask"""
     # Fieldmap
-    fname_fieldmap = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                  'sub-example_fieldmap.nii.gz')
+    fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
     nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
 
     # anat image
-    fname_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat',
-                              'sub-example_unshimmed_e1.nii.gz')
+    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_anat = nib.load(fname_anat)
 
     # Set up mask

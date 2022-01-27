@@ -5,7 +5,6 @@ import sys
 import os
 import logging
 from pathlib import Path
-import subprocess
 
 import pytest
 from typing import Mapping
@@ -56,8 +55,8 @@ def test_sct_installation():
 
 
 def pytest_sessionstart():
-    """Download shimmingtoolbox testing_data prior to test collection."""
-    logger.info("Downloading shimmingtoolbox test data")
+    """Download shimming-toolbox testing_data prior to test collection."""
+    logger.info("Downloading shimming-toolbox test data")
     test_data_location = test_data_path()
     try:
         download_data(

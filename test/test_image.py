@@ -12,10 +12,10 @@ from shimmingtoolbox import __dir_testing__
 class TestImageConcat(object):
 
     def setup(self):
-        path_anat = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'anat')
-        list_fname = [os.path.join(path_anat, 'sub-example_unshimmed_e1.nii.gz'),
-                      os.path.join(path_anat, 'sub-example_unshimmed_e2.nii.gz'),
-                      os.path.join(path_anat, 'sub-example_unshimmed_e3.nii.gz')]
+        path_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat')
+        list_fname = [os.path.join(path_anat, 'sub-realtime_unshimmed_e1.nii.gz'),
+                      os.path.join(path_anat, 'sub-realtime_unshimmed_e2.nii.gz'),
+                      os.path.join(path_anat, 'sub-realtime_unshimmed_e3.nii.gz')]
 
         # Create nii list
         self.list_nii = []

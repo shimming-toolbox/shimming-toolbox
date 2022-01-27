@@ -10,15 +10,10 @@ from click.testing import CliRunner
 from shimmingtoolbox.cli.maths import maths_cli
 from shimmingtoolbox import __dir_testing__
 
+fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
 
 def test_mean():
-    fname_input = os.path.join(__dir_testing__,
-                               'realtime_zshimming_data',
-                               'nifti',
-                               'sub-example',
-                               'anat',
-                               'sub-example_unshimmed_e1.nii.gz')
-
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
         fname_output = os.path.join(tmp, 'mean.nii.gz')
@@ -32,13 +27,6 @@ def test_mean():
 
 
 def test_mean_axis_out_of_bound():
-    fname_input = os.path.join(__dir_testing__,
-                               'realtime_zshimming_data',
-                               'nifti',
-                               'sub-example',
-                               'anat',
-                               'sub-example_unshimmed_e1.nii.gz')
-
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
         fname_output = os.path.join(tmp, 'mean.nii.gz')

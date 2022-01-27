@@ -4,15 +4,6 @@
 Image thresholding API
 """
 
-import glob
-import os
-import nibabel as nib
-import pathlib
-import tempfile
-import logging
-
-from shimmingtoolbox.utils import run_subprocess
-
 
 def threshold(data, thr=30):
     """
@@ -20,9 +11,13 @@ def threshold(data, thr=30):
 
     Args:
         data (numpy.ndarray): Data to be masked
-        thr: Value to threshold the data: voxels will be set to zero if their value is equal or less than this threshold
+        thr (float): Value to threshold the data: voxels will be set to zero if their value is equal or less than this
+        threshold. For complex data, threshold is applied on the absolute values.
 
     Returns:
         numpy.ndarray: Boolean mask with same dimensions as data
     """
-    return data > thr
+    if data.dtype == 'complex128':
+        return abs(data) > thr
+    else:
+        return data > thr

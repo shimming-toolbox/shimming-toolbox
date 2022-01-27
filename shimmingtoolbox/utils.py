@@ -152,6 +152,55 @@ def create_fname_from_path(path, file_default):
     return os.path.abspath(fname)
 
 
+def set_all_loggers(verbose, list_exclude=('matplotlib',)):
+    """ Set all loggers in the root manager to the verbosity level. Exclude any logger with the name in list_exclude
+
+    Args:
+        verbose (str): Verbosity level: 'info', 'debug', 'warning', 'critical', 'error'
+        list_exclude: List of string to exclude from logging
+    """
+    loggers = []
+    # For every logger name
+    for name in logging.root.manager.loggerDict:
+
+        # Exclude the setting level if it is in the excluded list
+        is_excluded = False
+        for exclude in list_exclude:
+            if name.startswith(exclude):
+                is_excluded = True
+
+        if not is_excluded:
+            loggers.append(logging.getLogger(name))
+
+    for a_logger in loggers:
+        a_logger.setLevel(verbose.upper())
+
+
+def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
+    """Concatenates images stored in a 3D array
+    Args:
+        X (numpy.ndarray): 3D array with the last dimension being the one in which the different images are stored
+        colormap (str): Colors in which the montage will be displayed.
+        title (str): Title to display above the figure.
+        vmin (float): Minimum display range value. If None, set the the min value of X.
+        vmax (float): Maximum display range value. If None, set the the max value of X.
+    """
+    X = np.rot90(X)
+    x, y, n_images = np.shape(X)
+    mm = np.floor(np.sqrt(n_images)).astype(int)
+    nn = np.ceil(n_images/mm).astype(int)
+    result = np.zeros((mm * x, nn * y))
+    image_id = 0
+    for k in range(mm):
+        for j in range(nn):
+            if image_id >= n_images:
+                break
+            slice_m, slice_n = k * x, j * y
+            result[slice_m:slice_m + x, slice_n:slice_n + y] = X[:, :, image_id]
+            image_id += 1
+    return result
+
+
 def save_nii_json(nii, json_data, fname_output):
     """ Save the nii to a nifti file and dict to a json file.
 

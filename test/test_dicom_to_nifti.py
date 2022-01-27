@@ -8,13 +8,15 @@ from shimmingtoolbox.dicom_to_nifti import dicom_to_nifti
 from shimmingtoolbox import __dir_testing__
 import pytest
 
+path_dicom_unsorted = os.path.join(__dir_testing__, 'dicom_unsorted')
+
 
 def test_dicom_to_nifti():
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
         dicom_to_nifti(
-            path_dicom=os.path.join(__dir_testing__, 'dicom_unsorted'),
+            path_dicom=path_dicom_unsorted,
             path_nifti=path_nifti,
             subject_id=subject_id
         )
@@ -34,7 +36,7 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
         dicom_to_nifti(
-            path_dicom=os.path.join(__dir_testing__, 'realtime_zshimming_data'),
+            path_dicom=os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'sourcedata'),
             path_nifti=path_nifti,
             subject_id=subject_id
         )
@@ -71,7 +73,7 @@ def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
         dicom_to_nifti(
-            path_dicom=os.path.join(__dir_testing__, 'dicom_unsorted'),
+            path_dicom=path_dicom_unsorted,
             path_nifti=path_nifti,
             subject_id=subject_id,
             remove_tmp=True
@@ -86,11 +88,12 @@ def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
 def test_dicom_to_nifti_path_dicom_invalid(test_dcm2niix_installation):
     """Test the remove_tmp folder"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
+        path_dicom = 'dummy_path'
         path_nifti = os.path.join(tmp, 'nifti')
         subject_id = 'sub-test'
         with pytest.raises(FileNotFoundError, match=r"No dicom path found"):
             dicom_to_nifti(
-                path_dicom=os.path.join(__dir_testing__, 'invalid_folder'),
+                path_dicom=path_dicom,
                 path_nifti=path_nifti,
                 subject_id=subject_id
             )
@@ -104,7 +107,7 @@ def test_dicom_to_nifti_path_config_invalid(test_dcm2niix_installation):
         subject_id = 'sub-test'
         with pytest.raises(FileNotFoundError, match=r"No dcm2bids config file found"):
             dicom_to_nifti(
-                path_dicom=os.path.join(__dir_testing__, 'dicom_unsorted'),
+                path_dicom=path_dicom_unsorted,
                 path_nifti=path_nifti,
                 subject_id=subject_id,
                 path_config_dcm2bids=os.path.join(tmp, "invalid_folder")

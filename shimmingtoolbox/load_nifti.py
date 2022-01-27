@@ -1,14 +1,14 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import os
-import logging
-import numpy as np
-import nibabel as nib
 import json
+import logging
 import math
-import warnings
+import nibabel as nib
+import numpy as np
+import os
 
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 from shimmingtoolbox.utils import iso_times_to_ms
 
 logger = logging.getLogger(__name__)
@@ -181,6 +181,34 @@ def read_nii(fname_nifti, auto_scale=True):
         # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
         if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
             image = scale_tfl_b1(image, json_data)
+            nii.header['datatype'] = 32  # 32 corresponds to complex data
+            nii.header['aux_file'] = 'Uncombined B1+ maps'
+            # Affine matrices are bogus with tfl_rfmap so we rebuild them from scratch
+            qfac = nii.header['pixdim'][0]
+
+            if 'ImageOrientationPatientDICOM' not in json_data:
+                raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
+
+            # These values are inverted in ImageOrientationPatientDICOM. Correcting them yields a correct affine matrix
+            json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]
+            json_data['ImageOrientationPatientDICOM'][1] = -json_data['ImageOrientationPatientDICOM'][1]
+            json_data['ImageOrientationPatientDICOM'][5] = -json_data['ImageOrientationPatientDICOM'][5]
+
+            xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])
+
+            # Compute the rotation matrix from the corrected values
+            R = [[xa, ya, qfac * (xb * yc - xc * yb)],
+                 [xb, yb, qfac * (xc * ya - xa * yc)],
+                 [xc, yc, qfac * (xa * yb - xb * ya)]]
+
+            # Build the affine matrix
+            affine = np.zeros((4, 4))
+            affine[:3, :3] = R * nii.header['pixdim'][1:4]
+            affine[3, :] = [0, 0, 0, 1]
+            affine[:3, 3] = [nii.header['qoffset_x'], nii.header['qoffset_y'], nii.header['qoffset_z']]
+
+            nii.header.set_sform(affine)
+            nii = nib.Nifti1Image(image, affine, header=nii.header)
 
         # If B0 phase maps
         elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
@@ -191,11 +219,11 @@ def read_nii(fname_nifti, auto_scale=True):
                 image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2))
             else:
                 image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
+
+            # Create new nibabel object with updated image
+            nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
         else:
             logger.info("Unknown nifti type: No scaling applied")
-
-        # Create new nibabel object with updated image
-        nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
 
     else:
         logger.info("No scaling applied to selected nifti")
@@ -222,13 +250,7 @@ def scale_tfl_b1(image, json_data):
     else:
         raise KeyError("Missing json tag: 'ShimSetting'")
 
-    if 'SliceTiming' in json_data:
-        n_slices = len(json_data['SliceTiming'])
-        if image.shape[2] != n_slices:
-            raise ValueError("Wrong array dimension: number of slices not matching")
-    else:
-        warnings.warn("Missing json tag: 'SliceTiming', slices number cannot be checked.")
-        n_slices = image.shape[2]
+    n_slices = image.shape[2]
 
     # Magnitude values are stored in the first half of the 4th dimension
     b1_mag = image[:, :, :, :image.shape[3] // 2]
@@ -242,22 +264,24 @@ def scale_tfl_b1(image, json_data):
     # Reorder data shuffled by dm2niix into shape (x, y , n_slices*n_channels)
     b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
     b1_phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
-    if 'ImageOrientationPatientDICOM' in json_data:
-        orientation = json_data['ImageOrientationPatientDICOM']
-        # Axial or Coronal cases
-        if orientation[:3] == [1, 0, 0]:
-            for i in range(n_channels):
-                b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
-                b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-        # Sagittal case
-        elif orientation[:3] == [0, 1, 0] and orientation[5] != 0:
-            for i in range(n_channels):
-                b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
-                b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
-        else:
-            raise ValueError("Unknown slice orientation")
+    if 'ImageOrientationText' in json_data:
+        orientation = json_data['ImageOrientationText'].upper()
     else:
-        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'")
+        logger.info("No 'ImageOrientationText' tag. Slice orientation determined from 'ImageOrientationPatientDICOM'.")
+        orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
+
+    # Axial or coronal cases (+ tilted)
+    if orientation[:3] in ['TRA', 'COR']:
+        for i in range(n_channels):
+            b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
+            b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
+    # Sagittal case (+ tilted)
+    elif orientation[:3] == 'SAG':
+        for i in range(n_channels):
+            b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
+            b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
+    else:
+        raise ValueError("Unknown slice orientation")
 
     # Reorder data shuffled by dm2niix into shape (x, y, n_slices, n_channels)
     b1_mag_ordered = np.zeros_like(b1_mag)

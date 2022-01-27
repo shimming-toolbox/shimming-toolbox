@@ -46,8 +46,9 @@ ________
 
 * Built-in DICOM to NIfTI conversion
 * Masking tools for the brain and spinal cord
-* Supports the creation and usage of a variety of coil profiles: Spherical harmonics, shim-only arrays, "AC-DC" multi-coil, etc.
-* Supports different shimming scenarios: dynamic (slicewise), realtime (shim modulation with respiration), gradient z-shimming, two-region shimming (e.g., fat and brain)
+* Create and use a variety of B0 shimming coil profiles: Spherical harmonics, shim-only arrays, "AC-DC" multi-coil, etc.
+* Supports different B0 shimming scenarios: dynamic (slicewise), realtime (shim modulation with respiration), gradient z-shimming, two-region shimming (e.g., fat and brain)
+* RF shimming for parallel transmit systems (a.k.a. B1+ shimming)
 * Powered by freely available software tools: `dcm2niix <https://github.com/rordenlab/dcm2niix>`__, `dcm2bids <https://github.com/UNFmontreal/Dcm2Bids>`__, `FSL-prelude <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FUGUE/Guide#PRELUDE_.28phase_unwrapping.29>`__, `SCT <https://spinalcordtoolbox.com/en/latest/>`__, `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`_.
 
 Installation

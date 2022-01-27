@@ -11,8 +11,7 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti
-from shimmingtoolbox.load_nifti import read_nii
+from shimmingtoolbox.load_nifti import load_nifti, read_nii
 from shimmingtoolbox import __dir_testing__
 
 
@@ -163,6 +162,7 @@ class TestCore(object):
         "SAR": 0.00443249,
         "EchoTime": 0.00153,
         "RepetitionTime": 3.76,
+        "SpoilingState": True,
         "FlipAngle": 5,
         "PartialFourier": 1,
         "BaseResolution": 64,
@@ -173,7 +173,9 @@ class TestCore(object):
         "ReceiveCoilActiveElements": "1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H",
         "PulseSequenceDetails": "%SiemensSeq%\\tfl_rfmap",
         "RefLinesPE": 16,
+        "CoilCombinationMethod": "Sum of Squares",
         "ConsistencyInfo": "N4_VE12U_LATEST_20181126",
+        "MatrixCoilMode": "GRAPPA",
         "MultibandAccelerationFactor": 5,
         "PercentPhaseFOV": 68.75,
         "PercentSampling": 100,
@@ -184,12 +186,12 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "j-",
-        "SliceTiming": [0, 0, 0, 0, 0],
-        "ImageOrientationPatientDICOM": [1, 0, 0, 0, 1, 0],
+        "ImageOrientationPatientDICOM": [-1, 0, 0, 0, 1, 0],
+        "ImageOrientationText": "Tra",
         "InPlanePhaseEncodingDirectionDICOM": "COL",
         "ConversionSoftware": "dcm2niix",
-        "ConversionSoftwareVersion": "v1.0.20201102",
-        "Dcm2bidsVersion": "2.1.4"}
+        "ConversionSoftwareVersion": "v1.0.20211006"
+    }
 
     _json_b1_sagittal = {
         "Modality": "MR",
@@ -221,6 +223,7 @@ class TestCore(object):
         "SAR": 0.00464767,
         "EchoTime": 0.00163,
         "RepetitionTime": 3.76,
+        "SpoilingState": True,
         "FlipAngle": 5,
         "PartialFourier": 1,
         "BaseResolution": 64,
@@ -231,7 +234,9 @@ class TestCore(object):
         "ReceiveCoilActiveElements": "1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H",
         "PulseSequenceDetails": "%SiemensSeq%\\tfl_rfmap",
         "RefLinesPE": 16,
+        "CoilCombinationMethod": "Sum of Squares",
         "ConsistencyInfo": "N4_VE12U_LATEST_20181126",
+        "MatrixCoilMode": "GRAPPA",
         "MultibandAccelerationFactor": 5,
         "PercentPhaseFOV": 81.25,
         "PercentSampling": 100,
@@ -242,12 +247,11 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "i",
-        "SliceTiming": [0, 0, 0, 0, 0],
-        "ImageOrientationPatientDICOM": [0, 1, 0, 0, 0, -1],
+        "ImageOrientationPatientDICOM": [0, -1, 0, 0, 0, 1],
+        "ImageOrientationText": "Sag",
         "InPlanePhaseEncodingDirectionDICOM": "ROW",
         "ConversionSoftware": "dcm2niix",
-        "ConversionSoftwareVersion": "v1.0.20201102",
-        "Dcm2bidsVersion": "2.1.4"
+        "ConversionSoftwareVersion": "v1.0.20211006"
     }
 
     _json_b1_coronal = {
@@ -280,6 +284,7 @@ class TestCore(object):
         "SAR": 0.00701462,
         "EchoTime": 0.00163,
         "RepetitionTime": 3.76,
+        "SpoilingState": True,
         "FlipAngle": 5,
         "PartialFourier": 1,
         "BaseResolution": 64,
@@ -290,7 +295,9 @@ class TestCore(object):
         "ReceiveCoilActiveElements": "1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H",
         "PulseSequenceDetails": "%SiemensSeq%\\tfl_rfmap",
         "RefLinesPE": 16,
+        "CoilCombinationMethod": "Sum of Squares",
         "ConsistencyInfo": "N4_VE12U_LATEST_20181126",
+        "MatrixCoilMode": "GRAPPA",
         "MultibandAccelerationFactor": 5,
         "PercentPhaseFOV": 218.75,
         "PercentSampling": 100,
@@ -301,12 +308,12 @@ class TestCore(object):
         "PixelBandwidth": 440,
         "DwellTime": 1.78e-05,
         "PhaseEncodingDirection": "i",
-        "SliceTiming": [0, 0, 0, 0, 0],
-        "ImageOrientationPatientDICOM": [1, 0, 0, 0, 0, -1],
+        "ImageOrientationPatientDICOM": [-1, 0, 0, 0, 0, 1],
+        "ImageOrientationText": "Cor",
         "InPlanePhaseEncodingDirectionDICOM": "ROW",
         "ConversionSoftware": "dcm2niix",
-        "ConversionSoftwareVersion": "v1.0.20201102",
-        "Dcm2bidsVersion": "2.1.4"}
+        "ConversionSoftwareVersion": "v1.0.20211006"
+    }
 
     def setup_method(self):
         """
@@ -547,8 +554,7 @@ class TestCore(object):
         assert (niftis.shape == (3, 3, 3, 1, 1)), "Wrong shape for the Nifti output data 2"
 
     def test_read_nii_real_data(self):
-        fname_phasediff = os.path.join(__dir_testing__, 'realtime_zshimming_data', 'nifti', 'sub-example', 'fmap',
-                                       'sub-example_phasediff.nii.gz')
+        fname_phasediff = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
         nii, json_info, phasediff = read_nii(fname_phasediff)
 
         assert nii.shape == (64, 96, 1, 10)
@@ -556,7 +562,7 @@ class TestCore(object):
         assert (phasediff.max() <= math.pi) and (phasediff.min() >= -math.pi)
 
     def test_read_nii_b1_axial(self):
-        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_axial.nii.gz')
+        fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
         nii, json_info, b1 = read_nii(fname_b1)
 
         assert b1.shape == (64, 44, 5, 8), "Wrong rf-map shape"
@@ -573,7 +579,7 @@ class TestCore(object):
             "JSON file is not correctly loaded for first RF JSON"
 
     def test_read_nii_b1_coronal(self):
-        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_coronal.nii.gz')
+        fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_coronal.nii.gz')
         nii, json_info, b1 = read_nii(fname_b1)
 
         assert b1.shape == (140, 64, 5, 8), "Wrong rf-map shape"
@@ -581,14 +587,14 @@ class TestCore(object):
         assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi, \
             "Phase values out of range"
 
-        test_values = [-18.95330780647338-15.623901256474788j, 0j, -4.017854608159664+14.390338163103701j]
+        test_values = [-18.95330780647338 - 15.623901256474788j, 0j, -4.017854608159664 + 14.390338163103701j]
 
         assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 1, 4], b1[40, 25, 4, 7]], test_values).all()
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_coronal, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
     def test_read_nii_b1_sagittal(self):
-        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_sagittal.nii.gz')
+        fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_sagittal.nii.gz')
         nii, json_info, b1 = read_nii(fname_b1)
 
         assert b1.shape == (52, 64, 5, 8), "Wrong rf-map shape"
@@ -596,101 +602,84 @@ class TestCore(object):
         assert np.angle(b1).max(initial=0) <= np.pi and np.angle(b1).min(initial=0) >= -np.pi, \
             "Phase values out of range"
 
-        test_values = [-2.3972261793386425-2.757693261674301j,
-                       12.039283903012375+4.549266291277882j,
-                       7.2905022476747625+8.240413764304524j]
+        test_values = [-2.3972261793386425 - 2.757693261674301j,
+                       12.039283903012375 + 4.549266291277882j,
+                       7.2905022476747625 + 8.240413764304524j]
 
         assert np.isclose([b1[35, 35, 0, 0], b1[35, 35, 1, 4], b1[40, 25, 4, 7]], test_values).all()
         assert (json.dumps(json_info, sort_keys=True) == json.dumps(self._json_b1_sagittal, sort_keys=True)), \
             "JSON file is not correctly loaded for first RF JSON"
 
-    def test_read_nii_b1_wrong_orientation(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation'))
-        self._json_b1_wrong_orientation = self._json_b1_axial.copy()
-        self._json_b1_wrong_orientation['ImageOrientationPatientDICOM'] = [0, 0, 0, 0, 0, 0]
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation.json'), 'w') as json_file:
-            json.dump(self._json_b1_wrong_orientation, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_wrong_orientation.nii')
-        with pytest.raises(ValueError, match="Unknown slice orientation"):
-            read_nii(fname_b1)
-
     def test_read_nii_b1_no_orientation(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_orientation'))
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation.nii')
+        nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
         self._json_b1_no_orientation = self._json_b1_axial.copy()
+        # Remove 'ImageOrientationPatientDICOM' tag from .json file
         del self._json_b1_no_orientation['ImageOrientationPatientDICOM']
         with open(os.path.join(self.data_path_b1, 'dummy_b1_no_orientation.json'), 'w') as json_file:
             json.dump(self._json_b1_no_orientation, json_file)
+        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version."):
+            read_nii(fname_b1)
 
-        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation.nii')
-        with pytest.raises(KeyError, match="Missing json tag: 'ImageOrientationPatientDICOM'"):
+    def test_read_nii_b1_no_orientation_text(self, caplog):
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.nii')
+        nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
+        self._json_b1_no_orientation = self._json_b1_axial.copy()
+        # Remove 'ImageOrientationText' tag from .json file
+        del self._json_b1_no_orientation['ImageOrientationText']
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_orientation_text.json'), 'w') as json_file:
+            json.dump(self._json_b1_no_orientation, json_file)
+
+        read_nii(fname_b1)
+        assert "No 'ImageOrientationText' tag. Slice orientation determined from 'ImageOrientationPatientDICOM'." in \
+               caplog.text
+
+    def test_read_nii_b1_unknown_orientation(self):
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_unknown_orientation.nii')
+        nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
+        self._json_b1_unknown_orientation = self._json_b1_axial.copy()
+        # Modify 'ImageOrientationText' tag in .json file
+        self._json_b1_unknown_orientation['ImageOrientationText'] = 'dummy_string'
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_unknown_orientation.json'), 'w') as json_file:
+            json.dump(self._json_b1_unknown_orientation, json_file)
+        with pytest.raises(ValueError, match="Unknown slice orientation"):
             read_nii(fname_b1)
 
     def test_read_nii_b1_no_scaling(self):
-        fname_b1 = os.path.join(__dir_testing__, 'b1_maps', 'nifti', 'TB1map_axial.nii.gz')
+        fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
         _, _, b1 = read_nii(fname_b1, auto_scale=False)
-        assert b1.shape == (64, 44, 5, 16), "Wrong rf-map shape"
-        test_values = [101, 2266, 281]
-        assert [b1[35, 35, 0, 0], b1[35, 35, 2, 13], b1[40, 25, 4, 7]] == test_values
+        assert b1.shape == (64, 44, 5, 16), "Wrong B1 map shape"
+        assert [b1[35, 35, 0, 0], b1[35, 35, 2, 13], b1[40, 25, 4, 7]] == [101, 2266, 281]
 
     def test_read_nii_b1_wrong_shimsetting(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting'))
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting.nii')
+        nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
+        self._json_b1_wrong_shimsetting = self._json_b1_axial.copy()
+        # Modify 'ShimSetting' tag in .json tag
+        self._json_b1_wrong_shimsetting['ShimSetting'] = str(np.zeros([15]))
         with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_shimsetting.json'), 'w') as json_file:
-            self._json_b1_wrong_shimsetting = self._json_b1_axial.copy()
-            self._json_b1_wrong_shimsetting['ShimSetting'] = str(np.zeros([15]))
             json.dump(self._json_b1_wrong_shimsetting, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_shimsetting.nii")
         with pytest.raises(ValueError, match="Wrong array dimension: number of channels not matching"):
             read_nii(fname_b1)
 
     def test_read_nii_b1_no_shimsetting(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
-            self._json_b1_no_shimsetting = self._json_b1_axial.copy()
-            del self._json_b1_no_shimsetting['ShimSetting']
-            json.dump(self._json_b1_no_shimsetting, json_file)
-
         fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.nii')
+        nib.save(nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff), fname_b1)
+        self._json_b1_no_shimsetting = self._json_b1_axial.copy()
+        # Remove 'ShimSetting' tag from .json file
+        del self._json_b1_no_shimsetting['ShimSetting']
+        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_shimsetting.json'), 'w') as json_file:
+            json.dump(self._json_b1_no_shimsetting, json_file)
         with pytest.raises(KeyError, match="Missing json tag: 'ShimSetting'"):
             read_nii(fname_b1)
 
-    def test_read_nii_b1_wrong_slicetiming(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_wrong_slicetiming.json'), 'w') as json_file:
-            self._json_b1_wrong_slicetiming = self._json_b1_axial.copy()
-            self._json_b1_wrong_slicetiming['SliceTiming'] = str(np.zeros([15]))
-            json.dump(self._json_b1_wrong_slicetiming, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_wrong_slicetiming.nii")
-        with pytest.raises(ValueError, match="Wrong array dimension: number of slices not matching"):
-            read_nii(fname_b1)
-
-    def test_read_nii_b1_no_slicetiming(self):
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=self._data_b1, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming'))
-        with open(os.path.join(self.data_path_b1, 'dummy_b1_no_slicetiming.json'), 'w') as json_file:
-            self._json_b1_no_slicetiming = self._json_b1_axial.copy()
-            del self._json_b1_no_slicetiming['SliceTiming']
-            json.dump(self._json_b1_no_slicetiming, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_no_slicetiming.nii")
-        with pytest.warns(UserWarning, match="Missing json tag: 'SliceTiming', slices number cannot be checked."):
-            read_nii(fname_b1)
-
     def test_read_nii_b1_negative_mag(self):
+        fname_b1 = os.path.join(self.data_path_b1, 'dummy_b1_negative_mag.nii')
         data_negative_mag = self._data_b1.copy()
+        # Set a voxel to an unexpected negative value
         data_negative_mag[35, 35, 0, 0] = -1
-        dummy_data_b1 = nib.nifti1.Nifti1Image(dataobj=data_negative_mag, affine=self._aff)
-        nib.save(dummy_data_b1, os.path.join(self.data_path_b1, 'dummy_b1_negative_mag'))
+        nib.save(nib.nifti1.Nifti1Image(dataobj=data_negative_mag, affine=self._aff), fname_b1)
         with open(os.path.join(self.data_path_b1, 'dummy_b1_negative_mag.json'), 'w') as json_file:
             json.dump(self._json_b1_axial, json_file)
-
-        fname_b1 = os.path.join(self.data_path_b1, "dummy_b1_negative_mag.nii")
         with pytest.raises(ValueError, match="Unexpected negative magnitude values"):
             read_nii(fname_b1)
