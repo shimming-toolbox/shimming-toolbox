@@ -5,6 +5,7 @@ import sys
 import os
 import logging
 from pathlib import Path
+import multiprocessing
 
 import pytest
 from typing import Mapping
