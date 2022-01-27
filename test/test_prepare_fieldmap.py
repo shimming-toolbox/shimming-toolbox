@@ -9,6 +9,8 @@ import numpy as np
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
+from shimmingtoolbox.prepare_fieldmap import correct_2pi_offset
+from shimmingtoolbox.masking.threshold import threshold
 
 
 @pytest.mark.prelude
@@ -43,7 +45,7 @@ class TestPrepareFieldmap(object):
         fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
         nii_phase2 = nib.load(fname_phase2)
         phase2 = (nii_phase2.get_fdata() * 2 * math.pi / 4095) - math.pi
-        nii_phase1_re = nib.Nifti1Image(phase2, nii_phase2.affine, header=nii_phase2.header)
+        nii_phase2_re = nib.Nifti1Image(phase2, nii_phase2.affine, header=nii_phase2.header)
 
         # Load mag data to speed it prelude
         fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
@@ -51,7 +53,7 @@ class TestPrepareFieldmap(object):
 
         echo_times = [0.0025, 0.0055]
 
-        fieldmap = prepare_fieldmap([nii_phase1_re, nii_phase1_re], echo_times, mag=mag)
+        fieldmap = prepare_fieldmap([nii_phase1_re, nii_phase2_re], echo_times, mag=mag)
 
         assert fieldmap.shape == phase1.shape
 
@@ -104,11 +106,27 @@ class TestPrepareFieldmap(object):
             prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, threshold=2)
 
     def test_prepare_fieldmap_gaussian_filter(self):
-        """ Test output of gaussian filter optional argument"""
+        """Test output of gaussian filter optional argument"""
 
         fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, gaussian_filter=True, sigma=1)
 
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
-                                 np.array([19.46321364, 15.46275223, 11.0505227 ,  6.28134902,  1.30906534])))
+                                 np.array([19.46321364, 15.46275223, 11.0505227,  6.28134902,  1.30906534])))
+
+
+def test_correct_2pi_offset():
+    """Test if it corrects a 2pi offset"""
+    fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+    mag = nib.load(fname_mag).get_fdata()
+    fmap = np.zeros_like(mag)
+
+    # Add 2pi to one timepoint
+    mask = threshold(mag)
+    fmap_rad_with_offset = fmap
+    fmap_rad_with_offset[..., 2] += mask[..., 2] * 2 * np.pi
+
+    fmap_corrected = correct_2pi_offset(fmap, mag, mask, validity_threshold=0.2)
+
+    assert np.all(np.isclose(fmap_corrected, fmap))
