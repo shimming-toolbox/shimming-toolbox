@@ -119,7 +119,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
 
 def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
-    """ Removes 2*pi offsets from unwrapped for a time series. If there is not offset, it returns the same array.
+    """ Removes 2*pi offsets from `unwrapped` for a time series. If there is no offset, it returns the same array.
 
     Args:
         unwrapped (numpy.ndarray): 4d array of the spatially unwrapped phase
