@@ -8,7 +8,7 @@ import os
 import scipy.io
 import scipy.optimize
 
-from scipy.stats import variation as cov
+from scipy.stats import variation
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.utils import montage
 
@@ -64,9 +64,9 @@ def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=
 
     algorithm = int(algorithm)
     if algorithm == 1:
-        # CoV minimization
+        # CV minimization
         def cost(weights):
-            return cov(combine_maps(b1_roi, vector_to_complex(weights)))
+            return variation(combine_maps(b1_roi, vector_to_complex(weights)))
 
     elif algorithm == 2:
         # MLS targeting value
@@ -121,14 +121,14 @@ def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=
     im = ax[0].imshow(b1_phase_only_masked, vmin=0, vmax=vmax, cmap="jet")
     ax[0].axis('off')
     ax[0].set_title(f"$B_1^+$ field (phase-only shimming)\nMean $B_1^+$ in ROI: "
-                    f"{np.nanmean(b1_phase_only_masked):.3} nT/V\nCoV in ROI: "
-                    f"{cov(b1_phase_only_masked[~np.isnan(b1_phase_only_masked)]):.3}")
+                    f"{np.nanmean(b1_phase_only_masked):.3} nT/V\nCV in ROI: "
+                    f"{variation(b1_phase_only_masked[~np.isnan(b1_phase_only_masked)]):.3}")
 
     ax[1].imshow(b1_shimmed, vmax=vmax, cmap='gray')
     ax[1].imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")
     ax[1].axis('off')
     ax[1].set_title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
-                    f"CoV in ROI: {cov(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
+                    f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
     cax = fig.add_axes([ax[0].get_position().x0, ax[0].get_position().y0 - 0.025,
                         ax[1].get_position().x1-ax[0].get_position().x0, 0.02])
@@ -251,7 +251,7 @@ def phase_only_shimming(b1_maps):
     phases_init = np.zeros(n_channels)
 
     def cost_function(phases):
-        return cov(combine_maps(b1_maps, np.exp(1j * phases)/np.sqrt(n_channels)))
+        return variation(combine_maps(b1_maps, np.exp(1j * phases)/np.sqrt(n_channels)))
 
     shimmed_phases = scipy.optimize.minimize(cost_function, phases_init).x
 
