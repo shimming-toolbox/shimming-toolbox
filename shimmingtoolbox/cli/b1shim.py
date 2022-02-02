@@ -3,14 +3,18 @@
 
 import click
 import json
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import os
 
 from nibabel.processing import resample_from_to
 from shimmingtoolbox.load_nifti import read_nii
-from shimmingtoolbox.shim.b1shim import b1shim, load_siemens_vop
-from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.shim.b1shim import b1shim, load_siemens_vop, combine_maps
+from shimmingtoolbox.utils import create_output_dir, montage
+from shimmingtoolbox.masking.threshold import threshold
+from scipy.stats import variation
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
@@ -47,7 +51,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
 
     # Save uncombined B1 map as nifti
     json_b1["ImageComments"] = 'Complex uncombined B1 map (nT/V)'
-    fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii')
+    fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii.gz')
     nib.save(nii_b1, fname_nii_b1)
     file_json_b1 = open(os.path.join(path_output, 'TB1maps_uncombined.json'), mode='w')
     json.dump(json_b1, file_json_b1)
@@ -66,7 +70,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
     else:
         vop = None
 
-    shim_weights = b1shim(b1_map, path_output, mask=mask_resampled, algorithm=algorithm, target=target,
+    shim_weights = b1shim(b1_map, mask=mask_resampled, algorithm=algorithm, target=target,
                           q_matrix=vop, sed=sed)
 
     # Indicate output path to the user
@@ -80,5 +84,29 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
         file_rf_shim_weights.write(f'Tx{i_channel + 1}\t{np.abs(shim_weights[i_channel]):.3f}\t'
                                    f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
     file_rf_shim_weights.close()
+
+    # Plot RF shimming results
+    b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # RF-shimming result
+    if mask_resampled is not None:
+        b1_shimmed_masked = b1_shimmed*montage(mask_resampled)
+    else:
+        b1_shimmed_masked = b1_shimmed*montage(threshold(b1_map.sum(axis=-1), thr=0))
+
+    b1_shimmed_masked[b1_shimmed_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
+    vmax = np.percentile(b1_shimmed, 99)  # Reduce high values influence on display
+    vmax = 5*np.ceil(vmax/5)  # Ceil max range value to next multiple of 5 for good colorbar display
+
+    plt.figure()
+    plt.imshow(b1_shimmed, vmax=vmax, cmap='gray')  # Display background in gray
+    plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")  # Overlay colored shimming ROI
+    plt.axis('off')
+    plt.title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
+              f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
+
+    cbar = plt.colorbar()
+    cbar.ax.set_title('nT/V', fontsize=12)
+    cbar.ax.tick_params(size=0)
+    fname_figure = os.path.join(path_output, 'b1_shim_results.png')
+    plt.savefig(fname_figure)
 
     return shim_weights

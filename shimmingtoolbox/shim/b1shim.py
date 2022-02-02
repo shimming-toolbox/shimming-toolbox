@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 
 import logging
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import scipy.io
@@ -10,21 +9,19 @@ import scipy.optimize
 
 from scipy.stats import variation
 from shimmingtoolbox.masking.threshold import threshold
-from shimmingtoolbox.utils import montage
 
 logger = logging.getLogger(__name__)
 
 
-def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5):
+def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5):
     """
-    Computes static optimized shim weights that minimize the B1 field coefficient of variation over the masked region.
+    Computes static optimized shim weights that minimize the B1+ field coefficient of variation over the masked region.
 
     Args:
-        b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1 field. (x, y, n_slices, n_channels)
-        path_output (str): Path to output figures and RF shim weights.
+        b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1+ field. (x, y, n_slices, n_channels)
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
-        algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1 optimization:
-                    1 - Optimization aiming to reduce the coefficient of variation (CoV) of the resulting B1+ field.
+        algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1+ optimization:
+                    1 - Optimization aiming to reduce the coefficient of variation (CV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
                     3 - Maximizes the SAR efficiency (B1+/sqrt(SAR)). Q matrices required.
         target (float): Target B1+ value used by algorithm 2 in nT/V.
@@ -58,7 +55,9 @@ def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=
                          f"Mask dimensions: {mask.shape}")
 
     # Initial weights for optimization are obtained by performing a phase-only shimming prior to the RF-shimming
+    # Start phase optimization from null phase values on each channel
     weights_phase_only = phase_only_shimming(b1_roi)
+
     # The complex shim weights must be reshaped as a real vector during the optimization
     weights_init = complex_to_vector(weights_phase_only)
 
@@ -104,39 +103,6 @@ def b1shim(b1_maps, path_output, mask=None, algorithm=1, target=None,  q_matrix=
         logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
                     f"normalized.")
         shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=norm_cons).x)
-
-    # Plot RF shimming results
-    b1_phase_only = montage(combine_maps(b1_maps, weights_phase_only))  # Phase-only shimming result
-    b1_phase_only_masked = b1_phase_only*montage(mask)
-    b1_phase_only_masked[b1_phase_only_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
-    b1_shimmed = montage(combine_maps(b1_maps, shim_weights))  # RF-shimming result
-    b1_shimmed_masked = b1_shimmed*montage(mask)
-    b1_shimmed_masked[b1_shimmed_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
-    vmax = np.percentile(np.concatenate((b1_phase_only, b1_shimmed)), 99)  # Reduce high values influence on display
-    vmax = 5*np.ceil(vmax/5)  # Ceil max range value to next multiple of 5 for good colorbar display
-
-    fig, ax = plt.subplots(1, 2)
-    plt.tight_layout(pad=0)
-    ax[0].imshow(b1_phase_only, vmax=vmax, cmap='gray')
-    im = ax[0].imshow(b1_phase_only_masked, vmin=0, vmax=vmax, cmap="jet")
-    ax[0].axis('off')
-    ax[0].set_title(f"$B_1^+$ field (phase-only shimming)\nMean $B_1^+$ in ROI: "
-                    f"{np.nanmean(b1_phase_only_masked):.3} nT/V\nCV in ROI: "
-                    f"{variation(b1_phase_only_masked[~np.isnan(b1_phase_only_masked)]):.3}")
-
-    ax[1].imshow(b1_shimmed, vmax=vmax, cmap='gray')
-    ax[1].imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")
-    ax[1].axis('off')
-    ax[1].set_title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
-                    f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
-
-    cax = fig.add_axes([ax[0].get_position().x0, ax[0].get_position().y0 - 0.025,
-                        ax[1].get_position().x1-ax[0].get_position().x0, 0.02])
-    cbar = fig.colorbar(im, cax=cax, orientation='horizontal')
-    cbar.ax.set_title('nT/V', fontsize=12, y=-4)
-    cbar.ax.tick_params(size=0)
-    fname_figure = os.path.join(path_output, 'b1_shim_results.png')
-    fig.savefig(fname_figure)
 
     return shim_weights
 
@@ -236,23 +202,31 @@ def load_siemens_vop(path_sar_file):
     # return sar_data['ZZ'][:, :, np.argwhere(np.logical_or(sar_data['ZZtype'] == 6, sar_data['ZZtype'] == 8))[:, 1]]
 
 
-def phase_only_shimming(b1_maps):
+def phase_only_shimming(b1_maps, init_phases=None):
     """
     Performs a phase-only RF-shimming to find a set of phases that homogenizes the B1+ field.
 
     Args:
-        b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1 field. (x, y, n_slices, n_channels)
-
+        b1_maps (numpy.ndarray): 4D array corresponding to the measured B1 field. (x, y, n_slices, n_channels)
+        init_phases (numpy.ndarray): 1D array of initial phase values used for optimization.
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
     """
     n_channels = b1_maps.shape[-1]
-    # Start phase optimization from null phase values on each channel
-    phases_init = np.zeros(n_channels)
+
+    # If no initial phases are provided, set them to 0
+    if init_phases is None:
+        init_phases = np.zeros(n_channels)
+    else:
+        if len(init_phases) == n_channels:
+            pass
+        else:
+            raise ValueError(f"The number of phase values ({len(init_phases)}) does not match the number of channels ("
+                             f"{n_channels}).")
 
     def cost_function(phases):
         return variation(combine_maps(b1_maps, np.exp(1j * phases)/np.sqrt(n_channels)))
 
-    shimmed_phases = scipy.optimize.minimize(cost_function, phases_init).x
+    shimmed_phases = scipy.optimize.minimize(cost_function, init_phases).x
 
     return np.exp(1j * shimmed_phases)/np.sqrt(n_channels)
