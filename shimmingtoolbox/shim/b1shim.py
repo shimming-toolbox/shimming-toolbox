@@ -13,17 +13,18 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5):
+def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5):
     """
     Computes static optimized shim weights that minimize the B1+ field coefficient of variation over the masked region.
 
     Args:
         b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1+ field. (x, y, n_slices, n_channels)
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
-        algorithm (int): Number from 1 to 3 specifying which algorithm to use for B1+ optimization:
+        algorithm (int): Number from 1 to 4 specifying which algorithm to use for B1+ optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CV) of the resulting B1+ field.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
                     3 - Maximizes the SAR efficiency (B1+/sqrt(SAR)). Q matrices required.
+                    4 - Phase-only shimming.
         target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
             optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
@@ -54,14 +55,17 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5
                          f"Maps dimensions: {b1_maps.shape[:-1]}\n"
                          f"Mask dimensions: {mask.shape}")
 
-    # Initial weights for optimization are obtained by performing a phase-only shimming prior to the RF-shimming
-    # Start phase optimization from null phase values on each channel
+    # Phase-only optimization
     weights_phase_only = phase_only_shimming(b1_roi)
 
+    algorithm = int(algorithm)
+    if algorithm == 4:
+        # Phase-only shimming
+        return weights_phase_only  # If phase-only shimming is selected, stop the execution here
+
+    # For complex B1+ shimming, use the phase only shimming weights as a starting point for optimization
     # The complex shim weights must be reshaped as a real vector during the optimization
     weights_init = complex_to_vector(weights_phase_only)
-
-    algorithm = int(algorithm)
     if algorithm == 1:
         # CV minimization
         def cost(weights):
@@ -87,7 +91,7 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None,  q_matrix=None, sed=1.5
             return np.sqrt(max_sar(vector_to_complex(weights), q_matrix)) / np.mean(b1_abs)
 
     else:
-        raise ValueError("The specified algorithm does not exist. It must be an integer between 1 and 3.")
+        raise ValueError("The specified algorithm does not exist. It must be an integer between 1 and 4.")
 
     # Q matrices to compute the local SAR values for each 10g of tissue (or subgroups of pixels if VOP are used).
     # If no Q matrix is provided, unconstrained optimization is performed

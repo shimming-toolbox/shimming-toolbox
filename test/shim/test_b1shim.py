@@ -55,6 +55,11 @@ def test_b1shim_algo_3(caplog):
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
+def test_b1shim_algo_4(caplog):
+    shim_weights = b1shim(b1_maps, algorithm=4)
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
 def test_b1shim_algo_3_no_q_matrix():
     with pytest.raises(ValueError, match=r"Algorithm 3 requires Q matrices to perform SAR efficiency shimming."):
         b1shim(b1_maps, algorithm=3)
@@ -62,8 +67,8 @@ def test_b1shim_algo_3_no_q_matrix():
 
 def test_b1shim_wrong_algo():
     with pytest.raises(ValueError, match=r"The specified algorithm does not exist. It must be an integer between 1 "
-                                         r"and 3."):
-        b1shim(b1_maps, mask, algorithm=4)
+                                         r"and 4."):
+        b1shim(b1_maps, mask, algorithm=5)
 
 
 def test_b1shim_constrained():

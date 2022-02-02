@@ -22,12 +22,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--b1map', 'fname_b1_map', required=True, type=click.Path(exists=True),
               help="Complex 3D B1+ map.")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False, help="3D boolean mask.")
-@click.option('--algo', 'algorithm', type=click.Choice(['1', '2', '3']), default='1', show_default=True,
+@click.option('--algo', 'algorithm', type=click.Choice(['1', '2', '3', '4']), default='1', show_default=True,
               help="""\b
               Number specifying the B1+ shimming algorithm:
               1 - Reduce B1+ coefficient of variation.
               2 - Target a specified B1+ value. Target value required.
               3 - Maximize minimum B1+ for higher signal.
+              4 - Phase-only shimming.
               """)
 @click.option('--target', 'target', type=float, required=False, help="B1+ value (nT/V) targeted by algorithm 2.")
 @click.option('--vop', 'fname_vop', type=click.Path(exists=True), required=False,
@@ -40,7 +41,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir, 'b1_shim_results'),
               show_default=True, help="Output directory for shim weights, B1+ maps and figures.")
 def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path_output):
-    """ Perform static RF shimming over the volume defined by the mask. This function will generate a text file
+    """ Perform static B1+ shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
     """
 
@@ -77,7 +78,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
     print(f"B1+ shimming results available in: {path_output}")
 
     # Write to a text file
-    fname_output = os.path.join(path_output, 'RF_shim_weights.txt')
+    fname_output = os.path.join(path_output, 'b1_shim_weights.txt')
     file_rf_shim_weights = open(fname_output, 'w')
     file_rf_shim_weights.write(f'Channel\tmag\tphase (\u00b0)\n')
     for i_channel in range(len(shim_weights)):
@@ -85,7 +86,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
                                    f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
     file_rf_shim_weights.close()
 
-    # Plot RF shimming results
+    # Plot B1+ shimming results
     b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # RF-shimming result
     if mask_resampled is not None:
         b1_shimmed_masked = b1_shimmed*montage(mask_resampled)
@@ -100,7 +101,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
     plt.imshow(b1_shimmed, vmax=vmax, cmap='gray')  # Display background in gray
     plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")  # Overlay colored shimming ROI
     plt.axis('off')
-    plt.title(f"$B_1^+$ field (RF shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
+    plt.title(f"$B_1^+$ field after shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
               f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
     cbar = plt.colorbar()
