@@ -75,7 +75,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
                           q_matrix=vop, sed=sed)
 
     # Indicate output path to the user
-    print(f"B1+ shimming results available in: {path_output}")
+    print(f"\nB1+ shimming results located in: {path_output}\n")
 
     # Write to a text file
     fname_output = os.path.join(path_output, 'b1_shim_weights.txt')
