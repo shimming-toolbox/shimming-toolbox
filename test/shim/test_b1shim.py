@@ -94,6 +94,12 @@ def test_b1shim_wrong_mask_shape():
         b1shim(b1_maps, mask[:-1, :, :])
 
 
+def test_b1shim_no_b1_in_mask():
+    mask_empty = np.zeros_like(b1_maps[..., 0])
+    with pytest.raises(ValueError, match=r"The mask does not overlap with the B1\+ values."):
+        b1shim(b1_maps, mask_empty)
+
+
 def test_vector_to_complex():
     assert np.isclose(vector_to_complex(np.asarray([1, 1, 1, 0, np.pi/2, np.pi])), np.asarray([1,  1j, -1])).all(),\
         "The function vector_to_complex returns unexpected results"

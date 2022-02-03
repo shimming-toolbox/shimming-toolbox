@@ -55,6 +55,9 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5)
                          f"Maps dimensions: {b1_maps.shape[:-1]}\n"
                          f"Mask dimensions: {mask.shape}")
 
+    if not b1_roi.any():
+        raise ValueError("The mask does not overlap with the B1+ values.")
+
     # Phase-only optimization
     weights_phase_only = phase_only_shimming(b1_roi)
 
