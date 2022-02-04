@@ -58,9 +58,9 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
                            gaussian_filter, sigma)
 
 
-def prepare_fieldmap_uncli(phase, fname_mag=None, unwrapper='prelude',
+def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
                            fname_output=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT), autoscale=True,
-                           fname_mask=None, threshold=None, gaussian_filter=False, sigma=1):
+                           fname_mask=None, threshold=0.05, gaussian_filter=False, sigma=1):
     """ Prepare fieldmap cli without the click decorators. This allows this function to be imported and called from
     other python modules.
 
