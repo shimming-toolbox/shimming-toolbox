@@ -86,9 +86,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         echo_1 = phase[1]
 
         # Calculate phasediff using complex difference
-        comp_0 = np.ones_like(echo_0) * np.exp(-1j * echo_0)
-        comp_1 = np.ones_like(echo_1) * np.exp(1j * echo_1)
-        phasediff = np.angle(comp_0 * comp_1)
+        phasediff = complex_difference(echo_0, echo_1)
         nii_phasediff = nibabel.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
 
         # Calculate the echo time difference
@@ -116,6 +114,23 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
     # return fieldmap_hz_gaussian
     return fieldmap_hz
+
+
+def complex_difference(phase1, phase2):
+    """ Calculates the complex difference between 2 phase arrays (phase2 - phase1)
+
+    Args:
+        phase1 (numpy.ndarray): Array containing phase data in radians
+        phase2 (numpy.ndarray): Array containing phase data in radians. Must be the same shape as phase1.
+
+    Returns:
+        numpy.ndarray: The difference in phase between each voxels of phase2 and phase1 (phase2 - phase1)
+    """
+
+    # Calculate phasediff using complex difference
+    comp_0 = np.ones_like(phase1) * np.exp(-1j * phase1)
+    comp_1 = np.ones_like(phase2) * np.exp(1j * phase2)
+    return np.angle(comp_0 * comp_1)
 
 
 def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
