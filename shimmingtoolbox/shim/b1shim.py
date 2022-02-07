@@ -69,10 +69,17 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5)
     # For complex B1+ shimming, use the phase only shimming weights as a starting point for optimization
     # The complex shim weights must be reshaped as a real vector during the optimization
     weights_init = complex_to_vector(weights_phase_only)
+
+    # Initialize empty constraint for optimization
+    constraint = []
+
     if algorithm == 1:
         # CV minimization
         def cost(weights):
             return variation(combine_maps(b1_roi, vector_to_complex(weights)))
+
+        # Add a constraint that keeps the norm of the shim weights above 0.8 to avoid convergence towards 0
+        constraint.append({'type': 'ineq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 0.8})
 
     elif algorithm == 2:
         # MLS targeting value
@@ -104,12 +111,13 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5)
         sar_limit = sed * max_sar(vector_to_complex(weights_init), q_matrix)
         # Create SAR constraint
         sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
-        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=sar_constraint).x)
+        constraint.append(sar_constraint)
     else:
         norm_cons = ({'type': 'eq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 1})  # Norm constraint
+        constraint.append(norm_cons)
         logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
                     f"normalized.")
-        shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=norm_cons).x)
+    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=constraint).x)
 
     return shim_weights
 
