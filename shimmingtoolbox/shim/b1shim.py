@@ -235,5 +235,7 @@ def phase_only_shimming(b1_maps, init_phases=None):
         return variation(combine_maps(b1_maps, np.exp(1j * phases)/np.sqrt(n_channels)))
 
     shimmed_phases = scipy.optimize.minimize(cost_function, init_phases).x
+    # Set phase of first Tx channel to 0 (reference)
+    shimmed_phases -= shimmed_phases[0]
 
     return np.exp(1j * shimmed_phases)/np.sqrt(n_channels)

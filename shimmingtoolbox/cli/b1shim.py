@@ -101,7 +101,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
     plt.imshow(b1_shimmed, vmax=vmax, cmap='gray')  # Display background in gray
     plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")  # Overlay colored shimming ROI
     plt.axis('off')
-    plt.title(f"$B_1^+$ field after shimming)\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
+    plt.title(f"$B_1^+$ field after shimming\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
               f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
     cbar = plt.colorbar()
