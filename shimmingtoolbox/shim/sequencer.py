@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
+import copy
 import math
 import numpy as np
 from typing import List
@@ -18,6 +18,7 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
+from shimmingtoolbox.coils.coordinates import resample_from_to
 
 ListCoil = List[Coil]
 
@@ -65,13 +66,23 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 3:
         raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
-    fieldmap_shape = nii_fieldmap.get_fdata().shape
-    # Extend the fieldmap if there are axes that are 1d
-    if 1 in fieldmap_shape:
-        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
-        n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
-        for i_axis in list_axis:
-            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
+
+    nii_fmap_orig = copy.deepcopy(nii_fieldmap)
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < mask_dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
 
@@ -293,14 +304,22 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
-    fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
 
-    # Extend the fieldmap if there are axes that are 1d
-    if 1 in fieldmap_shape:
-        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
-        for i_axis in list_axis:
-            n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
-            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
+    nii_fmap_orig = copy.deepcopy(nii_fieldmap)
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < mask_dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
 
@@ -778,6 +797,41 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     new_affine[:3, 3] = affine[:3, 3] - spacing
 
     return new_affine
+
+
+def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=None):
+    """ Load the fmap and expand its dimensions to the kernel size
+
+    Args:
+        nii_fmap_orig (nib.Nifti1Image): 3d (dim1, dim2, dim3) or 4d (dim1, dim2, dim3, t) nii to be extended
+        dilation_kernel_size: Size of the kernel
+        path_output (str): Path to save the debug output
+
+    Returns:
+        nibabel.Nifti1Image: Nibabel object of the loaded and extended fieldmap
+
+    """
+
+    fieldmap_shape = nii_fmap_orig.shape[:3]
+
+    # Extend the dimensions where the kernel is bigger than the number of voxels
+    tmp_nii = copy.deepcopy(nii_fmap_orig)
+    for i_axis in range(len(fieldmap_shape)):
+        # If there are less voxels than the kernel size, extend in that axis
+        if fieldmap_shape[i_axis] < dilation_kernel_size:
+            diff = float(dilation_kernel_size - fieldmap_shape[i_axis])
+            n_slices_to_extend = math.ceil(diff / 2)
+            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis)
+
+    nii_fmap = tmp_nii
+
+    # If DEBUG, save the extended fieldmap
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
+        nib.save(nii_fmap, fname_new_fmap)
+        logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
+
+    return nii_fmap
 
 
 def extend_slice(nii_array, n_slices=1, axis=2):
