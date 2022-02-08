@@ -10,6 +10,7 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -99,23 +100,37 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                       dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
-    _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coefs, slices, path_output)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
 
     return coefs
 
 
-def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path_output):
-    # Calculate theoretical shimmed map
-    unshimmed = nii_fieldmap.get_fdata()
-    correction_per_channel = np.zeros(opt.merged_coils.shape + (len(slices),))
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
+    """Calculate theoretical shimmed map and output figures"""
+
+    # Save the merged coil profiles if in debug
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        # Save coils
+        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
+        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
+
+    unshimmed = nii_fieldmap_orig.get_fdata()
+
+    # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
+    merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
+
+    # Initialize
+    correction_per_channel = np.zeros(merged_coils.shape + (len(slices),))
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
+    correction = np.zeros(unshimmed.shape + (len(slices),))
     mask_fieldmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
-        correction_per_channel[..., i_shim] = coef[i_shim] * opt.merged_coils
-        correction = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + correction
+        # Calculate shimmed values
+        correction_per_channel[..., i_shim] = coef[i_shim] * merged_coils
+        correction[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        shimmed[..., i_shim] = unshimmed + correction[..., i_shim]
 
-        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap, slices[i_shim]).get_fdata()
+        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
         sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
         sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
@@ -127,21 +142,104 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
                      f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
+    # Figure that shows unshimmed vs shimmed for each slice
+    # fmap space
+    # 4th dimension is i_shim
+    fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
+    nii_correction = nib.Nifti1Image(mask_fieldmap * shimmed, opt.unshimmed_affine)
+    nib.save(nii_correction, fname_correction)
+
+    # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied)
+    # Whole mask
+    whole_mask_fmap = resample_from_to(nii_mask, nii_fieldmap_orig, order=1, mode='grid-constant', cval=0).get_fdata()
+
+    # Find the correction
+    mask_fmap_nb = np.zeros(unshimmed.shape + (len(slices),))
+    full_correction = np.zeros(unshimmed.shape)
+    for i_shim in range(len(slices)):
+        # Create non binary mask
+        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+        # Apply the correction weighted according to the mask
+        full_correction += correction[..., i_shim] * mask_fmap_nb[..., i_shim]
+
+    # Calculate the weighted whole mask
+    mask_weight = np.sum(mask_fmap_nb, axis=3)
+    # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
+    full_correction_scaled = np.divide(full_correction, mask_weight, where=whole_mask_fmap.astype(bool))
+
+    # Apply the correction to the unshimmed image
+    shimmed_masked = (full_correction_scaled + unshimmed) * whole_mask_fmap
+
+    # Save to file
+    fname_correction = os.path.join(path_output, 'fig_shimmed.nii.gz')
+    nii_correction_3d = nib.Nifti1Image(shimmed_masked, opt.unshimmed_affine)
+    nib.save(nii_correction_3d, fname_correction)
+
+    unshimmed_masked = unshimmed * whole_mask_fmap
+
+    _plot_static(unshimmed, unshimmed_masked, shimmed_masked, path_output)
+
     if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         _plot_currents(coef, path_output)
 
         # Save correction
+        # TODO: This is 5d, fsleyes does not show that
         fname_correction = os.path.join(path_output, 'fig_correction_per_channel.nii.gz')
         nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
         nib.save(nii_correction, fname_correction)
 
-        fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
-        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
-        nib.save(nii_correction, fname_correction)
 
-        # Save coils
-        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap.affine, header=nii_fieldmap.header)
-        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
+def _plot_static(unshimmed, unshimmed_masked, shimmed_masked, path_output):
+    # Plot
+    a_slice = 0
+    n_fmap_slices = unshimmed.shape[2]
+    while np.all(unshimmed_masked[:, :, a_slice] == np.zeros(unshimmed.shape)):
+        if a_slice >= n_fmap_slices - 1:
+            break
+        a_slice += 1
+
+    min_value = min(unshimmed_masked[:, :, a_slice].min(), shimmed_masked.min())
+    max_value = max(unshimmed_masked[:, :, a_slice].max(), shimmed_masked.max())
+
+    # TODO: Add units if possible, change cmap
+    fig = Figure(figsize=(12, 5))
+    fig.suptitle(f"Fieldmaps for fieldmap slice: {a_slice}")
+
+    ax = fig.add_subplot(1, 3, 1)
+    im = ax.imshow(np.rot90(unshimmed[:, :, a_slice]))
+    ax.set_title("Fieldmap")
+    # Remove tick marks of x and y axis
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    # Make the colourbar as high as the figure
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(im, cax)
+
+    ax = fig.add_subplot(1, 3, 2)
+    im = ax.imshow(np.rot90(unshimmed_masked[:, :, a_slice]), vmin=min_value, vmax=max_value)
+    ax.set_title("Masked fieldmap")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 3, 3)
+    im = ax.imshow(np.rot90(shimmed_masked[:, :, a_slice]), vmin=min_value, vmax=max_value)
+    ax.set_title("Masked fieldmap shimmed")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    fig.colorbar(im, cax)
+
+    # Lower suptitle
+    fig.subplots_adjust(top=0.85)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
