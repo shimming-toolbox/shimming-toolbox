@@ -101,10 +101,14 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
     plt.imshow(b1_shimmed, vmax=vmax, cmap='gray')  # Display background in gray
     plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")  # Overlay colored shimming ROI
     plt.axis('off')
-    plt.title(f"$B_1^+$ field after shimming\nMean $B_1^+$ in ROI: {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
-              f"CV in ROI: {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
+    plt.title(r"$\mathregular{B_1^+}$ field after shimming"
+              f"\nMean (ROI): {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
+              f"CV (ROI): {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
-    cbar = plt.colorbar()
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+    divider = make_axes_locatable(plt.gca())
+    cax = divider.append_axes('right', size='3.5%', pad=0.05)
+    cbar = plt.colorbar(cax=cax)
     cbar.ax.set_title('nT/V', fontsize=12)
     cbar.ax.tick_params(size=0)
     fname_figure = os.path.join(path_output, 'b1_shim_results.png')
