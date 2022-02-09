@@ -1,9 +1,7 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import pathlib
 import pytest
-import tempfile
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.load_nifti import read_nii
