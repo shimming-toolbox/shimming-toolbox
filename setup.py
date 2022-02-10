@@ -39,7 +39,7 @@ setup(
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
         "numpy>=1.21",
         "phantominator~=0.6.4",
-        "nibabel~=3.1.1",
+        "nibabel~=3.2.1",
         "requests",
         "scipy~=1.6.0",
         "tqdm",
