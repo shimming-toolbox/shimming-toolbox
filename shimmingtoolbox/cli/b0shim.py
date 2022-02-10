@@ -87,7 +87,8 @@ def b0shim_cli():
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
-              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
+              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
+                                 'gradient']),
               default='slicewise-coil',
               show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -96,7 +97,8 @@ def b0shim_cli():
                                       "captured by the controller of the shim amplifier. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                                      "all coil channels are encoded across multiple columns in the text file.")
+                                      "all coil channels are encoded across multiple columns in the text file. Use "
+                                      "'gradient' to output the 1st order in the Gradient CS")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
               show_default=True,
               help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
@@ -115,6 +117,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     """
     # Set logger level
     set_all_loggers(verbose)
+
+    # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
+    if output_value_format == 'absolute' and o_format_sph == 'gradient':
+        raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                         f"{o_format_sph}")
 
     # Prepare the output
     create_output_dir(path_output)
@@ -249,7 +256,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, coil_number):
-    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil'"""
+    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     n_channels = coil.dim[3]
     list_fname_output = []
@@ -283,8 +290,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
 
         list_fname_output.append(os.path.abspath(fname_output))
 
-    else:
-        # o_format[-3:] == '-ch':
+    elif o_format[-3:] == '-ch':
+
         # Write a file for each channel
         for i_channel in range(n_channels):
             fname_output = os.path.abspath(os.path.join(path_output,
@@ -303,6 +310,38 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                     for i_slice in range(n_slices):
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
+
+            list_fname_output.append(os.path.abspath(fname_output))
+    else:  # o_format == 'gradient':
+
+        for i_channel in range(n_channels):
+            # Make sure there are 4 channels
+            if n_channels != 4:
+                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
+
+            name = {0: 'f0',
+                    1: 'x',
+                    2: 'y',
+                    3: 'z'}
+
+            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+
+                    if i_channel == 0:
+                        # f0, Output is in Hz
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{coefs[i_shim, i_channel]:.6f}\n")
+                    else:
+                        # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{coefs[i_shim, i_channel] / 1000:.6f}\n")
+
+                    f.write(f"corr_vec[1][{i_slice}]= "
+                            f"{0:.12f}\n")
+                    f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
 
@@ -352,7 +391,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                    "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
-@click.option('--output-file-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch', 'eva']),
+@click.option('--output-file-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']),
               default='slicewise-ch',
               show_default=True, help="Syntax used to describe the sequence of shim events. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -360,7 +399,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
                                       "captured by the controller of the shim amplifier. There will be one output "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
-                                      "time-varying and mean pressure are encoded in the columns of each file.")
+                                      "time-varying and mean pressure are encoded in the columns of each file. Use "
+                                      "'gradient' to output the 1st order in the Gradient CS")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
               default='delta', show_default=True,
               help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
@@ -380,7 +420,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     """
 
     # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
-    if output_value_format == 'absolute' and o_format == 'eva':
+    if output_value_format == 'absolute' and o_format == 'gradient':
         raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: {o_format}")
 
     # Input can be a string
@@ -551,7 +591,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
                           coil_number):
-    """o_format can either be 'chronological-ch', 'chronological-coil'"""
+    """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     list_fname_output = []
     n_channels = coil.dim[3]
@@ -580,11 +620,11 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{mean_p:.4f}\n")
 
         # TODO: Remove once implemented in more streamlined way
-        else:  # o_format == 'eva':
+        else:  # o_format == 'gradient':
 
             # Make sure there are 4 channels
             if n_channels != 4:
-                raise RuntimeError("Eva's output format should only be used with 1st order scanner coils")
+                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
 
             name = {0: 'f0',
                     1: 'x',
