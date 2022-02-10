@@ -68,6 +68,9 @@ exclude_patterns = ["other-resources/hardware/*"]
 
 
 # -- Options for HTML output ----------------------------------------------
+# If True, converts quotes and dashes to typographically correct entities
+# i.e. double-dash "--" into a typographical en-dash "–"
+smartquotes = False
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
@@ -78,14 +81,6 @@ html_theme = "sphinx_rtd_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
-html_theme_options = {
-    "github_user": "neuropoly",
-    "github_repo": "shimming-toolbox",
-    "github_button": True,
-    "github_banner": True,
-}
-
 html_theme_options = {
     "collapse_navigation": False,
     "display_version": False,

@@ -28,7 +28,8 @@ setup(
             "st_check_dependencies=shimmingtoolbox.cli.check_env:check_dependencies",
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
             "st_image=shimmingtoolbox.cli.image:image_cli",
-            "st_maths=shimmingtoolbox.cli.maths:maths_cli"
+            "st_maths=shimmingtoolbox.cli.maths:maths_cli",
+            "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli"
         ]
     },
     packages=find_packages(exclude=["docs"]),
@@ -36,7 +37,7 @@ setup(
         "click",
         "dcm2bids==2.1.4",
         'importlib-metadata ~= 1.0 ; python_version < "3.8"',
-        "numpy~=1.19.0",
+        "numpy>=1.21",
         "phantominator~=0.6.4",
         "nibabel~=3.1.1",
         "requests",
@@ -47,7 +48,7 @@ setup(
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
-        "pillow~=8.0",
+        "pillow>=9.0.0",
         "dataclasses",
         "raven",
     ],

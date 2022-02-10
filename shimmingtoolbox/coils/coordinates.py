@@ -7,7 +7,6 @@ from nibabel.affines import apply_affine
 import math
 import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
-import multiprocessing as mp
 
 
 def generate_meshgrid(dim, affine):
@@ -90,26 +89,24 @@ def phys_gradient(data, affine):
                  (y_vox_gradient * affine[2, y_vox] / y_vox_spacing) + \
                  (z_vox_gradient * affine[2, z_vox] / z_vox_spacing)
 
-
-
     return x_gradient, y_gradient, z_gradient
 
 
-def phys_to_vox_gradient(gx, gy, gz, affine):
+def phys_to_vox_coefs(gx, gy, gz, affine):
     """
-    Calculate the gradient along the voxel coordinates defined by ``affine`` with gradients in the physical
-    coordinate system
+    Calculate the vector sum along the image coordinates defined by ``affine`` with coefficients in the patient
+    coordinate system.
 
     Args:
-        gx (numpy.ndarray): 3D matrix containing the gradient along the x direction in the physical coordinate system
-        gy (numpy.ndarray): 3D matrix containing the gradient along the y direction in the physical coordinate system
-        gz (numpy.ndarray): 3D matrix containing the gradient along the z direction in the physical coordinate system
+        gx (numpy.ndarray): 3D matrix containing the coefs along the x direction in the patient coordinate system
+        gy (numpy.ndarray): 3D matrix containing the coefs along the y direction in the patient coordinate system
+        gz (numpy.ndarray): 3D matrix containing the coefs along the z direction in the patient coordinate system
         affine (numpy.ndarray): 4x4 array containing affine transformation
 
     Returns:
-        numpy.ndarray: 3D matrix containing the gradient along the x direction in the voxel coordinate system
-        numpy.ndarray: 3D matrix containing the gradient along the y direction in the voxel coordinate system
-        numpy.ndarray: 3D matrix containing the gradient along the z direction in the voxel coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the x direction in the image coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the y direction in the image coordinate system
+        numpy.ndarray: 3D matrix containing the coefs along the z direction in the image coordinate system
     """
 
     x_vox = 0
@@ -170,29 +167,11 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         nt = from_img.shape[3]
         resampled_4d = np.zeros(nii_to_vox_map.shape + (nt,))
 
-        # Speed things up with multiprocessing.
-
-        mp.set_start_method('spawn', force=True)
-        cpus = mp.cpu_count()
-        if cpus == 1:
-            for it in range(nt):
-                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine, header=nii_from_img.header)
-                nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
-                                                        cval=cval, out_class=out_class)
-                resampled_4d[..., it] = nii_resampled_3d.get_fdata()
-        else:
-            # Create inputs for multiprocessing
-            inputs = []
-            for it in range(nt):
-                nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine, header=nii_from_img.header)
-                inputs.append((nii_from_img_3d, nii_to_vox_map, order, mode, cval, out_class))
-
-            with mp.Pool(cpus - 1) as pool:
-                output = pool.starmap(_resample_3d, inputs)
-
-            # Recombine 4d array
-            for it in range(from_img.shape[3]):
-                resampled_4d[..., it] = output[it]
+        for it in range(nt):
+            nii_from_img_3d = nib.Nifti1Image(from_img[..., it], nii_from_img.affine, header=nii_from_img.header)
+            nii_resampled_3d = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
+                                                    cval=cval, out_class=out_class)
+            resampled_4d[..., it] = nii_resampled_3d.get_fdata()
 
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine, header=nii_to_vox_map.header)
 

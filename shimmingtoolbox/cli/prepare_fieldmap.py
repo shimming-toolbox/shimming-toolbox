@@ -10,6 +10,7 @@ import logging
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 from shimmingtoolbox.utils import create_fname_from_path
+from shimmingtoolbox.utils import set_all_loggers
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,7 +23,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
     context_settings=CONTEXT_SETTINGS,
 )
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
-@click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=False, help="Input path of mag nifti file")
+@click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=True, help="Input path of mag nifti file")
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT),
@@ -32,13 +33,15 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "standard data, it would be preferable to set this option to False and input your phase data from "
                    "-pi to pi to avoid unwanted rescaling")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True),
-              help="Input path for a mask. Mask must be the same shape as the array of each PHASE input."
-                   "Used for PRELUDE")
-@click.option('--threshold', 'threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
+              help="Input path for a mask. Mask must be the same shape as the array of each PHASE input.")
+@click.option('--threshold', 'threshold', type=float, show_default=True, default=0.05,
+              help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower "
+                   "than the threshold are set to 0.")
 @click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, gaussian_filter,
-                         sigma):
+                         sigma, verbose):
     """Creates fieldmap (in Hz) from phase images.
 
     This function accommodates multiple echoes (2 or more) and phase difference. This function also
@@ -48,6 +51,8 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
     """
+    # Set logger level
+    set_all_loggers(verbose)
 
     # Make sure output filename is valid
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
@@ -76,11 +81,8 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     # Get affine from nii
     affine = nii_phase.affine
 
-    # If fname_mag is not an input define mag as None
-    if fname_mag is not None:
-        mag = nib.load(fname_mag).get_fdata()
-    else:
-        mag = None
+    # Magnitude image
+    mag = nib.load(fname_mag).get_fdata()
 
     # Import mask
     if fname_mask is not None:

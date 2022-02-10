@@ -10,6 +10,7 @@ import os
 from shimmingtoolbox.shim.realtime_shim import realtime_shim
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.shim.shim_utils import get_phase_encode_direction_sign
 from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -35,7 +36,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               show_default=True,
               help="Directory to output gradient text file and figures.")
 def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
-    """ Perform realtime xyz-shimming. This function will generate text files containing static and dynamic (due to
+    """ Perform gradient realtime xyz-shimming. This function will generate text files containing static and dynamic (due to
     respiration) Gx, Gy, Gz components based on a fieldmap time series and respiratory trace information obtained from
     Siemens bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitude image is used to
     resample the static and dynamic Gx, Gy, Gz component maps to match the MGRE image. Lastly the mean Gx, Gy, Gz
@@ -119,7 +120,7 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
         # TRA
         pass
 
-    phase_encode_is_positive = _get_phase_encode_direction_sign(fname_anat)
+    phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
     if not phase_encode_is_positive:
         freq_static_corr = -freq_static_corr
         phase_static_corr = -phase_static_corr
@@ -158,42 +159,3 @@ def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, 
     file_gradients.close()
 
     return fname_xcorrections, fname_ycorrections, fname_zcorrections
-
-
-def _get_phase_encode_direction_sign(fname_nii):
-    """ Returns the phase encode direction sign
-
-    Args:
-        fname_nii (str): Filename to a NIfTI file with its corresponding json file.
-
-    Returns:
-        bool: Returns whether the encoding direction is positive (True) or negative (False)
-    """
-
-    # Load nibabel
-    nii = nib.load(fname_nii)
-    dim_info = nii.header.get_dim_info()
-
-    # Load json
-    fname_json = fname_nii.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_json) as json_file:
-        json_data = json.load(json_file)
-
-    # json_data['PhaseEncodingDirection'] contains i, j or k then a '-' if the direction is reversed
-    phase_en_dir = json_data['PhaseEncodingDirection']
-
-    # Check that dim_info is consistent with PhaseEncodingDirection tag i --> 0, j --> 1, k --> 2
-    if (phase_en_dir[0] == 'i' and dim_info[1] != 0) \
-            or (phase_en_dir[0] == 'j' and dim_info[1] != 1) \
-            or (phase_en_dir[0] == 'k' and dim_info[1] != 2):
-        raise RuntimeError("Inconsistency between dim_info of fieldmap and PhaseEncodeDirection tag in the json")
-
-    # Find if the phase encode direction is negative or positive
-    if len(phase_en_dir) == 2 and phase_en_dir[1] == '-':
-        en_is_positive = False
-    elif len(phase_en_dir) == 1:
-        en_is_positive = True
-    else:
-        raise ValueError(f"Unexpected value for PhaseEncodingDirection: {phase_en_dir}")
-
-    return en_is_positive
