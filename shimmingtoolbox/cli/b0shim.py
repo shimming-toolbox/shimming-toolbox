@@ -335,12 +335,14 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                         f.write(f"corr_vec[0][{i_slice}]= "
                                 f"{coefs[i_shim, i_channel]:.6f}\n")
                     else:
-                        # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                        # For Gx, Gy, Gz: Divide by 1000 for mT/m
                         f.write(f"corr_vec[0][{i_slice}]= "
                                 f"{coefs[i_shim, i_channel] / 1000:.6f}\n")
 
+                    # Static shimming does not have a a riro component
                     f.write(f"corr_vec[1][{i_slice}]= "
                             f"{0:.12f}\n")
+                    # Arbitrarily chose a mean pressure of 2000 to satisfy the sequence
                     f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
@@ -596,7 +598,6 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
     list_fname_output = []
     n_channels = coil.dim[3]
 
-    # o_format[-3:] == '-ch':
     # Write a file for each channel
     for i_channel in range(n_channels):
         fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
@@ -646,7 +647,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
                     else:
-                        # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                        # For Gx, Gy, Gz: Divide by 1000 for mT/m
                         f.write(f"corr_vec[0][{i_slice}]= "
                                 f"{currents_static[i_shim, i_channel] / 1000:.6f}\n")
                         f.write(f"corr_vec[1][{i_slice}]= "
