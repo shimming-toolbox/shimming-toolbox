@@ -12,10 +12,14 @@ from shimmingtoolbox import __dir_config_dcm2bids__
 from shimmingtoolbox.utils import create_output_dir
 
 
-def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__, remove_tmp=False):
+def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__,
+                   remove_tmp=False):
     """ Converts dicom files into nifti files by calling dcm2bids
 
     Args:
+        path_config_dcm2bids:
+        subject_id:
+        remove_tmp:
         path_dicom (str): path to the input dicom folder
         path_nifti (str): path to the output nifti folder
 
