@@ -5,6 +5,7 @@ This file includes utility functions useful for the shimming module
 
 import nibabel as nib
 import json
+import numpy as np
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
 
@@ -108,3 +109,27 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
         coefs_phase = -coefs_phase
 
     return coefs_freq, coefs_phase, coefs_slice
+
+
+def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
+    """ Calculate a metric within a ROI defined by a mask
+
+    Args:
+        array (np.ndarray): 3d array
+        mask (np.ndarray): 3d array with the same shape as array
+        metric (string): Metric to calculate, supported: std, mean
+        axis (int): Axis to perform the metric
+
+    Returns:
+        np.ndarray: Array containing the output metrics, if axis is None, the output is a single value
+    """
+    ma_array = np.ma.array(array, mask=mask == False)
+
+    if metric == 'mean':
+        output = np.ma.mean(ma_array, axis=axis)
+    elif metric == 'std':
+        output = np.ma.std(ma_array, axis=axis)
+    else:
+        raise NotImplementedError("Metric not implemented")
+
+    return output

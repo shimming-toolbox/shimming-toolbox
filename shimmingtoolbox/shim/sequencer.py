@@ -19,6 +19,8 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.utils import montage
+from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
 
@@ -133,18 +135,18 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     # Initialize
     correction_per_channel = np.zeros(merged_coils.shape + (len(slices),))
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
-    correction = np.zeros(unshimmed.shape + (len(slices),))
-    mask_fieldmap = np.zeros(unshimmed.shape + (len(slices),))
+    corrections = np.zeros(unshimmed.shape + (len(slices),))
+    masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
         # Calculate shimmed values
         correction_per_channel[..., i_shim] = coef[i_shim] * merged_coils
-        correction[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + correction[..., i_shim]
+        corrections[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
-        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+        masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
-        sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
+        sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
+        sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
 
         if sum_shimmed > sum_unshimmed:
             logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
@@ -154,96 +156,141 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
                      f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
-    # fmap space
-    # 4th dimension is i_shim
-    fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
-    nii_correction = nib.Nifti1Image(mask_fieldmap * shimmed, opt.unshimmed_affine)
-    nib.save(nii_correction, fname_correction)
+    if path_output is not None:
+        # fmap space
+        # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
+        # fieldmap)
+        shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
+                                                                   slices)
 
-    # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied)
-    # Whole mask
-    whole_mask_fmap = resample_from_to(nii_mask, nii_fieldmap_orig, order=1, mode='grid-constant', cval=0).get_fdata()
+        # Save images to a file
+        # TODO: Add units if possible
+        # TODO: Add in anat space?
+        _plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary, path_output)
+        _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
+        _plot_currents(coef, path_output)
+
+        if logger.level <= getattr(logging, 'DEBUG'):
+            # Save to a NIfTI
+            fname_correction = os.path.join(path_output, 'fig_shimmed.nii.gz')
+            nii_correction_3d = nib.Nifti1Image(shimmed_masked, opt.unshimmed_affine)
+            nib.save(nii_correction_3d, fname_correction)
+
+            # 4th dimension is i_shim
+            fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
+            nii_correction = nib.Nifti1Image(masks_fmap * shimmed, opt.unshimmed_affine)
+            nib.save(nii_correction, fname_correction)
+
+
+def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices):
+    mask_full_binary = np.ceil(resample_from_to(nii_mask_anat,
+                                                nii_fieldmap,
+                                                order=1,
+                                                mode='grid-constant',
+                                                cval=0).get_fdata())
 
     # Find the correction
     mask_fmap_nb = np.zeros(unshimmed.shape + (len(slices),))
     full_correction = np.zeros(unshimmed.shape)
     for i_shim in range(len(slices)):
         # Create non binary mask
-        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask_anat, nii_fieldmap, slices[i_shim]).get_fdata()
         # Apply the correction weighted according to the mask
         full_correction += correction[..., i_shim] * mask_fmap_nb[..., i_shim]
 
     # Calculate the weighted whole mask
     mask_weight = np.sum(mask_fmap_nb, axis=3)
     # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-    full_correction_scaled = np.divide(full_correction, mask_weight, where=whole_mask_fmap.astype(bool))
+    full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
     # Apply the correction to the unshimmed image
-    shimmed_masked = (full_correction_scaled + unshimmed) * whole_mask_fmap
+    shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
 
-    # Save to file
-    fname_correction = os.path.join(path_output, 'fig_shimmed.nii.gz')
-    nii_correction_3d = nib.Nifti1Image(shimmed_masked, opt.unshimmed_affine)
-    nib.save(nii_correction_3d, fname_correction)
-
-    unshimmed_masked = unshimmed * whole_mask_fmap
-
-    _plot_static(unshimmed, unshimmed_masked, shimmed_masked, path_output)
-
-    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
-        _plot_currents(coef, path_output)
-
-        # Save correction
-        # TODO: This is 5d, fsleyes does not show that
-        fname_correction = os.path.join(path_output, 'fig_correction_per_channel.nii.gz')
-        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
-        nib.save(nii_correction, fname_correction)
+    return shimmed_masked, mask_full_binary
 
 
-def _plot_static(unshimmed, unshimmed_masked, shimmed_masked, path_output):
-    # Plot
+def _plot_static_partial_mask(unshimmed, shimmed, masks, path_output):
     a_slice = 0
-    n_fmap_slices = unshimmed.shape[2]
-    while np.all(unshimmed_masked[:, :, a_slice] == np.zeros(unshimmed.shape)):
-        if a_slice >= n_fmap_slices - 1:
-            break
-        a_slice += 1
+    unshimmed_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3)
+    mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
+    mt_shimmed = montage(shimmed[:, :, a_slice, :])
+    unshimmed_masked_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3) * np.ceil(masks)
+    mt_unshimmed_masked = montage(unshimmed_masked_repeated[:, :, a_slice, :])
+    mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(masks[:, :, a_slice, :]))
 
-    min_value = min(unshimmed_masked[:, :, a_slice].min(), shimmed_masked.min())
-    max_value = max(unshimmed_masked[:, :, a_slice].max(), shimmed_masked.max())
+    min_masked_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_masked_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-    # TODO: Add units if possible, change cmap
-    fig = Figure(figsize=(12, 5))
-    fig.suptitle(f"Fieldmaps for fieldmap slice: {a_slice}")
+    min_fmap_value = min(mt_unshimmed.min(), mt_shimmed.min())
+    max_fmap_value = max(mt_unshimmed.max(), mt_shimmed.max())
 
-    ax = fig.add_subplot(1, 3, 1)
-    im = ax.imshow(np.rot90(unshimmed[:, :, a_slice]))
-    ax.set_title("Fieldmap")
-    # Remove tick marks of x and y axis
+    fig = Figure(figsize=(8, 5))
+    fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
+    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='jet')
+    ax.set_title("Unshimmed")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
-    # Make the colourbar as high as the figure
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    fig.colorbar(im, cax)
-
-    ax = fig.add_subplot(1, 3, 2)
-    im = ax.imshow(np.rot90(unshimmed_masked[:, :, a_slice]), vmin=min_value, vmax=max_value)
-    ax.set_title("Masked fieldmap")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im, cax=cax)
 
-    ax = fig.add_subplot(1, 3, 3)
-    im = ax.imshow(np.rot90(shimmed_masked[:, :, a_slice]), vmin=min_value, vmax=max_value)
-    ax.set_title("Masked fieldmap shimmed")
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='jet')
+    ax.set_title("Shimmed")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
-    cax = divider.append_axes("right", size="5%", pad=0.05)
-    fig.colorbar(im, cax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
+    # Plot
+    mt_unshimmed = montage(unshimmed)
+    mt_unshimmed_masked = montage(unshimmed * mask)
+    mt_shimmed_masked = montage(shimmed_masked)
+
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+
+    min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+
+    # TODO: grey fieldmap should be a magnitude image or a shimmed image on the right
+    fig = Figure(figsize=(8, 6))
+    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
+    ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
+    ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
 
     # Lower suptitle
     fig.subplots_adjust(top=0.85)
@@ -445,7 +492,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
     masked_shim_static = np.zeros(shape)
     masked_shim_riro = np.zeros(shape)
     masked_unshimmed = np.zeros(shape)
-    masked_fieldmap = np.zeros(unshimmed[..., 0].shape + (len(slices),))
+    mask_fmap_cs = np.zeros(unshimmed[..., 0].shape + (len(slices),))
     shim_trace_static_riro = []
     shim_trace_static = []
     shim_trace_riro = []
@@ -457,7 +504,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         # Calculate the riro coil profiles
         riro_profile = np.sum(coef_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-        masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
+        mask_fmap_cs[..., i_shim] = np.ceil(resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata())
         for i_t in range(nii_fieldmap.shape[3]):
             # Apply the static and riro correction
             correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
@@ -466,13 +513,15 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
             shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
             # Calculate masked shim
-            masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t,
-                                                                                                           i_shim]
-            masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
-            masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
+            masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
+            masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
+                                                                                                        i_shim]
+            masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+            masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
             # Calculate the sum over the ROI
+            # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If bigger roi due to
+            #  interpolation, it should not count more) Psibly use soft mask?
             sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
             sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
             sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
@@ -518,7 +567,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro,
                             path_output)
         _plot_pressure_points(acq_pressures, (pmu.min, pmu.max), path_output)
-        _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
+        _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
 
         # Save shimmed result
         nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, nii_fieldmap.affine, header=nii_fieldmap.header)
@@ -643,15 +692,15 @@ def _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shi
     logger.debug(f"Saved figure: {fname_figure}")
 
 
-def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap):
+def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask):
     """Print to the console metrics about the realtime and static shim. These metrics isolate temporal and static
     components
     Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
     Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
     """
 
-    unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], masked_fieldmap.shape[-1], axis=-1)
-    mask_repeats = np.repeat(masked_fieldmap[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
+    unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], mask.shape[-1], axis=-1)
+    mask_repeats = np.repeat(mask[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
     ma_unshimmed = np.ma.array(unshimmed_repeat, mask=mask_repeats == False)
     ma_shim_static = np.ma.array(shimmed_static, mask=mask_repeats == False)
     ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=mask_repeats == False)
