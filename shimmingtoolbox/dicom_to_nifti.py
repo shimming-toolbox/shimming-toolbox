@@ -17,12 +17,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     """ Converts dicom files into nifti files by calling dcm2bids
 
     Args:
-        path_config_dcm2bids:
-        subject_id:
-        remove_tmp:
-        path_dicom (str): path to the input dicom folder
-        path_nifti (str): path to the output nifti folder
-
+        path_dicom (str): Path to the input DICOM folder.
+        path_nifti (str): Path to the output NIfTI folder.
+        subject_id (str): Name of the imaged subject.
+        path_config_dcm2bids (str): Path to the dcm2bids config JSON file.
+        remove_tmp (bool): If True, removes the tmp folder containing the NIfTI files created by dcm2niix.
     """
 
     # Create the folder where the nifti files will be stored
