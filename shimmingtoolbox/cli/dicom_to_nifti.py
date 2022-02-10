@@ -19,7 +19,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--config', 'fname_config', type=click.Path(), default=__dir_config_dcm2bids__,
               help="Path to the BIDS config file")
 @click.option('--remove-tmp/--dont-remove-tmp', default=False,
-              help="Specifies if tmp folder will be deleted after processing")
+              help="Remove / keep tmp folder after processing")
 def dicom_to_nifti_cli(path_dicom, path_nifti, subject, fname_config, remove_tmp):
     """Converts dicom files into nifti files by calling ``dcm2bids``."""
 
