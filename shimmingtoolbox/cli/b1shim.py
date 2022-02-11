@@ -94,12 +94,11 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
         b1_shimmed_masked = b1_shimmed*montage(threshold(b1_map.sum(axis=-1), thr=0))
 
     b1_shimmed_masked[b1_shimmed_masked == 0] = np.nan  # Replace 0 values by nans for image transparency
-    vmax = np.percentile(b1_shimmed, 99)  # Reduce high values influence on display
-    vmax = 5*np.ceil(vmax/5)  # Ceil max range value to next multiple of 5 for good colorbar display
+    vmax = 2*np.nanmean(b1_shimmed_masked)  # Set the maximum display range value to twice the mean B1+ in ROI
 
     plt.figure()
     plt.imshow(b1_shimmed, vmax=vmax, cmap='gray')  # Display background in gray
-    plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap="jet")  # Overlay colored shimming ROI
+    plt.imshow(b1_shimmed_masked, vmin=0, vmax=vmax, cmap='viridis')  # Overlay colored shimming ROI
     plt.axis('off')
     plt.title(r"$\mathregular{B_1^+}$ field after shimming"
               f"\nMean (ROI): {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
