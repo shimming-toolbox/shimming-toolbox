@@ -647,7 +647,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
-                                             '--output-file-format', 'chronological-ch',
+                                             '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -684,7 +684,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
-                                             '--output-file-format', 'gradient',
+                                             '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
