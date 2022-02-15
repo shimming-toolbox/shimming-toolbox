@@ -23,7 +23,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -52,7 +52,7 @@ def b0shim_cli():
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim."
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
@@ -162,7 +162,8 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -194,7 +195,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
             if output_value_format == 'delta' and scanner_coil_order >= 1:
                 logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
-                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+                # TODO: Gradient CS should only be an output if using the gradient file format
                 # Convert coef of 1st order sph harmonics to Gradient coord system
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
                                                                            coefs_coil[:, 2],
@@ -209,25 +210,21 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 # _plot_coefs(coil, list_slices, coefs[:, start_channel:end_channel], path_output, i_coil, units=units)
 
             else:  # output_value_format == 'absolute'
+
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:
                     json_anat_data = json.load(json_file)
 
-                if json_anat_data['Manufacturer'] == 'Siemens':
-                    # Change from RAS to LAI (ShimCS)
-                    # x
-                    coefs_coil[:, 1] = -coefs_coil[:, 1]
-                    # z
-                    coefs_coil[:, 3] = -coefs_coil[:, 3]
+                # Convert coefficients from RAS to the shim CS of the manufacturer
+                manufacturer = json_anat_data['Manufacturer']
+                for i_shim in range(coefs.shape[0]):
+                    # Convert coefficient
+                    coefs[i_shim, 1:] = phys_to_shim_cs(coefs[i_shim, 1:], manufacturer)
 
-                    # Bounds also change from RAS to LAI
-                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
-                    bounds_shim_cs[1] = -bounds_shim_cs[1]
-                    bounds_shim_cs[3] = -bounds_shim_cs[3]
-                else:
-                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                              f"absolute format")
+                # Convert bounds
+                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
                 # # Plot a figure of the coefficients (Delta), order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
                 # units = "ShimCS [mT/m]"
@@ -329,7 +326,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim. The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
@@ -436,7 +433,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -477,7 +475,6 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
         if type(coil) == ScannerCoil:
 
             if output_value_format == 'delta' and scanner_coil_order >= 1:
-                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
                 logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
 
                 coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
@@ -509,22 +506,16 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 with open(fname_anat_json) as json_file:
                     json_anat_data = json.load(json_file)
 
-                if json_anat_data['Manufacturer'] == 'Siemens':
-                    # Change from RAS to LAI (ShimCS)
-                    # x
-                    coefs_coil_static[:, 1] = -coefs_coil_static[:, 1]
-                    coefs_coil_riro[:, 1] = -coefs_coil_riro[:, 1]
-                    # z
-                    coefs_coil_static[:, 3] = -coefs_coil_static[:, 3]
-                    coefs_coil_riro[:, 3] = -coefs_coil_riro[:, 3]
+                # Convert coefficients from RAS to the shim CS of the manufacturer
+                manufacturer = json_anat_data['Manufacturer']
+                for i_shim in range(coefs_coil_static.shape[0]):
+                    # Convert coefficient
+                    coefs_coil_static[i_shim, 1:] = phys_to_shim_cs(coefs_coil_static[i_shim, 1:], manufacturer)
+                    coefs_coil_riro[i_shim, 1:] = phys_to_shim_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
 
-                    # Bounds also change from RAS to LAI
-                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
-                    bounds_shim_cs[1] = -bounds_shim_cs[1]
-                    bounds_shim_cs[3] = -bounds_shim_cs[3]
-                else:
-                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                              f"absolute format")
+                # Convert bounds
+                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs[1:] = phys_to_shim_cs(coil.coef_channel_minmax[1:], manufacturer)
 
                 # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
                 # units = "ShimCS [mT/m]"
@@ -665,7 +656,7 @@ def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
     return nii_fmap
 
 
-def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
+def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufacturer):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -674,6 +665,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         initial_coefs (list): List of coefficients corresponding to the scanner coil.
+        manufacturer (str): Name of the MRI manufacturer
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
@@ -707,6 +699,18 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
             # shimming
             sph_contraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                              sph_contraints['coef_channel_minmax'])[0]
+
+            bounds = np.array(sph_contraints['coef_channel_minmax'][1:])
+            # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
+            bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
+            for i_channel in range(len(bounds)):
+                bound_0 = bounds[i_channel, 0]
+                bound_1 = bounds[i_channel, 1]
+                if bound_0 > bound_1:
+                    bounds[i_channel, 0] = bound_1
+                    bounds[i_channel, 1] = bound_0
+            sph_contraints['coef_channel_minmax'][1:] = bounds
+
         else:
             raise OSError("Missing json file")
 
