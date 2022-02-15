@@ -13,7 +13,7 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5):
+def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.5):
     """
     Computes static optimized shim weights that minimize the B1+ field coefficient of variation over the masked region.
 
@@ -28,9 +28,9 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5)
         target (float): Target B1+ value used by algorithm 2 in nT/V.
         q_matrix (numpy.ndarray): Matrix used to constrain local SAR. If no matrix is provided, unconstrained
             optimization is performed, which might result in SAR excess at the scanner (n_channels, n_channels, n_vop).
-        sed (float): Factor (=> 1) to which the maximum local SAR after shimming can exceed the phase-only shimming
-            maximum local SAR. SED between 1 and 1.5 usually work with Siemens scanners. Higher SED gives more shimming
-            freedom but might result in SAR excess at the scanner.
+        sar_factor (float): Factor (=> 1) to which the maximum local SAR after shimming can exceed the phase-only
+            shimming maximum local SAR. Values between 1 and 1.5 should work with Siemens scanners. High factors allow
+            more shimming liberty but are more likely to result in SAR excess at the scanner.
 
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
@@ -106,9 +106,9 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sed=1.5)
     # Q matrices to compute the local SAR values for each 10g of tissue (or subgroups of pixels if VOP are used).
     # If no Q matrix is provided, unconstrained optimization is performed
     if q_matrix is not None:
-        if sed < 1:
+        if sar_factor < 1:
             raise ValueError(f"The SAR factor must be equal to or greater than 1.")
-        sar_limit = sed * max_sar(vector_to_complex(weights_init), q_matrix)
+        sar_limit = sar_factor * max_sar(vector_to_complex(weights_init), q_matrix)
         # Create SAR constraint
         sar_constraint = ({'type': 'ineq', 'fun': lambda w: -max_sar(vector_to_complex(w), q_matrix) + sar_limit})
         constraint.append(sar_constraint)

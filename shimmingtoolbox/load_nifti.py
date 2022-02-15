@@ -294,7 +294,7 @@ def scale_tfl_b1(image, json_data):
     # Scale magnitude in nT/V
     b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
     b1_mag_ordered[b1_mag_ordered > 180] = 180  # Values higher than 180 degrees are due to noise
-    # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
+    # Calculate B1+ efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
     # Get the Transmission amplifier reference amplitude
     amplifier_voltage = json_data['TxRefAmp']  # [V]
     socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket

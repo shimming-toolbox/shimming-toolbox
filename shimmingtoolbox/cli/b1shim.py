@@ -34,13 +34,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--vop', 'fname_vop', type=click.Path(exists=True), required=False,
               help="SarDataUser.mat file containing VOP matrices used for SAR constraint. Found on the scanner in "
                    "C:/Medcom/MriProduct/PhysConfig.")
-@click.option('--sed', 'sed', type=float, required=False, default=1.5,
+@click.option('--sar_factor', 'sar_factor', type=float, required=False, default=1.5,
               help="Factor (=> 1) to which the shimmed max local SAR can exceed the phase-only shimming max local SAR."
-                   "SED between 1 and 1.5 usually work with Siemens scanners. High SED allows more RF shimming liberty "
-                   "but is more likely to result in SAR excess at the scanner.")
+                   "Values between 1 and 1.5 should work with Siemens scanners. High factors allow more shimming "
+                   "liberty but are more likely to result in SAR excess at the scanner.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir, 'b1_shim_results'),
               show_default=True, help="Output directory for shim weights, B1+ maps and figures.")
-def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path_output):
+def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_factor, path_output):
     """ Perform static B1+ shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
     """
@@ -72,7 +72,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sed, path
         vop = None
 
     shim_weights = b1shim(b1_map, mask=mask_resampled, algorithm=algorithm, target=target,
-                          q_matrix=vop, sed=sed)
+                          q_matrix=vop, sar_factor=sar_factor)
 
     # Indicate output path to the user
     print(f"\nB1+ shimming results located in: {path_output}\n")
