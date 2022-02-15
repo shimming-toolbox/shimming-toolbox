@@ -174,14 +174,12 @@ def set_all_loggers(verbose, list_exclude=('matplotlib',)):
         a_logger.setLevel(verbose.upper())
 
 
-def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
+def montage(X):
     """Concatenates images stored in a 3D array
     Args:
-        X (numpy.ndarray): 3D array with the last dimension being the one in which the different images are stored
-        colormap (str): Colors in which the montage will be displayed.
-        title (str): Title to display above the figure.
-        vmin (float): Minimum display range value. If None, set the the min value of X.
-        vmax (float): Maximum display range value. If None, set the the max value of X.
+        X (numpy.ndarray): 3D array with the last dimension being the one in which the images are concatenated.
+    Returns:
+        numpy.ndarray: 2D array of concatenated images.
     """
     X = np.rot90(X)
     x, y, n_images = np.shape(X)

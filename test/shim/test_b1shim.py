@@ -1,9 +1,7 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import pathlib
 import pytest
-import tempfile
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.load_nifti import read_nii
@@ -31,8 +29,15 @@ def test_b1shim(caplog):
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
+def test_b1shim_mask(caplog):
+    shim_weights = b1shim(b1_maps, mask)
+    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
+           r"normalized." in caplog.text
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
 def test_b1shim_algo_2(caplog):
-    shim_weights = b1shim(b1_maps, mask, algorithm=2, target=20)
+    shim_weights = b1shim(b1_maps, algorithm=2, target=20)
     assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
            r"normalized." in caplog.text
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
@@ -40,36 +45,44 @@ def test_b1shim_algo_2(caplog):
 
 def test_b1shim_algo_2_no_target():
     with pytest.raises(ValueError, match=r"Algorithm 2 requires a target B1 value in nT/V."):
-        b1shim(b1_maps, mask, algorithm=2)
+        b1shim(b1_maps, algorithm=2)
 
 
 def test_b1shim_algo_3(caplog):
-    shim_weights = b1shim(b1_maps, mask, algorithm=3)
-    assert r"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs " \
-           r"normalized." in caplog.text
+    shim_weights = b1shim(b1_maps, algorithm=3, q_matrix=vop)
     assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1shim_algo_wrong_algo():
+def test_b1shim_algo_4(caplog):
+    shim_weights = b1shim(b1_maps, algorithm=4)
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+
+
+def test_b1shim_algo_3_no_q_matrix():
+    with pytest.raises(ValueError, match=r"Algorithm 3 requires Q matrices to perform SAR efficiency shimming."):
+        b1shim(b1_maps, algorithm=3)
+
+
+def test_b1shim_wrong_algo():
     with pytest.raises(ValueError, match=r"The specified algorithm does not exist. It must be an integer between 1 "
-                                         r"and 3."):
-        b1shim(b1_maps, mask, algorithm=4)
+                                         r"and 4."):
+        b1shim(b1_maps, mask, algorithm=5)
 
 
 def test_b1shim_constrained():
-    shim_weights = b1shim(b1_maps, mask, q_matrix=vop)
-    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils"
+    shim_weights = b1shim(b1_maps, q_matrix=vop)
+    assert len(shim_weights) == b1_maps.shape[3], "The number of shim weights does not match the number of coils."
 
 
 def test_b1shim_constrained_factor_too_small():
     with pytest.raises(ValueError, match=r"The SAR factor must be equal to or greater than 1."):
-        b1shim(b1_maps, mask, q_matrix=vop, sed=0.9)
+        b1shim(b1_maps, q_matrix=vop, sar_factor=0.9)
 
 
 def test_b1shim_wrong_ndim():
-    with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\n"
-                                         r"Actual: 3"):
-        b1shim(b1_maps[:, :, :, 0], mask)
+    with pytest.raises(ValueError, match=r"The provided B1 maps have an unexpected number of "
+                                         r"dimensions.\nExpected: 4\nActual: 3"):
+        b1shim(b1_maps[:, :, :, 0])
 
 
 def test_b1shim_wrong_mask_shape():
@@ -79,9 +92,10 @@ def test_b1shim_wrong_mask_shape():
         b1shim(b1_maps, mask[:-1, :, :])
 
 
-def test_b1shim_output_figure(caplog):
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        b1shim(b1_maps, mask, path_output=tmp)
+def test_b1shim_no_b1_in_mask():
+    mask_empty = np.zeros_like(b1_maps[..., 0])
+    with pytest.raises(ValueError, match=r"The mask does not overlap with the B1\+ values."):
+        b1shim(b1_maps, mask_empty)
 
 
 def test_vector_to_complex():
@@ -110,8 +124,7 @@ def test_combine_maps():
 def test_combine_maps_wrong_weights_number():
     dummy_weights = np.asarray([1+8j, 3-5j, 8+1j, 4-4j, 5-6j, 2-9j, 3+2j])
     with pytest.raises(ValueError, match=f"The number of shim weights does not match the number of channels.\n"
-                                         f"Number of shim weights: 7\n"
-                                         f"Number of channels: 8"):
+                                         f"Number of shim weights: 7\nNumber of channels: 8"):
         combine_maps(b1_maps, dummy_weights)
 
 
@@ -123,7 +136,7 @@ def test_load_siemens_vop():
 
 
 def test_load_siemens_vop_wrong_path():
-    with pytest.raises(FileNotFoundError, match='The SarDataUser.mat file could not be found.'):
+    with pytest.raises(FileNotFoundError, match="The SarDataUser.mat file could not be found."):
         load_siemens_vop('dummy_path')
 
 
@@ -133,6 +146,13 @@ def test_load_siemens_vop_no_vop():
     path_sar_file_no_vop = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                                         'SarDataUser_no_vop.mat')
     scipy.io.savemat(path_sar_file_no_vop, data_no_vop)
-    with pytest.raises(ValueError, match='The SAR data does not contain the expected VOP values.'):
+    with pytest.raises(ValueError, match="The SAR data does not contain the expected VOP values."):
         load_siemens_vop(path_sar_file_no_vop)
     os.remove(path_sar_file_no_vop)
+
+
+def test_phase_only_shim_wrong_number():
+    with pytest.raises(ValueError, match=r"The number of phase values \(2\) does not match the number of channels \("
+                                         r"8\)."):
+        init_phases = np.asarray([1, 2])
+        phase_only_shimming(b1_maps, init_phases)
