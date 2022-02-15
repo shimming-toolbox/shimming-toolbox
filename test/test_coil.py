@@ -35,11 +35,12 @@ def test_coil_custom_coil():
     # Define a custom coil in testing_data
 
 
-def test_convert_to_mp_unknowk_scanner():
+def test_convert_to_mp_unknown_scanner(caplog):
     dac_units = [14436, 14265, 14045, 9998, 9998, 9998, 9998, 9998]
 
-    with pytest.raises(NotImplementedError, match="Manufacturer model not recognized, could not convert units"):
-        convert_to_mp(dac_units, 'unknown')
+    convert_to_mp(dac_units, 'unknown')
+    assert "Manufacturer unknown not implemented, bounds might not be respected. Setting initial " \
+           "shim_setting to 0" in caplog.text
 
 
 def test_convert_to_mp_outside_bounds():

@@ -6,8 +6,11 @@ This file includes utility functions useful for the shimming module
 import nibabel as nib
 import json
 import numpy as np
+import logging
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
+
+logger = logging.getLogger(__name__)
 
 
 def get_phase_encode_direction_sign(fname_nii):
@@ -133,3 +136,58 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
         raise NotImplementedError("Metric not implemented")
 
     return output
+
+
+def phys_to_shim_cs(coefs, manufacturer):
+    """Convert a list of coefficients from RAS to the Shim Coordinate System
+
+    Args:
+        coefs (np.ndarray): 1d list of coefficients in the physical RAS coordinate system of the manufacturer. The first
+                            dimension represents the different channels. (indexes 0, 1, 2 --> x, y, z...). If there are
+                            more coefficients, they are of higher order and must correspond to the implementation of the
+                            manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        manufacturer (str): Name of the manufacturer
+
+    Returns:
+        np.ndarray: Coefficients in the shim coordinate system of the manufacturer
+    """
+
+    if manufacturer == 'Siemens':
+        # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
+        # 0, 1, 2, 3,  4,  5,  6,     7
+
+        # Order 1
+        if len(coefs) >= 3:
+            # Change from RAS to LAI (ShimCS)
+            coefs[0] = -coefs[0]  # X
+            coefs[2] = -coefs[2]  # Z
+
+        # Order 2
+        if len(coefs) >= 8:
+            # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
+            coefs[5] = -coefs[5]  # [ZY]
+            coefs[7] = -coefs[7]  # [XY]
+
+    else:
+        logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
+
+    return coefs
+
+
+def shim_to_phys_cs(coefs, manufacturer):
+    """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
+
+    Args:
+        coefs (np.ndarray): 1D list of coefficients in the Shim Coordinate System of the manufacturer. The first
+                            dimension represents the different channels. Indexes 0, 1, 2 --> x, y, z... If there are
+                            more coefficients, they are of higher order and must correspond to the implementation of the
+                            manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        manufacturer (str): Name of the manufacturer
+
+    Returns:
+        np.ndarray: Coefficients in the physical RAS coordinate system
+    """
+    # It's sign flips so the same function can be used for shimCS <--> phys RAS
+    coefs = phys_to_shim_cs(coefs, manufacturer)
+
+    return coefs

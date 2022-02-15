@@ -85,7 +85,7 @@ class TestCliStatic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -193,7 +193,7 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_gradient_coil.txt"))
 
     def test_cli_static_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
-        """Test cli with scanner coil with chronological-coil oformat"""
+        """Test cli with scanner coil with chronological-coil o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -223,7 +223,7 @@ class TestCliStatic(object):
             # There should be 10 x 4 values
 
     def test_cli_static_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
-        """Test cli with scanner coil with hronological_ch o_format"""
+        """Test cli with scanner coil with chronological_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -256,7 +256,7 @@ class TestCliStatic(object):
             # There should be 4 x 10 x 1 value
 
     def test_cli_static_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
-        """Test cli with scanner coil with slicewise_ch oformat"""
+        """Test cli with scanner coil with slicewise_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -286,6 +286,38 @@ class TestCliStatic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
+
+    def test_cli_static_format_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['static',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
 
     def test_cli_static_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -341,7 +373,7 @@ class TestCliStatic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -615,7 +647,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
-                                             '--output-file-format', 'chronological-ch',
+                                             '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -625,7 +657,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_rt_eva(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -652,7 +684,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
-                                             '--output-file-format', 'eva',
+                                             '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -688,7 +720,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
