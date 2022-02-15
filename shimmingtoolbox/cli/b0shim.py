@@ -226,6 +226,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 # _plot_coefs(coil, list_slices, coefs[:, start_channel:end_channel], path_output, i_coil, units=units)
 
             else:
+                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:
@@ -574,6 +575,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units)
 
             else:
+                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:

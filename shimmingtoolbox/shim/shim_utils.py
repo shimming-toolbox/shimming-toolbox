@@ -115,14 +115,14 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
 
 
 def phys_to_shim_cs(coefs, manufacturer):
-    """Convert a list of coefficients from ras to the shim coordinate system
+    """Convert a list of coefficients from RAS to the Shim Coordinate System
 
     Args:
         coefs (np.ndarray): 1d list of coefficients in the physical RAS coordinate system of the manufacturer. The first
                             dimension represents the different channels. (indexes 0, 1, 2 --> x, y, z...). If there are
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
-        manufacturer (str): Name of the manufacturer to apply the correct transformation
+        manufacturer (str): Name of the manufacturer
 
     Returns:
         np.ndarray: Coefficients in the shim coordinate system of the manufacturer
@@ -140,12 +140,12 @@ def phys_to_shim_cs(coefs, manufacturer):
 
         # Order 2
         if len(coefs) >= 8:
-            # Invert X and Z --> invert ZY and XY (Z2 is double inverted and X2-Y2 is double inverted)
+            # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
             coefs[5] = -coefs[5]  # [ZY]
             coefs[7] = -coefs[7]  # [XY]
 
     else:
-        logger.warning(f"Manufacturer: {manufacturer} not implemented for the shimCS. Coefficients might be wrong.")
+        logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
 
     return coefs
 
@@ -154,11 +154,11 @@ def shim_to_phys_cs(coefs, manufacturer):
     """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
 
     Args:
-        coefs (np.ndarray): 1d list of coefficients in the shim coordinate system of the manufacturer. The first
+        coefs (np.ndarray): 1D list of coefficients in the Shim Coordinate System of the manufacturer. The first
                             dimension represents the different channels. Indexes 0, 1, 2 --> x, y, z... If there are
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
-        manufacturer (str): Name of the manufacturer to apply the correct transformation
+        manufacturer (str): Name of the manufacturer
 
     Returns:
         np.ndarray: Coefficients in the physical RAS coordinate system
