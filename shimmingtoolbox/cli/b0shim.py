@@ -236,7 +236,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 manufacturer = json_anat_data['Manufacturer']
                 for i_shim in range(coefs.shape[0]):
                     # Convert coefficient
-                    coefs[i_shim, 1:] = phys_to_shim_cs(coefs[i_shim, 1:], manufacturer)
+                    coefs_coil[i_shim, 1:] = phys_to_shim_cs(coefs_coil[i_shim, 1:], manufacturer)
 
                 # Convert bounds
                 bounds_shim_cs = np.array(coil.coef_channel_minmax)
@@ -614,8 +614,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=coil.coef_channel_minmax)
 
-        list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                   path_output, o_format_coil, i_coil)
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_coil, i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
@@ -629,9 +629,9 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
 
     # Write a file for each channel
     for i_channel in range(n_channels):
-        fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
 
         if o_format == 'chronological-ch':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
@@ -640,6 +640,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{mean_p:.4f}\n")
 
         elif o_format == 'slicewise-ch':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have one coef representing the static, riro and mean_p in slicewise order
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
