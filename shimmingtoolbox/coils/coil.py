@@ -1,11 +1,14 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import logging
 
 import numpy as np
 from typing import Tuple
 
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
+
+logger = logging.getLogger(__name__)
 
 required_constraints = [
     "name",
@@ -186,6 +189,8 @@ def convert_to_mp(shim_setting, manufacturers_model_name):
             raise ValueError("Multipole values exceed known system limits.")
 
     else:
-        raise NotImplementedError("Manufacturer model not recognized, could not convert units")
+        logger.warning(f"Manufacturer {manufacturers_model_name} not implemented, bounds might not be respected. "
+                       f"Setting initial shim_setting to 0")
+        shim_setting = [0, 0, 0, 0, 0, 0, 0, 0]
 
     return list(shim_setting)

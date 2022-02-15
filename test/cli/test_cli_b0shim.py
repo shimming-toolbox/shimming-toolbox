@@ -85,7 +85,7 @@ class TestCliStatic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -373,7 +373,7 @@ class TestCliStatic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -720,7 +720,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
