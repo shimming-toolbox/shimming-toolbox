@@ -4,5 +4,6 @@
 build/
 dist/
 .vagrant/
+.idea
 dcm2bids.json
 output_*

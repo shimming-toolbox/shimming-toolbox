@@ -2,9 +2,8 @@
 
 set -e
 
-VENV_ID=1267b18e73341ad94da34474
-VENV=pst_venv_$VENV_ID
-ST_DIR=$HOME/shimming_toolbox
+VENV=pst_venv
+ST_DIR=$HOME/shimming-toolbox
 PYTHON_DIR=python
 
 # conda activate base
