@@ -279,7 +279,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
     # TODO: grey fieldmap should be a magnitude image or a shimmed image on the right
-    fig = Figure(figsize=(8, 6))
+    fig = Figure(figsize=(9, 6))
     fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
