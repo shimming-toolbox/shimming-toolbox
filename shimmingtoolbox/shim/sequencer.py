@@ -163,6 +163,14 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
                                                                    slices)
 
+        if len(slices) == 1 and path_output is not None:
+            # TODO: Output json sidecar
+            # TODO: Update the shim settings if Scanner coil?
+            # Output the resulting fieldmap since it can be calculated over the entire fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
+            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_shimmed.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+
         # Save images to a file
         # TODO: Add units if possible
         # TODO: Add in anat space?
@@ -262,6 +270,10 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
     metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
     metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
 
     min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
@@ -274,7 +286,8 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
     im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
-    ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}")
+    ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+                 f"abs_mean: {metric_unshimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
@@ -285,7 +298,8 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
     im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
-    ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}")
+    ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+                 f"abs_mean: {metric_shimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
