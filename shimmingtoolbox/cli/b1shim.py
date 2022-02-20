@@ -8,6 +8,7 @@ import nibabel as nib
 import numpy as np
 import os
 
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from nibabel.processing import resample_from_to
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.shim.b1shim import b1shim, load_siemens_vop, combine_maps
@@ -50,8 +51,8 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
 
     create_output_dir(path_output)
 
-    # Save uncombined B1 map as nifti
-    json_b1["ImageComments"] = 'Complex uncombined B1 map (nT/V)'
+    # Save uncombined B1+ maps in a NIfTI file that can be opened in FSLeyes
+    json_b1["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
     fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii.gz')
     nib.save(nii_b1, fname_nii_b1)
     file_json_b1 = open(os.path.join(path_output, 'TB1maps_uncombined.json'), mode='w')
@@ -71,11 +72,16 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
     else:
         vop = None
 
-    shim_weights = b1shim(b1_map, mask=mask_resampled, algorithm=algorithm, target=target,
-                          q_matrix=vop, sar_factor=sar_factor)
+    shim_weights = b1shim(b1_map, mask=mask_resampled, algorithm=algorithm, target=target, q_matrix=vop,
+                          sar_factor=sar_factor)
 
-    # Indicate output path to the user
-    print(f"\nB1+ shimming results located in: {path_output}\n")
+    # Save shimmed combined B1+ map in a NIfTI file that can be opened in FSLeyes
+    json_b1["ImageComments"] = 'Shimmed B1+ map (nT/V)'
+    fname_nii_b1_shim = os.path.join(path_output, 'TB1map_shimmed.nii.gz')
+    nii_b1_shim = nib.Nifti1Image(b1_map @ shim_weights, nii_b1.affine, header=nii_b1.header)
+    nib.save(nii_b1_shim, fname_nii_b1_shim)
+    file_json_b1_shim = open(os.path.join(path_output, 'TB1map_shimmed.json'), mode='w')
+    json.dump(json_b1, file_json_b1_shim)
 
     # Write to a text file
     fname_output = os.path.join(path_output, 'b1_shim_weights.txt')
@@ -87,7 +93,7 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
     file_rf_shim_weights.close()
 
     # Plot B1+ shimming results
-    b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # RF-shimming result
+    b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # B1+ shimming result
     if mask_resampled is not None:
         b1_shimmed_masked = b1_shimmed*montage(mask_resampled)
     else:
@@ -104,7 +110,6 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
               f"\nMean (ROI): {np.nanmean(b1_shimmed_masked):.3} nT/V\n"
               f"CV (ROI): {variation(b1_shimmed_masked[~np.isnan(b1_shimmed_masked)]):.3f}")
 
-    from mpl_toolkits.axes_grid1 import make_axes_locatable
     divider = make_axes_locatable(plt.gca())
     cax = divider.append_axes('right', size='3.5%', pad=0.05)
     cbar = plt.colorbar(cax=cax)
@@ -112,5 +117,8 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
     cbar.ax.tick_params(size=0)
     fname_figure = os.path.join(path_output, 'b1_shim_results.png')
     plt.savefig(fname_figure)
+
+    # Indicate output path to the user
+    print(f"\nB1+ shimming results located in: file://{os.path.abspath(path_output)}\n")
 
     return shim_weights
