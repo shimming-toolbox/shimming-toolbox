@@ -58,8 +58,13 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sar_fact
     if not b1_roi.any():
         raise ValueError("The mask does not overlap with the B1+ values.")
 
-    # Phase-only optimization
+    # Phase-only optimization starting from zero phase values
     weights_phase_only = phase_only_shimming(b1_roi)
+    # Perform 3 additional iterations with random initial phases and keep the one that yields the best homogeneity
+    for i in range(3):
+        weights_phase_only_tmp = phase_only_shimming(b1_roi, init_phases=2*np.pi*np.random.rand(n_channels))
+        if variation(combine_maps(b1_roi, weights_phase_only_tmp)) < variation(combine_maps(b1_roi, weights_phase_only)):
+            weights_phase_only = weights_phase_only_tmp
 
     algorithm = int(algorithm)
     if algorithm == 4:

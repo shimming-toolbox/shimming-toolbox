@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import numpy as np
 import os
 import pathlib
 import tempfile
@@ -302,7 +303,6 @@ def test_dicom_to_nifti_path_config_invalid(test_dcm2niix_installation):
 def test_dicom_to_nifti_tfl_b1_axial(self):
     fname_b1 = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'fmap', 'sub-tb1tfl_TB1TFL_axial.nii.gz')
     nib.load(fname_b1)
-    
 
     assert b1.shape == (64, 44, 5, 8), "Wrong rf-map shape"
     assert np.abs(b1).max() <= 180 and np.abs(b1).min() >= 0, "Magnitude values out of range"

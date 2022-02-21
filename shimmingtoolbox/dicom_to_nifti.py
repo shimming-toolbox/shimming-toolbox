@@ -126,46 +126,16 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                 if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
                     path_nii_b1 = path_json_b1.split(".json")[0] + ".nii.gz"
                     nii_b1 = nib.load(path_nii_b1)
-                    image = scale_tfl_b1(nii_b1.get_fdata(), json_data)
-                    nii_b1.header['datatype'] = 32  # 32 corresponds to complex data
-                    nii_b1.header['aux_file'] = 'Uncombined B1+ maps'
-                    # tfl_rfmap yields bogus affine matrices that need to be fixed to visualize the B1+ maps in FSLeyes
-                    qfac = nii_b1.header['pixdim'][0]
-
-                    if 'ImageOrientationPatientDICOM' not in json_data:
-                        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
-
-                    # These values are inverted in ImageOrientationPatientDICOM. Correcting them to repair affine matrix
-                    json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]
-                    json_data['ImageOrientationPatientDICOM'][1] = -json_data['ImageOrientationPatientDICOM'][1]
-                    json_data['ImageOrientationPatientDICOM'][5] = -json_data['ImageOrientationPatientDICOM'][5]
-
-                    xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])
-
-                    # Compute the rotation matrix from the corrected values
-                    R = [[xa, ya, qfac * (xb * yc - xc * yb)],
-                         [xb, yb, qfac * (xc * ya - xa * yc)],
-                         [xc, yc, qfac * (xa * yb - xb * ya)]]
-
-                    # Build the corrected affine matrix
-                    affine = np.zeros((4, 4))
-                    affine[:3, :3] = R * nii_b1.header['pixdim'][1:4]
-                    affine[3, :] = [0, 0, 0, 1]
-                    affine[:3, 3] = [nii_b1.header['qoffset_x'], nii_b1.header['qoffset_y'], nii_b1.header['qoffset_z']]
-
-                    # Create a new NIfTI object with the corrected affine matrix and the reshuffled/rescaled B1+ maps
-                    nii_b1.header.set_sform(affine)
-                    nii_b1 = nib.Nifti1Image(image, affine, header=nii_b1.header)
-                    nib.save(nii_b1, path_nii_b1)
+                    nii_b1_new = fix_tfl_b1(nii_b1, json_data)
 
                     # Save uncombined B1+ maps in a NIfTI file that can now be visualized in FSLeyes
                     json_data["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
                     path_nii_b1_new = path_nii_b1.split('.nii')[0] + '_uncombined.nii' + path_nii_b1.split('.nii')[1]
-                    nib.save(nii_b1, path_nii_b1_new)
+                    nib.save(nii_b1_new, path_nii_b1_new)
 
                     # Save the associated JSON file
-                    file_json_b1 = open(os.path.join(path_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
-                    json.dump(json_data, file_json_b1)
+                    path_json_b1_new = open(os.path.join(path_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
+                    json.dump(json_data, path_json_b1_new)
 
                     # Remove the old buggy NIfTI and associated JSON files
                     os.remove(path_nii_b1)
@@ -215,17 +185,17 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))
 
 
-def scale_tfl_b1(image, json_data):
-    """Rescales the magnitude and phase of complex B1 maps acquired with Siemens' standard B1 mapping sequence. Also
-    reorders the data that are shuffled during DICOM to NIfTI conversion.
+def fix_tfl_b1(nii_b1, json_data):
+    """Un-shuffles and rescales the magnitude and phase of complex B1+ maps acquired with Siemens' standard B1+ mapping
+    sequence. Also computes a corrected affine matrix allowing the B1+ maps to be visualized in FSLeyes.
     Args:
-        image (numpy.ndarray): Array of dimension (x, y, n_slices, 2*n_channels). First half: magnitude in degree*10.
-        Second half: phase in range [248-3848].
+        nii_b1 (numpy.ndarray): Array of dimension (x, y, n_slices, 2*n_channels) as created by dcm2niix.
         json_data (dict): Contains the different fields present in the json file corresponding to the nifti file.
 
     Returns:
-        numpy.ndarray: Complex rescaled B1 maps (x, y, n_slices, n_channels).
+        nib.Nifti1Image: NIfTI object containing the complex rescaled B1+ maps (x, y, n_slices, n_channels).
     """
+    image = nii_b1.get_fdata()
     # The number of slices corresponds to the 3rd dimension of the shuffled NIfTI volume.
     n_slices = image.shape[2]
     # The number of Tx channels corresponds to the 4th dimension of the shuffled NIfTI of the shuffled NIfTI volume.
@@ -284,5 +254,34 @@ def scale_tfl_b1(image, json_data):
     b1_phase_ordered[b1_phase_ordered == 0] = 2048
     b1_phase_ordered = (b1_phase_ordered - 2048) * np.pi / 1800  # [-pi pi]
 
-    # Return complex B1 maps
-    return b1_mag_ordered * np.exp(1j * b1_phase_ordered)
+    # Compute the corrected complex B1+ maps
+    b1_complex = b1_mag_ordered * np.exp(1j * b1_phase_ordered)
+
+    nii_b1.header['datatype'] = 32  # 32 corresponds to complex data
+    nii_b1.header['aux_file'] = 'Uncombined B1+ maps'
+    # tfl_rfmap yields bogus affine matrices that need to be fixed to visualize the B1+ maps in FSLeyes
+    qfac = nii_b1.header['pixdim'][0]
+
+    if 'ImageOrientationPatientDICOM' not in json_data:
+        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
+
+    # These values are inverted in ImageOrientationPatientDICOM. Correcting them fixes the affine matrix
+    json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]
+    json_data['ImageOrientationPatientDICOM'][1] = -json_data['ImageOrientationPatientDICOM'][1]
+    json_data['ImageOrientationPatientDICOM'][5] = -json_data['ImageOrientationPatientDICOM'][5]
+
+    xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])
+
+    # Compute the rotation matrix from the corrected values
+    R = [[xa, ya, qfac * (xb * yc - xc * yb)],
+         [xb, yb, qfac * (xc * ya - xa * yc)],
+         [xc, yc, qfac * (xa * yb - xb * ya)]]
+
+    # Build the corrected affine matrix
+    affine = np.zeros((4, 4))
+    affine[:3, :3] = R * nii_b1.header['pixdim'][1:4]
+    affine[3, :] = [0, 0, 0, 1]
+    affine[:3, 3] = [nii_b1.header['qoffset_x'], nii_b1.header['qoffset_y'], nii_b1.header['qoffset_z']]
+
+    # Return a fixed NIfTI object with the corrected affine matrix and the reshuffled/rescaled B1+ maps
+    return nib.Nifti1Image(b1_complex, affine, header=nii_b1.header)
