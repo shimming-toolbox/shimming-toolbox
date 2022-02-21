@@ -47,18 +47,12 @@ def b1shim_cli(fname_b1_map, fname_mask, algorithm, target, fname_vop, sar_facto
     """
 
     # Load B1 map
-    nii_b1, json_b1, b1_map = read_nii(fname_b1_map)
-
-    create_output_dir(path_output)
-
-    # Save uncombined B1+ maps in a NIfTI file that can be opened in FSLeyes
-    json_b1["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
-    fname_nii_b1 = os.path.join(path_output, 'TB1maps_uncombined.nii.gz')
-    nib.save(nii_b1, fname_nii_b1)
-    file_json_b1 = open(os.path.join(path_output, 'TB1maps_uncombined.json'), mode='w')
-    json.dump(json_b1, file_json_b1)
+    nii_b1 = nib.load(fname_b1_map)
+    json_b1 = nib.load(fname_b1_map.split('.nii')[0] + '.json')
+    b1_map = nii_b1.get_fdata()
     b1_map_combined = b1_map.sum(axis=-1)
     nii_b1_map_combined = nib.Nifti1Image(b1_map_combined, nii_b1.affine, header=nii_b1.header)
+    create_output_dir(path_output)
 
     # Load static anatomical mask
     if fname_mask is not None:
