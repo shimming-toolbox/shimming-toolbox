@@ -122,8 +122,11 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sar_fact
         constraint.append(norm_cons)
         logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
                     f"normalized.")
-    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=constraint).x)
-
+    # Optimize the complex shim weights
+    shim_weights = scipy.optimize.minimize(cost, weights_init, constraints=constraint).x
+    # Set the phase of the first element to 0
+    shim_weights[n_channels:] -= shim_weights[n_channels]
+    shim_weights = vector_to_complex(shim_weights)
     return shim_weights
 
 

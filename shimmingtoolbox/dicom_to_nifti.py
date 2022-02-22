@@ -195,7 +195,7 @@ def fix_tfl_b1(nii_b1, json_data):
     Returns:
         nib.Nifti1Image: NIfTI object containing the complex rescaled B1+ maps (x, y, n_slices, n_channels).
     """
-    image = nii_b1.get_fdata()
+    image = nii_b1.dataobj
     # The number of slices corresponds to the 3rd dimension of the shuffled NIfTI volume.
     n_slices = image.shape[2]
     # The number of Tx channels corresponds to the 4th dimension of the shuffled NIfTI of the shuffled NIfTI volume.
@@ -209,6 +209,10 @@ def fix_tfl_b1(nii_b1, json_data):
 
     # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
     b1_phase = image[:, :, :, n_channels:]
+
+    # Check that the 'ImageOrientationPatientDICOM' tag exists in the JSON file
+    if 'ImageOrientationPatientDICOM' not in json_data:
+        raise KeyError("Missing JSON tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
 
     # Reorder data shuffled by dm2niix into shape (x, y , n_slices*n_channels)
     b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
@@ -257,13 +261,12 @@ def fix_tfl_b1(nii_b1, json_data):
     # Compute the corrected complex B1+ maps
     b1_complex = b1_mag_ordered * np.exp(1j * b1_phase_ordered)
 
+    # Modify header tags
     nii_b1.header['datatype'] = 32  # 32 corresponds to complex data
     nii_b1.header['aux_file'] = 'Uncombined B1+ maps'
+
     # tfl_rfmap yields bogus affine matrices that need to be fixed to visualize the B1+ maps in FSLeyes
     qfac = nii_b1.header['pixdim'][0]
-
-    if 'ImageOrientationPatientDICOM' not in json_data:
-        raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
 
     # These values are inverted in ImageOrientationPatientDICOM. Correcting them fixes the affine matrix
     json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]

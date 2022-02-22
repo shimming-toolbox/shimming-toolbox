@@ -147,11 +147,9 @@ class TestCore(object):
         self.data_path = self.tmp_path / 'test_data'
         self.data_path_2 = self.tmp_path / 'test_data_2'
         self.data_path_volume = self.tmp_path / 'test_data_volume'
-        self.data_path_b1 = self.tmp_path / 'test_data_b1'
         self.data_path.mkdir(exist_ok=True)
         self.data_path_2.mkdir(exist_ok=True)
         self.data_path_volume.mkdir(exist_ok=True)
-        self.data_path_b1.mkdir(exist_ok=True)
 
         dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
         dummy_data_volume = nib.nifti1.Nifti1Image(dataobj=self._data_volume, affine=self._aff)
