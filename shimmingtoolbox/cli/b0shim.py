@@ -963,6 +963,6 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-b0shim_cli.add_command(static_cli, 'static')
-b0shim_cli.add_command(realtime_cli, 'realtime')
+b0shim_cli.add_command(static_cli, 'dynamic')
+b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
 # shim_cli.add_command(define_slices_cli, 'define_slices')
