@@ -10,16 +10,16 @@ from shimmingtoolbox.shim.b1shim import *
 
 logging.basicConfig(level=logging.INFO)
 
-path_b1_nii_axial = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'rfmap',
+fname_b1_nii_axial = os.path.join(__dir_testing__, 'ds_tb1', 'sub-tb1tfl', 'rfmap',
                                  'sub-tb1tfl_run-01_TB1map_uncombined.nii.gz')
-b1 = np.asarray(nib.load(path_b1_nii_axial).dataobj)
+b1 = np.asarray(nib.load(fname_b1_nii_axial).dataobj)
 mask = b1.sum(axis=-1) != 0
 cp_weights = np.asarray([0.3536, -0.3527+0.0247j, 0.2748-0.2225j, -0.1926-0.2965j, -0.3535+0.0062j, 0.2931+0.1977j,
                          0.3381+0.1034j, -0.1494+0.3204j])
 
-path_sar_file = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
+fname_sar_file = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                              'sub-tb1tfl_SarDataUser.mat')
-vop = load_siemens_vop(path_sar_file)
+vop = load_siemens_vop(fname_sar_file)
 
 
 def test_b1shim(caplog):
@@ -142,14 +142,14 @@ def test_load_siemens_vop_wrong_path():
 
 
 def test_load_siemens_vop_no_vop():
-    data_no_vop = scipy.io.loadmat(path_sar_file)
+    data_no_vop = scipy.io.loadmat(fname_sar_file)
     data_no_vop.pop('ZZ')
-    path_sar_file_no_vop = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
+    fname_sar_file_no_vop = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                                         'SarDataUser_no_vop.mat')
-    scipy.io.savemat(path_sar_file_no_vop, data_no_vop)
+    scipy.io.savemat(fname_sar_file_no_vop, data_no_vop)
     with pytest.raises(ValueError, match="The SAR data does not contain the expected VOP values."):
-        load_siemens_vop(path_sar_file_no_vop)
-    os.remove(path_sar_file_no_vop)
+        load_siemens_vop(fname_sar_file_no_vop)
+    os.remove(fname_sar_file_no_vop)
 
 
 def test_phase_only_shim_wrong_number():

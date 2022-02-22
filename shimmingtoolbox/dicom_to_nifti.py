@@ -23,7 +23,7 @@ GAMMA = 2.675e8  # Proton's gyromagnetic ratio (rad/(T.s))
 SATURATION_FA = 90  # Saturation flip angle hard-coded in TFL B1 mapping sequence (deg)
 
 
-def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2bids=__dir_config_dcm2bids__,
+def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm2bids=__dir_config_dcm2bids__,
                    remove_tmp=False):
     """ Converts dicom files into nifti files by calling dcm2bids
 
@@ -31,14 +31,14 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         path_dicom (str): Path to the input DICOM folder.
         path_nifti (str): Path to the output NIfTI folder.
         subject_id (str): Name of the imaged subject.
-        path_config_dcm2bids (str): Path to the dcm2bids config JSON file.
+        fname_config_dcm2bids (str): Path to the dcm2bids config JSON file.
         remove_tmp (bool): If True, removes the tmp folder containing the NIfTI files created by dcm2niix.
     """
 
     # Create the folder where the nifti files will be stored
     if not os.path.exists(path_dicom):
         raise FileNotFoundError("No dicom path found")
-    if not os.path.exists(path_config_dcm2bids):
+    if not os.path.exists(fname_config_dcm2bids):
         raise FileNotFoundError("No dcm2bids config file found")
     create_output_dir(path_nifti)
 
@@ -63,7 +63,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
     if not helper_file_list:
         raise ValueError('No data to process')
 
-    subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids],
+    subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', fname_config_dcm2bids],
                    check=True)
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
@@ -114,23 +114,23 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
         [file_list.append(os.path.join(path_rfmap, f)) for f in os.listdir(path_rfmap) if
          os.path.splitext(f)[1] == '.json']
         file_list = sorted(file_list)
-        for path_json_b1 in file_list:
+        for fname_json_b1 in file_list:
             # Do nothing if the files have already been processed by Shimming-Toolbox
-            if '_uncombined' in path_json_b1 or '_shimmed' in path_json_b1:
+            if '_uncombined' in fname_json_b1 or '_shimmed' in fname_json_b1:
                 continue
             # Open the json file
-            with open(path_json_b1) as json_file:
+            with open(fname_json_b1) as json_file:
                 json_data = json.load(json_file)
                 # Check what B1+ mapping sequence has been used to proceed accordingly
                 # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
                 if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
-                    path_nii_b1 = path_json_b1.split(".json")[0] + ".nii.gz"
-                    nii_b1 = nib.load(path_nii_b1)
+                    fname_nii_b1 = fname_json_b1.split(".json")[0] + ".nii.gz"
+                    nii_b1 = nib.load(fname_nii_b1)
                     nii_b1_new = fix_tfl_b1(nii_b1, json_data)
 
                     # Save uncombined B1+ maps in a NIfTI file that can now be visualized in FSLeyes
                     json_data["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
-                    path_nii_b1_new = path_nii_b1.split('.nii')[0] + '_uncombined.nii' + path_nii_b1.split('.nii')[1]
+                    path_nii_b1_new = fname_nii_b1.split('.nii')[0] + '_uncombined.nii' + path_nii_b1.split('.nii')[1]
                     nib.save(nii_b1_new, path_nii_b1_new)
 
                     # Save the associated JSON file
@@ -138,8 +138,8 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', path_config_dcm2
                     json.dump(json_data, path_json_b1_new)
 
                     # Remove the old buggy NIfTI and associated JSON files
-                    os.remove(path_nii_b1)
-                    os.remove(path_json_b1)
+                    os.remove(fname_nii_b1)
+                    os.remove(fname_json_b1)
                 # TODO: Add handling of other B1+ mapping sequences
 
         logger.info("B1+ NIfTI have been reshuffled and rescaled.")
@@ -195,7 +195,7 @@ def fix_tfl_b1(nii_b1, json_data):
     Returns:
         nib.Nifti1Image: NIfTI object containing the complex rescaled B1+ maps (x, y, n_slices, n_channels).
     """
-    image = nii_b1.dataobj
+    image = np.array(nii_b1.dataobj)
     # The number of slices corresponds to the 3rd dimension of the shuffled NIfTI volume.
     n_slices = image.shape[2]
     # The number of Tx channels corresponds to the 4th dimension of the shuffled NIfTI of the shuffled NIfTI volume.

@@ -11,71 +11,11 @@ from shimmingtoolbox import __dir_testing__
 
 path_dicom_unsorted = os.path.join(__dir_testing__, 'dicom_unsorted')
 path_b1_data = os.path.join(__dir_testing__, 'ds_tb1', 'tmp_dcm2bids', 'helper')
-path_b1_nii = os.path.join(path_b1_data, '053_tmp_standard_tra_20210928093219.nii.gz')
-path_b1_json = os.path.join(path_b1_data, '053_tmp_standard_tra_20210928093219.json')
-nii_b1 = nib.load(path_b1_nii)
-json_b1 = json.load(open(path_b1_json))
-
-# json_b1 = {
-#     "Modality": "MR",
-#     "MagneticFieldStrength": 7,
-#     "ImagingFrequency": 297.2,
-#     "Manufacturer": "Siemens",
-#     "ManufacturersModelName": "Investigational_Device_7T",
-#     "InstitutionName": "Hospital",
-#     "InstitutionalDepartmentName": "Department",
-#     "InstitutionAddress": "Street StreetNo,City,District,CA,ZIP",
-#     "DeviceSerialNumber": "79017",
-#     "StationName": "AWP79017",
-#     "BodyPartExamined": "CSPINE",
-#     "PatientPosition": "HFS",
-#     "ProcedureStepDescription": "Development^Dr. Cohen-Adad",
-#     "SoftwareVersions": "syngo MR E12",
-#     "MRAcquisitionType": "2D",
-#     "SeriesDescription": "standard_tra",
-#     "ProtocolName": "standard_tra",
-#     "ScanningSequence": "GR",
-#     "SequenceVariant": "SK\\SP",
-#     "SequenceName": "*tfl2d1_16",
-#     "SeriesNumber": 53,
-#     "AcquisitionTime": "12:16:59.472500",
-#     "AcquisitionNumber": 1,
-#     "ImageComments": "flip angle map, TraRefAmpl: 400.0 V",
-#     "SliceThickness": 7,
-#     "SpacingBetweenSlices": 14,
-#     "SAR": 0.00443249,
-#     "EchoTime": 0.00153,
-#     "RepetitionTime": 3.76,
-#     "SpoilingState": True,
-#     "FlipAngle": 5,
-#     "PartialFourier": 1,
-#     "BaseResolution": 64,
-#     "ShimSetting": [133, -20, 10, -75, 9, -147, -112, -224],
-#     "TxRefAmp": 400,
-#     "PhaseResolution": 1,
-#     "ReceiveCoilName": "NP11_ACDC_SPINE",
-#     "ReceiveCoilActiveElements": "1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H;1H",
-#     "PulseSequenceDetails": "%SiemensSeq%\\tfl_rfmap",
-#     "RefLinesPE": 16,
-#     "CoilCombinationMethod": "Sum of Squares",
-#     "ConsistencyInfo": "N4_VE12U_LATEST_20181126",
-#     "MatrixCoilMode": "GRAPPA",
-#     "MultibandAccelerationFactor": 5,
-#     "PercentPhaseFOV": 68.75,
-#     "PercentSampling": 100,
-#     "PhaseEncodingSteps": 44,
-#     "AcquisitionMatrixPE": 44,
-#     "ReconMatrixPE": 44,
-#     "ParallelReductionFactorInPlane": 2,
-#     "PixelBandwidth": 440,
-#     "DwellTime": 1.78e-05,
-#     "PhaseEncodingDirection": "j-",
-#     "ImageOrientationPatientDICOM": [-1, 0, 0, 0, 1, 0],
-#     "ImageOrientationText": "Tra",
-#     "InPlanePhaseEncodingDirectionDICOM": "COL",
-#     "ConversionSoftware": "dcm2niix",
-#     "ConversionSoftwareVersion": "v1.0.20211006"
-# }
+fname_b1_nii = os.path.join(path_b1_data, '053_tmp_standard_tra_20210928093219.nii.gz')
+fname_b1_json = os.path.join(path_b1_data, '053_tmp_standard_tra_20210928093219.json')
+nii_b1 = nib.load(fname_b1_nii)
+with open(fname_b1_json) as json_b1_file:
+    json_b1 = json.load(json_b1_file)
 
 
 def test_dicom_to_nifti():
@@ -177,7 +117,7 @@ def test_dicom_to_nifti_path_config_invalid(test_dcm2niix_installation):
                 path_dicom=path_dicom_unsorted,
                 path_nifti=path_nifti,
                 subject_id=subject_id,
-                path_config_dcm2bids=os.path.join(tmp, "invalid_folder")
+                fname_config_dcm2bids=os.path.join(tmp, "invalid_folder")
             )
 
 

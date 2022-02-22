@@ -13,12 +13,12 @@ from shimmingtoolbox.masking.threshold import threshold
 logger = logging.getLogger(__name__)
 
 
-def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.5):
+def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.5):
     """
     Computes static optimized shim weights that minimize the B1+ field coefficient of variation over the masked region.
 
     Args:
-        b1_maps (numpy.ndarray): 4D array  corresponding to the measured B1+ field. (x, y, n_slices, n_channels)
+        b1 (numpy.ndarray): 4D array  corresponding to the measured B1+ field. (x, y, n_slices, n_channels)
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         algorithm (int): Number from 1 to 4 specifying which algorithm to use for B1+ optimization:
                     1 - Optimization aiming to reduce the coefficient of variation (CV) of the resulting B1+ field.
@@ -35,24 +35,24 @@ def b1shim(b1_maps, mask=None, algorithm=1, target=None, q_matrix=None, sar_fact
     Returns:
         numpy.ndarray: Optimized and normalized 1D vector of complex shimming weights of length n_channels.
     """
-    if b1_maps.ndim == 4:
-        x, y, n_slices, n_channels = b1_maps.shape
+    if b1.ndim == 4:
+        x, y, n_slices, n_channels = b1.shape
     else:
         raise ValueError(f"The provided B1 maps have an unexpected number of dimensions.\nExpected: 4\nActual: "
-                         f"{b1_maps.ndim}")
+                         f"{b1.ndim}")
 
     if mask is None:
         # If no mask provided, mask = 1 for every pixel where b1_maps values are non-zero
         logger.info("No mask provided, masking all zero-valued pixels.")
-        mask = threshold(b1_maps.sum(axis=-1), thr=0)
+        mask = threshold(b1.sum(axis=-1), thr=0)
 
-    if b1_maps.shape[:-1] == mask.shape:
+    if b1.shape[:-1] == mask.shape:
         # b1_roi will be a (n_pixels, n_channels) numpy array with all zero-valued pixel removed
-        b1_roi = np.reshape(b1_maps * mask[:, :, :, np.newaxis], [x * y * n_slices, n_channels])
+        b1_roi = np.reshape(b1 * mask[:, :, :, np.newaxis], [x * y * n_slices, n_channels])
         b1_roi = b1_roi[b1_roi.sum(axis=-1) != 0, :]  # Remove all zero values from the ROI
     else:
         raise ValueError(f"Mask and maps dimensions not matching.\n"
-                         f"Maps dimensions: {b1_maps.shape[:-1]}\n"
+                         f"Maps dimensions: {b1.shape[:-1]}\n"
                          f"Mask dimensions: {mask.shape}")
 
     if not b1_roi.any():
@@ -199,12 +199,12 @@ def max_sar(weights, q_matrix):
     return np.max(np.real(np.matmul(np.matmul(np.conj(weights).T, q_matrix.T), weights)))
 
 
-def load_siemens_vop(path_sar_file):
+def load_siemens_vop(fname_sar_file):
     """
     Reads in a Matlab file in which the VOP matrices are stored and returns them as a numpy array.
 
     Args:
-        path_sar_file: Path to the 'SarDataUser.mat' file containing the scanner's VOPs. This file should be available
+        fname_sar_file: Path to the 'SarDataUser.mat' file containing the scanner's VOPs. This file should be available
             at the scanner in 'C:/Medcom/MriProduct/PhysConfig'.
 
     Returns:
@@ -212,8 +212,8 @@ def load_siemens_vop(path_sar_file):
 
     """
     # Check that the file exists
-    if os.path.exists(path_sar_file):
-        sar_data = scipy.io.loadmat(path_sar_file)
+    if os.path.exists(fname_sar_file):
+        sar_data = scipy.io.loadmat(fname_sar_file)
     else:
         raise FileNotFoundError('The SarDataUser.mat file could not be found.')
 
