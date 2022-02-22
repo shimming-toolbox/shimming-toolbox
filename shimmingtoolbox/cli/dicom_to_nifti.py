@@ -23,5 +23,5 @@ def dicom_to_nifti_cli(path_dicom, subject, path_nifti, fname_config, remove_tmp
     dicom_to_nifti(path_dicom=path_dicom,
                    path_nifti=path_nifti,
                    subject_id=subject,
-                   path_config_dcm2bids=fname_config,
+                   fname_config_dcm2bids=fname_config,
                    remove_tmp=remove_tmp)

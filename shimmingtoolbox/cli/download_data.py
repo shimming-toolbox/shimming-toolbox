@@ -15,7 +15,7 @@ from shimmingtoolbox.download import install_data
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
     "testing_data": (
-        ["https://github.com/shimming-toolbox/data-testing/archive/r20211201.zip"],
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20220222.zip"],
         "Light-weighted dataset for testing purpose.",
     ),
     "prelude": (

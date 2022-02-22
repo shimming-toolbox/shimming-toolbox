@@ -3,7 +3,7 @@
 """
 Image thresholding API
 """
-
+import numpy as np
 
 def threshold(data, thr=30):
     """
@@ -17,7 +17,7 @@ def threshold(data, thr=30):
     Returns:
         numpy.ndarray: Boolean mask with same dimensions as data
     """
-    if data.dtype == 'complex128':
+    if np.iscomplexobj(data):
         return abs(data) > thr
     else:
         return data > thr
