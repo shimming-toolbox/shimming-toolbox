@@ -982,15 +982,19 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
 
     slices = []
     n_shims = n_slices // factor
-    leftover = n_slices % factor
+    leftover = 0
 
     if method == 'interleaved':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
+        leftover = n_slices % factor
+
     elif method == 'sequential':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
+
+        leftover = n_slices % factor
 
     elif method == 'volume':
         slices.append(tuple(range(n_shims)))

@@ -108,9 +108,9 @@ def b0shim_cli():
                    "system unless the option --output-file-format is set to gradient. The delta value format should be "
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-               dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
-               output_value_format, verbose):
+def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
+                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
+                output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -963,6 +963,6 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-b0shim_cli.add_command(static_cli, 'dynamic')
+b0shim_cli.add_command(dynamic_cli, 'dynamic')
 b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
 # shim_cli.add_command(define_slices_cli, 'define_slices')
