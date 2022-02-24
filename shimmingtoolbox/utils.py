@@ -7,6 +7,10 @@ import os
 import tqdm
 import subprocess
 import logging
+from pathlib import Path
+
+HOME_DIR = str(Path.home())
+PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
 
 
 def run_subprocess(cmd):
@@ -17,12 +21,16 @@ def run_subprocess(cmd):
     """
     logging.debug(f'{cmd}')
     try:
+        env = os.environ.copy()
+        # Add ST PATH before the rest of the path so that it takes precedence
+        env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
+
+        # print(env)
         subprocess.run(
             cmd.split(' '),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             text=True,
-            check=True
+            check=True,
+            env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
