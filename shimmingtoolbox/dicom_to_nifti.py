@@ -130,12 +130,12 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
                     # Save uncombined B1+ maps in a NIfTI file that can now be visualized in FSLeyes
                     json_data["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
-                    path_nii_b1_new = fname_nii_b1.split('.nii')[0] + '_uncombined.nii' + path_nii_b1.split('.nii')[1]
-                    nib.save(nii_b1_new, path_nii_b1_new)
+                    fname_nii_b1_new = fname_nii_b1.split('.nii')[0] + '_uncombined.nii' + fname_nii_b1.split('.nii')[1]
+                    nib.save(nii_b1_new, fname_nii_b1_new)
 
                     # Save the associated JSON file
-                    path_json_b1_new = open(os.path.join(path_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
-                    json.dump(json_data, path_json_b1_new)
+                    fname_json_b1_new = open(os.path.join(fname_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
+                    json.dump(json_data, fname_json_b1_new)
 
                     # Remove the old buggy NIfTI and associated JSON files
                     os.remove(fname_nii_b1)
