@@ -163,12 +163,18 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
                                                                    slices)
 
-        if len(slices) == 1 and path_output is not None:
+        if len(slices) == 1:
             # TODO: Output json sidecar
             # TODO: Update the shim settings if Scanner coil?
             # Output the resulting fieldmap since it can be calculated over the entire fieldmap
             nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
-            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_shimmed.nii.gz')
+            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+        else:
+            # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, nii_fieldmap_orig.affine,
+                                               header=nii_fieldmap_orig.header)
+            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim_masked.nii.gz')
             nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
         # Save images to a file
@@ -238,7 +244,7 @@ def _plot_static_partial_mask(unshimmed, shimmed, masks, path_output):
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
     mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='jet')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
     ax.set_title("Unshimmed")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
@@ -249,7 +255,7 @@ def _plot_static_partial_mask(unshimmed, shimmed, masks, path_output):
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
     mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='jet')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
     ax.set_title("Shimmed")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
@@ -278,16 +284,15 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-    # TODO: grey fieldmap should be a magnitude image or a shimmed image on the right
     fig = Figure(figsize=(9, 6))
     fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
     ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                 f"abs_mean: {metric_unshimmed_absmean:.3}")
+                 f"abs mean: {metric_unshimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
@@ -297,9 +302,9 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
     ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                 f"abs_mean: {metric_shimmed_absmean:.3}")
+                 f"abs mean: {metric_shimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
@@ -644,11 +649,11 @@ def _plot_currents(static, path_output: str, riro=None):
     ax = fig.add_subplot(111)
     n_channels = static.shape[1]
     for i_channel in range(n_channels):
-        ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shims")
+        ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
     if riro is not None:
         for i_channel in range(n_channels):
-            ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shims")
-    ax.set_xlabel('i_shims')
+            ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
+    ax.set_xlabel('Shim group')
     ax.set_ylabel('Coefficients (Physical CS [RAS])')
     ax.legend()
     ax.set_title("Currents through shims")
