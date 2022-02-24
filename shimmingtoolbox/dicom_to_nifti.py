@@ -13,7 +13,7 @@ import subprocess
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
-from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.utils import create_output_dir, run_subprocess
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -36,22 +36,21 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     """
 
     # Create the folder where the nifti files will be stored
-    if not os.path.exists(path_dicom):
-        raise FileNotFoundError("No dicom path found")
+    # if not os.path.exists(path_dicom):
+    #     raise FileNotFoundError("No dicom path found")
     if not os.path.exists(fname_config_dcm2bids):
         raise FileNotFoundError("No dcm2bids config file found")
     create_output_dir(path_nifti)
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True)
+    run_subprocess(f"dcm2bids_scaffold -o {path_nifti}")
 
-    #
     # # Copy original dicom files into nifti_path/sourcedata
     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
     #
     # # Call the dcm2bids_helper
-    subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
+    run_subprocess(f"dcm2bids_helper -d {path_dicom} -o {path_nifti}")
     #
     # Check if the helper folder has been created
     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
@@ -63,8 +62,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     if not helper_file_list:
         raise ValueError('No data to process')
 
-    subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', fname_config_dcm2bids],
-                   check=True)
+    run_subprocess(f"dcm2bids -d {path_dicom} -o {path_nifti} -p {subject_id} -c {fname_config_dcm2bids}")
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
