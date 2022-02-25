@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
+import copy
 import math
 import numpy as np
 from typing import List
@@ -10,6 +10,7 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -17,6 +18,9 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
+from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.utils import montage
+from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
 
@@ -64,13 +68,23 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 3:
         raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
-    fieldmap_shape = nii_fieldmap.get_fdata().shape
-    # Extend the fieldmap if there are axes that are 1d
-    if 1 in fieldmap_shape:
-        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
-        n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
-        for i_axis in list_axis:
-            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
+
+    nii_fmap_orig = copy.deepcopy(nii_fieldmap)
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < mask_dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
 
@@ -99,26 +113,40 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                       dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
-    _eval_static_shim(optimizer, nii_fieldmap, nii_mask_anat, coefs, slices, path_output)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
 
     return coefs
 
 
-def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path_output):
-    # Calculate theoretical shimmed map
-    unshimmed = nii_fieldmap.get_fdata()
-    correction_per_channel = np.zeros(opt.merged_coils.shape + (len(slices),))
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
+    """Calculate theoretical shimmed map and output figures"""
+
+    # Save the merged coil profiles if in debug
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        # Save coils
+        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
+        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
+
+    unshimmed = nii_fieldmap_orig.get_fdata()
+
+    # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
+    merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
+
+    # Initialize
+    correction_per_channel = np.zeros(merged_coils.shape + (len(slices),))
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
-    mask_fieldmap = np.zeros(unshimmed.shape + (len(slices),))
+    corrections = np.zeros(unshimmed.shape + (len(slices),))
+    masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
-        correction_per_channel[..., i_shim] = coef[i_shim] * opt.merged_coils
-        correction = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + correction
+        # Calculate shimmed values
+        correction_per_channel[..., i_shim] = coef[i_shim] * merged_coils
+        corrections[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
-        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap, slices[i_shim]).get_fdata()
+        masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
-        sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
+        sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
+        sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
 
         if sum_shimmed > sum_unshimmed:
             logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
@@ -127,21 +155,168 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap, nii_mask, coef, slices, path
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
                      f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
-    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+    # Figure that shows unshimmed vs shimmed for each slice
+    if path_output is not None:
+        # fmap space
+        # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
+        # fieldmap)
+        shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
+                                                                   slices)
+
+        if len(slices) == 1:
+            # TODO: Output json sidecar
+            # TODO: Update the shim settings if Scanner coil?
+            # Output the resulting fieldmap since it can be calculated over the entire fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
+            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+        else:
+            # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, nii_fieldmap_orig.affine,
+                                               header=nii_fieldmap_orig.header)
+            fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim_masked.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+
+        # Save images to a file
+        # TODO: Add units if possible
+        # TODO: Add in anat space?
+        _plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary, path_output)
+        _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
         _plot_currents(coef, path_output)
 
-        # Save correction
-        fname_correction = os.path.join(path_output, 'fig_correction_per_channel.nii.gz')
-        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
-        nib.save(nii_correction, fname_correction)
+        if logger.level <= getattr(logging, 'DEBUG'):
+            # Save to a NIfTI
+            fname_correction = os.path.join(path_output, 'fig_correction.nii.gz')
+            nii_correction_3d = nib.Nifti1Image(shimmed_masked, opt.unshimmed_affine)
+            nib.save(nii_correction_3d, fname_correction)
 
-        fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
-        nii_correction = nib.Nifti1Image(correction_per_channel, opt.unshimmed_affine)
-        nib.save(nii_correction, fname_correction)
+            # 4th dimension is i_shim
+            fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
+            nii_correction = nib.Nifti1Image(masks_fmap * shimmed, opt.unshimmed_affine)
+            nib.save(nii_correction, fname_correction)
 
-        # Save coils
-        nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap.affine, header=nii_fieldmap.header)
-        nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
+
+def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices):
+    mask_full_binary = np.ceil(resample_from_to(nii_mask_anat,
+                                                nii_fieldmap,
+                                                order=1,
+                                                mode='grid-constant',
+                                                cval=0).get_fdata())
+
+    # Find the correction
+    mask_fmap_nb = np.zeros(unshimmed.shape + (len(slices),))
+    full_correction = np.zeros(unshimmed.shape)
+    for i_shim in range(len(slices)):
+        # Create non binary mask
+        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask_anat, nii_fieldmap, slices[i_shim]).get_fdata()
+        # Apply the correction weighted according to the mask
+        full_correction += correction[..., i_shim] * mask_fmap_nb[..., i_shim]
+
+    # Calculate the weighted whole mask
+    mask_weight = np.sum(mask_fmap_nb, axis=3)
+    # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
+    full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+
+    # Apply the correction to the unshimmed image
+    shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
+
+    return shimmed_masked, mask_full_binary
+
+
+def _plot_static_partial_mask(unshimmed, shimmed, masks, path_output):
+    a_slice = 0
+    unshimmed_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3)
+    mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
+    mt_shimmed = montage(shimmed[:, :, a_slice, :])
+    unshimmed_masked_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3) * np.ceil(masks)
+    mt_unshimmed_masked = montage(unshimmed_masked_repeated[:, :, a_slice, :])
+    mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(masks[:, :, a_slice, :]))
+
+    min_masked_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_masked_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+
+    min_fmap_value = min(mt_unshimmed.min(), mt_shimmed.min())
+    max_fmap_value = max(mt_unshimmed.max(), mt_shimmed.max())
+
+    fig = Figure(figsize=(8, 5))
+    fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
+    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
+    ax.set_title("Unshimmed")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
+    ax.set_title("Shimmed")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
+    # Plot
+    mt_unshimmed = montage(unshimmed)
+    mt_unshimmed_masked = montage(unshimmed * mask)
+    mt_shimmed_masked = montage(shimmed_masked)
+
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
+
+    min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+
+    fig = Figure(figsize=(9, 6))
+    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+                 f"abs mean: {metric_unshimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+                 f"abs mean: {metric_shimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Lower suptitle
+    fig.subplots_adjust(top=0.85)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
 
 
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
@@ -195,14 +370,22 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
-    fieldmap_shape = nii_fieldmap.get_fdata().shape[:3]
 
-    # Extend the fieldmap if there are axes that are 1d
-    if 1 in fieldmap_shape:
-        list_axis = [i for i in range(len(fieldmap_shape)) if fieldmap_shape[i] == 1]
-        for i_axis in list_axis:
-            n_slices = int(math.ceil((mask_dilation_kernel_size - 1) / 2))
-            nii_fieldmap = extend_slice(nii_fieldmap, n_slices=n_slices, axis=i_axis)
+    nii_fmap_orig = copy.deepcopy(nii_fieldmap)
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < mask_dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+
     fieldmap = nii_fieldmap.get_fdata()
     affine_fieldmap = nii_fieldmap.affine
 
@@ -328,7 +511,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
     masked_shim_static = np.zeros(shape)
     masked_shim_riro = np.zeros(shape)
     masked_unshimmed = np.zeros(shape)
-    masked_fieldmap = np.zeros(unshimmed[..., 0].shape + (len(slices),))
+    mask_fmap_cs = np.zeros(unshimmed[..., 0].shape + (len(slices),))
     shim_trace_static_riro = []
     shim_trace_static = []
     shim_trace_riro = []
@@ -340,7 +523,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         # Calculate the riro coil profiles
         riro_profile = np.sum(coef_riro[i_shim] * opt.merged_coils, axis=3, keepdims=False)
 
-        masked_fieldmap[..., i_shim] = resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata()
+        mask_fmap_cs[..., i_shim] = np.ceil(resample_mask(nii_mask_static, nii_target, slices[i_shim]).get_fdata())
         for i_t in range(nii_fieldmap.shape[3]):
             # Apply the static and riro correction
             correction_riro = riro_profile * (acq_pressures[i_t] - mean_p)
@@ -349,13 +532,15 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
             shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
             # Calculate masked shim
-            masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t,
-                                                                                                           i_shim]
-            masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
-            masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
+            masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
+            masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
+                                                                                                        i_shim]
+            masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+            masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
             # Calculate the sum over the ROI
+            # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If bigger roi due to
+            #  interpolation, it should not count more) Psibly use soft mask?
             sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
             sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
             sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
@@ -401,7 +586,7 @@ def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, co
         _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro,
                             path_output)
         _plot_pressure_points(acq_pressures, (pmu.min, pmu.max), path_output)
-        _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap)
+        _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
 
         # Save shimmed result
         nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, nii_fieldmap.affine, header=nii_fieldmap.header)
@@ -464,11 +649,11 @@ def _plot_currents(static, path_output: str, riro=None):
     ax = fig.add_subplot(111)
     n_channels = static.shape[1]
     for i_channel in range(n_channels):
-        ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shims")
+        ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
     if riro is not None:
         for i_channel in range(n_channels):
-            ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shims")
-    ax.set_xlabel('i_shims')
+            ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
+    ax.set_xlabel('Shim group')
     ax.set_ylabel('Coefficients (Physical CS [RAS])')
     ax.legend()
     ax.set_title("Currents through shims")
@@ -526,15 +711,15 @@ def _plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shi
     logger.debug(f"Saved figure: {fname_figure}")
 
 
-def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, masked_fieldmap):
+def _print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask):
     """Print to the console metrics about the realtime and static shim. These metrics isolate temporal and static
     components
     Temporal: Compute the STD across time pixelwise, and then compute the mean across pixels.
     Static: Compute the MEAN across time pixelwise, and then compute the STD across pixels.
     """
 
-    unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], masked_fieldmap.shape[-1], axis=-1)
-    mask_repeats = np.repeat(masked_fieldmap[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
+    unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], mask.shape[-1], axis=-1)
+    mask_repeats = np.repeat(mask[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
     ma_unshimmed = np.ma.array(unshimmed_repeat, mask=mask_repeats == False)
     ma_shim_static = np.ma.array(shimmed_static, mask=mask_repeats == False)
     ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=mask_repeats == False)
@@ -682,6 +867,41 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     return new_affine
 
 
+def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=None):
+    """ Load the fmap and expand its dimensions to the kernel size
+
+    Args:
+        nii_fmap_orig (nib.Nifti1Image): 3d (dim1, dim2, dim3) or 4d (dim1, dim2, dim3, t) nii to be extended
+        dilation_kernel_size: Size of the kernel
+        path_output (str): Path to save the debug output
+
+    Returns:
+        nibabel.Nifti1Image: Nibabel object of the loaded and extended fieldmap
+
+    """
+
+    fieldmap_shape = nii_fmap_orig.shape[:3]
+
+    # Extend the dimensions where the kernel is bigger than the number of voxels
+    tmp_nii = copy.deepcopy(nii_fmap_orig)
+    for i_axis in range(len(fieldmap_shape)):
+        # If there are less voxels than the kernel size, extend in that axis
+        if fieldmap_shape[i_axis] < dilation_kernel_size:
+            diff = float(dilation_kernel_size - fieldmap_shape[i_axis])
+            n_slices_to_extend = math.ceil(diff / 2)
+            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis)
+
+    nii_fmap = tmp_nii
+
+    # If DEBUG, save the extended fieldmap
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
+        nib.save(nii_fmap, fname_new_fmap)
+        logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
+
+    return nii_fmap
+
+
 def extend_slice(nii_array, n_slices=1, axis=2):
     """ Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
     Updates the affine of the matrix to keep the input array in the same location.
@@ -767,15 +987,19 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
 
     slices = []
     n_shims = n_slices // factor
-    leftover = n_slices % factor
+    leftover = 0
 
     if method == 'interleaved':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
+        leftover = n_slices % factor
+
     elif method == 'sequential':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
+
+        leftover = n_slices % factor
 
     elif method == 'volume':
         slices.append(tuple(range(n_shims)))

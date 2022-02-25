@@ -21,7 +21,7 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
+from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -108,9 +108,9 @@ def b0shim_cli():
                    "system unless the option --output-file-format is set to gradient. The delta value format should be "
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-               dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
-               output_value_format, verbose):
+def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
+                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
+                output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -133,14 +133,31 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}")
 
+    # Load the fieldmap
+    nii_fmap_orig = nib.load(fname_fmap)
+
+    # Make sure the fieldmap has the appropriate dimensions
+    if nii_fmap_orig.get_fdata().ndim != 3:
+        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+    else:
+        nii_fmap = copy.deepcopy(nii_fmap_orig)
+
     # Prepare the output
     create_output_dir(path_output)
-
-    # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
-    # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
-    # through plane direction.
-    fmap_required_dims = 3
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -185,7 +202,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Get shimming coefficients
-    coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils,
+    coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
                            mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
@@ -461,11 +478,28 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Prepare the output
     create_output_dir(path_output)
 
-    # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
-    # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
-    # through plane direction.
-    fmap_required_dims = 4
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
+    # Load the fieldmap
+    nii_fmap_orig = nib.load(fname_fmap)
+
+    # Make sure the fieldmap has the appropriate dimensions
+    if nii_fmap_orig.get_fdata().ndim != 4:
+        raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+    else:
+        nii_fmap = copy.deepcopy(nii_fmap_orig)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -521,7 +555,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load PMU
     pmu = PmuResp(fname_resp)
 
-    out = shim_realtime_pmu_sequencer(nii_fmap, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
+    out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
                                       mask_dilation_kernel='sphere',
@@ -687,53 +721,6 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
         list_fname_output.append(os.path.abspath(fname_output))
 
     return list_fname_output
-
-
-def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
-    """ Load the fmap and expand its dimensions to the kernel size
-
-    Args:
-        fname_fmap (str): Filename of the fieldmap
-        n_dims (int): Number of dimensions of the fieldmap (3 or 4)
-        dilation_kernel_size: Size of the kernel
-
-    Returns:
-        nibabel.Nifti1Image: Nibabel object of the loaded and extended fieldmap
-
-    """
-    # Load the fieldmap
-    nii_fmap_orig = nib.load(fname_fmap)
-
-    # Make sure the fieldmap has the appropriate dimensions.
-    if nii_fmap_orig.get_fdata().ndim != n_dims:
-        raise ValueError(f"Fieldmap must be {n_dims}")
-
-    # Extend the fieldmap if there are axes that are 1d. This is done since we are fitting a fieldmap to coil profiles,
-    # having essentially a 2d matrix as a fieldmap can lead to errors in the through plane direction. To metigate this,
-    # we create a 3d volume by replicating the single slice.
-    if 1 in nii_fmap_orig.shape[:3]:
-        n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
-        fieldmap_shape = nii_fmap_orig.shape
-        # Find the list of axes that has a length of 1
-        list_axis = [i for i in range(3) if fieldmap_shape[i] == 1]
-
-        # Extend for each axes
-        tmp_nii = nii_fmap_orig
-        for i_axis in list_axis:
-            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
-        nii_fmap = tmp_nii
-
-        # If DEBUG, save the extended fieldmap
-        if logger.level <= getattr(logging, 'DEBUG'):
-            fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
-            nib.save(nii_fmap, fname_new_fmap)
-            logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
-
-    else:
-        # Load the original
-        nii_fmap = nii_fmap_orig
-
-    return nii_fmap
 
 
 def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufacturer):
@@ -976,6 +963,6 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-b0shim_cli.add_command(static_cli, 'static')
-b0shim_cli.add_command(realtime_cli, 'realtime')
+b0shim_cli.add_command(dynamic_cli, 'dynamic')
+b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
 # shim_cli.add_command(define_slices_cli, 'define_slices')

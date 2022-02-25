@@ -50,3 +50,43 @@ class TestImageConcat(object):
             assert os.path.isfile(fname_output)
             assert np.all(np.isclose(nib.load(fname_output).header['pixdim'],
                                      [-1, 2.1875, 2.1875, 3.6, 1, 0.2, 0, 0]))
+
+
+class TestImageLogicalAnd(object):
+    def setup(self):
+        nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]]), affine=np.eye(4))
+        nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]]), affine=np.eye(4))
+        self.nii1 = nii1
+        self.nii2 = nii2
+
+    def test_cli_logical_and_default(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_1 = os.path.join(tmp, 'and1.nii.gz')
+            nib.save(self.nii1, fname_1)
+            fname_2 = os.path.join(tmp, 'and2.nii.gz')
+            nib.save(self.nii2, fname_2)
+
+            fname_output = os.path.join(tmp, 'logical_and.nii.gz')
+            runner = CliRunner()
+            result = runner.invoke(image_cli, ['logical-and',
+                                               fname_1, fname_2,
+                                               '-o', fname_output])
+
+            assert result.exit_code == 0
+            assert np.all(np.isclose(nib.load(fname_output).get_fdata(),
+                                     np.array([[[0, 0], [1, 1]], [[0, 0], [0, 0]]])))
+
+    def test_cli_logical_and_1_file(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_1 = os.path.join(tmp, 'and1.nii.gz')
+            nib.save(self.nii1, fname_1)
+
+            fname_output = os.path.join(tmp, 'logical_and.nii.gz')
+            runner = CliRunner()
+            result = runner.invoke(image_cli, ['logical-and',
+                                               fname_1,
+                                               '-o', fname_output])
+
+            assert result.exit_code == 0
+            assert np.all(np.isclose(nib.load(fname_output).get_fdata(),
+                                     np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]])))

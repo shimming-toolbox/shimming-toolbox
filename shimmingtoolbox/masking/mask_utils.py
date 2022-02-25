@@ -47,9 +47,10 @@ def resample_mask(nii_mask_from, nii_target, from_slices, dilation_kernel='None'
     # Find highest value and stretch to 1
     # Look into dilation of soft mask
 
-    # dilate the mask to add more pixels in particular directions
-    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size)
-    nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
+    if dilation_kernel is not None:
+        # dilate the mask to add more pixels in particular directions
+        mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size)
+        nii_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
 
     if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
