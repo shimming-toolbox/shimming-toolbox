@@ -186,7 +186,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
 
         if logger.level <= getattr(logging, 'DEBUG'):
             # Save to a NIfTI
-            fname_correction = os.path.join(path_output, 'fig_shimmed.nii.gz')
+            fname_correction = os.path.join(path_output, 'fig_correction.nii.gz')
             nii_correction_3d = nib.Nifti1Image(shimmed_masked, opt.unshimmed_affine)
             nib.save(nii_correction_3d, fname_correction)
 
