@@ -36,8 +36,8 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     """
 
     # Create the folder where the nifti files will be stored
-    # if not os.path.exists(path_dicom):
-    #     raise FileNotFoundError("No dicom path found")
+    if not os.path.exists(path_dicom):
+        raise FileNotFoundError("No dicom path found")
     if not os.path.exists(fname_config_dcm2bids):
         raise FileNotFoundError("No dcm2bids config file found")
     create_output_dir(path_nifti)
