@@ -25,7 +25,6 @@ def run_subprocess(cmd):
         # Add ST PATH before the rest of the path so that it takes precedence
         env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
-        # print(env)
         subprocess.run(
             cmd.split(' '),
             text=True,
