@@ -1,22 +1,41 @@
 .. _installation_gui:
 
-*************************
-Installing FSLeyes Plugin
-*************************
+************
+Installation
+************
+
+``Shimming Toolbox`` is written in Python. It can be used either from the Terminal 
+or from a graphical user interface (GUI) as a plugin for `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__. 
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
   :alt: Overview
   :width: 1000
 
-`FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__ is a neuroimaging viewer, created
-as part of the `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/>`__ software package. We have created a `plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox>`__ for ``Shimming Toolbox`` to
-integrate with ``FSLeyes``, which means that our software can be loaded and used with their
-viewer.
 
-We have bundled our plugin installer with ``FSLeyes``, which means you don't have to install it
-yourself. If you do have ``FSLeyes`` installed, don't worry - it won't interfere.
+Dependencies
+------------
 
-To install, first clone the repo:
+``Shimming Toolbox`` works on ``macOs`` and ``Linux`` operating systems. There is a plan to support
+``Windows`` in the future.
+
+**Optional dependencies:**
+
+- If you would like to use ``prelude`` for phase unwrapping and/or ``bet`` for brain extraction, you need to install `FSL <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation>`__.
+- If you would like to use ``sct_deepseg_sc`` for spinal cord segmentation, you need to install `SCT <https://spinalcordtoolbox.com/>`__.
+
+
+Installation
+------------
+
+The installer will automatically install:
+
+- ``FSLeyes``
+- ``Shimming Toolbox``
+- ``dcm2niix``
+
+Open a Terminal and run the following commands.
+
+First, download the FSLeyes plugin:
 
 .. code:: bash
 
@@ -46,5 +65,8 @@ To launch our plugin, go to:
 .. code:: bash
 
     Settings --> OrthoView --> Shimming Toolbox
+
+..
+  TODO: ADD IMAGE
 
 The plugin should open as a panel.
