@@ -25,4 +25,5 @@ make install CLEAN=false
 # Copy coil config file in shimming toolbox directory
 cp "${ST_DIR}/shimming-toolbox-${ST_VERSION}/config/coil_config.json" "${ST_DIR}/coil_config.json"
 
-print info "To launch the plugin, load the environment variables then run: shimming-toolbox"
+print info "To launch the plugin, load the environment variables then run:" 
+print list "shimming-toolbox"
