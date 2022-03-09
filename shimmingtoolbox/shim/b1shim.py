@@ -81,10 +81,10 @@ def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.
     if algorithm == 1:
         # CV minimization
         def cost(weights):
-            return variation(combine_maps(b1_roi, vector_to_complex(weights)))
-
-        # Add a constraint that keeps the norm of the shim weights above 0.8 to avoid convergence towards 0
-        constraint.append({'type': 'ineq', 'fun': lambda w: np.linalg.norm(vector_to_complex(w)) - 0.8})
+            b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
+            # Regularize with mean B1+ efficiency/2000 to favor high efficiency solutions. Avoid convergence towards 0
+            # 2000 was determined empirically. It did not affect the obtained CV for any testing data
+            return variation(b1_abs) - b1_abs.mean()/2000
 
     elif algorithm == 2:
         # MLS targeting value
