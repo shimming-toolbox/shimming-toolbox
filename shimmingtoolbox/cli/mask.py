@@ -31,9 +31,8 @@ def mask_cli():
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
                    " .nii or .nii.gz.")
-@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
-                   "(os.curdir, 'mask.nii.gz'))")
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
+              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=3, required=True, type=int,
               help="(int): Length of the side of the box along first, second and third dimension (in pixels). "
                    "(nargs=3)")
@@ -70,9 +69,8 @@ def box(fname_input, output, size, center):
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
                    "extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', type=click.Path(), default=os.curdir,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
-                   "(os.curdir, 'mask.nii.gz'))")
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
+              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=2, required=True, type=int,
               help="(int): Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
 @click.option('--center', nargs=2, type=int, default=(None, None),
@@ -116,7 +114,7 @@ def rect(fname_input, output, size, center):
                        "folder. Return an output nifti file with threshold mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="(str): Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', type=click.Path(), default=os.curdir,
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
               help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask.nii.gz'))")
 @click.option('--thr', default=30, help="(int): Value to threshold the data: voxels will be set to zero if their "
