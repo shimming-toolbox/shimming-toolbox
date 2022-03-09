@@ -624,7 +624,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
                 # Convert bounds
                 bounds_shim_cs = np.array(coil.coef_channel_minmax)
-                bounds_shim_cs[1:] = phys_to_shim_cs(coil.coef_channel_minmax[1:], manufacturer)
+                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
                 # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
                 # units = "ShimCS [mT/m]"
