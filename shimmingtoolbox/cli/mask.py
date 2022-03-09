@@ -9,7 +9,7 @@ from pathlib import Path
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.masking.shapes import shape_cube
-from shimmingtoolbox.utils import run_subprocess
+from shimmingtoolbox.utils import run_subprocess, create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -40,6 +40,10 @@ def mask_cli():
               help="(int): Center of the box along first, second and third dimension (in pixels). If no center "
                    "is provided (None), the middle is used. (nargs=3) (default: None, None, None)")
 def box(fname_input, output, size, center):
+
+    # Prepare the output
+    create_output_dir(output, is_file=True)
+
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
@@ -77,6 +81,9 @@ def box(fname_input, output, size, center):
               help="(int): Center of the box along first and second dimension (in pixels). If no center is "
                    "provided (None), the middle is used. (nargs=2) (default: None, None)")
 def rect(fname_input, output, size, center):
+    # Prepare the output
+    create_output_dir(output, is_file=True)
+
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
@@ -120,6 +127,9 @@ def rect(fname_input, output, size, center):
 @click.option('--thr', default=30, help="(int): Value to threshold the data: voxels will be set to zero if their "
                                         "value is equal or less than this threshold. (default: 30)")
 def threshold(fname_input, output, thr):
+    # Prepare the output
+    create_output_dir(output, is_file=True)
+
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
@@ -184,6 +194,9 @@ def threshold(fname_input, output, thr):
 #                                                      "-centerline-algo {bspline, linear}. (default: 30)")
 def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain, kernel, size, shape, remove_tmp,
         verbose):
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
 
     # Make sure input path exists
     if not os.path.exists(fname_input):
