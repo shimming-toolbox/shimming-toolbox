@@ -64,4 +64,5 @@ export PATH=$ST_DIR/$BIN_DIR:$PATH
 
 edit_shellrc
 
-print info "Open a new Terminal window to load environment variables, or run: source $RC_FILE_PATH"
+print info "Open a new Terminal window to load environment variables, or run:"
+print list "source $RC_FILE_PATH"
