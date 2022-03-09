@@ -410,7 +410,6 @@ class DropdownComponent(Component):
         # Add the dropdown to the list of options
         self.input_text_boxes[self.dropdown_metadata[index]["option_name"]] = \
             [self.dropdown_metadata[index]["option_value"]]
-
         # Update the window
         self.panel.Layout()
 
@@ -418,8 +417,9 @@ class DropdownComponent(Component):
         for index in range(len(self.dropdown_metadata)):
             if self.dropdown_metadata[index]["label"] == label:
                 return index
-            else:
-                return 0
+
+        # Return index 0 if it is not found
+        return 0
 
     def create_sizer(self):
         """Create the a sizer containing tab-specific functionality."""
@@ -435,6 +435,8 @@ class RunComponent(Component):
         st_function (str): Name of the ``Shimming Toolbox`` CLI function to be called.
         list_components (list of Component): list of subcomponents to be added.
         output_paths (list of str): file or folder paths containing output from ``st_function``.
+        output_paths (list of str): relative path of files containing output from ``st_function``. Path is relative to
+                                    the output option's folder.
     """
 
     def __init__(self, panel, st_function, list_components=[], output_paths=[]):
@@ -472,11 +474,24 @@ class RunComponent(Component):
         try:
             command, msg = self.get_run_args(self.st_function)
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
-            self.create_output_folder()
             output_log = run_subprocess(command)
             self.panel.terminal_component.log_to_terminal(output_log)
             msg = f"Run {self.st_function} completed successfully"
             self.panel.terminal_component.log_to_terminal(msg, level="INFO")
+
+            # Get the directory of the output if it is a file or already a directory
+            if os.path.isfile(self.output):
+                folder = get_folder(self.output)
+            else:
+                folder = self.output
+
+            # Add the directory to the relative path of path output
+            for i_file in range(len(self.output_paths)):
+                self.output_paths[i_file] = os.path.join(folder, self.output_paths[i_file])
+
+            # Append the file if it was a file
+            if os.path.isfile(self.output):
+                self.output_paths.append(self.output)
 
             if self.st_function == "st_dicom_to_nifti":
                 # If its dicom_to_nifti, output all .nii found in the subject folder to the overlay
@@ -491,9 +506,7 @@ class RunComponent(Component):
                     self.panel.terminal_component.log_to_terminal(
                         "Could not fetch subject and/or path to load to overlay"
                     )
-
             self.send_output_to_overlay()
-
         except Exception as err:
             if len(err.args) == 1:
                 # Pretty output
@@ -501,7 +514,7 @@ class RunComponent(Component):
                 for i_err in range(len(err.args[0])):
                     a_string += str(err.args[0][i_err])
                 self.panel.terminal_component.log_to_terminal(a_string, level="ERROR")
-            
+
             else:
                 self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
@@ -526,22 +539,12 @@ class RunComponent(Component):
                 except Exception as err:
                     self.panel.terminal_component.log_to_terminal(str(err), level="ERROR")
 
-    def create_output_folder(self):
-        """Recursively create output folder if it does not exist."""
-        for output_path in self.output_paths:
-            output_folder = get_folder(output_path)
-            if not os.path.exists(output_folder):
-                self.panel.terminal_component.log_to_terminal(
-                    f"Creating folder {output_folder}",
-                    level="INFO"
-                )
-                os.makedirs(output_folder)
-
     def get_run_args(self, st_function):
         """The option are a list of tuples where the tuple: (name, [value1, value2])"""
         msg = "Running "
         command = st_function
 
+        self.output = ""
         command_list_arguments = []
         command_list_options = []
         for component in self.list_components:
@@ -574,7 +577,7 @@ class RunComponent(Component):
                                 # Normal options
                                 else:
                                     if name == "output":
-                                        self.output_paths.append(arg)
+                                        self.output = arg
 
                                     option_values.append(arg)
 
@@ -725,7 +728,7 @@ class B0ShimTab(Tab):
         self.sizer_run.AddSpacer(10)
 
     def create_sizer_dynamic_shim(self, metadata=None):
-        path_output = os.path.join(CURR_DIR, "output_static_shim")
+        path_output = os.path.join(CURR_DIR, "output_dynamic_shim")
 
         # no_arg is used here since a --coil option must be used for each of the coils (defined add_input_coil_boxes)
         input_text_box_metadata_coil = [
@@ -888,14 +891,14 @@ class B0ShimTab(Tab):
 
         dropdown_slice_metadata = [
             {
-                "label": "Interleaved",
-                "option_name": "slices",
-                "option_value": "interleaved"
-            },
-            {
                 "label": "Sequential",
                 "option_name": "slices",
                 "option_value": "sequential"
+            },
+            {
+                "label": "Interleaved",
+                "option_name": "slices",
+                "option_value": "interleaved"
             },
             {
                 "label": "Volume",
@@ -999,7 +1002,6 @@ class B0ShimTab(Tab):
                              dropdown_scanner_order, component_scanner, dropdown_scanner_format, dropdown_coil_format,
                              dropdown_ovf, component_output],
             st_function="st_b0shim dynamic",
-            # TODO: output paths
             output_paths=["fieldmap_calculated_shim_masked.nii.gz",
                           "fieldmap_calculated_shim.nii.gz"]
         )
@@ -1184,14 +1186,14 @@ class B0ShimTab(Tab):
 
         dropdown_slice_metadata = [
             {
-                "label": "Interleaved",
-                "option_name": "slices",
-                "option_value": "interleaved"
-            },
-            {
                 "label": "Sequential",
                 "option_name": "slices",
                 "option_value": "sequential"
+            },
+            {
+                "label": "Interleaved",
+                "option_name": "slices",
+                "option_value": "interleaved"
             },
             {
                 "label": "Volume",
@@ -1403,7 +1405,7 @@ class B1ShimTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_b1shim --algo 1",
-            output_paths=[os.path.join(path_output, 'TB1map_shimmed.nii.gz')]
+            output_paths=['TB1map_shimmed.nii.gz']
         )
         sizer = run_component.sizer
         return sizer
@@ -1460,7 +1462,7 @@ class B1ShimTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_b1shim --algo 2",
-            output_paths=[os.path.join(path_output, 'TB1map_shimmed.nii.gz')]
+            output_paths=['TB1map_shimmed.nii.gz']
         )
         sizer = run_component.sizer
         return sizer
@@ -1510,7 +1512,7 @@ class B1ShimTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_b1shim --algo 3",
-            output_paths=[os.path.join(path_output, 'TB1map_shimmed.nii.gz')]
+            output_paths=['TB1map_shimmed.nii.gz']
         )
         sizer = run_component.sizer
         return sizer
@@ -1544,7 +1546,7 @@ class B1ShimTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_b1shim --algo 4",
-            output_paths=[os.path.join(path_output, 'TB1map_shimmed.nii.gz')]
+            output_paths=['TB1map_shimmed.nii.gz']
         )
         sizer = run_component.sizer
         return sizer
@@ -1558,7 +1560,7 @@ class B1ShimTab(Tab):
 
 
 class FieldMapTab(Tab):
-    def __init__(self, parent, title="Field Map"):
+    def __init__(self, parent, title="Fieldmap"):
         description = "Create a B0 fieldmap.\n\n" \
                       "Enter the Number of Echoes then press the `Number of Echoes` button.\n\n" \
                       "Select the unwrapper from the dropdown list."
