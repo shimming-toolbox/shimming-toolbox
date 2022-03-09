@@ -82,9 +82,9 @@ def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.
         # CV minimization
         def cost(weights):
             b1_abs = combine_maps(b1_roi, vector_to_complex(weights))
-            # Regularize with mean B1+ efficiency/1000 to favor high efficiency solutions. Avoid convergence towards 0
-            # 1000 was determined empirically. It did not affect the obtained CV for any testing data
-            return variation(b1_abs) - b1_abs.mean()/1000
+            # Regularize with mean B1+ efficiency/2000 to favor high efficiency solutions. Avoid convergence towards 0
+            # 2000 was determined empirically. It did not affect the obtained CV for any testing data
+            return variation(b1_abs) - b1_abs.mean()/2000
 
     elif algorithm == 2:
         # MLS targeting value
