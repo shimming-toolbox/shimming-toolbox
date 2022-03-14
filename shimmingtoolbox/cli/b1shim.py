@@ -25,7 +25,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--algo', 'algorithm', type=click.Choice(['1', '2', '3', '4']), default='1', show_default=True,
               help="""\b
               Number specifying the B1+ shimming algorithm:
-              1 - Reduce the coefficient of variation of the B1+ field. Favours high B1+ efficiency solutions.
+              1 - Reduce the coefficient of variation of the B1+ field. Favors high B1+ efficiency.
               2 - Target a specified B1+ value. Target value required.
               3 - Maximize minimum B1+ for higher signal.
               4 - Phase-only shimming.

@@ -21,7 +21,7 @@ def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.
         b1 (numpy.ndarray): 4D array  corresponding to the measured B1+ field. (x, y, n_slices, n_channels)
         mask (numpy.ndarray): 3D array corresponding to the region where shimming will be performed. (x, y, n_slices)
         algorithm (int): Number from 1 to 4 specifying which algorithm to use for B1+ optimization:
-                    1 - Reduce the coefficient of variation of the B1+ field. Favours high B1+ efficiency solutions.
+                    1 - Reduce the coefficient of variation of the B1+ field. Favors high B1+ efficiency.
                     2 - Magnitude least square (MLS) optimization targeting a specific B1+ value. Target value required.
                     3 - Maximizes the SAR efficiency (B1+/sqrt(SAR)). Q matrices required.
                     4 - Phase-only shimming.
