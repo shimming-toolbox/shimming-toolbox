@@ -123,10 +123,9 @@ def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.
         logger.info(f"No Q matrix provided, performing SAR unconstrained optimization while keeping the RF shim-weighs "
                     f"normalized.")
     # Optimize the complex shim weights
-    shim_weights = scipy.optimize.minimize(cost, weights_init, constraints=constraint).x
-    # Set the phase of the first element to 0
-    shim_weights[n_channels:] -= shim_weights[n_channels]
-    shim_weights = vector_to_complex(shim_weights)
+    shim_weights = vector_to_complex(scipy.optimize.minimize(cost, weights_init, constraints=constraint).x)
+    # Apply phase shift to set the phase of the first channel to 0
+    shim_weights = np.abs(shim_weights) * np.exp(1j * (np.angle(shim_weights) - np.angle(shim_weights[0])))
     return shim_weights
 
 
@@ -153,10 +152,10 @@ def combine_maps(b1_maps, weights):
 
 def vector_to_complex(weights):
     """
-    Combines magnitude and phase values contained in a vector into a half long complex vector.
+    Combines real and imaginary values contained in a vector into a half long complex vector.
 
     Args:
-        weights (numpy.ndarray): 1D array of shim weights (length 2*n_channels). First/second half: magnitude/phase.
+        weights (numpy.ndarray): 1D array of length 2*n_channels. First/second half: real/imaginary.
 
     Returns:
         numpy.ndarray: 1D complex array of length n_channels.
@@ -166,21 +165,21 @@ def vector_to_complex(weights):
         pass
     else:
         raise ValueError("The vector must have an even number of elements.")
-    return weights[:len(weights) // 2] * np.exp(1j * weights[len(weights) // 2:])
+    return weights[:len(weights) // 2] + 1j * weights[len(weights) // 2:]
 
 
 def complex_to_vector(weights):
     """
-    Combines separates magnitude and phase values contained in a complex vector into a twice as long vector.
+    Separates the real and imaginary components of a complex vector into a twice as long vector.
 
     Args:
         weights (numpy.ndarray): 1D complex array of length n_channels.
 
     Returns:
-        numpy.ndarray: 1D array of shim weights (length 2*n_channels). First/second half: magnitude/phase.
+        numpy.ndarray: 1D array of length 2*n_channels. First/second half: real/imaginary.
 
     """
-    return np.concatenate((np.abs(weights), np.angle(weights)))
+    return np.concatenate((np.real(weights), np.imag(weights)))
 
 
 def max_sar(weights, q_matrix):
