@@ -16,6 +16,7 @@
 
    getting_started/installation.rst
    getting_started/getting_started.rst
+   cli_reference/cli.rst
    getting_started/help.rst
 
 .. toctree::
@@ -25,7 +26,6 @@
    :caption: Developer Section
 
    contributing/*
-   cli_reference/cli.rst
    api_reference/api.rst
 
 .. toctree::

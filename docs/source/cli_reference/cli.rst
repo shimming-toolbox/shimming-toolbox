@@ -1,6 +1,6 @@
 
-CLI Reference
-=============
+Command Line Tools
+==================
 
 The following section outlines the CLI of shimming-toolbox.
 
