@@ -1,4 +1,4 @@
-.. _installation_gui:
+.. _installation:
 
 ************
 Installation
