@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ST_PACKAGE_DIR="$( dirname $SCRIPT_DIR)"
-source $SCRIPT_DIR/utils.sh
+ST_PACKAGE_DIR="$( dirname "$SCRIPT_DIR")"
+source "$SCRIPT_DIR/utils.sh"
 
 set -e
 
@@ -37,7 +37,7 @@ function edit_shellrc() {
   fi
 }
 
-source $ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh
+source "$ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh"
 # set +u
 conda activate $VENV
 # set -u
@@ -46,21 +46,21 @@ print info "Installing dcm2niix"
 yes | conda install -c conda-forge dcm2niix
 
 print info "Installing shimming-toolbox"
-cd $ST_PACKAGE_DIR
-cp config/dcm2bids.json $ST_DIR/dcm2bids.json
+cd "$ST_PACKAGE_DIR"
+cp "config/dcm2bids.json" "$ST_DIR/dcm2bids.json"
 python -m pip install -e ".[docs,dev]"
 
 # Create launchers for Python scripts
 print info "Creating launchers for Python scripts. List of functions available:"
-mkdir -p $ST_DIR/$BIN_DIR
+mkdir -p "$ST_DIR/$BIN_DIR"
 
-for file in $ST_DIR/$PYTHON_DIR/envs/$VENV/bin/*st_*; do
-  cp "$file" $ST_DIR/$BIN_DIR/ # || die "Problem creating launchers!"
+for file in "$ST_DIR"/"$PYTHON_DIR"/envs/"$VENV"/bin/*st_*; do
+  cp "$file" "$ST_DIR/$BIN_DIR/" # || die "Problem creating launchers!"
   print list "$file"
 done
 
 # Activate the launchers
-export PATH=$ST_DIR/$BIN_DIR:$PATH
+export PATH="$ST_DIR/$BIN_DIR:$PATH"
 
 edit_shellrc
 
