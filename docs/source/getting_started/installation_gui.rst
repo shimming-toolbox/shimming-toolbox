@@ -66,7 +66,7 @@ To launch our plugin, go to:
 
     Settings --> OrthoView --> Shimming Toolbox
 
-.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/st_fsleyes_plugin.png
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/open_st_fsleyes.png
   :alt: Overview
   :width: 1000
 
@@ -91,10 +91,7 @@ To run the entire testing suite, run ``pytest`` from the
 
 .. code:: bash
 
-..
-  TODO UPDTAE code
-
-  cd ~/shimming-toolbox
+  cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
   conda activate st_venv
   pytest
@@ -114,8 +111,10 @@ To test shimming-toolbox without ``prelude`` and without ``dcm2niix``:
 
 .. code:: bash
 
- cd shimming-toolbox
- pytest -m "not prelude and not dcm2niix"
+  cd ~/shimming-toolbox/shimming-toolbox
+  source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
+  conda activate st_venv
+  pytest -m "not prelude and not dcm2niix"
 
 To test shimming-toolbox without ``prelude`` and with ``dcm2niix``, you can use the above block but modifying the ``-m`` argument to ``"not prelude"``.
 
