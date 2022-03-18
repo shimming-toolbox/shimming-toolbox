@@ -12,12 +12,12 @@
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Getting Started
+   :caption: User Section
 
-   getting_started/installation.rst
-   getting_started/getting_started.rst
+   user_section/installation.rst
+   user_section/getting_started.rst
    cli_reference/cli.rst
-   getting_started/help.rst
+   user_section/help.rst
 
 .. toctree::
    :maxdepth: 4
