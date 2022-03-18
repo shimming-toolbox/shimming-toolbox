@@ -4,8 +4,8 @@
 Installation
 ************
 
-``Shimming Toolbox`` is written in Python. It can be used either from the Terminal 
-or from a graphical user interface (GUI) as a plugin for `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__. 
+``Shimming Toolbox`` is written in Python. It can be used either from the Terminal
+or from a graphical user interface (GUI) as a plugin for `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__.
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
   :alt: Overview
@@ -66,22 +66,22 @@ To launch our plugin, go to:
 
     Settings --> OrthoView --> Shimming Toolbox
 
-..
-  TODO: ADD IMAGE
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/st_fsleyes_plugin.png
+  :alt: Overview
+  :width: 1000
 
 The plugin should open as a panel.
-
 
 
 Test the Installation
 ---------------------
 
-This step is optional but it's a good measure to ensure 
+This step is optional but it's a good measure to ensure
 ``Shimming Toolbox`` is properly installed on your system.
 
-.. warning:: 
+.. warning::
   The testing section of the documentation is still work in progress.
-  
+
 
 Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
@@ -93,7 +93,7 @@ To run the entire testing suite, run ``pytest`` from the
 
 ..
   TODO UPDTAE code
-  
+
   cd ~/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
   conda activate st_venv
