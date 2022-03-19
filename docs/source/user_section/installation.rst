@@ -48,11 +48,15 @@ Next, run the installer:
     cd fsleyes-plugin-shimming-toolbox
     make install
 
-You will be prompted to source your ``*.shrc`` file. For example:
+You will be prompted to source your ``.*shrc`` file. For example:
 
 .. code:: bash
 
     source ~/.bashrc
+
+.. Note::
+
+    You can restart your terminal or open a new tab to source your ``.*shrc`` file automatically.
 
 Now, you can launch ``FSLeyes`` with our plugin from any environment:
 
