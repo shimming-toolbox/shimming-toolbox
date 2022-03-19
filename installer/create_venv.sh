@@ -13,7 +13,7 @@ print info "Creating new virtual environment in $ST_DIR/$PYTHON_DIR/envs/$VENV"
 rm -rf "$ST_DIR/$PYTHON_DIR/envs/$VENV"
 
 # create Python 3.7 venv (for Keras/TF compatibility with Centos7, see issue #2270)
-python/bin/conda create -y -n $VENV python=3.7
+python/bin/conda create -y -p "$ST_DIR/$PYTHON_DIR/envs/$VENV" python=3.7
 
 if [ "$(uname)" = "Darwin" ]; then
   # macOS polyfills
