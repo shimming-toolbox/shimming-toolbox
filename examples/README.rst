@@ -1,5 +1,5 @@
-Getting Started
-===============
+Shell scripts
+=============
 
 A good way to get started is looking at one of the `examples <https://github.com/shimming-toolbox/shimming-toolbox/tree/master/examples>`__ scripts.
 
@@ -18,6 +18,6 @@ B1+ shimming
 ------------
 
 This  `shell script <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_b1_shimming.sh>`__
-calls different command lines functions to perform static B1+ shimming. Text files, scaled B1 mapsand result figures are
+calls different command lines functions to perform static B1+ shimming. Text files, scaled B1 maps and result figures are
 generated in the `testing-data` folder. In this example, a magnitude least square algorithm is used to target a B1+
 value specified by the user. This scenario assumes that the B1 maps have already been converted into NIfTI files.

@@ -9,8 +9,7 @@ import logging
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
-from shimmingtoolbox.utils import create_fname_from_path
-from shimmingtoolbox.utils import set_all_loggers
+from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, create_output_dir
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -58,6 +57,9 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
     if fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz':
         raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
+    # Prepare the output
+    create_output_dir(fname_output_v2, is_file=True)
 
     # Import phase
     list_nii_phase = []

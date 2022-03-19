@@ -1,4 +1,4 @@
-.. include:: ../../../examples/README.rst
+.. _dynamic_shimming:
 
 Dynamic Shimming
 ----------------
@@ -75,13 +75,13 @@ Dynamic shimming
 - Select the fieldmap from the overlay, click the button *Input Fieldmap*
 - Select the anatomical image, click the button *Input Anat*
 - Select the mask, click the button *Input Mask*
-- Select a *Slice Ordering* of Sequential (should be the default). 
-- Select a *Slice Factor* of 1 (should be the default). 
-- Select a *Scanner Order* of 1. It means that dynamic shimming will be 
-  performed with the linear gradients of the scanner. In typical scanners, order 2 
+- Select a *Slice Ordering* of Sequential (should be the default).
+- Select a *Slice Factor* of 1 (should be the default).
+- Select a *Scanner Order* of 1. It means that dynamic shimming will be
+  performed with the linear gradients of the scanner. In typical scanners, order 2
   or higher is not compatible with dynamic shimming, due to the high inductance of the
   shim coils (they cannot be updated as rapidly as the gradient coils).
 - *(Optional)* Change the output folder by clicking the *Output Folder* button
 - Click *Run*
-- The output text files and figures should be in the *Output Folder*. You can 
+- The output text files and figures should be in the *Output Folder*. You can
   then copy the text files onto the MRI console to be read by the pulse sequence.

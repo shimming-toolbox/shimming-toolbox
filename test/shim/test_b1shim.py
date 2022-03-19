@@ -100,17 +100,17 @@ def test_b1shim_no_b1_in_mask():
 
 
 def test_vector_to_complex():
-    assert np.isclose(vector_to_complex(np.asarray([1, 1, 1, 0, np.pi/2, np.pi])), np.asarray([1,  1j, -1])).all(),\
+    assert np.isclose(vector_to_complex(np.asarray([1, 4, -1, 2, -1, 6])), np.asarray([1+2j,  4-1j, -1+6j])).all(),\
         "The function vector_to_complex returns unexpected results"
 
 
 def test_vector_to_complex_wrong_length():
     with pytest.raises(ValueError, match=r"The vector must have an even number of elements."):
-        vector_to_complex(np.asarray([1, 1, 1, 0, np.pi/2])), np.asarray([1,  1j, -1])
+        vector_to_complex(np.asarray([1, 4, -1, 2, -1]))
 
 
 def test_complex_to_vector():
-    assert np.isclose(complex_to_vector(np.asarray([1,  1j, -1])), np.asarray([1, 1, 1, 0, np.pi/2, np.pi])).all(),\
+    assert np.isclose(complex_to_vector(np.asarray([1+2j,  4-1j, -1+6j])), np.asarray([1, 4, -1, 2, -1, 6])).all(),\
         "The function complex_to_vector returns unexpected results"
 
 
