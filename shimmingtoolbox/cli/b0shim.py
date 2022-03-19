@@ -163,26 +163,24 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
     nii_anat = nib.load(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
     if dim_info[2] != 2:
-        # Reorient nifti so that the slice is the last dim
-        anat = nii_anat.get_fdata()
-        # TODO: find index of dim_info
-        index_in = 0
-        index_out = 2
-
-        # Swap axis in the array
-        anat = np.swapaxes(anat, index_in, index_out)
-
-        # Affine must change
-        affine = copy.deepcopy(nii_anat.affine)
-        affine[:, index_in] = nii_anat.affine[:, index_out]
-        affine[:, index_out] = nii_anat.affine[:, index_in]
-        affine[index_out, 3] = nii_anat.affine[index_in, 3]
-        affine[index_in, 3] = nii_anat.affine[index_out, 3]
-
-        print(nii_anat.affine)
-        print(affine)
-        nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
-        nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
+        # # Reorient nifti so that the slice is the last dim
+        # anat = nii_anat.get_fdata()
+        # # TODO: find index of dim_info
+        # index_in = 0
+        # index_out = 2
+        #
+        # # Swap axis in the array
+        # anat = np.swapaxes(anat, index_in, index_out)
+        #
+        # # Affine must change
+        # affine = copy.deepcopy(nii_anat.affine)
+        # affine[:, index_in] = nii_anat.affine[:, index_out]
+        # affine[:, index_out] = nii_anat.affine[:, index_in]
+        # affine[index_out, 3] = nii_anat.affine[index_in, 3]
+        # affine[index_in, 3] = nii_anat.affine[index_out, 3]
+        #
+        # nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
+        # nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
 
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
