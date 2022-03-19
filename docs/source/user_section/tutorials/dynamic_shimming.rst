@@ -4,7 +4,7 @@ Dynamic Shimming
 ----------------
 
 In this tutorial, we will learn the following:
-- Launch Shimming-Toolbox's GUI
+- Launch ``Shimming-Toolbox``'s GUI
 - Create a fieldmap
 - Create a mask
 - Perform dynamic shimming
@@ -16,13 +16,13 @@ Open a Terminal and download this small dataset by running the following command
 
 .. code:: bash
 
-    st_download data-dynamic-shimming
+    st_download_data data_dynamic_shimming
 
 Go to the dataset folder:
 
 .. code:: bash
 
-  cd data-dynamic-shimming
+  cd data_dynamic_shimming
 
 
 Launch the plugin
@@ -47,8 +47,8 @@ Create a Fieldmap
 ~~~~~~~~~~~~~~~~~
 
 - Load the phase echo(es) and the first magnitude NIfTI files in FSLeyes.
-  - data-dynamic-shimming/sub-spine/fmap/sub-spine_magnitude1.nii.gz
-  - data-dynamic-shimming/sub-spine/fmap/sub-spine_phase2.nii.gz
+  - data_dynamic_shimming/sub-spine/fmap/sub-spine_magnitude1.nii.gz
+  - data_dynamic_shimming/sub-spine/fmap/sub-spine_phase2.nii.gz
 - Navigate to the *Fieldmap* Tab. If you don't see the tab, drag the right edge of the ``Shimming Toolbox`` panel to make all the tabs appear.
 - Enter 1 for the *Number of Echoes*.
 - Select the phase from the overlay and click the *Input Phase 1* button.
@@ -61,7 +61,7 @@ Create a Mask
 ~~~~~~~~~~~~~
 
 - Load the target anatomical image.
-  - data-dynamic-shimming/sub-spine/anat/sub-spine_unshimmed_e1.nii.gz
+  - data_dynamic_shimming/sub-spine/anat/sub-spine_unshimmed_e1.nii.gz
 - Select The *Mask* Tab.
 - Select *Box* from the dropdown.
 - Select the target image from the overlay, click the button *Input*.
