@@ -15,7 +15,7 @@
    :caption: User Section
 
    user_section/installation.rst
-   user_section/getting_started.rst
+   user_section/tutorials.rst
    cli_reference/cli.rst
    user_section/help.rst
 
