@@ -4,6 +4,7 @@ Dynamic Shimming
 ----------------
 
 In this tutorial, we will learn the following:
+
 - Launch ``Shimming-Toolbox``'s GUI
 - Create a fieldmap
 - Create a mask
@@ -47,8 +48,10 @@ Create a Fieldmap
 ~~~~~~~~~~~~~~~~~
 
 - Load the phase echo(es) and the first magnitude NIfTI files in FSLeyes.
+
   - data_dynamic_shimming/sub-spine/fmap/sub-spine_magnitude1.nii.gz
   - data_dynamic_shimming/sub-spine/fmap/sub-spine_phase2.nii.gz
+
 - Navigate to the *Fieldmap* Tab. If you don't see the tab, drag the right edge of the ``Shimming Toolbox`` panel to make all the tabs appear.
 - Enter 1 for the *Number of Echoes*.
 - Select the phase from the overlay and click the *Input Phase 1* button.
@@ -61,12 +64,14 @@ Create a Mask
 ~~~~~~~~~~~~~
 
 - Load the target anatomical image.
+
   - data_dynamic_shimming/sub-spine/anat/sub-spine_unshimmed_e1.nii.gz
+
 - Select The *Mask* Tab.
 - Select *Box* from the dropdown.
 - Select the target image from the overlay, click the button *Input*.
 - Input voxel indexes for *center* and *size*. TIP: Look at the Location panel of fsleyes to locate the center of the ROI.
-  - For the spine, a *center* of 140 124 6 and a *size* of 30 15 12 could work.
+  - For the spine, a *center* of 140, 124, 6 and a *size* of 30, 15, 12 could work.
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output mask should load automatically.
