@@ -1686,7 +1686,7 @@ class FieldMapTab(Tab):
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
-        description = "Create a mask based.\n\n" \
+        description = "Create a mask.\n\n" \
                       "Select a shape or an algorithm from the dropdown list."
         super().__init__(parent, title, description)
 
@@ -1882,7 +1882,7 @@ class MaskTab(Tab):
 
 class DicomToNiftiTab(Tab):
     def __init__(self, parent, title="Dicom to Nifti"):
-        description = "Process dicoms into NIfTI following the BIDS data structure"
+        description = "Convert DICOM files into NIfTI following the BIDS data structure"
         super().__init__(parent, title, description)
         path_output = os.path.join(CURR_DIR, "output_dicom_to_nifti")
         input_text_box_metadata = [
