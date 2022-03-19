@@ -54,14 +54,22 @@ ________
 Installation
 ____________
 
-See the `Installing shimming-toolbox <https://shimming-toolbox.org/en/latest/getting_started/installation_st.html>`__ page.
+See the `Installing shimming-toolbox <https://shimming-toolbox.org/en/latest/user_section/installation.html>`__ page.
 
 Usage
 _____
 
-**1. Command Line**
+**1. Graphical User Interface (FSLeyes)**
 
-The primary way to use ``shimming-toolbox`` is through the command line. For example:
+``shimming-toolbox`` features a graphical user interface (GUI) via a FSLeyes plugin.
+
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
+  :alt: Overview
+  :width: 1000
+
+**2. Command Line**
+
+``shimming-toolbox`` can be used on the the command line. For example:
 
 .. code-block:: console
 
@@ -69,32 +77,33 @@ The primary way to use ``shimming-toolbox`` is through the command line. For exa
 
   Usage: st_prepare_fieldmap [OPTIONS] PHASE...
 
-  Creates fieldmap (in Hz) from phase images. This function accommodates multiple
-  echoes (2 or more) and phase difference. This function also accommodates 4D phase
-  inputs, where the 4th dimension represents the time, in case multiple fieldmaps are
-  acquired across time for the purpose of real-time shimming experiments.
+  Creates fieldmap (in Hz) from phase images.
 
-  phase: Input path of phase nifti file(s), in ascending order: echo1,
-  echo2, etc.
+  This function accommodates multiple echoes (2 or more) and phase difference.
+  This function also accommodates 4D phase inputs, where the 4th dimension
+  represents the time, in case multiple field maps are acquired across time
+  for the purpose of real-time shimming experiments. For non Siemens phase
+  data, see --autoscale-phase option.
+
+  PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2,
+  etc.
 
   Options:
-  -mag PATH             Input path of mag nifti file
-  -unwrapper [prelude]  Algorithm for unwrapping
-  -output PATH          Output filename for the fieldmap, supported types : '.nii', '.nii.gz'
-  -mask PATH            Input path for a mask. Used for PRELUDE
-  -threshold FLOAT      Threshold for masking. Used for: PRELUDE
-  -h, --help            Show this message and exit.
+  --mag PATH                  Input path of mag nifti file  [required]
+  --unwrapper [prelude]       Algorithm for unwrapping  [default: prelude]
+  -o, --output PATH           Output filename for the fieldmap, supported types : '.nii', '.nii.gz'
+  --mask PATH                 Input path for a mask. Mask must be the same
+                              shape as the array of each PHASE input.
+  --threshold FLOAT           Threshold for masking if no mask is provided.
+                              Allowed range: [0, 1] where all scaled values
+                              lower than the threshold are set to 0.
+  --gaussian-filter BOOLEAN   Gaussian filter for B0 map
+  --sigma FLOAT               Standard deviation of gaussian filter. Used for: gaussian_filter
+  -v, --verbose [info|debug]  Be more verbose
+  -h, --help                  Show this message and exit.
 
 .. admonition:: Note
 
   To facilitate reproducibility, commands can be chained together in a pipeline using multiple Shimming Toolbox commands. An `example <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_shimming.sh>`__ script is provided.
 
-The different commands of Shimming Toolbox can be found in the `CLI Reference page <https://shimming-toolbox.org/en/latest/cli_reference/cli.html>`__.
-
-**2. Graphical User Interface (FSLeyes)**
-
-``shimming-toolbox`` also features a graphical user interface (GUI) via a FSLeyes plugin. See the `plugin's installation page <https://shimming-toolbox.org/en/latest/getting_started/installation_gui.html>`__ for more information.
-
-.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
-  :alt: Overview
-  :width: 1000
+The different commands of Shimming Toolbox can be found in the `Command Line Tools page <https://shimming-toolbox.org/en/latest/cli_reference/cli.html>`__.
