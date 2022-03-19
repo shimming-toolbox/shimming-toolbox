@@ -20,7 +20,7 @@ The plugin should open as a new panel in ``FSLeyes``.
 Download test data
 ~~~~~~~~~~~~~~~~~~
 
-From your terminal, cd to any folder and type.
+From your terminal, cd to any folder and run:
 
 .. code:: bash
 
