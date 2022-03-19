@@ -163,6 +163,25 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
     nii_anat = nib.load(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
     if dim_info[2] != 2:
+        # # Reorient nifti so that the slice is the last dim
+        # anat = nii_anat.get_fdata()
+        # # TODO: find index of dim_info
+        # index_in = 0
+        # index_out = 2
+        #
+        # # Swap axis in the array
+        # anat = np.swapaxes(anat, index_in, index_out)
+        #
+        # # Affine must change
+        # affine = copy.deepcopy(nii_anat.affine)
+        # affine[:, index_in] = nii_anat.affine[:, index_out]
+        # affine[:, index_out] = nii_anat.affine[:, index_in]
+        # affine[index_out, 3] = nii_anat.affine[index_in, 3]
+        # affine[index_in, 3] = nii_anat.affine[index_out, 3]
+        #
+        # nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
+        # nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
+
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
@@ -188,10 +207,13 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
         raise OSError("Missing fieldmap json file")
 
     # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
-    json_coefs = _get_current_shim_settings(json_fm_data)
-    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
-    initial_coefs = [json_coefs[0]] + converted_coefs
-
+    if 'ManufacturersModelName' in json_fm_data:
+        json_coefs = _get_current_shim_settings(json_fm_data)
+        converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
+        initial_coefs = [json_coefs[0]] + converted_coefs
+    else:
+        logger.warning(f"ManufacturerModelName not found. Initial coefficients set to 0")
+        initial_coefs = np.zeros([9])
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
                              json_fm_data['Manufacturer'])
@@ -758,8 +780,8 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufa
                                        "in the json")
                 for i_bound in range(len(bounds)):
                     if not (bounds[i_bound][0] <= coefs[i_bound] <= bounds[i_bound][1]):
-                        raise RuntimeError(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                           f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
+                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
+                                       f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
             _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
             # Set the bounds to what they should be by taking into account that the fieldmap was acquired using some

@@ -9,4 +9,5 @@ We provide the following hands-on tutorials to get familiar with the GUI and the
   :glob:
   :maxdepth: 1
 
+  tutorials/dynamic_shimming
   tutorials/shell_script

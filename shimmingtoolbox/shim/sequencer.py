@@ -464,6 +464,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
+    logger.info("Static optimization")
     coef_static = _optimize(optimizer, nii_static_mask, slices,
                             dilation_kernel=mask_dilation_kernel,
                             dilation_size=mask_dilation_kernel_size,
@@ -477,6 +478,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         opt_method = 'least_squares_rt'
 
     optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, pmu)
+    logger.info("Realtime optimization")
     coef_riro = _optimize(optimizer, nii_riro_mask, slices,
                           shimwise_bounds=bounds,
                           dilation_kernel=mask_dilation_kernel,
@@ -820,6 +822,7 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
 
     # For each shim
     for i in range(n_shims):
+        logger.info(f"Shimming shim group: {i + 1} of {n_shims}")
         # Create nibabel object of the unshimmed map
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 

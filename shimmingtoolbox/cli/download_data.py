@@ -22,6 +22,10 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"],
         "Binary for prelude software",
     ),
+    "data_dynamic_shimming": (
+        ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20220319.zip"],
+        "B0 dynamic shimming dataset.",
+    ),
 }
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
