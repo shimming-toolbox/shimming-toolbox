@@ -33,6 +33,12 @@ The installer will automatically install:
 - ``Shimming Toolbox``
 - ``dcm2niix``
 
+.. Note::
+
+    The installer will install ``FSLeyes`` and ``dcm2niix`` into isolated environments. They will be used by
+    ``Shimming Toolbox`` and will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
+    have previously installed ``FSLeyes``, it will not support the GUI.
+
 Open a Terminal and run the following commands.
 
 First, download the FSLeyes plugin:
@@ -58,7 +64,8 @@ You will be prompted to source your ``.*shrc`` file. For example:
 
     You can restart your terminal or open a new tab to source your ``.*shrc`` file automatically.
 
-Now, you can launch ``FSLeyes`` with our plugin from any environment:
+
+The ``shimming-toolbox`` command launches FSLeyes with GUI support.
 
 .. code:: bash
 
@@ -76,6 +83,9 @@ To launch our plugin, go to:
 
 The plugin should open as a panel.
 
+.. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/st_fsleyes_plugin.png
+  :alt: Overview
+  :width: 1000
 
 Test the Installation
 ---------------------
