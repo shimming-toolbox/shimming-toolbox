@@ -9,6 +9,10 @@ import subprocess
 import logging
 import nibabel as nib
 import json
+from pathlib import Path
+
+HOME_DIR = str(Path.home())
+PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
 
 
 def run_subprocess(cmd):
@@ -19,12 +23,15 @@ def run_subprocess(cmd):
     """
     logging.debug(f'{cmd}')
     try:
+        env = os.environ.copy()
+        # Add ST PATH before the rest of the path so that it takes precedence
+        env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
+
         subprocess.run(
             cmd.split(' '),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
             text=True,
-            check=True
+            check=True,
+            env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
@@ -176,14 +183,12 @@ def set_all_loggers(verbose, list_exclude=('matplotlib',)):
         a_logger.setLevel(verbose.upper())
 
 
-def montage(X, colormap='gray', title=None, vmin=None, vmax=None):
+def montage(X):
     """Concatenates images stored in a 3D array
     Args:
-        X (numpy.ndarray): 3D array with the last dimension being the one in which the different images are stored
-        colormap (str): Colors in which the montage will be displayed.
-        title (str): Title to display above the figure.
-        vmin (float): Minimum display range value. If None, set the the min value of X.
-        vmax (float): Maximum display range value. If None, set the the max value of X.
+        X (numpy.ndarray): 3D array with the last dimension being the one in which the images are concatenated.
+    Returns:
+        numpy.ndarray: 2D array of concatenated images.
     """
     X = np.rot90(X)
     x, y, n_images = np.shape(X)
@@ -212,6 +217,9 @@ def save_nii_json(nii, json_data, fname_output):
     # Make sure output filename is valid
     if fname_output[-4:] != '.nii' and fname_output[-7:] != '.nii.gz':
         raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
+    # Create output directory if it does not exist
+    create_output_dir(fname_output, is_file=True)
 
     # Save NIFTI
     nib.save(nii, fname_output)

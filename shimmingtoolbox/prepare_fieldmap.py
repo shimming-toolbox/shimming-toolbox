@@ -75,6 +75,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         if mask.shape != phase[0].shape:
             raise ValueError("Shape of mask and phase must match.")
 
+        logger.info("A mask was provided, ignoring threshold value")
+
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
         # phase should be a phasediff

@@ -12,13 +12,12 @@
 .. toctree::
    :maxdepth: 2
    :hidden:
-   :caption: Getting Started
+   :caption: User Section
 
-   getting_started/installation_st.rst
-   getting_started/installation_gui.rst
-   getting_started/getting_started.rst
-   getting_started/flowchart.rst
-   getting_started/help.rst
+   user_section/installation.rst
+   user_section/tutorials.rst
+   cli_reference/cli.rst
+   user_section/help.rst
 
 .. toctree::
    :maxdepth: 4
@@ -27,7 +26,6 @@
    :caption: Developer Section
 
    contributing/*
-   cli_reference/cli.rst
    api_reference/api.rst
 
 .. toctree::

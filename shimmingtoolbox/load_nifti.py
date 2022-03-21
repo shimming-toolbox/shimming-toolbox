@@ -8,13 +8,10 @@ import nibabel as nib
 import numpy as np
 import os
 
-from shimmingtoolbox.coils.coordinates import get_main_orientation
 from shimmingtoolbox.utils import iso_times_to_ms
 
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
-GAMMA = 2.675e8  # Proton's gyromagnetic ratio (rad/(T.s))
-SATURATION_FA = 90  # Saturation flip angle hard-coded in TFL B1 mapping sequence (deg)
 
 
 def get_acquisition_times(nii_data, json_data):
@@ -161,7 +158,7 @@ def read_nii(fname_nifti, auto_scale=True):
         info (Nifti1Image): Objet containing various data about the nifti file (returned by nibabel.load)
         json_data (dict): Contains the different fields present in the json file corresponding to the nifti file
         image (numpy.ndarray): For B0-maps, image contained in the nifti. Siemens phase images are rescaled between 0
-        and 2pi. For RF-maps, complex array of dimension (x, y, slice, coil) with phase between -pi and pi.
+        and 2pi.
     """
 
     nii = nib.load(fname_nifti)
@@ -175,43 +172,11 @@ def read_nii(fname_nifti, auto_scale=True):
 
     # Store nifti image in a numpy array
     image = np.asarray(nii.dataobj)
-
     if auto_scale:
         logger.info("Scaling the selected nifti")
-        # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
-        if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
-            image = scale_tfl_b1(image, json_data)
-            nii.header['datatype'] = 32  # 32 corresponds to complex data
-            nii.header['aux_file'] = 'Uncombined B1+ maps'
-            # Affine matrices are bogus with tfl_rfmap so we rebuild them from scratch
-            qfac = nii.header['pixdim'][0]
-
-            if 'ImageOrientationPatientDICOM' not in json_data:
-                raise KeyError("Missing json tag: 'ImageOrientationPatientDICOM'. Check dcm2niix version.")
-
-            # These values are inverted in ImageOrientationPatientDICOM. Correcting them yields a correct affine matrix
-            json_data['ImageOrientationPatientDICOM'][0] = -json_data['ImageOrientationPatientDICOM'][0]
-            json_data['ImageOrientationPatientDICOM'][1] = -json_data['ImageOrientationPatientDICOM'][1]
-            json_data['ImageOrientationPatientDICOM'][5] = -json_data['ImageOrientationPatientDICOM'][5]
-
-            xa, xb, xc, ya, yb, yc = np.asarray(json_data['ImageOrientationPatientDICOM'])
-
-            # Compute the rotation matrix from the corrected values
-            R = [[xa, ya, qfac * (xb * yc - xc * yb)],
-                 [xb, yb, qfac * (xc * ya - xa * yc)],
-                 [xc, yc, qfac * (xa * yb - xb * ya)]]
-
-            # Build the affine matrix
-            affine = np.zeros((4, 4))
-            affine[:3, :3] = R * nii.header['pixdim'][1:4]
-            affine[3, :] = [0, 0, 0, 1]
-            affine[:3, 3] = [nii.header['qoffset_x'], nii.header['qoffset_y'], nii.header['qoffset_z']]
-
-            nii.header.set_sform(affine)
-            nii = nib.Nifti1Image(image, affine, header=nii.header)
 
         # If B0 phase maps
-        elif ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
+        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             # Bootstrap, rescales from -pi to pi
@@ -231,79 +196,4 @@ def read_nii(fname_nifti, auto_scale=True):
     return nii, json_data, image
 
 
-def scale_tfl_b1(image, json_data):
-    """Rescales the magnitude and phase of complex B1 maps acquired with Siemens' standard B1 mapping sequence. Also
-    reorders the data that are shuffled during DICOM to NIfTI conversion.
-    Args:
-        image (numpy.ndarray): Array of dimension (x, y, n_slices, 2*n_channels). First half: magnitude in degree*10.
-        Second half: phase in range [248-3848].
-        json_data (dict): Contains the different fields present in the json file corresponding to the nifti file.
 
-    Returns:
-        numpy.ndarray: Complex rescaled B1 maps (x, y, n_slices, n_channels).
-
-    """
-    if 'ShimSetting' in json_data:
-        n_channels = len(json_data['ShimSetting'])
-        if image.shape[3] != 2 * n_channels:
-            raise ValueError("Wrong array dimension: number of channels not matching")
-    else:
-        raise KeyError("Missing json tag: 'ShimSetting'")
-
-    n_slices = image.shape[2]
-
-    # Magnitude values are stored in the first half of the 4th dimension
-    b1_mag = image[:, :, :, :image.shape[3] // 2]
-
-    if b1_mag.min() < 0:
-        raise ValueError("Unexpected negative magnitude values")
-
-    # Phase values are stored in the second half of the 4th dimension. Siemens phase range: [248 - 3848]
-    b1_phase = image[:, :, :, image.shape[3] // 2:]
-
-    # Reorder data shuffled by dm2niix into shape (x, y , n_slices*n_channels)
-    b1_mag_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
-    b1_phase_vector = np.zeros((image.shape[0], image.shape[1], n_slices * n_channels))
-    if 'ImageOrientationText' in json_data:
-        orientation = json_data['ImageOrientationText'].upper()
-    else:
-        logger.info("No 'ImageOrientationText' tag. Slice orientation determined from 'ImageOrientationPatientDICOM'.")
-        orientation = get_main_orientation(json_data['ImageOrientationPatientDICOM'])
-
-    # Axial or coronal cases (+ tilted)
-    if orientation[:3] in ['TRA', 'COR']:
-        for i in range(n_channels):
-            b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, :, i]
-            b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, :, i]
-    # Sagittal case (+ tilted)
-    elif orientation[:3] == 'SAG':
-        for i in range(n_channels):
-            b1_mag_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_mag[:, :, ::-1, i]
-            b1_phase_vector[:, :, i * n_slices:(i + 1) * n_slices] = b1_phase[:, :, ::-1, i]
-    else:
-        raise ValueError("Unknown slice orientation")
-
-    # Reorder data shuffled by dm2niix into shape (x, y, n_slices, n_channels)
-    b1_mag_ordered = np.zeros_like(b1_mag)
-    b1_phase_ordered = np.zeros_like(b1_phase)
-
-    for i in range(n_slices):
-        b1_mag_ordered[:, :, i, :] = b1_mag_vector[:, :, i * n_channels:i * n_channels + n_channels]
-        b1_phase_ordered[:, :, i, :] = b1_phase_vector[:, :, i * n_channels:i * n_channels + n_channels]
-
-    # Scale magnitude in nT/V
-    b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
-    b1_mag_ordered[b1_mag_ordered > 180] = 180  # Values higher than 180 degrees are due to noise
-    # Calculate B1 efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
-    # Get the Transmission amplifier reference amplitude
-    amplifier_voltage = json_data['TxRefAmp']  # [V]
-    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
-    b1_mag_ordered = (b1_mag_ordered / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
-
-    # Scale the phase between [-pi, pi]
-    # Remove potential out of range zeros (set them as null phase = 2048)
-    b1_phase_ordered[b1_phase_ordered == 0] = 2048
-    b1_phase_ordered = (b1_phase_ordered - 2048) * np.pi / 1800  # [-pi pi]
-
-    # Return complex B1 maps
-    return b1_mag_ordered * np.exp(1j * b1_phase_ordered)

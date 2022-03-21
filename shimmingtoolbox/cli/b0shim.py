@@ -21,9 +21,9 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import extend_slice, define_slices
+from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -52,7 +52,7 @@ def b0shim_cli():
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim."
                    "The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
@@ -87,7 +87,8 @@ def b0shim_cli():
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
-              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
+              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
+                                 'gradient']),
               default='slicewise-coil',
               show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -96,17 +97,20 @@ def b0shim_cli():
                                       "captured by the controller of the shim amplifier. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                                      "all coil channels are encoded across multiple columns in the text file.")
+                                      "all coil channels are encoded across multiple columns in the text file. Use "
+                                      "'gradient' to output the 1st order in the Gradient CS, otherwise, it outputs in "
+                                      "the Shim CS.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
               show_default=True,
-              help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
-                   "scanner coil coefficients will be in the Gradient coordinate system. Absolute: Outputs the "
-                   "absolute coefficient by taking into account the current shim settings. This is effectively "
-                   "initial + shim. Scanner coil coefficients will be in the Shim coordinate system.")
+              help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
+                   "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
+                   "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
+                   "system unless the option --output-file-format is set to gradient. The delta value format should be "
+                   "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-               dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
-               output_value_format, verbose):
+def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
+                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
+                output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -116,22 +120,68 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     # Set logger level
     set_all_loggers(verbose)
 
-    # Prepare the output
-    create_output_dir(path_output)
-
     # Input scanner_coil_order can be a string
     scanner_coil_order = int(scanner_coil_order)
 
-    # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
-    # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
-    # through plane direction.
-    fmap_required_dims = 3
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
+    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
+    # delta.
+    if o_format_sph == 'gradient':
+        if output_value_format != 'delta':
+            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                             f"{o_format_sph}")
+        if scanner_coil_order != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+                             f"{o_format_sph}")
+
+    # Load the fieldmap
+    nii_fmap_orig = nib.load(fname_fmap)
+
+    # Make sure the fieldmap has the appropriate dimensions
+    if nii_fmap_orig.get_fdata().ndim != 3:
+        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+    else:
+        nii_fmap = copy.deepcopy(nii_fmap_orig)
+
+    # Prepare the output
+    create_output_dir(path_output)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
     if dim_info[2] != 2:
+        # # Reorient nifti so that the slice is the last dim
+        # anat = nii_anat.get_fdata()
+        # # TODO: find index of dim_info
+        # index_in = 0
+        # index_out = 2
+        #
+        # # Swap axis in the array
+        # anat = np.swapaxes(anat, index_in, index_out)
+        #
+        # # Affine must change
+        # affine = copy.deepcopy(nii_anat.affine)
+        # affine[:, index_in] = nii_anat.affine[:, index_out]
+        # affine[:, index_out] = nii_anat.affine[:, index_in]
+        # affine[index_out, 3] = nii_anat.affine[index_in, 3]
+        # affine[index_in, 3] = nii_anat.affine[index_out, 3]
+        #
+        # nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
+        # nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
+
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
@@ -157,12 +207,16 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         raise OSError("Missing fieldmap json file")
 
     # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
-    json_coefs = _get_current_shim_settings(json_fm_data)
-    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
-    initial_coefs = [json_coefs[0]] + converted_coefs
-
+    if 'ManufacturersModelName' in json_fm_data:
+        json_coefs = _get_current_shim_settings(json_fm_data)
+        converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
+        initial_coefs = [json_coefs[0]] + converted_coefs
+    else:
+        logger.warning(f"ManufacturerModelName not found. Initial coefficients set to 0")
+        initial_coefs = np.zeros([9])
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -170,7 +224,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
     logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Get shimming coefficients
-    coefs = shim_sequencer(nii_fmap, nii_anat, nii_mask_anat, list_slices, list_coils,
+    coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
                            mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
@@ -192,9 +246,11 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
         # If it's a scanner
         if type(coil) == ScannerCoil:
 
-            if output_value_format == 'delta' and scanner_coil_order >= 1:
+            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS
+            # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
+            # Therefore, we can only check for the o_format_sph.
+            if o_format_sph == 'gradient':
                 logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
-                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
                 # Convert coef of 1st order sph harmonics to Gradient coord system
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
                                                                            coefs_coil[:, 2],
@@ -208,34 +264,33 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
                 # units = "Gradient CS [mT/m]"
                 # _plot_coefs(coil, list_slices, coefs[:, start_channel:end_channel], path_output, i_coil, units=units)
 
-            else:  # output_value_format == 'absolute'
+            else:
+                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:
                     json_anat_data = json.load(json_file)
 
-                if json_anat_data['Manufacturer'] == 'Siemens':
-                    # Change from RAS to LAI (ShimCS)
-                    # x
-                    coefs_coil[:, 1] = -coefs_coil[:, 1]
-                    # z
-                    coefs_coil[:, 3] = -coefs_coil[:, 3]
+                # Convert coefficients from RAS to the shim CS of the manufacturer
+                manufacturer = json_anat_data['Manufacturer']
+                for i_shim in range(coefs.shape[0]):
+                    # Convert coefficient
+                    coefs_coil[i_shim, 1:] = phys_to_shim_cs(coefs_coil[i_shim, 1:], manufacturer)
 
-                    # Bounds also change from RAS to LAI
-                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
-                    bounds_shim_cs[1] = -bounds_shim_cs[1]
-                    bounds_shim_cs[3] = -bounds_shim_cs[3]
-                else:
-                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                              f"absolute format")
+                # Convert bounds
+                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
                 # # Plot a figure of the coefficients (Delta), order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
                 # units = "ShimCS [mT/m]"
                 # _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, units=units, bounds=bounds_shim_cs)
 
-                for i_channel in range(n_channels):
-                    # abs_coef = delta + initial
-                    coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
+                # If the output format is absolute, add the initial coefs
+                if output_value_format == 'absolute':
+                    for i_channel in range(n_channels):
+                        # abs_coef = delta + initial
+                        coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
+                # If it's delta, don't add the initial coefs
 
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
                                                            coil_number=i_coil)
@@ -249,7 +304,7 @@ def static_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_fa
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, coil_number):
-    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil'"""
+    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     n_channels = coil.dim[3]
     list_fname_output = []
@@ -283,8 +338,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
 
         list_fname_output.append(os.path.abspath(fname_output))
 
-    else:
-        # o_format[-3:] == '-ch':
+    elif o_format[-3:] == '-ch':
+
         # Write a file for each channel
         for i_channel in range(n_channels):
             fname_output = os.path.abspath(os.path.join(path_output,
@@ -303,6 +358,40 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                     for i_slice in range(n_slices):
                         i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
+
+            list_fname_output.append(os.path.abspath(fname_output))
+    else:  # o_format == 'gradient':
+
+        for i_channel in range(n_channels):
+            # Make sure there are 4 channels
+            if n_channels != 4:
+                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
+
+            name = {0: 'f0',
+                    1: 'x',
+                    2: 'y',
+                    3: 'z'}
+
+            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+
+                    if i_channel == 0:
+                        # f0, Output is in Hz
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{coefs[i_shim, i_channel]:.6f}\n")
+                    else:
+                        # For Gx, Gy, Gz: Divide by 1000 for mT/m
+                        f.write(f"corr_vec[0][{i_slice}]= "
+                                f"{coefs[i_shim, i_channel] / 1000:.6f}\n")
+
+                    # Static shimming does not have a a riro component
+                    f.write(f"corr_vec[1][{i_slice}]= "
+                            f"{0:.12f}\n")
+                    # Arbitrarily chose a mean pressure of 2000 to satisfy the sequence
+                    f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
 
@@ -329,7 +418,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim. The coordinate system should be the same as ``anat``'s coordinate system.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
@@ -352,25 +441,38 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                    "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
-@click.option('--output-file-format', 'o_format', type=click.Choice(['slicewise-ch', 'chronological-ch', 'eva']),
-              default='slicewise-ch',
-              show_default=True, help="Syntax used to describe the sequence of shim events. "
-                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. There will be one output "
-                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
-                                      "time-varying and mean pressure are encoded in the columns of each file.")
+@click.option('--output-file-format-coil', 'o_format_coil',
+              type=click.Choice(['slicewise-ch', 'chronological-ch']), default='slicewise-ch', show_default=True,
+              help="Syntax used to describe the sequence of shim events. "
+                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. In both cases, there will be one output "
+                   "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                   "time-varying and mean pressure are encoded in the columns of each file.")
+@click.option('--output-file-format-scanner', 'o_format_sph',
+              type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
+              show_default=True,
+              help="Syntax used to describe the sequence of shim events. "
+                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. In both cases, there will be one output "
+                   "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                   "time-varying and mean pressure are encoded in the columns of each file. Use "
+                   "'gradient' to output the scanner 1st order in the Gradient CS, otherwise, it outputs "
+                   "in the Shim CS.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
               default='delta', show_default=True,
-              help="Coefficient values for the scanner coil. Delta: Outputs the change of shim coefficients. The "
-                   "scanner coil coefficients will be in the Gradient coordinate system. Absolute: Outputs the "
-                   "absolute coefficient by taking into account the current shim settings. This is effectively "
-                   "initial + shim. Scanner coil coefficients will be in the Shim coordinate system.")
+              help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
+                   "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
+                   "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
+                   "system unless the option --output-file-format is set to gradient. The delta value format should be "
+                   "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
                  slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
-                 path_output, o_format, output_value_format, verbose):
+                 path_output, o_format_coil, o_format_sph, output_value_format, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -379,12 +481,18 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
 
-    # Error out for unsupported inputs. File format is in gradient CS, adding gradient CS to Shim CS does not work
-    if output_value_format == 'absolute' and o_format == 'eva':
-        raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: {o_format}")
-
     # Input can be a string
     scanner_coil_order = int(scanner_coil_order)
+
+    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
+    # delta.
+    if o_format_sph == 'gradient':
+        if output_value_format == 'absolute':
+            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                             f"{o_format_sph}")
+        if scanner_coil_order != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+                             f"{o_format_sph}")
 
     # Set logger level
     set_all_loggers(verbose)
@@ -392,11 +500,28 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Prepare the output
     create_output_dir(path_output)
 
-    # Load the fieldmap, expand the dimensions of the fieldmap if one of the dimensions is 2 or less. This is done since
-    # we are fitting a fieldmap to coil profiles, having essentially a 2d matrix as a fieldmap can lead to errors in the
-    # through plane direction.
-    fmap_required_dims = 4
-    nii_fmap = _load_fmap(fname_fmap, fmap_required_dims, dilation_kernel_size, path_output)
+    # Load the fieldmap
+    nii_fmap_orig = nib.load(fname_fmap)
+
+    # Make sure the fieldmap has the appropriate dimensions
+    if nii_fmap_orig.get_fdata().ndim != 4:
+        raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+    else:
+        nii_fmap = copy.deepcopy(nii_fmap_orig)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -436,7 +561,8 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs)
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -451,7 +577,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     # Load PMU
     pmu = PmuResp(fname_resp)
 
-    out = shim_realtime_pmu_sequencer(nii_fmap, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
+    out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
                                       mask_dilation_kernel='sphere',
@@ -475,9 +601,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-
-            if output_value_format == 'delta' and scanner_coil_order >= 1:
-                # TODO: Fix for 2nd order (must validate 2nd order siemens basis)
+            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS
+            # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
+            # Therefore, we can only check for the o_format_sph.
+            if o_format_sph == 'gradient':
                 logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
 
                 coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
@@ -503,39 +630,39 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
                 #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units)
 
-            else:  # output_value_format == 'absolute'
+            else:
+                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
                 # Load anat json
                 fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
                 with open(fname_anat_json) as json_file:
                     json_anat_data = json.load(json_file)
 
-                if json_anat_data['Manufacturer'] == 'Siemens':
-                    # Change from RAS to LAI (ShimCS)
-                    # x
-                    coefs_coil_static[:, 1] = -coefs_coil_static[:, 1]
-                    coefs_coil_riro[:, 1] = -coefs_coil_riro[:, 1]
-                    # z
-                    coefs_coil_static[:, 3] = -coefs_coil_static[:, 3]
-                    coefs_coil_riro[:, 3] = -coefs_coil_riro[:, 3]
+                # Convert coefficients from RAS to the shim CS of the manufacturer
+                manufacturer = json_anat_data['Manufacturer']
+                for i_shim in range(coefs_coil_static.shape[0]):
+                    # Convert coefficient
+                    coefs_coil_static[i_shim, 1:] = phys_to_shim_cs(coefs_coil_static[i_shim, 1:], manufacturer)
+                    coefs_coil_riro[i_shim, 1:] = phys_to_shim_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
 
-                    # Bounds also change from RAS to LAI
-                    bounds_shim_cs = np.array(coil.coef_channel_minmax)
-                    bounds_shim_cs[1] = -bounds_shim_cs[1]
-                    bounds_shim_cs[3] = -bounds_shim_cs[3]
-                else:
-                    raise NotImplementedError(f"Manufacturer: {json_anat_data['Manufacturer']} not yet implemented for"
-                                              f"absolute format")
+                # Convert bounds
+                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
                 # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
                 # units = "ShimCS [mT/m]"
                 # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
                 #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
                 #             bounds=bounds_shim_cs)
+                # If the output format is absolute, add the initial coefs
+                if output_value_format == 'absolute':
+                    for i_channel in range(n_channels):
+                        # abs_coef = delta + initial
+                        coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
+                        # riro does not change
+                # If it's delta, don't add the initial coefs
 
-                for i_channel in range(n_channels):
-                    # abs_coef = delta + initial
-                    coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
-                    # riro does not change
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_sph, i_coil)
 
         else:  # Custom coil
             # Plot a figure of the coefficients
@@ -543,25 +670,24 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=coil.coef_channel_minmax)
 
-        list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                   path_output, o_format, i_coil)
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_coil, i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
                           coil_number):
-    """o_format can either be 'chronological-ch', 'chronological-coil'"""
+    """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     list_fname_output = []
     n_channels = coil.dim[3]
 
-    # o_format[-3:] == '-ch':
     # Write a file for each channel
     for i_channel in range(n_channels):
-        fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
 
         if o_format == 'chronological-ch':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
@@ -570,6 +696,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{mean_p:.4f}\n")
 
         elif o_format == 'slicewise-ch':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have one coef representing the static, riro and mean_p in slicewise order
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
@@ -580,11 +707,11 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{mean_p:.4f}\n")
 
         # TODO: Remove once implemented in more streamlined way
-        else:  # o_format == 'eva':
+        else:  # o_format == 'gradient':
 
             # Make sure there are 4 channels
             if n_channels != 4:
-                raise RuntimeError("Eva's output format should only be used with 1st order scanner coils")
+                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
 
             name = {0: 'f0',
                     1: 'x',
@@ -606,7 +733,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
                     else:
-                        # For Gx, Gy, Gz: Divide by 1000 for mt/m
+                        # For Gx, Gy, Gz: Divide by 1000 for mT/m
                         f.write(f"corr_vec[0][{i_slice}]= "
                                 f"{currents_static[i_shim, i_channel] / 1000:.6f}\n")
                         f.write(f"corr_vec[1][{i_slice}]= "
@@ -618,54 +745,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
     return list_fname_output
 
 
-def _load_fmap(fname_fmap, n_dims, dilation_kernel_size, path_output):
-    """ Load the fmap and expand its dimensions to the kernel size
-
-    Args:
-        fname_fmap (str): Filename of the fieldmap
-        n_dims (int): Number of dimensions of the fieldmap (3 or 4)
-        dilation_kernel_size: Size of the kernel
-
-    Returns:
-        nibabel.Nifti1Image: Nibabel object of the loaded and extended fieldmap
-
-    """
-    # Load the fieldmap
-    nii_fmap_orig = nib.load(fname_fmap)
-
-    # Make sure the fieldmap has the appropriate dimensions.
-    if nii_fmap_orig.get_fdata().ndim != n_dims:
-        raise ValueError(f"Fieldmap must be {n_dims}")
-
-    # Extend the fieldmap if there are axes that are 1d. This is done since we are fitting a fieldmap to coil profiles,
-    # having essentially a 2d matrix as a fieldmap can lead to errors in the through plane direction. To metigate this,
-    # we create a 3d volume by replicating the single slice.
-    if 1 in nii_fmap_orig.shape[:3]:
-        n_slices_to_expand = int(math.ceil((dilation_kernel_size - 1) / 2))
-        fieldmap_shape = nii_fmap_orig.shape
-        # Find the list of axes that has a length of 1
-        list_axis = [i for i in range(3) if fieldmap_shape[i] == 1]
-
-        # Extend for each axes
-        tmp_nii = nii_fmap_orig
-        for i_axis in list_axis:
-            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_expand, axis=i_axis)
-        nii_fmap = tmp_nii
-
-        # If DEBUG, save the extended fieldmap
-        if logger.level <= getattr(logging, 'DEBUG'):
-            fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
-            nib.save(nii_fmap, fname_new_fmap)
-            logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
-
-    else:
-        # Load the original
-        nii_fmap = nii_fmap_orig
-
-    return nii_fmap
-
-
-def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
+def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufacturer):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -674,6 +754,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         initial_coefs (list): List of coefficients corresponding to the scanner coil.
+        manufacturer (str): Name of the MRI manufacturer
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
@@ -699,14 +780,26 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs):
                                        "in the json")
                 for i_bound in range(len(bounds)):
                     if not (bounds[i_bound][0] <= coefs[i_bound] <= bounds[i_bound][1]):
-                        raise RuntimeError(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                           f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
+                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
+                                       f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
             _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
             # Set the bounds to what they should be by taking into account that the fieldmap was acquired using some
             # shimming
             sph_contraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                              sph_contraints['coef_channel_minmax'])[0]
+
+            bounds = np.array(sph_contraints['coef_channel_minmax'][1:])
+            # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
+            bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
+            for i_channel in range(len(bounds)):
+                bound_0 = bounds[i_channel, 0]
+                bound_1 = bounds[i_channel, 1]
+                if bound_0 > bound_1:
+                    bounds[i_channel, 0] = bound_1
+                    bounds[i_channel, 1] = bound_0
+            sph_contraints['coef_channel_minmax'][1:] = bounds
+
         else:
             raise OSError("Missing json file")
 
@@ -892,6 +985,6 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-b0shim_cli.add_command(static_cli, 'static')
-b0shim_cli.add_command(realtime_cli, 'realtime')
+b0shim_cli.add_command(dynamic_cli, 'dynamic')
+b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
 # shim_cli.add_command(define_slices_cli, 'define_slices')

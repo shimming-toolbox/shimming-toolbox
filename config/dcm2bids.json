@@ -189,6 +189,42 @@
                 "EchoNumber": "2"
             }
         },
+                {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "SeriesDescription": "*gre_fm*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "criteria": {
+                "SeriesDescription": "*gre_fm*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SeriesDescription": "*gre_fm*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SeriesDescription": "*gre_fm*",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
         {
             "dataType": "anat",
             "modalityLabel": "unshimmed_e1",
@@ -248,6 +284,13 @@
             "modalityLabel": "bold",
             "criteria": {
                 "SeriesDescription": "*bold*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "task",
+            "criteria": {
+                "SeriesDescription": "*task-p2-s3*"
             }
         },
         {

@@ -15,12 +15,20 @@ from shimmingtoolbox.download import install_data
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
     "testing_data": (
-        ["https://github.com/shimming-toolbox/data-testing/archive/r20211201.zip"],
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20220222.zip"],
         "Light-weighted dataset for testing purpose.",
     ),
     "prelude": (
         ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"],
         "Binary for prelude software",
+    ),
+    "data_dynamic_shimming": (
+        ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20220319.zip"],
+        "B0 dynamic shimming dataset.",
+    ),
+    "data_b1_shimming": (
+        ["https://github.com/shimming-toolbox/b1_dicoms_brain/archive/r20220319.zip"],
+        "Static B1+ shimming dataset.",
     ),
 }
 

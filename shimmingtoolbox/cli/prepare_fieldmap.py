@@ -8,9 +8,7 @@ import logging
 
 from shimmingtoolbox.load_nifti import read_nii
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
-from shimmingtoolbox.utils import create_fname_from_path
-from shimmingtoolbox.utils import save_nii_json
-from shimmingtoolbox.utils import set_all_loggers
+from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, create_output_dir, save_nii_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -94,6 +92,9 @@ def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
 
 def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask, threshold, gaussian_filter, sigma):
     """Prepare fieldmap using click inputs
+
+    # Prepare the output
+    create_output_dir(fname_output_v2, is_file=True)
 
     Args:
         phase (list): Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
