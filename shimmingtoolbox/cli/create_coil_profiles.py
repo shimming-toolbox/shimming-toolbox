@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
               help="Input filename of json config file")
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
-@click.option('--threshold', type=float, help="Threshold for masking. Used for: PRELUDE")
+@click.option('--threshold', type=float, help="Threshold for masking.")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
@@ -63,7 +63,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
         json_data = json.load(json_file)
 
     # Init variables
-    phases = json_data["phases"]
+    phases = json_data["phase"]
     mags = json_data["mag"]
     list_diff = json_data["diff"]
     min_max_fmaps = []
@@ -75,7 +75,11 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     fname_mag = mags[0][0][0]
     nii_mag = nib.load(fname_mag)
     mask = np.full_like(nii_mag.get_fdata(), True, bool)
+    dead_channels = []
     for i_channel in range(n_channels):
+        if not phases[i_channel][0]:
+            dead_channels.append(i_channel)
+            continue
         # Calculate the average mag image for a channel using all echoes for both min and max currents
         mag_min_mean = np.zeros_like(nii_mag.get_fdata())
         mag_max_mean = np.zeros_like(nii_mag.get_fdata())
@@ -104,8 +108,13 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
     nib.save(nii_mask, fname_mask)
 
+    if not dead_channels:
+        logger.warning(f"Channels: {dead_channels} do not have phase data. They will be set to 0.")
+
     # For each channel
     for i_channel in range(n_channels):
+        if i_channel in dead_channels:
+            continue
         min_phases = phases[i_channel][0]
         max_phases = phases[i_channel][1]
 
@@ -127,8 +136,16 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
 
         min_max_fmaps.append([fname_min_output, fname_max_output])
 
+    # Remove dead channels from the list of currents
+    for i_channel in dead_channels:
+        list_diff.pop(i_channel)
+
     # Create coil profiles
     profiles = create_coil_profiles(min_max_fmaps, list_diff=list_diff)
+
+    # Add dead channels as 0s
+    for i_dead_channel in dead_channels:
+        profiles = np.insert(profiles, i_dead_channel, np.zeros(profiles.shape[:3]), axis=3)
 
     # TODO: if not debug
     os.remove(fname_mask)
