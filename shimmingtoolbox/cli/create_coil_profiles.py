@@ -47,7 +47,15 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     # Config file is set up:
     # phase[i_channel][min_max][i_echo]
     # mag[i_channel][min_max][i_echo]
-    #   "diff": [1, 1, 1, 1, 1, 1, 1],
+    #     "setup_currents": [
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5],
+    #     [-0.5, 0.5]
+    #   ],
     #   "name": "greg_coil",
     #   "n_channels": 7,
     #   "units": "A",
@@ -65,12 +73,12 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     # Init variables
     phases = json_data["phase"]
     mags = json_data["mag"]
-    list_diff = json_data["diff"]
-    min_max_fmaps = []
+    list_setup_currents = json_data["setup_currents"]
     n_channels = len(phases)
+    n_currents = len(phases[0])
     n_echoes = len(phases[0][0])
 
-    # Create a mask containing the threshold of all channels
+    # Create a mask containing the threshold of all channels and currents
     fname_mask = os.path.join(path_output, 'mask.nii.gz')
     fname_mag = mags[0][0][0]
     nii_mag = nib.load(fname_mag)
@@ -80,29 +88,26 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
         if not phases[i_channel][0]:
             dead_channels.append(i_channel)
             continue
-        # Calculate the average mag image for a channel using all echoes for both min and max currents
-        mag_min_mean = np.zeros_like(nii_mag.get_fdata())
-        mag_max_mean = np.zeros_like(nii_mag.get_fdata())
-        for i_echo in range(n_echoes):
-            # min
-            fname_mag = mags[i_channel][0][i_echo]
-            mag = nib.load(fname_mag).get_fdata()
-            mag_min_mean += mag
-            # max
-            fname_mag = mags[i_channel][1][i_echo]
-            mag = nib.load(fname_mag).get_fdata()
-            mag_max_mean += mag
 
-        mag_min_mean /= n_echoes
-        mag_max_mean /= n_echoes
+        channel_mask = np.full_like(nii_mag.get_fdata(), True, bool)
+        for i_current in range(n_currents):
 
-        # Calculate threshold for min current
-        thresh_mask = mask_threshold(mag_min_mean, threshold)
-        mask = np.logical_and(thresh_mask, mask)
+            # Calculate the average mag image
+            current_mean = np.zeros_like(nii_mag.get_fdata())
+            for i_echo in range(n_echoes):
+                fname_mag = mags[i_channel][i_current][i_echo]
+                mag = nib.load(fname_mag).get_fdata()
+                current_mean += mag
 
-        # Calculate threshold for min current
-        thresh_mask = mask_threshold(mag_max_mean, threshold)
-        mask = np.logical_and(thresh_mask, mask)
+            # Threshold mask for i_channel, i_current and all echoes
+            current_mean /= n_echoes
+            tmp_mask = mask_threshold(current_mean, threshold)
+
+            # And mask for a i_channel but all currents
+            channel_mask = np.logical_and(tmp_mask, channel_mask)
+
+        # And mask for all channels
+        mask = np.logical_and(channel_mask, mask)
 
     # Mask contains the region where all channels get enough signal
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
@@ -111,53 +116,53 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     if not dead_channels:
         logger.warning(f"Channels: {dead_channels} do not have phase data. They will be set to 0.")
 
+    fnames_fmap = []
+    index_channel = -1
     # For each channel
     for i_channel in range(n_channels):
         if i_channel in dead_channels:
             continue
-        min_phases = phases[i_channel][0]
-        max_phases = phases[i_channel][1]
 
-        # Calculate fieldmap for min and save to a file
-        fname_min_output = os.path.join(path_output, f"channel{i_channel}_min_fieldmap.nii.gz")
-        prepare_fieldmap_uncli(min_phases, fname_mag, unwrapper, fname_min_output, autoscale,
-                               # threshold=threshold,
-                               fname_mask=fname_mask,
-                               gaussian_filter=gaussian_filter,
-                               sigma=sigma)
+        # Keeps track of the index since there could be dead channels
+        index_channel += 1
 
-        # Calculate fieldmap for max and save to a file
-        fname_max_output = os.path.join(path_output, f"channel{i_channel}_max_fieldmap.nii.gz")
-        prepare_fieldmap_uncli(max_phases, fname_mag, unwrapper, fname_max_output, autoscale,
-                               # threshold=threshold,
-                               fname_mask=fname_mask,
-                               gaussian_filter=gaussian_filter,
-                               sigma=sigma)
+        # for each current
+        fnames_fmap.append([])
+        for i_current in range(n_currents):
+            phase = phases[i_channel][i_current]
 
-        min_max_fmaps.append([fname_min_output, fname_max_output])
+            # Calculate fieldmap and save to a file
+            fname_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
+            prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_fmap, autoscale,
+                                   fname_mask=fname_mask,
+                                   gaussian_filter=gaussian_filter,
+                                   sigma=sigma)
+
+            fnames_fmap[index_channel].append(fname_fmap)
 
     # Remove dead channels from the list of currents
     for i_channel in dead_channels:
-        list_diff.pop(i_channel)
+        list_setup_currents.pop(i_channel)
 
     # Create coil profiles
-    profiles = create_coil_profiles(min_max_fmaps, list_diff=list_diff)
+    profiles = create_coil_profiles(fnames_fmap, list_currents=list_setup_currents)
 
     # Add dead channels as 0s
     for i_dead_channel in dead_channels:
         profiles = np.insert(profiles, i_dead_channel, np.zeros(profiles.shape[:3]), axis=3)
 
-    # TODO: if not debug
-    os.remove(fname_mask)
-    # For each channel
-    for min_max in min_max_fmaps:
-        # For each fieldmaps (min, max)
-        for fname_nifti in min_max:
-            fname_json_m = fname_nifti.rsplit('.nii', 1)[0] + '.json'
-            # Delete nifti
-            os.remove(fname_nifti)
-            # Delete json
-            os.remove(fname_json_m)
+    # If not debug, remove junk output
+    if not logger.level <= getattr(logging, 'DEBUG'):
+        os.remove(fname_mask)
+        # For each channel
+        for list_fnames in fnames_fmap:
+            # For each fieldmap
+            for fname_nifti in list_fnames:
+                fname_json_m = fname_nifti.rsplit('.nii', 1)[0] + '.json'
+                # Delete nifti
+                os.remove(fname_nifti)
+                # Delete json
+                os.remove(fname_json_m)
 
     # Use header and json info from first file in the list
     fname_json_phase = phases[0][0][0].rsplit('.nii', 1)[0] + '.json'
