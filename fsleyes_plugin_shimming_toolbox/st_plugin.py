@@ -31,6 +31,12 @@ import wx
 
 from pathlib import Path
 from fsleyes_plugin_shimming_toolbox.utils import run_subprocess
+from shimmingtoolbox.cli.b0shim import dynamic_cli, realtime_cli
+from shimmingtoolbox.cli.b1shim import b1shim_cli
+from shimmingtoolbox.cli.dicom_to_nifti import dicom_to_nifti_cli
+from shimmingtoolbox.cli.mask import box, rect, threshold
+from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
+
 
 logger = logging.getLogger(__name__)
 
@@ -613,6 +619,7 @@ class RunComponent(Component):
 
             return path_output, subject
 
+
 class TerminalComponent(Component):
     def __init__(self, panel, list_components=[]):
         super().__init__(panel, list_components)
@@ -746,31 +753,26 @@ class B0ShimTab(Tab):
                 "button_label": "Input Fieldmap",
                 "name": "fmap",
                 "button_function": "select_from_overlay",
-                "info_text": "Static B0 fieldmap.",
+                "info_text": f"{dynamic_cli.params[1].help}",
                 "required": True
             },
             {
                 "button_label": "Input Anat",
                 "name": "anat",
                 "button_function": "select_from_overlay",
-                "info_text": "Filename of the anatomical image to apply the correction.",
+                "info_text": f"{dynamic_cli.params[2].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask",
                 "name": "mask",
                 "button_function": "select_from_overlay",
-                "info_text": """Mask defining the spatial region to shim.The coordinate system should be the same as
-                                anat's coordinate system."""
+                "info_text": f"{dynamic_cli.params[3].help}"
             },
             {
                 "button_label": "Mask Dilation Kernel Size",
                 "name": "mask-dilation-kernel-size",
-                "info_text": """Number of voxels to consider outside of the masked area. For example, when doing dynamic
-                            shimming with a linear gradient, the coefficient corresponding to the gradient
-                            orthogonal to a single slice cannot be estimated: there must be at least 2 (ideally
-                            3) points to properly estimate the linear term. When using 2nd order or more, more
-                            dilation is necessary.""",
+                "info_text": f"{dynamic_cli.params[9].help}",
                 "default_text": "3",
             }
         ]
@@ -782,7 +784,7 @@ class B0ShimTab(Tab):
                 "button_label": "Scanner constraints",
                 "button_function": "select_file",
                 "name": "scanner-coil-constraints",
-                "info_text": "Constraints for the scanner coil.",
+                "info_text": f"{dynamic_cli.params[5].help}",
                 "default_text": f"{os.path.join(ST_DIR, 'coil_config.json')}",
             },
         ]
@@ -792,10 +794,7 @@ class B0ShimTab(Tab):
             {
                 "button_label": "Slice Factor",
                 "name": "slice-factor",
-                "info_text": """Number of slices per shimmed group. For example, if the value is '3', then with the
-                                'sequential' mode, shimming will be performed independently on the following groups: 
-                                {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', it will be: {0,2,4}, {1,3,5},
-                                etc..""",
+                "info_text": f"{dynamic_cli.params[7].help}",
                 "default_text": "1",
             },
         ]
@@ -808,7 +807,7 @@ class B0ShimTab(Tab):
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output coil text file(s). and figures."
+                "info_text": f"{dynamic_cli.params[10].help}"
             }
         ]
         component_output = InputComponent(self, output_metadata)
@@ -840,8 +839,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_scanner_order_metadata,
             name="Scanner Order",
-            info_text="Maximum order of the shim system. Note that specifying 1 will return orders 0 and 1. "
-                      "The 0th order is the f0 frequency."
+            info_text=f"{dynamic_cli.params[4].help}"
         )
 
         dropdown_ovf_metadata = [
@@ -861,11 +859,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_ovf_metadata,
             name="Output Value Format",
-            info_text="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
-                      "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
-                      "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
-                      "system unless the option --output-file-format is set to gradient. The delta value format "
-                      "should be used in that case."
+            info_text=f"{dynamic_cli.params[13].help}"
         )
 
         dropdown_opt_metadata = [
@@ -885,8 +879,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             name="Optimizer",
-            info_text="Method used by the optimizer. LS will respect the constraints, PS will not respect "
-                      "the constraints"
+            info_text=f"{dynamic_cli.params[8].help}"
         )
 
         dropdown_slice_metadata = [
@@ -942,14 +935,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_coil_format_metadata,
             name="Custom Coil Output Format",
-            info_text="Syntax used to describe the sequence of shim events for custom coils. "
-                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
-                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
-                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                      "all coil channels are encoded across multiple columns in the text file."
+            info_text=f"{dynamic_cli.params[11].help}"
         )
 
         dropdown_scanner_format_metadata = [
@@ -984,16 +970,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_scanner_format_metadata,
             name="Scanner Output Format",
-            info_text="Syntax used to describe the sequence of shim events for scanner coils. "
-                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
-                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
-                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                      "all coil channels are encoded across multiple columns in the text file. Use "
-                      "'gradient' to output the 1st order in the Gradient CS, otherwise, it outputs in "
-                      "the Shim CS."
+            info_text=f"{dynamic_cli.params[12].help}"
         )
 
         run_component = RunComponent(
@@ -1027,45 +1004,39 @@ class B0ShimTab(Tab):
                 "button_label": "Input Fieldmap",
                 "name": "fmap",
                 "button_function": "select_from_overlay",
-                "info_text": "Timeseries of B0 fieldmap.",
+                "info_text": f"{realtime_cli.params[1].help}",
                 "required": True
             },
             {
                 "button_label": "Input Anat",
                 "name": "anat",
                 "button_function": "select_from_overlay",
-                "info_text": "Filename of the anatomical image to apply the correction.",
+                "info_text": f"{realtime_cli.params[2].help}",
                 "required": True
             },
             {
                 "button_label": "Input Respiratory Trace",
                 "name": "resp",
                 "button_function": "select_file",
-                "info_text": "Siemens respiratory file containing pressure data.",
+                "info_text": f"{realtime_cli.params[3].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask Static",
                 "name": "mask-static",
                 "button_function": "select_from_overlay",
-                "info_text": "Mask defining the static spatial region to shim.The coordinate system should be the same "
-                             "as anat's coordinate system."
+                "info_text": f"{realtime_cli.params[4].help}"
             },
             {
                 "button_label": "Input Mask Realtime",
                 "name": "mask-riro",
                 "button_function": "select_from_overlay",
-                "info_text": "Mask defining the realtime spatial region to shim.The coordinate system should be the "
-                             "same as anat's coordinate system."
+                "info_text": f"{realtime_cli.params[5].help}"
             },
             {
                 "button_label": "Mask Dilation Kernel Size",
                 "name": "mask-dilation-kernel-size",
-                "info_text": """Number of voxels to consider outside of the masked area. For example, when doing dynamic
-                            shimming with a linear gradient, the coefficient corresponding to the gradient
-                            orthogonal to a single slice cannot be estimated: there must be at least 2 (ideally
-                            3) points to properly estimate the linear term. When using 2nd order or more, more
-                            dilation is necessary.""",
+                "info_text": f"{realtime_cli.params[11].help}",
                 "default_text": "3",
             }
         ]
@@ -1077,7 +1048,7 @@ class B0ShimTab(Tab):
                 "button_label": "Scanner constraints",
                 "button_function": "select_file",
                 "name": "scanner-coil-constraints",
-                "info_text": "Constraints for the scanner coil.",
+                "info_text": f"{realtime_cli.params[7].help}",
                 "default_text": f"{os.path.join(ST_DIR, 'coil_config.json')}",
             },
         ]
@@ -1087,10 +1058,7 @@ class B0ShimTab(Tab):
             {
                 "button_label": "Slice Factor",
                 "name": "slice-factor",
-                "info_text": """Number of slices per shimmed group. For example, if the value is '3', then with the
-                                'sequential' mode, shimming will be performed independently on the following groups: 
-                                {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', it will be: {0,2,4}, {1,3,5},
-                                etc..""",
+                "info_text": f"{realtime_cli.params[9].help}",
                 "default_text": "1",
             },
         ]
@@ -1103,7 +1071,7 @@ class B0ShimTab(Tab):
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output coil text file(s). and figures."
+                "info_text": f"{realtime_cli.params[12].help}"
             }
         ]
         component_output = InputComponent(self, output_metadata)
@@ -1135,8 +1103,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_scanner_order_metadata,
             name="Scanner Order",
-            info_text="Maximum order of the shim system. Note that specifying 1 will return orders 0 and 1. "
-                      "The 0th order is the f0 frequency."
+            info_text=f"{realtime_cli.params[6].help}"
         )
 
         dropdown_ovf_metadata = [
@@ -1156,11 +1123,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_ovf_metadata,
             name="Output Value Format",
-            info_text="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
-                      "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
-                      "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
-                      "system unless the option --output-file-format is set to gradient. The delta value format "
-                      "should be used in that case."
+            info_text=f"{realtime_cli.params[15].help}"
         )
 
         dropdown_opt_metadata = [
@@ -1180,8 +1143,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             name="Optimizer",
-            info_text="Method used by the optimizer. LS will respect the constraints, PS will not respect "
-                      "the constraints"
+            info_text=f"{realtime_cli.params[10].help}"
         )
 
         dropdown_slice_metadata = [
@@ -1206,7 +1168,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_slice_metadata,
             name="Slice Ordering",
-            info_text="Defines the slice ordering.",
+            info_text=f"{realtime_cli.params[8].help}",
             list_components=[component_slice_int, component_slice_seq, self.create_empty_component()]
         )
 
@@ -1227,12 +1189,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_coil_format_metadata,
             name="Custom Coil Output Format",
-            info_text=" Syntax used to describe the sequence of shim events. Use 'slicewise' to output in row 1, 2, 3, "
-                      "etc. the shim coefficients for slice 1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3"
-                      ", etc. the shim value for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                      "captured by the controller of the shim amplifier. In both cases, there will be one output file "
-                      "per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, time-varying and mean "
-                      "pressure are encoded in the columns of each file."
+            info_text=f"{realtime_cli.params[13].help}"
         )
 
         dropdown_scanner_format_metadata = [
@@ -1257,13 +1214,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_scanner_format_metadata,
             name="Scanner Output Format",
-            info_text="Syntax used to describe the sequence of shim events. Use 'slicewise' to output in row 1, 2, 3, "
-                      "etc. the shim coefficients for slice 1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3"
-                      ", etc. the shim value for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                      "captured by the controller of the shim amplifier. In both cases, there will be one output file "
-                      "per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, time-varying and mean "
-                      "pressure are encoded in the columns of each file. Use 'gradient' to output the scanner 1st "
-                      "order in the Gradient CS, otherwise, it outputs in the Shim CS."
+            info_text=f"{realtime_cli.params[14].help}"
         )
 
         run_component = RunComponent(
@@ -1367,36 +1318,33 @@ class B1ShimTab(Tab):
                 "button_label": "Input B1+ map",
                 "name": "b1",
                 "button_function": "select_from_overlay",
-                "info_text": "B1+ map. 4D NIfTI file as created by dcm2niix.",
+                "info_text": f"{b1shim_cli.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask",
                 "name": "mask",
                 "button_function": "select_from_overlay",
-                "info_text": "3D NIfTI file used to define the shimming region of interest"
+                "info_text": f"{b1shim_cli.params[1].help}"
             },
             {
                 "button_label": "Input VOP file",
                 "name": "vop",
                 "button_function": "select_file",
-                "info_text": "Siemens SarDataUser.mat file (located in C:/Medcom/MriProduct/Physconfig)"
+                "info_text": f"{b1shim_cli.params[4].help}"
             },
             {
                 "button_label": "SAR factor",
                 "name": "sar_factor",
                 "default_text": "1.5",
-                "info_text": """Factor (=> 1) to which the shimmed max local SAR can exceed the phase-only shimming max 
-                local SAR. Values between 1 and 1.5 should work with Siemens scanners. High factors allow more shimming 
-                liberty but are more likely to result in SAR excess on the scanner.
-                """
+                "info_text": f"{b1shim_cli.params[5].help}"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output shim weights, B1+ maps and figures."
+                "info_text": f"{b1shim_cli.params[6].help}"
             }
         ]
 
@@ -1417,43 +1365,40 @@ class B1ShimTab(Tab):
                 "button_label": "Input B1+ map",
                 "name": "b1",
                 "button_function": "select_from_overlay",
-                "info_text": "B1+ map. 4D NIfTI file as created by dcm2niix.",
+                "info_text": f"{b1shim_cli.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask",
                 "name": "mask",
                 "button_function": "select_from_overlay",
-                "info_text": "3D NIfTI file used to define the shimming region of interest"
+                "info_text": f"{b1shim_cli.params[1].help}"
             },
             {
                 "button_label": "Target value (nT/V)",
                 "name": "target",
                 "default_text": "20",
-                "info_text": "B1+ value (in nT/V targeted by the optimization)",
+                "info_text": f"{b1shim_cli.params[3].help}",
                 "required": True
             },
             {
                 "button_label": "Input VOP file",
                 "name": "vop",
                 "button_function": "select_file",
-                "info_text": "Siemens SarDataUser.mat file (located in C:/Medcom/MriProduct/Physconfig)"
+                "info_text": f"{b1shim_cli.params[4].help}"
             },
             {
                 "button_label": "SAR factor",
                 "name": "sar_factor",
                 "default_text": "1.5",
-                "info_text": """Factor (=> 1) to which the shimmed max local SAR can exceed the phase-only shimming max 
-                       local SAR. Values between 1 and 1.5 should work with Siemens scanners. High factors allow more 
-                       shimming liberty but are more likely to result in SAR excess on the scanner.
-                       """
+                "info_text": f"{b1shim_cli.params[5].help}"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output shim weights, B1+ maps and figures."
+                "info_text": f"{b1shim_cli.params[6].help}"
             }
         ]
 
@@ -1474,36 +1419,34 @@ class B1ShimTab(Tab):
                 "button_label": "Input B1+ map",
                 "name": "b1",
                 "button_function": "select_from_overlay",
-                "info_text": "B1+ map. 4D NIfTI file as created by dcm2niix.",
+                "info_text": f"{b1shim_cli.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask",
                 "name": "mask",
                 "button_function": "select_from_overlay",
-                "info_text": "3D NIfTI file used to define the shimming region of interest"
+                "info_text": f"{b1shim_cli.params[1].help}"
             },
             {
                 "button_label": "Input VOP file",
                 "name": "vop",
                 "button_function": "select_file",
-                "info_text": "Siemens SarDataUser.mat file (located in C:/Medcom/MriProduct/Physconfig)",
+                "info_text": f"{b1shim_cli.params[4].help}",
                 "required": True
             },
             {
                 "button_label": "SAR factor",
                 "name": "sar_factor",
                 "default_text": "1.5",
-                "info_text": "Factor (=> 1) to which the shimmed max local SAR can exceed the phase-only shimming max" 
-                "local SAR. Values between 1 and 1.5 should work with Siemens scanners. High factors allow more"
-                "shimming liberty but are more likely to result in SAR excess on the scanner."
+                "info_text": f"{b1shim_cli.params[5].help}"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output shim weights, B1+ maps and figures."
+                "info_text": f"{b1shim_cli.params[6].help}"
             }
         ]
 
@@ -1524,21 +1467,21 @@ class B1ShimTab(Tab):
                 "button_label": "Input B1+ maps",
                 "name": "b1",
                 "button_function": "select_from_overlay",
-                "info_text": "NIfTI file containing the individual B1+ maps, as created by dcm2niix.",
+                "info_text": f"{b1shim_cli.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Input Mask",
                 "name": "mask",
                 "button_function": "select_from_overlay",
-                "info_text": "3D NIfTI file used to define the shimming region of interest"
+                "info_text": f"{b1shim_cli.params[1].help}"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Directory to output shim weights, B1+ maps and figures."
+                "info_text": f"{b1shim_cli.params[6].help}"
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
@@ -1604,7 +1547,7 @@ class FieldMapTab(Tab):
                 "button_function": "select_folder",
                 "default_text": os.path.join(path_output, "fieldmap.nii.gz"),
                 "name": "output",
-                "info_text": "Output filename for the fieldmap, supported types : '.nii', '.nii.gz'",
+                "info_text": f"{prepare_fieldmap_cli.params[3].help}",
                 "required": True
             }
         ]
@@ -1614,7 +1557,7 @@ class FieldMapTab(Tab):
                 "button_label": "Input Mask",
                 "button_function": "select_from_overlay",
                 "name": "mask",
-                "info_text": "Input path for a mask. Use either a threshold or a mask."
+                "info_text": f"{prepare_fieldmap_cli.params[5].help}"
             }
         ]
 
@@ -1627,7 +1570,7 @@ class FieldMapTab(Tab):
             {
                 "button_label": "Threshold",
                 "name": "threshold",
-                "info_text": "Float threshold for masking. Must be between 0 and 1"
+                "info_text": f"{prepare_fieldmap_cli.params[6].help}"
             }
         ]
 
@@ -1640,7 +1583,7 @@ class FieldMapTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_mask_threshold,
             name="Mask/Threshold",
-            info_text="Masking methos either with a file input or a threshold",
+            info_text="Masking methods either with a file input or a threshold",
             list_components=[self.component_mask, self.component_threshold]
         )
 
@@ -1649,7 +1592,7 @@ class FieldMapTab(Tab):
                 "button_label": "Input Magnitude",
                 "button_function": "select_from_overlay",
                 "name": "mag",
-                "info_text": "Input path of mag NIfTI file.",
+                "info_text": f"{prepare_fieldmap_cli.params[1].help}",
                 "required": True
             }
         ]
@@ -1666,7 +1609,7 @@ class FieldMapTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_metadata,
             name="Unwrapper",
-            info_text="Algorithm for unwrapping"
+            info_text=f"{prepare_fieldmap_cli.params[2].help}"
         )
         self.component_output = InputComponent(
             panel=self,
@@ -1760,23 +1703,21 @@ class MaskTab(Tab):
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
                 "name": "input",
-                "info_text": """Input path of the nifti file to mask. Supported extensions are
-                    .nii or .nii.gz.""",
+                "info_text": f"{threshold.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Threshold",
                 "default_text": "30",
                 "name": "thr",
-                "info_text": """Integer value to threshold the data: voxels will be set to zero if
-                    their value <= this threshold. Default = 30."""
+                "info_text": f"{threshold.params[2].help}"
             },
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(path_output, "mask.nii.gz"),
                 "name": "output",
-                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
+                "info_text": f"{threshold.params[1].help}"
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
@@ -1795,30 +1736,28 @@ class MaskTab(Tab):
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
                 "name": "input",
-                "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 2D or
-                    3D. Supported extensions are .nii or .nii.gz.""",
+                "info_text": f"{rect.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Size",
                 "name": "size",
                 "n_text_boxes": 2,
-                "info_text": "Length of the side of the box along 1st & 2nd dimension (in pixels).",
+                "info_text": f"{rect.params[2].help}",
                 "required": True
             },
             {
                 "button_label": "Center",
                 "name": "center",
                 "n_text_boxes": 2,
-                "info_text": """Center of the box along first and second dimension (in pixels).
-                    If no center is provided (None), the middle is used."""
+                "info_text": f"{rect.params[3].help}"
             },
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(path_output, "mask.nii.gz"),
                 "name": "output",
-                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
+                "info_text": f"{rect.params[1].help}"
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
@@ -1837,30 +1776,28 @@ class MaskTab(Tab):
                 "button_label": "Input",
                 "button_function": "select_from_overlay",
                 "name": "input",
-                "info_text": """Input path of the NIfTI file to mask. The NIfTI file must be 3D.
-                    Supported extensions are .nii or .nii.gz.""",
+                "info_text": f"{box.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Size",
                 "name": "size",
                 "n_text_boxes": 3,
-                "info_text": "Length of side of box along 1st, 2nd, & 3rd dimension (in pixels).",
+                "info_text": f"{box.params[2].help}",
                 "required": True
             },
             {
                 "button_label": "Center",
                 "name": "center",
                 "n_text_boxes": 3,
-                "info_text": """Center of the box along 1st, 2nd, & 3rd dimension (in pixels).
-                    If no center is provided (None), the middle is used."""
+                "info_text": f"{box.params[3].help}"
             },
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
                 "default_text": os.path.join(path_output, "mask.nii.gz"),
                 "name": "output",
-                "info_text": """Name of output mask. Supported extensions are .nii or .nii.gz."""
+                "info_text": f"{box.params[1].help}"
             }
         ]
         component = InputComponent(self, input_text_box_metadata)
@@ -1890,13 +1827,13 @@ class DicomToNiftiTab(Tab):
                 "button_label": "Input Folder",
                 "button_function": "select_folder",
                 "name": "input",
-                "info_text": "Input path of dicom folder",
+                "info_text": f"{dicom_to_nifti_cli.params[0].help}",
                 "required": True
             },
             {
                 "button_label": "Subject Name",
                 "name": "subject",
-                "info_text": "Name of the patient",
+                "info_text": f"{dicom_to_nifti_cli.params[1].help}",
                 "required": True
             },
             {
@@ -1904,14 +1841,14 @@ class DicomToNiftiTab(Tab):
                 "button_function": "select_file",
                 "default_text": os.path.join(ST_DIR, "dcm2bids.json"),
                 "name": "config",
-                "info_text": "Full file path and name of the BIDS config file"
+                "info_text": f"{dicom_to_nifti_cli.params[3].help}"
             },
             {
                 "button_label": "Output Folder",
                 "button_function": "select_folder",
                 "default_text": path_output,
                 "name": "output",
-                "info_text": "Output path for NIfTI files."
+                "info_text": f"{dicom_to_nifti_cli.params[2].help}"
             }
         ]
         self.terminal_component = TerminalComponent(self)

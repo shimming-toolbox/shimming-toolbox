@@ -32,5 +32,9 @@ make install CLEAN=false
 # Copy coil config file in shimming toolbox directory
 cp "${ST_DIR}/shimming-toolbox/config/coil_config.json" "${ST_DIR}/coil_config.json"
 
-print info "To launch the plugin, load the environment variables then run:" 
+# Install shimming-toolbox in pst_venv to be able to fetch the CLI docstrings for the plugin contextual help
+# Use the quiet flag because the user does not need to see this install (it could be confusing as to why we do it)
+$ST_DIR/python/envs/pst_venv/bin/python -m pip install -e . --quiet
+
+print info "To launch the plugin, load the environment variables then run:"
 print list "shimming-toolbox"
