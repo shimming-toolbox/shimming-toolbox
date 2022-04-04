@@ -186,6 +186,11 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
+    # Load anat json
+    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_anat_json) as json_file:
+        json_anat_data = json.load(json_file)
+
     # Load mask
     if fname_mask_anat is not None:
         nii_mask_anat = nib.load(fname_mask_anat)
@@ -231,6 +236,9 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
                            path_output=path_output)
 
     # Output
+    # Load output options
+    options = _load_output_options(json_anat_data)
+
     list_fname_output = []
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
@@ -266,10 +274,6 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
 
             else:
                 logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
-                # Load anat json
-                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-                with open(fname_anat_json) as json_file:
-                    json_anat_data = json.load(json_file)
 
                 # Convert coefficients from RAS to the shim CS of the manufacturer
                 manufacturer = json_anat_data['Manufacturer']
@@ -293,17 +297,17 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
                 # If it's delta, don't add the initial coefs
 
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
-                                                           coil_number=i_coil)
+                                                           options, coil_number=i_coil)
         else:
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
-                                                           coil_number=i_coil)
+                                                           options, coil_number=i_coil)
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
-def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, coil_number):
+def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     n_channels = coil.dim[3]
@@ -317,6 +321,12 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
             if o_format == 'chronological-coil':
                 # Output per shim (chronological), output all channels for a particular shim, then repeat
                 for i_shim in range(len(list_slices)):
+                    if options['fatsat']:
+                        for i_channel in range(n_channels):
+                            f.write(f"{0:.1f}")
+                            if i_channel != n_channels:
+                                f.write(", ")
+                        f.write(f"\n")
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}")
                         if i_channel != n_channels:
@@ -349,6 +359,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                 with open(fname_output, 'w', encoding='utf-8') as f:
                     # Each row will have one coef representing the shim in chronological order
                     for i_shim in range(len(list_slices)):
+                        if options['fatsat']:
+                            f.write(f"{0:.1f}\n")
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
             if o_format == 'slicewise-ch':
@@ -531,6 +543,11 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
+    # Load anat json
+    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_anat_json) as json_file:
+        json_anat_data = json.load(json_file)
+
     # Load static mask
     if fname_mask_anat_static is not None:
         nii_mask_anat_static = nib.load(fname_mask_anat_static)
@@ -586,6 +603,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     coefs_static, coefs_riro, mean_p, p_rms = out
 
+    # Output
+    # Load output options
+    options = _load_output_options(json_anat_data)
+
     list_fname_output = []
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
@@ -632,10 +653,6 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
             else:
                 logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
-                # Load anat json
-                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-                with open(fname_anat_json) as json_file:
-                    json_anat_data = json.load(json_file)
 
                 # Convert coefficients from RAS to the shim CS of the manufacturer
                 manufacturer = json_anat_data['Manufacturer']
@@ -662,7 +679,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                 # If it's delta, don't add the initial coefs
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_sph, i_coil)
+                                                       path_output, o_format_sph, options, i_coil)
 
         else:  # Custom coil
             # Plot a figure of the coefficients
@@ -671,13 +688,13 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                         bounds=coil.coef_channel_minmax)
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_coil, i_coil)
+                                                       path_output, o_format_coil, options, i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
-                          coil_number):
+                          options, coil_number):
     """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     list_fname_output = []
@@ -691,6 +708,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
+                    if options['fatsat']:
+                        f.write(f"{0:.1f}, {0:.1f}, {0:.1f}\n")
                     f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
                     f.write(f"{mean_p:.4f}\n")
@@ -706,7 +725,6 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
                     f.write(f"{mean_p:.4f}\n")
 
-        # TODO: Remove once implemented in more streamlined way
         else:  # o_format == 'gradient':
 
             # Make sure there are 4 channels
@@ -823,6 +841,16 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nii = nib.load(fname)
         fname_to_save = os.path.join(path_output, os.path.basename(fname))
         nib.save(nii, fname_to_save)
+
+
+def _load_output_options(json_anat):
+    options = {'fatsat': False}
+
+    if 'ScanOptions' in json_anat:
+        if 'FS' in json_anat['ScanOptions']:
+            logger.debug("Fat Saturation pulse detected")
+            options['fatsat'] = True
+    return options
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
