@@ -11,6 +11,7 @@ from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import json
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -955,6 +956,68 @@ def extend_slice(nii_array, n_slices=1, axis=2):
     nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
 
     return nii_extended
+
+
+def parse_slices(fname_nifti):
+    """ Parse the BIDS sidecar associated with the input nifti file.
+
+    Args:
+        fname_nifti (str): Full path to a NIfTI file
+
+    Returns:
+        list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
+    """
+
+    # Open json
+    fname_json = fname_nifti.split('.nii')[0] + '.json'
+    # Read from json file
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    # Make sure tag SliceTiming exists
+    if 'SliceTiming' in json_data:
+        slice_timing = json_data['SliceTiming']
+    else:
+        raise RuntimeError("No tag SliceTiming to parse slice data")
+
+    # # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
+    # is_positive_se = True
+    # if 'SliceEncodingDirection' in json_data:
+    #     if json_data['SliceEncodingDirection'][-1] == '-':
+    #         is_positive_se = False
+
+    # Examples:
+    # https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#timing-parameters
+    # SE: +
+    # slice timing : [0, 1, 2]
+    # timing of slice index [0, 1, 2]
+
+    # SE: -
+    # slice timing : [0, 1, 2]
+    # timing of slice index [2, 1, 0]
+
+    # Slice timing order is related to how they are stored on disk
+    # https://www.nitrc.org/forum/forum.php?thread_id=10307&forum_id=4703
+    # This means that slice index 0 in python refers to the 1st value in SliceTiming and the corresponding time can
+    # tell us the order it was acquired
+
+    # Return the indexes of the sorted slice_timing
+    slice_timing = np.array(slice_timing)
+    list_slices = np.argsort(slice_timing)
+    slices = []
+    # Construct the list of tuples
+    while len(list_slices) > 0:
+        # Find if the first index has the same timing as other indexes
+        # shim_group = tuple(list_slices[list_slices == list_slices[0]])
+        shim_group = tuple(np.where(slice_timing == slice_timing[list_slices[0]])[0])
+        # Add this as a tuple
+        slices.append(shim_group)
+
+        # Since the list_slices is sorted by slice_timing, the only similar values will be at the beginning
+        n_to_remove = len(shim_group)
+        list_slices = list_slices[n_to_remove:]
+
+    return slices
 
 
 def define_slices(n_slices: int, factor=1, method='sequential'):
