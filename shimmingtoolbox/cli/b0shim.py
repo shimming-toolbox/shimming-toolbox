@@ -476,8 +476,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                    "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                    "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. In both cases, there will be one output "
-                   "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                   "captured by the controller of the shim amplifier. If there is a fat saturation "
+                   "pulse in the anat sequence, shim weights of 0s are included in the output "
+                   "text file before each slice coefficients. For both 'slicewice' and 'chronological', there will be "
+                   "one output file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
                    "time-varying and mean pressure are encoded in the columns of each file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
