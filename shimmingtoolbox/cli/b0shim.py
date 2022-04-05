@@ -321,16 +321,13 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
             if o_format == 'chronological-coil':
                 # Output per shim (chronological), output all channels for a particular shim, then repeat
                 for i_shim in range(len(list_slices)):
+                    # If fatsat pulse, set shim coefs to 0
                     if options['fatsat']:
                         for i_channel in range(n_channels):
-                            f.write(f"{0:.1f}")
-                            if i_channel != n_channels:
-                                f.write(", ")
+                            f.write(f"{0:.1f}, ")
                         f.write(f"\n")
                     for i_channel in range(n_channels):
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
-                        if i_channel != n_channels:
-                            f.write(", ")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
             elif o_format == 'slicewise-coil':
@@ -341,9 +338,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                 for i_slice in range(n_slices):
                     i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
                     for i_channel in range(n_channels):
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
-                        if i_channel != n_channels:
-                            f.write(", ")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
         list_fname_output.append(os.path.abspath(fname_output))
@@ -359,9 +354,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                 with open(fname_output, 'w', encoding='utf-8') as f:
                     # Each row will have one coef representing the shim in chronological order
                     for i_shim in range(len(list_slices)):
+                        # If fatsat pulse, set shim coefs to 0
                         if options['fatsat']:
-                            f.write(f"{0:.1f}\n")
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
+                            f.write(f"{0:.1f},\n")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f},\n")
 
             if o_format == 'slicewise-ch':
                 with open(fname_output, 'w', encoding='utf-8') as f:
@@ -708,11 +704,12 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
+                    # If fatsat pulse, set shim coefs to 0 and output mean pressure
                     if options['fatsat']:
-                        f.write(f"{0:.1f}, {0:.1f}, {0:.1f}\n")
+                        f.write(f"{0:.1f}, {0:.1f}, {mean_p:.4f},\n")
                     f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
-                    f.write(f"{mean_p:.4f}\n")
+                    f.write(f"{mean_p:.4f},\n")
 
         elif o_format == 'slicewise-ch':
             fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
@@ -723,7 +720,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                     f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
-                    f.write(f"{mean_p:.4f}\n")
+                    f.write(f"{mean_p:.4f},\n")
 
         else:  # o_format == 'gradient':
 
