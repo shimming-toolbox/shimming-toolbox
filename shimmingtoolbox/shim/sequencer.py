@@ -101,7 +101,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     # Make sure shape and affine of mask are the same as the anat
     if not np.all(mask.shape == anat.shape):
         raise ValueError(f"Shape of mask:\n {mask.shape} must be the same as the shape of anat:\n{anat.shape}")
-    if not np.all(nii_mask_anat.affine == nii_anat.affine):
+    if not np.all(np.isclose(nii_mask_anat.affine, nii_anat.affine)):
         raise ValueError(f"Affine of mask:\n{nii_mask_anat.affine}\nmust be the same as the affine of anat:\n"
                          f"{nii_anat.affine}")
 
