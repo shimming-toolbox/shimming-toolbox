@@ -302,10 +302,10 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
                     list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
                                                                    o_format_sph, options, coil_number=i_coil,
                                                                    default_coefs=initial_coefs)
-                # If it's delta
-                else:
-                    list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
-                                                                   o_format_sph, options, coil_number=i_coil)
+                    continue
+
+            list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
+                                                           options, coil_number=i_coil)
 
         else:
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
@@ -697,10 +697,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                     list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
                                                                list_slices, path_output, o_format_sph, options, i_coil,
                                                                default_st_coefs=initial_coefs)
-                # If it's delta,
-                else:
-                    list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                               list_slices, path_output, o_format_sph, options, i_coil)
+                    continue
+
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_sph, options, i_coil)
 
         else:  # Custom coil
             # Plot a figure of the coefficients
