@@ -7,6 +7,8 @@ import nibabel as nib
 import numpy as np
 import os
 import pytest
+import tempfile
+import pathlib
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
@@ -16,13 +18,9 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import shim_sequencer
-from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
-from shimmingtoolbox.shim.sequencer import define_slices
-from shimmingtoolbox.shim.sequencer import resample_mask
+from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, resample_mask
+from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
-from shimmingtoolbox.shim.sequencer import extend_slice
-from shimmingtoolbox.shim.sequencer import update_affine_for_ap_slices
 from shimmingtoolbox.utils import set_all_loggers
 
 logger = logging.getLogger(__name__)
@@ -739,3 +737,36 @@ class TestDefineSlices(object):
     def test_define_slices_wrong_n_slice(self):
         with pytest.raises(ValueError, match="Number of slices should be greater than 0"):
             define_slices(0, 2, "sequential")
+
+
+class TestParseSlices(object):
+    def setup(self):
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
+        # Open json
+        fname_json = fname.split('.nii')[0] + '.json'
+        # Read from json file
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+
+        json_data['SliceTiming'] = [10, 10, 0, 30, 30]
+        self.json_data = json_data
+
+    def test_parse_slices(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_json = os.path.join(tmp, 'test.json')
+            fname_nifti = os.path.join(tmp, 'test.nii')
+
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(self.json_data, f, indent=4)
+
+            slices = parse_slices(fname_nifti)
+
+            assert slices == [(2,), (0, 1), (3, 4)]
+
+    def test_parse_slices_real_data(self):
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        slices = parse_slices(fname)
+
+        assert slices == [(1,), (3,), (5,), (7,), (9,), (11,), (13,), (15,), (17,), (19,),
+                          (0,), (2,), (4,), (6,), (8,), (10,), (12,), (14,), (16,), (18,)]
