@@ -253,12 +253,13 @@ class InfoComponent(Component):
         """
         fname_st_logo = os.path.join(DIR, 'img', 'shimming_toolbox_logo.png')
 
-        png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY).ConvertToBitmap()
-        png.SetSize((png.GetWidth() * scale, png.GetHeight() * scale))
+        png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY)
+        png.Rescale(png.GetWidth() * scale, png.GetHeight() * scale, wx.IMAGE_QUALITY_HIGH)
+        bitmap = wx.BitmapFromImage(png)
         logo_image = wx.StaticBitmap(
             parent=self.panel,
             id=-1,
-            bitmap=png,
+            bitmap=bitmap,
             pos=wx.DefaultPosition
         )
         return logo_image
@@ -1954,7 +1955,7 @@ class TextWithButton:
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
             if self.required:
                 text_with_button_box.Add(
-                    create_asterisk_icon(self.panel), 0, wx.ALIGN_RIGHT | wx.RIGHT, 7
+                    create_asterisk_icon(self.panel), 0, wx.RIGHT, 7
                 )
 
         return text_with_button_box

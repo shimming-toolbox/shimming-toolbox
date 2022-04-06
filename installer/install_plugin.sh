@@ -41,10 +41,6 @@ conda activate $VENV
 print info "Installing fsleyes"
 yes | conda install -c conda-forge fsleyes=1.3.3
 
-# Downgrade wxpython version due to bugs
-print info "Downgrading wxpython to 4.0.7"
-yes | conda install -c conda-forge wxpython=4.0.7
-
 # Install fsleyes-plugin-shimming-toolbox
 print info "Installing fsleyes-plugin-shimming-toolbox"
 python -m pip install .
