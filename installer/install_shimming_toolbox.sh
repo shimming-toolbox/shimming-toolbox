@@ -36,15 +36,15 @@ function edit_shellrc() {
   fi
 }
 
-source "$ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh"
+#source "$ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh" # TODO: is this needed?
 
 print info "Installing dcm2niix"
-conda install -y -c conda-forge dcm2niix
+"$ST_DIR"/"$PYTHON_DIR"/bin/conda install -y -c conda-forge dcm2niix
 
 print info "Installing shimming-toolbox"
 cd "$ST_PACKAGE_DIR"
 cp "config/dcm2bids.json" "$ST_DIR/dcm2bids.json"
-python -m pip install -e ".[docs,dev]"
+"$ST_DIR"/"$PYTHON_DIR"/bin/python -m pip install -e ".[docs,dev]"
 
 # Create launchers for Python scripts
 print info "Creating launchers for Python scripts. List of functions available:"
