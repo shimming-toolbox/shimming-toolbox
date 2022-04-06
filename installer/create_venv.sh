@@ -45,7 +45,3 @@ fi
 # this needs to be added very early in python's boot process
 # so using sitecustomize.py or even just appending to the file are impossible.
 sed_i 's/^ENABLE_USER_SITE.*$/ENABLE_USER_SITE = False/' "$ST_DIR/$PYTHON_DIR/lib/python"*"/site.py"
-
-# activate miniconda
-# shellcheck disable=SC1091
-source python/etc/profile.d/conda.sh # useless?

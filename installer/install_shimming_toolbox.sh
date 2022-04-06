@@ -36,7 +36,7 @@ function edit_shellrc() {
   fi
 }
 
-#source "$ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh" # TODO: is this needed?
+source "$ST_DIR/$PYTHON_DIR/bin/activate"
 
 print info "Installing dcm2niix"
 "$ST_DIR"/"$PYTHON_DIR"/bin/conda install -y -c conda-forge dcm2niix
