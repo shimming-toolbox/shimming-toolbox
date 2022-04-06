@@ -3,17 +3,11 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 source $SCRIPT_DIR/utils.sh
 
-VENV=st_venv
 ST_DIR="$HOME/shimming-toolbox"
 PYTHON_DIR=python
 cd "$ST_DIR"
 
-print info "Creating new virtual environment in $ST_DIR/$PYTHON_DIR/envs/$VENV"
-
-rm -rf "$ST_DIR/$PYTHON_DIR/envs/$VENV"
-
-# create Python 3.7 venv (for Keras/TF compatibility with Centos7, see issue #2270)
-python/bin/conda create -y -p "$ST_DIR/$PYTHON_DIR/envs/$VENV" python=3.7
+print info "Creating new virtual environment in $ST_DIR/$PYTHON_DIR"
 
 if [ "$(uname)" = "Darwin" ]; then
   # macOS polyfills
@@ -50,12 +44,8 @@ fi
 # * https://github.com/neuropoly/spinalcordtoolbox/issues/3200
 # this needs to be added very early in python's boot process
 # so using sitecustomize.py or even just appending to the file are impossible.
-sed_i 's/^ENABLE_USER_SITE.*$/ENABLE_USER_SITE = False/' "$ST_DIR/$PYTHON_DIR/envs/$VENV/lib/python"*"/site.py"
+sed_i 's/^ENABLE_USER_SITE.*$/ENABLE_USER_SITE = False/' "$ST_DIR/$PYTHON_DIR/lib/python"*"/site.py"
 
 # activate miniconda
 # shellcheck disable=SC1091
 source python/etc/profile.d/conda.sh
-
-# set +u #disable safeties, for conda is not written to their standard.
-conda activate $VENV
-# set -u # reactivate safeties
