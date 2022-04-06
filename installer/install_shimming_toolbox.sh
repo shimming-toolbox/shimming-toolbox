@@ -6,12 +6,11 @@ source "$SCRIPT_DIR/utils.sh"
 
 set -e
 
-VENV=st_venv
 ST_DIR=$HOME/shimming-toolbox
 PYTHON_DIR=python
 BIN_DIR=bin
 
-print info "Beginning shimming-toolbox install in $ST_DIR/$PYTHON_DIR/envs/$VENV"
+print info "Beginning shimming-toolbox install in $ST_DIR/$PYTHON_DIR"
 
 
 # Define sh files
@@ -38,12 +37,9 @@ function edit_shellrc() {
 }
 
 source "$ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh"
-# set +u
-conda activate $VENV
-# set -u
 
 print info "Installing dcm2niix"
-yes | conda install -c conda-forge dcm2niix
+conda install -y -c conda-forge dcm2niix
 
 print info "Installing shimming-toolbox"
 cd "$ST_PACKAGE_DIR"
@@ -54,7 +50,7 @@ python -m pip install -e ".[docs,dev]"
 print info "Creating launchers for Python scripts. List of functions available:"
 mkdir -p "$ST_DIR/$BIN_DIR"
 
-for file in "$ST_DIR"/"$PYTHON_DIR"/envs/"$VENV"/bin/*st_*; do
+for file in "$ST_DIR"/"$PYTHON_DIR"/bin/*st_*; do
   cp "$file" "$ST_DIR/$BIN_DIR/" # || die "Problem creating launchers!"
   print list "$file"
 done
