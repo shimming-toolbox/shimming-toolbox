@@ -23,9 +23,6 @@ jobs:
           # - 'macos-11.0'
           - 'ubuntu-18.04'
           - 'ubuntu-20.04'
-        python-version:
-          - '3.7'
-          - '3.8'
 
     steps:
       - name: Get home directory
@@ -37,11 +34,6 @@ jobs:
       - name: Set XCode version
         if: contains(matrix.os, 'macos-11.0')
         run: sudo xcode-select -s "/Applications/Xcode_12.2.app"
-
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
 
       - name: Package installation
         run: |
