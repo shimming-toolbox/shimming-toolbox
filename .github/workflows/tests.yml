@@ -38,7 +38,7 @@ jobs:
       - name: Package installation
         run: |
           echo "shimming-toolbox installation"
-          make install
+          ./install-101
 
       - name: Set path for Shimming Toolbox
         run: |

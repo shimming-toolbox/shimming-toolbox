@@ -1,0 +1,268 @@
+#!/usr/bin/env bash
+#
+# Install shimming-toolbox in an accessible way.
+#
+# Usage:
+#   ./install-101 [-c]
+#
+# -c: clean previous installation before starting.
+#
+# This makes an isolated conda environment and installs shimming-toolbox in it
+# avoiding many of the headaches that can come up like surprise compilations
+# (which will fail for users that aren't already frequent programmers with
+# a compiler installed), but at the cost of a good deal of extra space, of
+# of only working on the most common platforms, and of not integrating cleanly
+# into the rest of the system -- for example, this installs its own copy of
+# dcm2niix which may conflict with a pre-existing copy, and if you switch
+# shells with chsh(1) you will lose access to shimming-toolbox.
+#
+# Users who want to build on shimming-toolbox's API or already have a conda
+# environment they are comfortable in should install directly with pip, which
+# is more reliable in the long run.
+# ------------------------------------------------------------------------
+
+
+# Instead of printing status messages, this script makes liberal use of set -x
+# in stategic places to give progress reports.
+
+# bash "strict mode"
+set -eou pipefail
+IFS=$'\n\t'
+
+
+## polyfills
+if [ "$(uname)" = "Darwin" ]; then
+  # glue over some differences we between BSD and GNU
+  sha256sum() {
+    shasum -a 256 "$@"
+  }
+
+  realpath() {
+    # this assumes python is in the base OS; but even a very old macOS will have this:
+
+    if [[ "$1" == "--relative-to" ]]; then
+      # usage: realpath --relative-to BASE path1 path2 ...
+      shift
+      python3 -c 'import sys, os; [print(os.path.relpath(f, sys.argv[1])) for f in sys.argv[2:]]' "$@"
+    else
+      # usage: realpath path1 path2 ...
+      python3 -c 'import sys, os; [print(os.path.realpath(f)) for f in sys.argv[1:]]' "$@"
+    fi
+  }
+fi
+
+
+# our supported conda platforms
+# when you update conda, you need to regenerate these sha256sums
+CONDA_VERSION=py37_4.11.0
+CONDA_CHECKSUMS="$(cat <<EOF
+745c99af2cb0d0e0f43c7ed1a3417ff4d5118eafb501518120ea30361f1bb8f6  Miniconda3-py37_4.11.0-Linux-x86_64.sh
+c3a863eb85ad7035e5578684509b0b8387e8eb93c022495ab987baac3df6ef41  Miniconda3-py37_4.11.0-MacOSX-x86_64.sh
+EOF
+)"
+
+#CONDA_VERSION=4.12.0-0
+#CONDA_CHECKSUMS="$(cat <<EOF
+#ccb6c87f42355e2e0b652dd35a980b7c60ca5e53643237f6a070748ef0dd23ff  Miniforge3-4.12.0-0-Linux-x86_64.sh
+#3bfcd52dd1acafc712b6fb042d4b019c6f09ea3ba62710f722f4e9ebcde7f67c  Miniforge3-4.12.0-0-MacOSX-x86_64.sh
+#EOF
+#)"
+#CONDA=conda
+
+# use mamba, which is much faster
+#CONDA_VERSION=4.12.0-0
+#CONDA_CHECKSUMS="$(cat <<EOF
+#6c6fd04d688ceb7e6b540bba059dd3a541d60602e9adece3abaf754d15c83484  Mambaforge-4.12.0-0-Linux-x86_64.sh
+#2301f866fb239ce6cda3e741e00be22ff7aa5ff76ba5683509ebae58df917546  Mambaforge-4.12.0-0-MacOSX-x86_64.sh
+#EOF
+#)"
+#CONDA=mamba
+
+
+
+# actually, conda doesn't play nice with set -x, so override it:
+conda_x() { ( set +x; echo "+ conda" "$@" >&2; conda "$@" ) }
+CONDA=conda_x
+
+
+# Installation location
+ENV=~/.local/shimming-toolbox/conda
+
+
+# ----------------------
+
+# Parse Arguments
+CLEAN=
+if [[ "$1" == "-c" ]]; then
+  CLEAN=1
+  shift
+fi
+
+if [ -n "${1:-}" ]; then
+  echo 'error: unrecognized arguments:' "$@" 2>&1
+  exit 1
+fi
+
+
+# Detect platform
+CONDA_OS="$(uname)"
+if [[ "$(uname)" == "Darwin" ]]; then
+  CONDA_OS="MacOSX"
+fi
+CONDA_CHIPSET="$(uname -m)"
+
+# Filter CONDA_CHECKSUMS down to match detected platform.
+# This both lets us bail early if we're not on a supported platform,
+# and avoids adding a Darwin polyfill for sha266sum's --ignore-missing
+# by making sure there's only one checksum.
+if ! CONDA_CHECKSUMS="$(echo "$CONDA_CHECKSUMS" | egrep "$CONDA_OS-$CONDA_CHIPSET.sh$")"; then
+  echo "Unsupported platform $CONDA_OS-$CONDA_CHIPSET." 2>&1
+  exit 1
+fi
+
+CONDA_INSTALLER=$(awk '{print $2}' <<<"$CONDA_CHECKSUMS")
+
+# Download conda installer (if necessary)
+mkdir -p ~/.cache/shimming-toolbox
+(
+  cd ~/.cache/shimming-toolbox
+
+  while ! ( [ -f "$CONDA_INSTALLER" ] && sha256sum -c --status <<<"$CONDA_CHECKSUMS" ); do
+      URL="https://repo.anaconda.com/miniconda/$CONDA_INSTALLER"  # <-- miniconda
+      #URL="https://github.com/conda-forge/miniforge/releases/download/$CONDA_VERSION/$CONDA_INSTALLER" # <-- miniforge
+      ( set -x; curl -JLO --retry 3 --fail -JLO "$URL" )
+  done
+)
+
+# Clean
+if [ -n "$CLEAN" ]; then
+  ( set -x; rm -rf "$ENV" )
+fi
+
+# Install conda
+if [ ! -d "$ENV" ]; then
+  # Protect against reinstalling conda.
+  #
+  # Their installer has a -u(pdate) flag that's supposed to handle
+  # this situation, but downgrading python in (base), breaks it.
+  # Instead, run 'update' directly, below.
+  #
+  # This breaks down if we switch between conda/miniforge/mamba,
+  # but hopefully that's rare.
+
+  (set -x
+  sh ~/.cache/shimming-toolbox/"$CONDA_INSTALLER" -p "$ENV" -b
+  )
+fi
+
+# Isolate conda environment. context: https://github.com/conda/conda/issues/7173#issuecomment-980496682
+# Without this, ~/.local/lib/python* can leak into the env, which is no good.
+# But then again, conda was never designed to be used the way we're using it,
+# so maybe turnabout is fair play.
+# TODO: test that this behaves itself
+echo "include-system-site-packages = false" > "$ENV"/pyvenv.cfg
+
+# Load conda env
+# BEWARE this reads and tries to interpret the *current* $BASH_ARGV, because it's sourced, not called;
+. "$ENV"/bin/activate
+
+# Install the rest of the software
+SRC="$(dirname "$0")"
+(set -x
+
+# pin to python 3.7; it's the only verson we've tested thoroughly
+"$CONDA" install -qy python=3.7
+
+"$CONDA" update -qy --all
+
+# dcm2niix is a non-python dependency, so it has to be installed with conda
+"$CONDA" install -qy dcm2niix
+
+# install shimming-toolbox
+python -m pip install "$SRC"
+)
+
+#cp "config/dcm2bids.json" "$ST_DIR/dcm2bids.json" # ???? # TODO this should be a pre-PR
+
+
+
+# Expose the entry_points from setup.py to user's **default** environment.
+#
+# This is in lieu of asking the user to keep our conda env active at all times,
+#
+# This is sketchy:
+# - will these apps all work right if the rest of the apps in PATH aren't installed?
+#   python apps will be fine because of python knows a separate PYTHONPATH,
+#   but what about, say, dcm2niix?
+
+# Three solutions:
+# - add $ENV/bin to PATH, but at the end
+# - ln into ~/.local/bin
+# - ln into *empty directory* $ENV/../bin/, add that to PATH
+
+case "$SHELL" in
+  *"bash"*|*"/sh"*)
+    #SHELL_RC="$HOME/.bashrc" # only for interactive shells
+    SHELL_RC="$HOME/.profile" # for any shell, but will be ignored if .bash_profile exists
+    if [ -f "$HOME/.bash_profile" ]; then
+      # use .bash_profile if the user is already using it
+      SHELL_RC="$HOME/.bash_profile"
+    fi
+    ;;
+  *"zsh"*)
+    SHELL_RC="$HOME/.zshrc"
+    ;;
+  *)
+  echo "ERROR: Shell was not recognized: $SHELL" 2>&1
+  exit 1
+esac
+
+# Add conda's bin/ to the user's PATH, so they can use our entry_points.
+#
+# But add it to the *end*, so that other apps in the env (notably:
+# python itself) don't interfere with the user's environment.
+ST_BIN="$ENV/bin" # -> needs suffix PATH
+
+# Put our entry points into the user's default private bin/
+#ST_BIN="$HOME/.local/bin" # -> needs prefix PATH
+
+# Make a new empty private bin/ and make it hold *only* our entry_points
+# (avoiding the risk of overriding the user's python with conda's python)
+#ST_BIN="$ENV/../bin" # -> needs prefix PATH
+
+mkdir -p "$ST_BIN"
+(set +e
+# TODO: this redundant in the ST_BIN=$ENV/bin case
+for file in "$ENV"/bin/*st_*; do
+  ln -v -f "$file" "$ST_BIN"
+done
+exit 0
+)
+
+(
+  # to make this idempotent, test if $ST_BIN is already on existing PATH
+  # ref: https://stackoverflow.com/a/9663359
+  # ((TODO: redundant on most systems if using ~/.local/bin))
+
+  # reload environment:
+  set +euo pipefail
+  . /etc/environment >/dev/null 2>&1
+  . /etc/profile >/dev/null 2>&1
+  . "$SHELL_RC" >/dev/null 2>&1
+  set -euo pipefail
+
+  if [[ ":$PATH:" != *:"$ST_BIN":* ]]; then
+    ST_BIN="$(realpath -m --relative-to "$HOME" "$ST_BIN")" # make it relative, for a tidier .profile
+    (
+      echo
+      echo "# SHIMMINGTOOLBOX (installed on $(date +%Y-%m-%d\ %H:%M:%S))"
+      echo 'export PATH="$PATH:$HOME/'"$ST_BIN"'"'  # <- suffix PATH
+      #echo 'export PATH="$HOME/'"$ST_BIN"':$PATH"' # <- prefix PATH
+    ) | ( set -x; tee -a "$SHELL_RC" )
+
+    echo
+    echo "To access shimming-toolbox open a new Terminal window or run:"
+    echo "  . $SHELL_RC"
+    # there's layers of quotes here ^, be careful
+  fi
+)
