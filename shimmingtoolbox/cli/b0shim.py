@@ -21,7 +21,7 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size
+from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -58,8 +58,9 @@ def b0shim_cli():
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
               help="Constraints for the scanner coil.")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
-              default='sequential', show_default=True, help="Defines the slice ordering.")
+@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+              default='auto', show_default=True,
+              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
                    "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
@@ -220,7 +221,10 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
-    list_slices = define_slices(n_slices, slice_factor, slices)
+    if slices == 'auto':
+        list_slices = parse_slices(fname_anat)
+    else:
+        list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Get shimming coefficients
@@ -424,8 +428,9 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
               help="Constraints for the scanner coil.")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
-              default='sequential', show_default=True, help="Defines the slice ordering")
+@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+              default='auto', show_default=True,
+              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
                    "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
@@ -571,7 +576,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
-    list_slices = define_slices(n_slices, slice_factor, slices)
+    if slices == 'auto':
+        list_slices = parse_slices(fname_anat)
+    else:
+        list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
