@@ -82,7 +82,9 @@ def b0shim_cli():
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                                       "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
+                                      "captured by the controller of the shim amplifier. If there is a fat saturation "
+                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
+                                      "text file before each slice coefficients. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file.")
@@ -94,7 +96,9 @@ def b0shim_cli():
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                                       "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
+                                      "captured by the controller of the shim amplifier. If there is a fat saturation "
+                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
+                                      "text file before each slice coefficients. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file. Use "
@@ -186,6 +190,11 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
+    # Load anat json
+    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_anat_json) as json_file:
+        json_anat_data = json.load(json_file)
+
     # Load mask
     if fname_mask_anat is not None:
         nii_mask_anat = nib.load(fname_mask_anat)
@@ -231,6 +240,9 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
                            path_output=path_output)
 
     # Output
+    # Load output options
+    options = _load_output_options(json_anat_data)
+
     list_fname_output = []
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
@@ -266,10 +278,6 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
 
             else:
                 logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
-                # Load anat json
-                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-                with open(fname_anat_json) as json_file:
-                    json_anat_data = json.load(json_file)
 
                 # Convert coefficients from RAS to the shim CS of the manufacturer
                 manufacturer = json_anat_data['Manufacturer']
@@ -290,20 +298,26 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
                     for i_channel in range(n_channels):
                         # abs_coef = delta + initial
                         coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
-                # If it's delta, don't add the initial coefs
+
+                    list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
+                                                                   o_format_sph, options, coil_number=i_coil,
+                                                                   default_coefs=initial_coefs)
+                    continue
 
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
-                                                           coil_number=i_coil)
+                                                           options, coil_number=i_coil)
+
         else:
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
-                                                           coil_number=i_coil)
+                                                           options, coil_number=i_coil)
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
-def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, coil_number):
+def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
+                              default_coefs=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     n_channels = coil.dim[3]
@@ -317,10 +331,19 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
             if o_format == 'chronological-coil':
                 # Output per shim (chronological), output all channels for a particular shim, then repeat
                 for i_shim in range(len(list_slices)):
+                    # If fatsat pulse, set shim coefs to 0
+                    if options['fatsat']:
+                        for i_channel in range(n_channels):
+                            if default_coefs is None:
+                                # Output 0 (delta)
+                                f.write(f"{0:.1f}, ")
+                            else:
+                                # Output initial coefs (absolute)
+                                f.write(f"{default_coefs[i_channel]:.6f}, ")
+
+                        f.write(f"\n")
                     for i_channel in range(n_channels):
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
-                        if i_channel != n_channels:
-                            f.write(", ")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
             elif o_format == 'slicewise-coil':
@@ -331,9 +354,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                 for i_slice in range(n_slices):
                     i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
                     for i_channel in range(n_channels):
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}")
-                        if i_channel != n_channels:
-                            f.write(", ")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
         list_fname_output.append(os.path.abspath(fname_output))
@@ -349,7 +370,15 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                 with open(fname_output, 'w', encoding='utf-8') as f:
                     # Each row will have one coef representing the shim in chronological order
                     for i_shim in range(len(list_slices)):
-                        f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
+                        # If fatsat pulse, set shim coefs to 0
+                        if options['fatsat']:
+                            if default_coefs is None:
+                                # Output 0 (delta)
+                                f.write(f"{0:.1f},\n")
+                            else:
+                                # Output initial coefs (absolute)
+                                f.write(f"{default_coefs[i_channel]:.6f},\n")
+                        f.write(f"{coefs[i_shim, i_channel]:.6f},\n")
 
             if o_format == 'slicewise-ch':
                 with open(fname_output, 'w', encoding='utf-8') as f:
@@ -447,8 +476,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
                    "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                    "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                    "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. In both cases, there will be one output "
-                   "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                   "captured by the controller of the shim amplifier. If there is a fat saturation "
+                   "pulse in the anat sequence, shim weights of 0s are included in the output "
+                   "text file before each slice coefficients. For both 'slicewice' and 'chronological', there will be "
+                   "one output file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
                    "time-varying and mean pressure are encoded in the columns of each file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
@@ -531,6 +562,11 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
         # TODO: Reorient nifti so that the slice is the 3rd dim
         raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
+    # Load anat json
+    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_anat_json) as json_file:
+        json_anat_data = json.load(json_file)
+
     # Load static mask
     if fname_mask_anat_static is not None:
         nii_mask_anat_static = nib.load(fname_mask_anat_static)
@@ -586,6 +622,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     coefs_static, coefs_riro, mean_p, p_rms = out
 
+    # Output
+    # Load output options
+    options = _load_output_options(json_anat_data)
+
     list_fname_output = []
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
@@ -632,10 +672,6 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
             else:
                 logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
-                # Load anat json
-                fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-                with open(fname_anat_json) as json_file:
-                    json_anat_data = json.load(json_file)
 
                 # Convert coefficients from RAS to the shim CS of the manufacturer
                 manufacturer = json_anat_data['Manufacturer']
@@ -659,10 +695,14 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                         # abs_coef = delta + initial
                         coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
                         # riro does not change
-                # If it's delta, don't add the initial coefs
+
+                    list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
+                                                               list_slices, path_output, o_format_sph, options, i_coil,
+                                                               default_st_coefs=initial_coefs)
+                    continue
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_sph, i_coil)
+                                                       path_output, o_format_sph, options, i_coil)
 
         else:  # Custom coil
             # Plot a figure of the coefficients
@@ -671,13 +711,13 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
                         bounds=coil.coef_channel_minmax)
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_coil, i_coil)
+                                                       path_output, o_format_coil, options, i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
-                          coil_number):
+                          options, coil_number, default_st_coefs=None):
     """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     list_fname_output = []
@@ -691,9 +731,17 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
+                    # If fatsat pulse, set shim coefs to 0 and output mean pressure
+                    if options['fatsat']:
+                        if default_st_coefs is None:
+                            # Output 0 (delta)
+                            f.write(f"{0:.1f}, {0:.1f}, {mean_p:.4f},\n")
+                        else:
+                            # Output initial coefs (absolute)
+                            f.write(f"{default_st_coefs[i_channel]:.1f}, {0:.1f}, {mean_p:.4f},\n")
                     f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
-                    f.write(f"{mean_p:.4f}\n")
+                    f.write(f"{mean_p:.4f},\n")
 
         elif o_format == 'slicewise-ch':
             fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
@@ -704,9 +752,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
                     f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
-                    f.write(f"{mean_p:.4f}\n")
+                    f.write(f"{mean_p:.4f},\n")
 
-        # TODO: Remove once implemented in more streamlined way
         else:  # o_format == 'gradient':
 
             # Make sure there are 4 channels
@@ -823,6 +870,16 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nii = nib.load(fname)
         fname_to_save = os.path.join(path_output, os.path.basename(fname))
         nib.save(nii, fname_to_save)
+
+
+def _load_output_options(json_anat):
+    options = {'fatsat': False}
+
+    if 'ScanOptions' in json_anat:
+        if 'FS' in json_anat['ScanOptions']:
+            logger.debug("Fat Saturation pulse detected")
+            options['fatsat'] = True
+    return options
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
