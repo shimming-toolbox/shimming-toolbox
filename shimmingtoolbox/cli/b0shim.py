@@ -50,8 +50,7 @@ def b0shim_cli():
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
               help="Anatomical image to apply the correction onto.")
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
-              help="Mask defining the spatial region to shim."
-                   "The coordinate system should be the same as ``anat``'s coordinate system.")
+              help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
@@ -442,11 +441,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
-              help="Mask defining the static spatial region to shim."
-                   "The coordinate system should be the same as ``anat``'s coordinate system.")
+              help="Mask defining the static spatial region to shim.")
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
-                   "region to shim. The coordinate system should be the same as ``anat``'s coordinate system.")
+                   "region to shim.")
 @click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
