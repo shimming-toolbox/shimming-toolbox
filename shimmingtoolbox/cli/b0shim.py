@@ -62,9 +62,10 @@ def b0shim_cli():
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
-                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
-                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
+              help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
+                   "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
@@ -432,9 +433,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, c
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
-                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
-                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
+              help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
+                   "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
