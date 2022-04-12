@@ -770,3 +770,16 @@ class TestParseSlices(object):
 
         assert slices == [(1,), (3,), (5,), (7,), (9,), (11,), (13,), (15,), (17,), (19,),
                           (0,), (2,), (4,), (6,), (8,), (10,), (12,), (14,), (16,), (18,)]
+
+    def test_parse_slices_slice_encode(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_json = os.path.join(tmp, 'test.json')
+            fname_nifti = os.path.join(tmp, 'test.nii')
+
+            self.json_data['SliceEncodingDirection'] = 'k-'
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(self.json_data, f, indent=4)
+
+            slices = parse_slices(fname_nifti)
+
+            assert slices == [(2,), (3, 4), (0, 1)]

@@ -974,32 +974,28 @@ def parse_slices(fname_nifti):
     with open(fname_json) as json_file:
         json_data = json.load(json_file)
 
+    # The BIDS specification mentions that the 'SliceTiming' is stored on disk depending on the
+    # 'SliceEncodingDirection'. If this tag is 'i', 'j', 'k' or non existent, index 0 of 'SliceTiming' corresponds to
+    # index 0 of the slice dimension of the NIfTI file. If 'SliceEncodingDirection' is 'i-', 'j-' or 'k-',
+    # the last value of 'SliceTiming' corresponds to index 0 of the slice dimension of the NIfTI file.
+    # https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#timing-parameters
+
+    # Note: Dcm2niix does not seem to include the tag 'SliceEncodingDirection' and always makes sure index 0 of
+    # 'SliceTiming' corresponds to index 0 of the NIfTI file.
+    # https://www.nitrc.org/forum/forum.php?thread_id=10307&forum_id=4703
+    # https://github.com/rordenlab/dcm2niix/issues/530
+
     # Make sure tag SliceTiming exists
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
         raise RuntimeError("No tag SliceTiming to parse slice data")
 
-    # # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
-    # is_positive_se = True
-    # if 'SliceEncodingDirection' in json_data:
-    #     if json_data['SliceEncodingDirection'][-1] == '-':
-    #         is_positive_se = False
-
-    # Examples:
-    # https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#timing-parameters
-    # SE: +
-    # slice timing : [0, 1, 2]
-    # timing of slice index [0, 1, 2]
-
-    # SE: -
-    # slice timing : [0, 1, 2]
-    # timing of slice index [2, 1, 0]
-
-    # Slice timing order is related to how they are stored on disk
-    # https://www.nitrc.org/forum/forum.php?thread_id=10307&forum_id=4703
-    # This means that slice index 0 in python refers to the 1st value in SliceTiming and the corresponding time can
-    # tell us the order it was acquired
+    # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
+    if 'SliceEncodingDirection' in json_data:
+        if json_data['SliceEncodingDirection'][-1] == '-':
+            logger.debug("SliceEncodeDirection is negative, SliceTiming parsed backwards")
+            slice_timing.reverse()
 
     # Return the indexes of the sorted slice_timing
     slice_timing = np.array(slice_timing)
