@@ -15,7 +15,6 @@ from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
@@ -43,6 +42,7 @@ def _define_inputs(fmap_dim):
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
     anat_data = json.load(open(fname_anat_json))
+    anat_data['ScanOptions'] = ['FS']
 
     anat = nii_anat.get_fdata()
 

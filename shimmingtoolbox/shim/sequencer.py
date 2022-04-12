@@ -19,6 +19,7 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
+from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.utils import montage
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
@@ -95,16 +96,20 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
         raise ValueError("Anatomical image must be in 3d")
 
     # Make sure the mask has the appropriate dimensions
-    mask = nii_mask_anat.get_fdata()
-    if mask.ndim != 3:
+    if nii_mask_anat.get_fdata().ndim != 3:
         raise ValueError("Mask image must be in 3d")
 
-    # Make sure shape and affine of mask are the same as the anat
-    if not np.all(mask.shape == anat.shape):
-        raise ValueError(f"Shape of mask:\n {mask.shape} must be the same as the shape of anat:\n{anat.shape}")
-    if not np.all(nii_mask_anat.affine == nii_anat.affine):
-        raise ValueError(f"Affine of mask:\n{nii_mask_anat.affine}\nmust be the same as the affine of anat:\n"
-                         f"{nii_anat.affine}")
+    # Resample the input mask on the target anatomical image if they are different
+    if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == nii_anat.affine):
+        logger.debug("Resampling mask on the target anat")
+        nii_mask_anat_soft = resample_from_to(nii_mask_anat, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_mask_anat_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
 
     # Select and initialize the optimizer
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
@@ -396,20 +401,33 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         raise ValueError("Anatomical image must be in 3d")
 
     # Make sure masks have the appropriate dimensions
-    static_mask = nii_static_mask.get_fdata()
-    if static_mask.ndim != 3:
+    if nii_static_mask.get_fdata().ndim != 3:
         raise ValueError("static_mask image must be in 3d")
-    riro_mask = nii_riro_mask.get_fdata()
-    if riro_mask.ndim != 3:
+    if nii_riro_mask.get_fdata().ndim != 3:
         raise ValueError("riro_mask image must be in 3d")
 
-    # Make sure shape and affine of masks are the same as the anat
-    if not (np.all(riro_mask.shape == anat.shape) and np.all(static_mask.shape == anat.shape)):
-        raise ValueError(f"Shape of riro mask: {riro_mask.shape} and static mask: {static_mask.shape} "
-                         f"must be the same as the shape of anat: {anat.shape}")
-    if not (np.all(nii_riro_mask.affine == nii_anat.affine) and np.all(nii_static_mask.affine == nii_anat.affine)):
-        raise ValueError(f"Affine of riro mask:\n{nii_riro_mask.affine}\nand static mask: {nii_static_mask.affine}\n"
-                         f"must be the same as the affine of anat:\n{nii_anat.affine}")
+    # Resample the input masks on the target anatomical image if they are different
+    if not np.all(nii_static_mask.shape == anat.shape) or not np.all(nii_static_mask.affine == nii_anat.affine):
+        logger.debug("Resampling static mask on the target anat")
+        nii_static_mask_soft = resample_from_to(nii_static_mask, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_static_mask_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_static_mask = nib.Nifti1Image(tmp_mask, nii_static_mask_soft.affine, header=nii_static_mask_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_static_mask, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
+
+    if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(nii_riro_mask.affine == nii_anat.affine):
+        logger.debug("Resampling riro mask on the target anat")
+        nii_riro_mask_soft = resample_from_to(nii_riro_mask, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_riro_mask_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_riro_mask = nib.Nifti1Image(tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_riro_mask, os.path.join(path_output, "mask_riro_resampled_on_anat.nii.gz"))
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
