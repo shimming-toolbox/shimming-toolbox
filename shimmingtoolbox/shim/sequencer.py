@@ -138,14 +138,13 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
 
     # Initialize
-    correction_per_channel = np.zeros(merged_coils.shape + (len(slices),))
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
         # Calculate shimmed values
-        correction_per_channel[..., i_shim] = coef[i_shim] * merged_coils
-        corrections[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        correction_per_channel = coef[i_shim] * merged_coils
+        corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
         shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
