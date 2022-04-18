@@ -147,6 +147,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
         shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
+        # Create non binary mask
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
         sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
@@ -165,7 +166,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
         # fieldmap)
         shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
-                                                                   slices)
+                                                                   slices, masks_fmap)
 
         if len(slices) == 1:
             # TODO: Output json sidecar
@@ -200,7 +201,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             nib.save(nii_correction, fname_correction)
 
 
-def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices):
+def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices, masks_fmap):
     mask_full_binary = np.ceil(resample_from_to(nii_mask_anat,
                                                 nii_fieldmap,
                                                 order=1,
@@ -208,16 +209,13 @@ def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, 
                                                 cval=0).get_fdata())
 
     # Find the correction
-    mask_fmap_nb = np.zeros(unshimmed.shape + (len(slices),))
     full_correction = np.zeros(unshimmed.shape)
     for i_shim in range(len(slices)):
-        # Create non binary mask
-        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask_anat, nii_fieldmap, slices[i_shim]).get_fdata()
         # Apply the correction weighted according to the mask
-        full_correction += correction[..., i_shim] * mask_fmap_nb[..., i_shim]
+        full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
 
     # Calculate the weighted whole mask
-    mask_weight = np.sum(mask_fmap_nb, axis=3)
+    mask_weight = np.sum(masks_fmap, axis=3)
     # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
     full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
