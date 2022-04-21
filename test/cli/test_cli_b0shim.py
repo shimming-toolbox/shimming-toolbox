@@ -247,7 +247,45 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
-            # There should be 10 x 4 values
+
+    def test_cli_dynamic_fatsat(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with input coil"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--output-file-format-coil', 'chronological-coil',
+                                             '--fatsat', 'no',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
     def test_cli_dynamic_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with chronological_ch o_format"""
