@@ -3,7 +3,7 @@
 
 """Shimming Toolbox FSLeyes Plugin
 
-This is an FSLeyes plugin script that integrates ``shimmingtoolbox`` tools into FSLeyes:
+This is an FSLeyes plugin that integrates the following ``shimmingtoolbox`` tools into FSLeyes' GUI:
 
 - st_dicom_to_nifti
 - st_mask
@@ -13,19 +13,19 @@ This is an FSLeyes plugin script that integrates ``shimmingtoolbox`` tools into 
 
 ---------------------------------------------------------------------------------------
 Copyright (c) 2021 Polytechnique Montreal <www.neuro.polymtl.ca>
-Authors: Alexandre D'Astous, Ainsleigh Hill, Charlotte, Gaspard Cereza, Julien Cohen-Adad
+Authors: Alexandre D'Astous, Ainsleigh Hill, Gaspard Cereza, Julien Cohen-Adad
 """
 
 import abc
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.actions.loadoverlay as loadoverlay
+import fsleyes.views.canvaspanel as canvaspanel
 import glob
 import imageio
 import logging
 import nibabel as nib
 import numpy as np
 import os
-import tempfile
 import webbrowser
 import wx
 
@@ -48,161 +48,111 @@ DIR = os.path.dirname(__file__)
 
 VERSION = "0.1.1"
 
+# Load icon resources
+asterisk_icon = wx.Image(os.path.join(DIR, 'img', 'asterisk.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+info_icon = wx.Image(os.path.join(DIR, 'img', 'info-icon.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+play_icon = wx.Bitmap(os.path.join(DIR, 'img', 'play.png'), wx.BITMAP_TYPE_PNG)
+rtd_logo = wx.Bitmap(os.path.join(DIR, 'img', 'RTD.png'), wx.BITMAP_TYPE_PNG)
+# Load ShimmingToolbox logo saved as a png image, rescale it, and return it as a wx.Bitmap image.
+st_logo = wx.Image(os.path.join(DIR, 'img', 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
+st_logo.Rescale(st_logo.GetWidth() * 0.2, st_logo.GetHeight() * 0.2, wx.IMAGE_QUALITY_HIGH)
+st_logo = st_logo.ConvertToBitmap()
 
+
+# We need to create a ctrlpanel.ControlPanel instance so that it can be recognized as a plugin by FSLeyes
+# Class hierarchy: wx.Panel > fslpanel.FSLeyesPanel > ctrlpanel.ControlPanel
 class STControlPanel(ctrlpanel.ControlPanel):
     """Class for Shimming Toolbox Control Panel"""
 
-    def __init__(self, ortho, *args, **kwargs):
-        """Initialize the control panel.
-
-        Generates the widgets and adds them to the panel. Also sets the initial position of the
-        panel to the left.
-
-        Args:
-            ortho: This is used to access the ortho ops in order to turn off the X and Y canvas as
-                well as the cursor
-        """
-        ctrlpanel.ControlPanel.__init__(self, ortho, *args, **kwargs)
-
-        my_panel = TabPanel(self)
-        sizer_tabs = wx.BoxSizer(wx.VERTICAL)
-        # Actually sets the maximum size shown at once, also the defaullt when the window is floating
-        sizer_tabs.SetMinSize(400, 400)
-        sizer_tabs.Add(my_panel, 1, wx.EXPAND)
-
-        # Set the sizer of the control panel
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(sizer_tabs, wx.EXPAND)
-        self.SetSizer(sizer)
-
-        # Initialize the variables that are used to track the active image
-        self.png_image_name = []
-        self.image_dir_path = []
-        self.most_recent_watershed_mask_name = None
-
-        # Create a temporary directory that will hold the NIfTI files
-        self.st_temp_dir = tempfile.TemporaryDirectory()
-
-        self.verify_version()
-
-    def show_message(self, message, caption="Error"):
-        """Show a popup message on the FSLeyes interface.
-
-        Args:
-            message (str): message to be displayed
-            caption (str): (optional) caption of the message box.
-        """
-        with wx.MessageDialog(
-                self,
-                message,
-                caption=caption,
-                style=wx.OK | wx.CENTRE,
-                pos=wx.DefaultPosition,
-        ) as msg:
-            msg.ShowModal()
-
-    def verify_version(self):
-        """Check if the plugin version is the same as the one in the shimming-toolbox directory."""
-
-        st_path = os.path.realpath(__file__)
-        plugin_file = os.path.join(st_path, "gui", "st_plugin.py")
-
-        plugin_file_exists = os.path.isfile(plugin_file)
-
-        if not plugin_file_exists:
-            return
-
-        # Check the version of the plugin
-        with open(plugin_file) as plugin_file_reader:
-            plugin_file_lines = plugin_file_reader.readlines()
-
-        plugin_file_lines = [x.strip() for x in plugin_file_lines]
-        version_line = f'VERSION = "{VERSION}"'
-        plugin_is_up_to_date = True
-        version_found = False
-
-        for lines in plugin_file_lines:
-            if lines.startswith("VERSION = "):
-                version_found = True
-                if not lines == version_line:
-                    plugin_is_up_to_date = False
-
-        if version_found is False or plugin_is_up_to_date is False:
-            message = """
-                A more recent version of the ShimmingToolbox plugin was found in your
-                ShimmingToolbox installation folder. You will need to replace the current
-                FSLeyes plugin with the new one.
-                To proceed, go to: File -> Load plugin -> st_plugin.py. Then, restart FSLeyes.
-            """
-            self.show_message(message, "Warning")
-        return
-
+    # The CanvasPanel view is used for most FSLeyes plugins so we decided to stick to it
     @staticmethod
     def supportedViews():
-        """I am not sure what this method does."""
-        from fsleyes.views.orthopanel import OrthoPanel
-
-        return [OrthoPanel]
+        return [canvaspanel.CanvasPanel]
 
     @staticmethod
     def defaultLayout():
-        """This method makes the control panel appear on the bottom of the FSLeyes window."""
-        return {
-            "location": wx.BOTTOM,
-            "title": "Shimming Toolbox"
-        }
+        """This method makes the control panel appear on the top of the FSLeyes window."""
+        return {"location": wx.TOP, "title": "Shimming Toolbox"}
 
+    def __init__(self, parent, overlayList, displayCtx, ctrlPanel):
+        """Initialize the control panel.
 
-class TabPanel(wx.ScrolledWindow):
-    def __init__(self, parent):
-        super().__init__(parent=parent)
+        Generates the widgets and adds them to the panel.
 
-        nb = wx.Notebook(self)
+        """
+        super().__init__(parent, overlayList, displayCtx, ctrlPanel)
+        # Create a notebook with a terminal to navigate between the different functions.
+        nb = NotebookTerminal(self)
+
+        # Create the different tabs. Use 'select' to choose the default tab displayed at startup
         tab1 = DicomToNiftiTab(nb)
         tab2 = FieldMapTab(nb)
         tab3 = MaskTab(nb)
         tab4 = B0ShimTab(nb)
         tab5 = B1ShimTab(nb)
-
-        # Add the windows to tabs and name them. Use 'select' to choose the default tab displayed at startup
         nb.AddPage(tab1, tab1.title)
         nb.AddPage(tab2, tab2.title)
         nb.AddPage(tab3, tab3.title)
         nb.AddPage(tab4, tab4.title, select=True)
         nb.AddPage(tab5, tab5.title)
 
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(nb, 1, wx.EXPAND)
-        self.SetSizer(sizer)
-        self.SetScrollbars(0, 4, 1, 1)
+        self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer.Add(nb, 2, wx.EXPAND)
+        self.sizer.Add(nb.terminal_component.sizer, 1, wx.EXPAND)
+        self.sizer.AddSpacer(5)
+        self.sizer.SetMinSize((600, 400))
+        self.SetSizer(self.sizer)
 
 
-class Tab(wx.Panel):
+class NotebookTerminal(wx.Notebook):
+    """Notebook class with an extra terminal attribute"""
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.terminal_component = Terminal(parent)
+        
+        
+class Tab(wx.ScrolledWindow):
     def __init__(self, parent, title, description):
-        wx.Panel.__init__(self, parent)
+        super().__init__(parent)
         self.title = title
-        self.sizer_info = InfoComponent(self, description).sizer
+        self.sizer_info = InfoSection(self, description).sizer
+        self.terminal_component = parent.terminal_component
+        self.SetScrollbars(1, 1, 1, 1)
 
     def create_sizer(self):
         """Create the parent sizer for the tab.
 
-        Tab is divided into 3 main sizers:
-            sizer_info | sizer_run | sizer_terminal
+        Tab is divided into 2 main sizers:
+            sizer_info | sizer_run
         """
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(self.sizer_info, 0)
-        sizer.AddSpacer(30)
-        sizer.Add(self.sizer_run, 1, wx.EXPAND)
-        sizer.AddSpacer(30)
-        sizer.Add(self.sizer_terminal, 1, wx.EXPAND)
+        sizer.AddSpacer(20)
+        sizer.Add(self.sizer_run, 2)
         return sizer
 
     def create_empty_component(self):
-        component = InputComponent(
-            panel=self,
-            input_text_box_metadata=[]
-        )
+        component = InputComponent(panel=self, input_text_box_metadata=[])
         return component
+
+
+class Terminal:
+    """Create the terminal where messages are logged to the user."""
+    def __init__(self, panel):
+        self.panel = panel
+        self.terminal = wx.TextCtrl(self.panel, wx.ID_ANY, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
+        self.terminal.SetBackgroundColour(wx.BLACK)
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.AddSpacer(5)
+        self.sizer.Add(self.terminal, 1, wx.EXPAND)
+        self.sizer.AddSpacer(5)
+
+    def log_to_terminal(self, msg, level=None):
+        if level is None:
+            self.terminal.AppendText(f"{msg}\n")
+        else:
+            self.terminal.AppendText(f"{level}: {msg}\n")
 
 
 class Component:
@@ -214,60 +164,42 @@ class Component:
     def create_sizer(self):
         raise NotImplementedError
 
+    # make sure that the create_sizer method has been implemented in the subclasses
     @classmethod
     def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'create_sizer') and
-                callable(subclass.create_sizer) or
-                NotImplemented)
+        return hasattr(subclass, 'create_sizer') and callable(subclass.create_sizer) or NotImplemented
 
 
-class InfoComponent(Component):
+class InfoSection:
     def __init__(self, panel, description):
-        super().__init__(panel)
+        self.panel = panel
         self.description = description
         self.sizer = self.create_sizer()
 
     def create_sizer(self):
         """Create the left sizer containing generic Shimming Toolbox information."""
         sizer = wx.BoxSizer(wx.VERTICAL)
+        logo = wx.StaticBitmap(parent=self.panel, id=-1, bitmap=st_logo, pos=wx.DefaultPosition)
+        width = logo.Size[0]
+        sizer.Add(logo, flag=wx.SHAPED, proportion=1)
+        sizer.AddSpacer(10)
 
-        st_logo = self.get_logo()
-        sizer.Add(st_logo, flag=wx.SHAPED, proportion=1)
+        # Create a "Documentation" button that redirects towards https://shimming-toolbox.org/en/latest/
+        button_documentation = wx.Button(self.panel, label="Documentation")
+        button_documentation.Bind(wx.EVT_BUTTON, self.open_documentation_url)
+        button_documentation.SetBitmap(rtd_logo)
+        sizer.Add(button_documentation, flag=wx.EXPAND)
+        sizer.AddSpacer(10)
 
-        button_documentation = wx.Button(self.panel, label="Documentation",
-                                         size=wx.Size(100, 20))
-        button_documentation.Bind(wx.EVT_BUTTON, self.documentation_url)
-        sizer.Add(button_documentation, flag=wx.SHAPED, proportion=1)
-
+        # Add a short description of what the current tab does
         description_text = wx.StaticText(self.panel, id=-1, label=self.description)
-        width = st_logo.Size[0]
         description_text.Wrap(width)
         sizer.Add(description_text)
         return sizer
 
-    def get_logo(self, scale=0.2):
-        """Loads ShimmingToolbox logo saved as a png image and returns it as a wx.Bitmap image.
-
-        Retunrs:
-            wx.StaticBitmap: The ``ShimmingToolbox`` logo
-        """
-        fname_st_logo = os.path.join(DIR, 'img', 'shimming_toolbox_logo.png')
-
-        png = wx.Image(fname_st_logo, wx.BITMAP_TYPE_ANY)
-        png.Rescale(png.GetWidth() * scale, png.GetHeight() * scale, wx.IMAGE_QUALITY_HIGH)
-        bitmap = wx.BitmapFromImage(png)
-        logo_image = wx.StaticBitmap(
-            parent=self.panel,
-            id=-1,
-            bitmap=bitmap,
-            pos=wx.DefaultPosition
-        )
-        return logo_image
-
-    def documentation_url(self, event):
-        """Redirect ``documentation_button`` to the ``shimming-toolbox`` page."""
-        url = "https://shimming-toolbox.org/en/latest/"
-        webbrowser.open(url)
+    def open_documentation_url(self, event):
+        """Redirect ``button_documentation`` to the ``shimming-toolbox`` page."""
+        webbrowser.open('https://shimming-toolbox.org/en/latest/')
 
 
 class InputComponent(Component):
@@ -465,8 +397,9 @@ class RunComponent(Component):
 
     def add_button_run(self):
         """Add the run button which will call the ``Shimming Toolbox`` CLI."""
-        button_run = wx.Button(self.panel, -1, label="Run")
+        button_run = wx.Button(self.panel, -1, label="Run", size=(85, 48))
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
+        button_run.SetBitmap(play_icon, dir=wx.LEFT)
         self.sizer.Add(button_run, 0, wx.CENTRE)
         self.sizer.AddSpacer(10)
 
@@ -488,7 +421,7 @@ class RunComponent(Component):
 
             # Get the directory of the output if it is a file or already a directory
             if os.path.isfile(self.output):
-                folder = get_folder(self.output)
+                folder = os.path.split(self.output)[0]
             else:
                 folder = self.output
 
@@ -572,9 +505,8 @@ class RunComponent(Component):
                             arg = textctrl.GetValue()
                             if arg == "" or arg is None:
                                 if input_text_box.required is True:
-                                    raise RunArgumentErrorST(
-                                        f"""Argument {name} is missing a value, please enter a
-                                            valid input"""
+                                    raise self.RunArgumentErrorST(
+                                        f"Argument {name} is missing a value, please enter a valid input"
                                     )
                             else:
                                 # Case where the option name is set to arg, this handles it as if it were an argument
@@ -605,6 +537,10 @@ class RunComponent(Component):
         msg += "\n"
         return command, msg
 
+    class RunArgumentErrorST(Exception):
+        """Exception for missing input arguments for CLI call."""
+        pass
+
     def fetch_paths_dicom_to_nifti(self):
         if self.st_function == "st_dicom_to_nifti":
 
@@ -619,41 +555,6 @@ class RunComponent(Component):
                     path_output = box_with_button_out.textctrl_list[0].GetValue()
 
             return path_output, subject
-
-
-class TerminalComponent(Component):
-    def __init__(self, panel, list_components=[]):
-        super().__init__(panel, list_components)
-        self.terminal = None
-        self.sizer = self.create_sizer()
-
-    @property
-    def terminal(self):
-        return self._terminal
-
-    @terminal.setter
-    def terminal(self, terminal):
-        if terminal is None:
-            # TODO: Adjust terminal size according to the length of the page, scrollable terminal
-            terminal = wx.TextCtrl(self.panel, wx.ID_ANY, size=(500, 700),
-                                   style=wx.TE_MULTILINE | wx.TE_READONLY)
-            terminal.SetDefaultStyle(wx.TextAttr(wx.WHITE, wx.BLACK))
-            terminal.SetBackgroundColour(wx.BLACK)
-
-        self._terminal = terminal
-
-    def create_sizer(self):
-        """Create the right sizer containing the terminal interface."""
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.AddSpacer(10)
-        sizer.Add(self.terminal)
-        return sizer
-
-    def log_to_terminal(self, msg, level=None):
-        if level is None:
-            self.terminal.AppendText(f"{msg}\n")
-        else:
-            self.terminal.AppendText(f"{level}: {msg}\n")
 
 
 class B0ShimTab(Tab):
@@ -684,9 +585,6 @@ class B0ShimTab(Tab):
         self.component_coils_rt = None
 
         self.create_choice_box()
-
-        self.terminal_component = TerminalComponent(self)
-        self.sizer_terminal = self.terminal_component.sizer
 
         self.create_dropdown_sizers()
         self.parent_sizer = self.create_sizer()
@@ -1269,9 +1167,6 @@ class B1ShimTab(Tab):
 
         self.create_choice_box()
 
-        self.terminal_component = TerminalComponent(self)
-        self.sizer_terminal = self.terminal_component.sizer
-
         self.create_dropdown_sizers()
         self.parent_sizer = self.create_sizer()
         self.SetSizer(self.parent_sizer)
@@ -1597,7 +1492,6 @@ class FieldMapTab(Tab):
                 "required": True
             }
         ]
-        self.terminal_component = TerminalComponent(panel=self)
         self.component_input = InputComponent(
             panel=self,
             input_text_box_metadata=input_text_box_metadata_input
@@ -1623,7 +1517,6 @@ class FieldMapTab(Tab):
             st_function="st_prepare_fieldmap"
         )
         self.sizer_run = self.run_component.sizer
-        self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -1652,9 +1545,6 @@ class MaskTab(Tab):
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
         self.create_choice_box()
-
-        self.terminal_component = TerminalComponent(self)
-        self.sizer_terminal = self.terminal_component.sizer
 
         self.create_dropdown_sizers()
         self.parent_sizer = self.create_sizer()
@@ -1852,15 +1742,9 @@ class DicomToNiftiTab(Tab):
                 "info_text": f"{dicom_to_nifti_cli.params[2].help}"
             }
         ]
-        self.terminal_component = TerminalComponent(self)
         component = InputComponent(self, input_text_box_metadata)
-        run_component = RunComponent(
-            panel=self,
-            list_components=[component],
-            st_function="st_dicom_to_nifti"
-        )
+        run_component = RunComponent(panel=self, list_components=[component], st_function="st_dicom_to_nifti")
         self.sizer_run = run_component.sizer
-        self.sizer_terminal = self.terminal_component.sizer
         sizer = self.create_sizer()
         self.SetSizer(sizer)
 
@@ -1954,38 +1838,20 @@ class TextWithButton:
         for textctrl in self.textctrl_list:
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
             if self.required:
-                text_with_button_box.Add(
-                    create_asterisk_icon(self.panel), 0, wx.RIGHT, 7
-                )
+                text_with_button_box.Add(wx.StaticBitmap(self.panel, bitmap=asterisk_icon), 0, wx.RIGHT, 7)
 
         return text_with_button_box
 
 
-def create_asterisk_icon(panel):
-    bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-    info_icon = os.path.join(DIR, 'img', 'asterisk.png')
-    img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
-    bmp = img.ConvertToBitmap()
-    image = wx.StaticBitmap(panel, bitmap=bmp)
-    return image
-
-
 def create_info_icon(panel, info_text=""):
-    bmp = wx.ArtProvider.GetBitmap(wx.ART_INFORMATION)
-    info_icon = os.path.join(DIR, 'img', 'info-icon.png')
-    img = wx.Image(info_icon, wx.BITMAP_TYPE_ANY)
-    bmp = img.ConvertToBitmap()
-    image = InfoIcon(panel, bitmap=bmp, info_text=info_text)
+    image = InfoIcon(panel, bitmap=info_icon, info_text=info_text)
     image.Bind(wx.EVT_MOTION, on_info_icon_mouse_over)
     return image
 
 
 def on_info_icon_mouse_over(event):
     image = event.GetEventObject()
-    tooltip = wx.ToolTip(image.info_text)
-    # TODO: Reduce this, It does not seem to be affected since it is ms
-    tooltip.SetDelay(10)
-    image.SetToolTip(tooltip)
+    image.SetToolTip(wx.ToolTip(image.info_text))
 
 
 class InfoIcon(wx.StaticBitmap):
@@ -2001,17 +1867,13 @@ def select_folder(event, tab, ctrl, focus=False):
         focused = wx.Window.FindFocus()
         if ctrl != focused:
             if focused == tab:
-                tab.terminal_component.log_to_terminal(
-                    "Select a text box from the same row.",
-                    level="INFO"
-                )
-                # If its the tab, don't handle the other events so that the log message is only once
+                tab.terminal_component.log_to_terminal("Select a text box from the same row.", level="INFO")
+                # If its the tab, don't handle the other events so that the message is only logged once
                 return
             event.Skip()
             return
 
-    dlg = wx.DirDialog(None, "Choose Directory", CURR_DIR,
-                       wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+    dlg = wx.DirDialog(None, "Choose Directory", CURR_DIR, wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
 
     if dlg.ShowModal() == wx.ID_OK:
         folder = dlg.GetPath()
@@ -2029,11 +1891,8 @@ def select_file(event, tab, ctrl, focus=False):
         focused = wx.Window.FindFocus()
         if ctrl != focused:
             if focused == tab:
-                tab.terminal_component.log_to_terminal(
-                    "Select a text box from the same row.",
-                    level="INFO"
-                )
-                # If its the tab, don't handle the other events so that the log message is only once
+                tab.terminal_component.log_to_terminal("Select a text box from the same row.", level="INFO")
+                # If it's the tab, don't handle the other events so that the log message is only displayed once
                 return
             event.Skip()
             return
@@ -2119,15 +1978,9 @@ def add_input_phase_boxes(event, tab, ctrl):
             raise Exception()
         elif n_echoes > 6:
             n_echoes = 6
-            tab.terminal_component.log_to_terminal(
-                "Number of echoes limited to 6",
-                level="WARNING"
-            )
+            tab.terminal_component.log_to_terminal("Number of echoes limited to 6", level="WARNING")
     except Exception:
-        tab.terminal_component.log_to_terminal(
-            "Number of Echoes must be an integer > 0",
-            level="ERROR"
-        )
+        tab.terminal_component.log_to_terminal("Number of Echoes must be an integer > 0", level="ERROR")
         return
 
     insert_index = 2
@@ -2162,7 +2015,7 @@ def add_input_phase_boxes(event, tab, ctrl):
             )
 
     tab.n_echoes = n_echoes
-    tab.Layout()
+    tab.SetVirtualSize(tab.sizer_run.GetMinSize())
 
 
 def add_input_coil_boxes(event, tab, ctrl, i=0):
@@ -2196,16 +2049,10 @@ def add_input_coil_boxes(event, tab, ctrl, i=0):
             raise Exception()
         elif n_coils > 5:
             n_coils = 5
-            tab.terminal_component.log_to_terminal(
-                "Number of coils limited to 5",
-                level="WARNING"
-            )
+            tab.terminal_component.log_to_terminal("Number of coils limited to 5", level="WARNING")
 
     except Exception:
-        tab.terminal_component.log_to_terminal(
-            "Number of coils must be an integer >= 0",
-            level="ERROR"
-        )
+        tab.terminal_component.log_to_terminal("Number of coils must be an integer >= 0", level="ERROR")
         n_coils = 0
 
     # Depending on the index, select the appropriate component
@@ -2263,12 +2110,7 @@ def add_input_coil_boxes(event, tab, ctrl, i=0):
     elif i == 2:
         tab.n_coils_rt = n_coils
 
-    tab.Layout()
-
-
-class RunArgumentErrorST(Exception):
-    """Exception for missing input arguments for CLI call."""
-    pass
+    tab.SetVirtualSize(tab.sizer_run.GetMinSize())
 
 
 def read_image(filename, bitdepth=8):
@@ -2291,8 +2133,7 @@ def write_image(filename, img, format='png'):
     imageio.imwrite(filename, img, format=format)
 
 
-def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overlayList=True,
-                             colormap="greyscale"):
+def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overlayList=True, colormap="greyscale"):
     """Convert a 2D image into a NIfTI image and load it as an overlay.
 
     The parameter ``add_to_overlayList`` enables displaying the overlay in FSLeyes.
@@ -2341,14 +2182,3 @@ def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overla
         opts.cmap = colormap
 
     return img_overlay
-
-
-def get_folder(path):
-    if is_file(path):
-        return os.path.split(path)[0]
-    else:
-        return path
-
-
-def is_file(path):
-    return '.' in Path(path).name
