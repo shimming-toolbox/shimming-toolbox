@@ -73,9 +73,9 @@ def b0shim_cli():
                    "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
                    "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
-              help="Describe what to do with a fat saturation pulse. 'auto': it will parse the NIfTI file "
+              help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
                    "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
-                   "'chronological-*' output-file-format-coil. 'no': it will not add 0s. 'yes': it will add 0s.")
+                   "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
@@ -469,9 +469,9 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
                    "linear term. When using 2nd order or more, more dilation is necessary.")
 @click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
-              help="Describe what to do with a fat saturation pulse. 'auto': it will parse the NIfTI file "
+              help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
                    "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
-                   "'chronological-*' output-file-format-coil. 'no': it will not add 0s. 'yes': it will add 0s.")
+                   "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
