@@ -21,7 +21,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
-from shimmingtoolbox.utils import montage
+from shimmingtoolbox.utils import montage, timeit
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
@@ -35,6 +35,7 @@ supported_optimizers = {
 }
 
 
+@timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
                    mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
     """
@@ -124,6 +125,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     return coefs
 
 
+@timeit
 def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
     """Calculate theoretical shimmed map and output figures"""
 
@@ -322,6 +324,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
+@timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
                                 mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
@@ -513,6 +516,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     return coef_static, coef_riro, mean_p, pressure_rms
 
 
+@timeit
 def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, coef_riro, mean_p,
                   acq_pressures, slices, pressure_rms, pmu: PmuResp, path_output):
     logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
