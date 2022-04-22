@@ -947,6 +947,7 @@ def _get_current_shim_settings(json_data):
     return current_coefs
 
 
+@timeit
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
     n_shims = static_coefs.shape[0]
