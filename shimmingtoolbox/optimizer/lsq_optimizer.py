@@ -43,14 +43,16 @@ class LsqOptimizer(Optimizer):
 
         self._initial_guess_method = method
 
-    def _residuals(self, coef, unshimmed_vec, coil_mat):
-        """
-        Objective function to minimize
+    def _residuals(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to minimize
+
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
             unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
             coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
-                (axis 0 must align with unshimmed_vec)
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
 
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
@@ -58,7 +60,7 @@ class LsqOptimizer(Optimizer):
         if unshimmed_vec.shape[0] != coil_mat.shape[0]:
             ValueError(f"Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape} arrays do not align on axis 0")
 
-        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))
+        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -82,9 +84,9 @@ class LsqOptimizer(Optimizer):
             start_index = end_index
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         currents_sp = opt.minimize(self._residuals, currents_0,
-                                   args=(unshimmed_vec, coil_mat),
+                                   args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
                                    constraints=tuple(scipy_constraints),
@@ -177,8 +179,12 @@ class LsqOptimizer(Optimizer):
                                                       "minimize step, clipping to bounds",
                                     category=RuntimeWarning,
                                     module='scipy')
+            # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
+            # --> aiming for 1 then optimizing will lower that
+            stability_factor = self._residuals(currents_0, unshimmed_vec, np.zeros_like(coil_mat), factor=1)
 
-            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints)
+            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
+                                               factor=stability_factor)
 
         if not currents_sp.success:
             raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
@@ -300,10 +306,10 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
         currents_sp = opt.minimize(self._residuals, currents_0,
-                                   args=(unshimmed_vec, coil_mat),
+                                   args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
                                    options={'maxiter': 500})
