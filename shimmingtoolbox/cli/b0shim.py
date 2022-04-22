@@ -21,7 +21,7 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size
+from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -57,12 +57,14 @@ def b0shim_cli():
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
               help="Constraints for the scanner coil.")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
-              default='sequential', show_default=True, help="Defines the slice ordering.")
+@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+              default='auto', show_default=True,
+              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
-                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
-                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
+              help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
+                   "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
@@ -72,6 +74,10 @@ def b0shim_cli():
                    "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
                    "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
                    "linear term. When using 2nd order or more, more dilation is necessary.")
+@click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
+              help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
+                   "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
+                   "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
@@ -81,9 +87,7 @@ def b0shim_cli():
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                                       "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. If there is a fat saturation "
-                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
-                                      "text file before each slice coefficients. Use 'ch' to output one "
+                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file.")
@@ -112,8 +116,8 @@ def b0shim_cli():
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-                dilation_kernel_size, scanner_coil_order, fname_sph_constr, path_output, o_format_coil, o_format_sph,
-                output_value_format, verbose):
+                dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
+                o_format_sph, output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -228,7 +232,10 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
-    list_slices = define_slices(n_slices, slice_factor, slices)
+    if slices == 'auto':
+        list_slices = parse_slices(fname_anat)
+    else:
+        list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
 
     # Get shimming coefficients
@@ -240,7 +247,7 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
 
     # Output
     # Load output options
-    options = _load_output_options(json_anat_data)
+    options = _load_output_options(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -451,12 +458,14 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               default=__dir_config_scanner_constraints__, show_default=True,
               help="Constraints for the scanner coil.")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume']), required=False,
-              default='sequential', show_default=True, help="Defines the slice ordering")
+@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+              default='auto', show_default=True,
+              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
-              help="Number of slices per shimmed group. For example, if the value is '3', then with the 'sequential' "
-                   "mode, shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. "
-                   "With the mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc.")
+              help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
+                   "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
@@ -466,6 +475,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
                    "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
                    "linear term. When using 2nd order or more, more dilation is necessary.")
+@click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
+              help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
+                   "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
+                   "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
@@ -474,10 +487,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                    "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                    "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. If there is a fat saturation "
-                   "pulse in the anat sequence, shim weights of 0s are included in the output "
-                   "text file before each slice coefficients. For both 'slicewice' and 'chronological', there will be "
-                   "one output file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
+                   "captured by the controller of the shim amplifier. For both 'slicewice' and 'chronological', "
+                   "there will be one output file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
                    "time-varying and mean pressure are encoded in the columns of each file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
@@ -500,7 +511,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
-                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr,
+                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
                  path_output, o_format_coil, o_format_sph, output_value_format, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
@@ -605,7 +616,10 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
-    list_slices = define_slices(n_slices, slice_factor, slices)
+    if slices == 'auto':
+        list_slices = parse_slices(fname_anat)
+    else:
+        list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
@@ -622,7 +636,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
 
     # Output
     # Load output options
-    options = _load_output_options(json_anat_data)
+    options = _load_output_options(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -870,13 +884,17 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nib.save(nii, fname_to_save)
 
 
-def _load_output_options(json_anat):
+def _load_output_options(json_anat, fatsat):
     options = {'fatsat': False}
 
-    if 'ScanOptions' in json_anat:
-        if 'FS' in json_anat['ScanOptions']:
-            logger.debug("Fat Saturation pulse detected")
-            options['fatsat'] = True
+    if fatsat == 'auto':
+        if 'ScanOptions' in json_anat:
+            if 'FS' in json_anat['ScanOptions']:
+                logger.debug("Fat Saturation pulse detected")
+                options['fatsat'] = True
+    elif fatsat == 'yes':
+        options['fatsat'] = True
+
     return options
 
 
