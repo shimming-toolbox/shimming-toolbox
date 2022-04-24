@@ -299,6 +299,50 @@
             "criteria": {
                 "SequenceName": "*tfl2d1_16"
             }
+        },
+                {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "SequenceName": "fm2d2",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "criteria": {
+                "SequenceName": "fm2d2",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+                {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SequenceName": "fm2d2",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SequenceName": "fm2d2",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "epi",
+            "criteria": {
+                "SequenceName": "*epfid2d*",
+                "ImageType": ["*", "*", "M", "*", "*"]
+            }
         }
     ]
 }
