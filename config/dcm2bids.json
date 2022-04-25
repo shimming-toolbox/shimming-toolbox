@@ -32,197 +32,10 @@
             }
         },
         {
-            "dataType": "dwi",
-            "modalityLabel": "dwi",
-            "criteria": {
-                "SeriesDescription": "*DWI*"
-            }
-        },
-        {
             "dataType": "anat",
             "modalityLabel": "SWI",
             "criteria": {
                 "SeriesDescription": "*SWI*"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "2"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude3",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "3"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude4",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "4"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude5",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "5"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude6",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "6"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "2"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase3",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "3"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase4",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "4"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase5",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "5"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase6",
-            "criteria": {
-                "SeriesDescription": "a_gre_*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "6"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "criteria": {
-                "SeriesDescription": "*gre_field_map*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
-            "criteria": {
-                "SeriesDescription": "*gre_field_map*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "2"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
-            "criteria": {
-                "SeriesDescription": "*gre_field_map*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
-            "criteria": {
-                "SeriesDescription": "*gre_field_map*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "2"
-            }
-        },
-                {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
-            "criteria": {
-                "SeriesDescription": "*gre_fm*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
-            "criteria": {
-                "SeriesDescription": "*gre_fm*",
-                "ImageType": ["*", "*", "M", "*"],
-                "EchoNumber": "2"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
-            "criteria": {
-                "SeriesDescription": "*gre_fm*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "1"
-            }
-        },
-        {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
-            "criteria": {
-                "SeriesDescription": "*gre_fm*",
-                "ImageType": ["*", "*", "P", "*", "*"],
-                "EchoNumber": "2"
             }
         },
         {
@@ -280,27 +93,14 @@
             }
         },
         {
-            "dataType": "func",
-            "modalityLabel": "bold",
+            "dataType": "anat",
+            "modalityLabel": "epi",
             "criteria": {
-                "SeriesDescription": "*bold*"
+                "SequenceName": "*epfid2d*",
+                "ImageType": ["*", "*", "M", "*", "*"]
             }
         },
         {
-            "dataType": "func",
-            "modalityLabel": "task",
-            "criteria": {
-                "SeriesDescription": "*task-p2-s3*"
-            }
-        },
-        {
-            "dataType": "rfmap",
-            "modalityLabel": "TB1map",
-            "criteria": {
-                "SequenceName": "*tfl2d1_16"
-            }
-        },
-                {
             "dataType": "fmap",
             "modalityLabel": "magnitude1",
             "criteria": {
@@ -318,7 +118,7 @@
                 "EchoNumber": "2"
             }
         },
-                {
+        {
             "dataType": "fmap",
             "modalityLabel": "phase1",
             "criteria": {
@@ -337,11 +137,139 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "epi",
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
             "criteria": {
-                "SequenceName": "*epfid2d*",
-                "ImageType": ["*", "*", "M", "*", "*"]
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude2",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude3",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude4",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude5",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude6",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase1",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase2",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase3",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase4",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase5",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "phase6",
+            "criteria": {
+                "SequenceName": "fl2d6",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "bold",
+            "criteria": {
+                "SeriesDescription": "*bold*"
+            }
+        },
+        {
+            "dataType": "func",
+            "modalityLabel": "task",
+            "criteria": {
+                "SeriesDescription": "*task-p2-s3*"
+            }
+        },
+        {
+            "dataType": "dwi",
+            "modalityLabel": "dwi",
+            "criteria": {
+                "SeriesDescription": "*DWI*"
+            }
+        },
+        {
+            "dataType": "rfmap",
+            "modalityLabel": "TB1map",
+            "criteria": {
+                "SequenceName": "*tfl2d1_16"
             }
         }
     ]
