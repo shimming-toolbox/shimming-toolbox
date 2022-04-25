@@ -67,7 +67,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
     # Go in the fieldmap folder
-    path_fmap = os.path.join(path_nifti, subject_id, 'fmap')
+    path_fmap = os.path.join(path_nifti, f"sub-{subject_id}", 'fmap')
     if os.path.exists(path_fmap):
         # Make a list of the json files in fmap folder
         file_list = []
@@ -99,6 +99,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
             # Rename the json file an nifti file
             if is_renaming:
                 if os.path.exists(os.path.splitext(fname_json)[0] + '.nii.gz'):
+                    logger.debug("Renaming 'phase2' fieldmap to 'phasediff'")
                     fname_nifti_new = os.path.splitext(fname_new_json)[0] + '.nii.gz'
                     fname_nifti_old = os.path.splitext(fname_json)[0] + '.nii.gz'
                     os.rename(fname_nifti_old, fname_nifti_new)

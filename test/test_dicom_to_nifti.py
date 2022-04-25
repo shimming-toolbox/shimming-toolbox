@@ -21,7 +21,7 @@ with open(fname_b1_json) as json_b1_file:
 def test_dicom_to_nifti():
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
-        subject_id = 'sub-test'
+        subject_id = 'test'
         dicom_to_nifti(
             path_dicom=path_dicom_unsorted,
             path_nifti=path_nifti,
@@ -32,8 +32,8 @@ def test_dicom_to_nifti():
         for i in range(1, 7):
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
-                    assert os.path.exists(os.path.join(path_nifti, subject_id, 'fmap', subject_id + '_{}{}.{}'.format(
-                        modality, i, ext)))
+                    assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}",
+                                                       'fmap', f"sub-{subject_id}_{modality}{i}.{ext}"))
 
 
 @pytest.mark.dcm2niix
@@ -41,7 +41,7 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
     """Test dicom_to_nifti outputs the correct files for realtime_zshimming_data"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
-        subject_id = 'sub-test'
+        subject_id = 'test'
         dicom_to_nifti(
             path_dicom=os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'sourcedata'),
             path_nifti=path_nifti,
@@ -55,22 +55,23 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
                     if modality == 'phase':
-                        assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
-                                                           subject_id + f"_{'phasediff'}.{ext}"))
+                        assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}", sequence_type,
+                                                           f"sub-{subject_id}_{'phasediff'}.{ext}"))
                     else:
-                        assert os.path.exists(os.path.join(path_nifti, subject_id, sequence_type,
-                                                           subject_id + f"_{modality}{i+1}.{ext}"))
+                        assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}", sequence_type,
+                                                           f"sub-{subject_id}_{modality}{i+1}.{ext}"))
 
         sequence_type = 'anat'
         for i in range(3):
             for ext in ['nii.gz', 'json']:
                 assert os.path.exists(
-                    os.path.join(path_nifti, subject_id, sequence_type, subject_id + f"_unshimmed_e{i+1}.{ext}"))
+                    os.path.join(path_nifti, f"sub-{subject_id}", sequence_type,
+                                 f"sub-{subject_id}_unshimmed_e{i+1}.{ext}"))
 
         sequence_type = 'func'
         for ext in ['nii.gz', 'json']:
             assert os.path.exists(
-                os.path.join(path_nifti, subject_id, sequence_type, subject_id + f"_bold.{ext}"))
+                os.path.join(path_nifti, f"sub-{subject_id}", sequence_type, f"sub-{subject_id}_bold.{ext}"))
 
 
 @pytest.mark.dcm2niix
@@ -78,7 +79,7 @@ def test_dicom_to_nifti_remove_tmp(test_dcm2niix_installation):
     """Test the remove_tmp folder"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
-        subject_id = 'sub-test'
+        subject_id = 'test'
         dicom_to_nifti(
             path_dicom=path_dicom_unsorted,
             path_nifti=path_nifti,
@@ -97,7 +98,7 @@ def test_dicom_to_nifti_path_dicom_invalid(test_dcm2niix_installation):
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_dicom = 'dummy_path'
         path_nifti = os.path.join(tmp, 'nifti')
-        subject_id = 'sub-test'
+        subject_id = 'test'
         with pytest.raises(FileNotFoundError, match=r"No dicom path found"):
             dicom_to_nifti(
                 path_dicom=path_dicom,
@@ -111,7 +112,7 @@ def test_dicom_to_nifti_path_config_invalid(test_dcm2niix_installation):
     """Test the remove_tmp folder"""
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
         path_nifti = os.path.join(tmp, 'nifti')
-        subject_id = 'sub-test'
+        subject_id = 'test'
         with pytest.raises(FileNotFoundError, match=r"No dcm2bids config file found"):
             dicom_to_nifti(
                 path_dicom=path_dicom_unsorted,
@@ -159,5 +160,3 @@ def test_fix_tfl_b1_unknown_orientation():
     json_b1_unknown_orientation['ImageOrientationText'] = 'dummy_string'
     with pytest.raises(ValueError, match="Unknown slice orientation"):
         fix_tfl_b1(nii_b1, json_b1_unknown_orientation)
-
-
