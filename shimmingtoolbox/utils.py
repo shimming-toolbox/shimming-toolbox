@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 import time
 import functools
+import shlex
 
 logger = logging.getLogger(__name__)
 
@@ -23,14 +24,15 @@ def run_subprocess(cmd):
     Args:
         cmd (string): full command to be run on the command line
     """
-    logging.debug(f'{cmd}')
+    logger.debug(f'{cmd}')
     try:
         env = os.environ.copy()
         # Add ST PATH before the rest of the path so that it takes precedence
         env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
+        command = shlex.split(cmd)
         subprocess.run(
-            cmd.split(' '),
+            command,
             text=True,
             check=True,
             env=env
