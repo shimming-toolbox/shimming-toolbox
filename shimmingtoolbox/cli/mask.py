@@ -230,8 +230,8 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
     else:
         remove = 0
 
-    cmd = f"sct_deepseg_sc -i {fname_process} -o {fname_seg} -c {contrast} -centerline {centerline} -kernel {kernel} " \
-          f"-r {str(remove)} -v {str(verbose)}"
+    cmd = f"sct_deepseg_sc -i '{fname_process}' -o '{fname_seg}' -c {contrast} -centerline {centerline} " \
+          f"-kernel {kernel} -r {str(remove)} -v {str(verbose)}"
     if centerline == 'file':
         cmd += f" -file_centerline {file_centerline}"
     if brain is not None and centerline == 'cnn':
@@ -240,8 +240,8 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
     run_subprocess(cmd)
 
     # Create the mask
-    run_subprocess(f"sct_create_mask -i {fname_process} -p centerline,{fname_seg} -size {size} -f {shape} "
-                   f"-o {fname_output} -r {str(remove)} -v {str(verbose)}")
+    run_subprocess(f"sct_create_mask -i '{fname_process}' -p 'centerline,{fname_seg}' -size {size} -f {shape} "
+                   f"-o '{fname_output}' -r {str(remove)} -v {str(verbose)}")
 
     if remove:
         os.remove(fname_seg)

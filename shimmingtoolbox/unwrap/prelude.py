@@ -66,8 +66,7 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
             raise ValueError("Mask must be the same shape as wrapped_phase")
         nii_mask = nib.Nifti1Image(mask, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
 
-        options += " -m "
-        options += os.path.join(path_tmp, 'mask.nii')
+        options += f" -m '{os.path.join(path_tmp, 'mask.nii')}'"
         nib.save(nii_mask, os.path.join(path_tmp, 'mask.nii'))
 
     if threshold is not None:
@@ -80,7 +79,7 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
     fname_raw_phase = os.path.join(path_tmp, 'rawPhase')
     fname_mag = os.path.join(path_tmp, 'mag')
     fname_out = os.path.join(path_tmp, 'rawPhase_unwrapped')
-    unwrap_command = f"prelude -p {fname_raw_phase} -a {fname_mag} -o {fname_out}{options}"
+    unwrap_command = f"prelude -p '{fname_raw_phase}' -a '{fname_mag}' -o '{fname_out}'{options}"
 
     logger.debug("Unwrap with prelude")
     run_subprocess(unwrap_command)
