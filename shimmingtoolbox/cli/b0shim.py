@@ -9,7 +9,6 @@ the gradient method in a st_shim CLI with the argument being:
 import click
 import copy
 import json
-import math
 import nibabel as nib
 import numpy as np
 import logging
@@ -21,8 +20,8 @@ from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import extend_slice, define_slices, extend_fmap_to_kernel_size, parse_slices
-from shimmingtoolbox.utils import create_output_dir, set_all_loggers
+from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
+from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -115,13 +114,14 @@ def b0shim_cli():
                    "system unless the option --output-file-format is set to gradient. The delta value format should be "
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+@timeit
 def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
                 dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
                 o_format_sph, output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
-    Example of use: st_b0shim static --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    Example of use: st_b0shim dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
     # Set logger level
@@ -510,6 +510,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "system unless the option --output-file-format is set to gradient. The delta value format should be "
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+@timeit
 def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
                  slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
                  path_output, o_format_coil, o_format_sph, output_value_format, verbose):
@@ -517,7 +518,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
 
-    Example of use: st_b0shim realtime --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
 
@@ -946,6 +947,7 @@ def _get_current_shim_settings(json_data):
     return current_coefs
 
 
+@timeit
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
     n_shims = static_coefs.shape[0]

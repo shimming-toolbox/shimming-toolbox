@@ -8,6 +8,10 @@ import tqdm
 import subprocess
 import logging
 from pathlib import Path
+import time
+import functools
+
+logger = logging.getLogger(__name__)
 
 HOME_DIR = str(Path.home())
 PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
@@ -202,3 +206,24 @@ def montage(X):
             result[slice_m:slice_m + x, slice_n:slice_n + y] = X[:, :, image_id]
             image_id += 1
     return result
+
+
+def timeit(func):
+    """ Decorator to time a function. Decorate a function: @timeit on top of the function definition. The elapsed time
+    will output in debug mode
+    """
+
+    @functools.wraps(func)
+    def timed(*args, **kw):
+
+        ts = time.time()
+        # Call the original function
+        result = func(*args, **kw)
+        te = time.time()
+
+        # Log the output
+        logger.debug(f"Function: {func.__name__} took {te - ts:.4}s to run")
+
+        return result
+
+    return timed
