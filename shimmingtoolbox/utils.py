@@ -10,7 +10,6 @@ import logging
 from pathlib import Path
 import time
 import functools
-import shlex
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +18,28 @@ PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
 
 
 def run_subprocess(cmd):
-    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+    """Wrapper for ``subprocess.run()``.
 
     Args:
-        cmd (string): full command to be run on the command line
+        cmd (list): list of arguments to be passed to the command line
     """
-    logger.debug(f'{cmd}')
+    logger.debug(f"Command to run on the terminal: {cmd}")
     try:
         env = os.environ.copy()
         # Add ST PATH before the rest of the path so that it takes precedence
         env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
-        command = shlex.split(cmd)
         subprocess.run(
-            command,
+            cmd,
             text=True,
             check=True,
             env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
-        raise Exception(msg)
+        logger.debug(msg)
+        # Should we really reraise the exception?
+        raise err
 
 
 def add_suffix(fname, suffix):

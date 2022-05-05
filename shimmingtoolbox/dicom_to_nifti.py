@@ -44,13 +44,13 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
     # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    run_subprocess(f"dcm2bids_scaffold -o '{path_nifti}'")
+    run_subprocess(['dcm2bids_scaffold', '-o', path_nifti])
 
     # # Copy original dicom files into nifti_path/sourcedata
     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
     #
     # # Call the dcm2bids_helper
-    run_subprocess(f"dcm2bids_helper -d '{path_dicom}' -o '{path_nifti}'")
+    run_subprocess(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti])
     #
     # Check if the helper folder has been created
     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
@@ -62,7 +62,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     if not helper_file_list:
         raise ValueError('No data to process')
 
-    run_subprocess(f"dcm2bids -d '{path_dicom}' -o '{path_nifti}' -p '{subject_id}' -c '{fname_config_dcm2bids}'")
+    run_subprocess(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', fname_config_dcm2bids])
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
