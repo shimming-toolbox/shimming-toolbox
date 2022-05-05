@@ -5,7 +5,6 @@ source $SCRIPT_DIR/utils.sh
 
 set -e
 
-VENV=pst_venv
 ST_DIR=$HOME/shimming-toolbox
 PYTHON_DIR=python
 BIN_DIR=bin
@@ -32,23 +31,19 @@ function edit_shellrc() {
   fi
 }
 
-source $ST_DIR/$PYTHON_DIR/etc/profile.d/conda.sh
-# set +u
-conda activate $VENV
-# set -u
+source $ST_DIR/$PYTHON_DIR/bin/activate
 
 # Install fsleyes
 print info "Installing fsleyes"
-yes | conda install -c conda-forge fsleyes=1.3.3
+"$ST_DIR"/"$PYTHON_DIR"/bin/conda install -y -c conda-forge fsleyes=1.3.3
 
 # Install fsleyes-plugin-shimming-toolbox
 print info "Installing fsleyes-plugin-shimming-toolbox"
-python -m pip install .
+"$ST_DIR"/"$PYTHON_DIR"/bin/python -m pip install .
 
 # Create launchers
 print info "Creating launcher for fsleyes-plugin-shimming-toolbox..."
 mkdir -p $ST_DIR/$BIN_DIR
-# echo $ST_DIR/python/envs/$VENV/bin/*st_*
 chmod +x shimming-toolbox.sh
 cp shimming-toolbox.sh $ST_DIR/$BIN_DIR/ # || die "Problem creating launchers!"
 
