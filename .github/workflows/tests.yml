@@ -98,10 +98,7 @@ jobs:
 
       - name: Run unit tests
         run: |
-          source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh  # to be able to call conda
-          set +u
-          conda activate st_venv
-          set -u
+          source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
           py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
 
       - name: macOS Shellcheck
