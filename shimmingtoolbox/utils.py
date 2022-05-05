@@ -23,7 +23,7 @@ def run_subprocess(cmd):
     Args:
         cmd (list): list of arguments to be passed to the command line
     """
-    logger.debug(f"Command to run on the terminal: {cmd}")
+    logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
     try:
         env = os.environ.copy()
         # Add ST PATH before the rest of the path so that it takes precedence
@@ -37,8 +37,7 @@ def run_subprocess(cmd):
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
-        logger.debug(msg)
-        # Should we really reraise the exception?
+        print(msg)
         raise err
 
 
