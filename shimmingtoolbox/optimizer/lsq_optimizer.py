@@ -57,9 +57,6 @@ class LsqOptimizer(Optimizer):
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
-        if unshimmed_vec.shape[0] != coil_mat.shape[0]:
-            ValueError(f"Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape} arrays do not align on axis 0")
-
         return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor
 
     def _define_scipy_constraints(self):
