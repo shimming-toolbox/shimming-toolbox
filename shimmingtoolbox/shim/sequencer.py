@@ -12,6 +12,7 @@ import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
+import multiprocessing as mp
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -831,38 +832,44 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
 
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
-    # Count number of channels
-    n_channels = optimizer.merged_coils.shape[3]
 
     # Count shims to perform
     n_shims = len(slices_anat)
 
-    # Initialize
-    coefs = np.zeros((n_shims, n_channels))
+    # multiprocessing optimization
+    mp.set_start_method('spawn', force=True)
+    with mp.Pool(mp.cpu_count()) as pool:
+        results = pool.starmap_async(_opt, [(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size,
+                                             path_output, shimwise_bounds) for i in range(n_shims)]).get()
+    # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
+    results.sort(key=lambda x: x[0])
+    results_final = [r for i, r in results]
 
-    # For each shim
-    for i in range(n_shims):
-        logger.info(f"Shimming shim group: {i + 1} of {n_shims}")
-        # Create nibabel object of the unshimmed map
-        nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
+    return np.array(results_final)
 
-        # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
-        sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i],
-                                              dilation_kernel=dilation_kernel,
-                                              dilation_size=dilation_size,
-                                              path_output=path_output).get_fdata()
 
-        # If new bounds are included, change them for each shim
-        if shimwise_bounds is not None:
-            optimizer.set_merged_bounds(shimwise_bounds[i])
+def _opt(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds):
+    logger.info(f"Shimming shim group: {i + 1} of {len(slices_anat)}")
+    # Create nibabel object of the unshimmed map
+    nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
 
-        if np.all(sliced_mask_resampled == 0):
-            continue
+    # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
+    sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i],
+                                          dilation_kernel=dilation_kernel,
+                                          dilation_size=dilation_size,
+                                          path_output=path_output).get_fdata()
 
-        # Optimize using the mask
-        coefs[i, :] = optimizer.optimize(sliced_mask_resampled)
+    # If new bounds are included, change them for each shim
+    if shimwise_bounds is not None:
+        optimizer.set_merged_bounds(shimwise_bounds[i])
 
-    return coefs
+    if np.all(sliced_mask_resampled == 0):
+        return i, np.zeros(optimizer.merged_coils.shape[-1])
+
+    # Optimize using the mask
+    coef = optimizer.optimize(sliced_mask_resampled)
+
+    return i, coef
 
 
 def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
