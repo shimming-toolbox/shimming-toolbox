@@ -236,25 +236,15 @@ class TestSequencer(object):
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
 
-    # def test_speed_huge_matrix(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
-    #     # Create 1 huge coil which essentially is siemens basis concatenated 4 times
-    #     coils = [sph_coil, sph_coil, sph_coil, sph_coil]
-    #
-    #     coil_profiles_list = []
-    #
-    #     for coil in coils:
-    #         # Concat coils and bounds
-    #         coil_profiles_list.append(coil.profile)
-    #
-    #     coil_profiles = np.concatenate(coil_profiles_list, axis=3)
-    #     constraints = create_constraints(1000, -1000, 5000, 32)
-    #
-    #     huge_coil = Coil(coil_profiles, sph_coil.affine, constraints)
-    #
-    #     slices = define_slices(nii_anat.shape[2], 1)
-    #     currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [huge_coil], method='least_squares')
-    #
-    #     assert_results(nii_fieldmap, nii_anat, nii_mask, [huge_coil], currents, slices)
+    def test_shim_sequencer_4dmask_4d_anat(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        anat_4d = np.repeat(nii_anat.get_fdata()[..., np.newaxis], 3, -1)
+        mask_4d = np.repeat(nii_mask.get_fdata()[..., np.newaxis], 2, -1)
+        nii_4d_anat = nib.Nifti1Image(anat_4d, nii_anat.affine, header=nii_anat.header)
+        nii_4d_mask = nib.Nifti1Image(mask_4d, nii_mask.affine, header=nii_mask.header)
+
+        slices = [(0, 2), (1,)]
+        currents = shim_sequencer(nii_fieldmap, nii_4d_anat, nii_4d_mask, slices, [sph_coil])
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
 
 def assert_results(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
