@@ -201,14 +201,14 @@ class TestSequencer(object):
         # Optimize
         slices = [(0, 2), (1,)]
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
-        with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
+        with pytest.raises(ValueError, match="Target anatomical image must be in 3d or 4d"):
             shim_sequencer(nii_fieldmap, nii_wrong_anat, nii_mask, slices, [sph_coil])
 
     def test_shim_sequencer_wrong_mask_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = [(0, 2), (1,)]
         nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[..., 0], nii_mask.affine, header=nii_mask.header)
-        with pytest.raises(ValueError, match="Mask image must be in 3d"):
+        with pytest.raises(ValueError, match="Mask must be in 3d or 4d"):
             shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
 
     # def test_shim_sequencer_wrong_units(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2, caplog):
