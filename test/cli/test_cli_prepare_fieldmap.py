@@ -134,3 +134,20 @@ def test_cli_prepare_fieldmap_default_fname_output():
         assert result.exit_code == 0
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.nii.gz'))
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_savemask():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+        fname_output_mask = os.path.join(tmp, 'output_mask.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--savemask', fname_output_mask,
+                                                      '--output', fname_output], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output_mask)
