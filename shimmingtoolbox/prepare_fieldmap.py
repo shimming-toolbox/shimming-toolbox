@@ -16,7 +16,7 @@ VALIDITY_THRESHOLD = 0.2
 
 
 def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=None, threshold=0.05,
-                     gaussian_filter=False, sigma=1, save_mask=False):
+                     gaussian_filter=False, sigma=1):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.

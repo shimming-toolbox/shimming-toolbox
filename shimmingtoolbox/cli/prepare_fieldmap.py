@@ -14,6 +14,7 @@ from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, creat
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 FILE_OUTPUT_DEFAULT = 'fieldmap.nii.gz'
+MASK_OUTPUT_DEFAULT = 'mask.nii.gz'
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -57,8 +58,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     # Make sure output filename is valid
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
-    if (fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz') or \
-            (fname_save_mask[-4:] != '.nii' and fname_save_mask[-7:] != '.nii.gz'):
+    if fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz':
         raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
 
     # Prepare the output
@@ -113,7 +113,14 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
         json.dump(json_fieldmap, outfile, indent=2)
 
     # Save mask
-    if fname_save_mask:
+    if fname_save_mask is not None:
+        # If it is a path, add the default filename and create output directory
+        fname_save_mask = create_fname_from_path(fname_save_mask, MASK_OUTPUT_DEFAULT)
+        create_output_dir(fname_save_mask, is_file=True)
+
+        if fname_save_mask[-4:] != '.nii' and fname_save_mask[-7:] != '.nii.gz':
+            raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
         nii_fieldmap = nib.Nifti1Image(save_mask, affine, header=nii_phase.header)
         nib.save(nii_fieldmap, fname_save_mask)
         logger.info(f"Filename of the output mask is: {fname_save_mask}")
