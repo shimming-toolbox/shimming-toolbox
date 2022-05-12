@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import copy
 import math
+import uuid
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
@@ -830,17 +831,26 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     return optimizer
 
 
-def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
+_optimize_scope = {}  # i?: (_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
+                      #     dilation_kernel='sphere', dilation_size=3, path_output=None) 
+def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
 
     # Count shims to perform
     n_shims = len(slices_anat)
+    
+    global _optimize_scope
+    global optimizer
+    optimizer = _optimizer # not a super safe thing to do
 
     # multiprocessing optimization
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method('fork', force=True)
+    run_id = uuid.uuid4().hex
+    _optimize_scope[run_id] = (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
     with mp.Pool(mp.cpu_count()) as pool:
-        results = pool.starmap_async(_opt, [(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size,
-                                             path_output, shimwise_bounds) for i in range(n_shims)]).get()
+        del _optimize_scope[run_id] # should be safe to del here? because at this point all the child processes have forked and inherited their copy
+        results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get()
+    
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
@@ -848,7 +858,10 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     return np.array(results_final)
 
 
-def _opt(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds):
+def _opt(run_id, i):
+    
+    (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds) = _optimize_scope[run_id]
+    
     logger.info(f"Shimming shim group: {i + 1} of {len(slices_anat)}")
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
