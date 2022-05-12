@@ -96,7 +96,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     if anat.ndim == 3:
         pass
     elif anat.ndim == 4:
-        logger.debug("Target anatomical is 4d, taking the average and converting to 3d")
+        logger.info("Target anatomical is 4d, taking the average and converting to 3d")
         anat = np.mean(anat, axis=3)
         nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
     else:
