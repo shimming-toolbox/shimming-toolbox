@@ -36,11 +36,13 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--threshold', 'threshold', type=float, show_default=True, default=0.05,
               help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower "
                    "than the threshold are set to 0.")
+@click.option('--savemask', 'fname_save_mask', type=click.Path(),
+              help="Filename of the mask calculated by the unwrapper")
 @click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, gaussian_filter,
-                         sigma, verbose):
+def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, fname_save_mask,
+                         gaussian_filter, sigma, verbose):
     """Creates fieldmap (in Hz) from phase images.
 
     This function accommodates multiple echoes (2 or more) and phase difference. This function also
@@ -55,7 +57,8 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     # Make sure output filename is valid
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
-    if fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz':
+    if (fname_output_v2[-4:] != '.nii' and fname_output_v2[-7:] != '.nii.gz') or \
+            (fname_save_mask[-4:] != '.nii' and fname_save_mask[-7:] != '.nii.gz'):
         raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
 
     # Prepare the output
@@ -92,11 +95,11 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     else:
         mask = None
 
-    fieldmap_hz = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
-                                   mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
-                                   sigma=sigma)
+    fieldmap_hz, save_mask = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
+                                              mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
+                                              sigma=sigma)
 
-    # Save NIFTI
+    # Save fieldmap
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
     nib.save(nii_fieldmap, fname_output_v2)
 
@@ -108,5 +111,11 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     fname_json = fname_output_v2.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
         json.dump(json_fieldmap, outfile, indent=2)
+
+    # Save mask
+    if fname_save_mask:
+        nii_fieldmap = nib.Nifti1Image(save_mask, affine, header=nii_phase.header)
+        nib.save(nii_fieldmap, fname_save_mask)
+        logger.info(f"Filename of the output mask is: {fname_save_mask}")
 
     logger.info(f"Filename of the fieldmap is: {fname_output_v2}")
