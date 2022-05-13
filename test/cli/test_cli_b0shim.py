@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 import copy
-
-import pytest
 from click.testing import CliRunner
+import pytest
 import tempfile
 import pathlib
 import os
@@ -11,8 +10,7 @@ import nibabel as nib
 import numpy as np
 import json
 
-from shimmingtoolbox.cli.b0shim import define_slices_cli
-from shimmingtoolbox.cli.b0shim import b0shim_cli
+from shimmingtoolbox.cli.b0shim import define_slices_cli, b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
@@ -65,7 +63,7 @@ def _define_inputs(fmap_dim):
     )]
 )
 class TestCliDynamic(object):
-    def test_cli_dynamic_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -80,19 +78,17 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '2',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -105,18 +101,16 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--scanner-coil-order', '1',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--scanner-coil-order', '1',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_coils(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_coils(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -141,19 +135,21 @@ class TestCliDynamic(object):
             with open(fname_constraints, 'w', encoding='utf-8') as f:
                 json.dump(dummy_coil_constraints, f, indent=4)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--coil', fname_dummy_coil, fname_constraints,
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            fname_dummy_coil = "/Users/alexandredastous/Desktop/tmp/profiles.nii.gz"
+            fname_constraints = "/Users/alexandredastous/Desktop/tmp/jason_coil_config.json"
 
-            assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--coil', fname_dummy_coil, fname_constraints,
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '-v', 'debug',
+                                    '--output', tmp)
 
-    def test_cli_dynamic_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+            assert res.success
+            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
+
+    def test_cli_dynamic_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -168,19 +164,17 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '0',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '0',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with input coil and scanner coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -205,21 +199,20 @@ class TestCliDynamic(object):
             with open(fname_constraints, 'w', encoding='utf-8') as f:
                 json.dump(dummy_coil_constraints, f, indent=4)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--coil', fname_dummy_coil, fname_constraints,
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--coil', fname_dummy_coil, fname_constraints,
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data,
+                                                   script_runner):
         """Test cli with scanner coil with chronological-coil o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -234,21 +227,19 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'chronological-coil',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '--slice-factor', '2',
+                                    '--output-file-format-scanner', 'chronological-coil',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_fatsat(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_fatsat(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -273,21 +264,19 @@ class TestCliDynamic(object):
             with open(fname_constraints, 'w', encoding='utf-8') as f:
                 json.dump(dummy_coil_constraints, f, indent=4)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--coil', fname_dummy_coil, fname_constraints,
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--output-file-format-coil', 'chronological-coil',
-                                             '--fatsat', 'no',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--coil', fname_dummy_coil, fname_constraints,
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--output-file-format-coil', 'chronological-coil',
+                                    '--fatsat', 'no',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_dynamic_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil with chronological_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -302,25 +291,23 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'chronological-ch',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '--slice-factor', '2',
+                                    '--output-file-format-scanner', 'chronological-ch',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
             # There should be 4 x 10 x 1 value
 
-    def test_cli_dynamic_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil with slicewise_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -335,24 +322,22 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'slicewise-ch',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '--slice-factor', '2',
+                                    '--output-file-format-scanner', 'slicewise-ch',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_dynamic_format_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -367,24 +352,22 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '--slice-factor', '2',
+                                    '--output-file-format-scanner', 'gradient',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
 
-    def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -399,17 +382,15 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
-                                             '-v', 'debug',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '1',
+                                    '-v', 'debug',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
             # Artefacts of the debug verbose
             assert os.path.isfile(os.path.join(tmp, "tmp_extended_fmap.nii.gz"))
@@ -418,7 +399,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_dynamic_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -433,17 +414,15 @@ class TestCliDynamic(object):
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
-                                             '--output-value-format', 'absolute',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask', fname_mask,
+                                    '--scanner-coil-order', '2',
+                                    '--output-value-format', 'absolute',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
     def test_cli_dynamic_no_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -530,7 +509,7 @@ class TestCliDynamic(object):
     )]
 )
 class TestCLIRealtime(object):
-    def test_cli_rt_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -548,25 +527,23 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '1',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_rt_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -584,22 +561,20 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '0',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '0',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_rt_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -627,23 +602,21 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--coil', fname_dummy_coil, fname_constraints,
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--coil', fname_dummy_coil, fname_constraints,
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             for i_channel in range(9):
                 assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_ch{i_channel}_Dummy_coil.txt"))
 
-    def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -661,20 +634,18 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
-                                             '-v', 'debug',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '1',
+                                    '-v', 'debug',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
@@ -686,7 +657,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -702,23 +673,21 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '1',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -736,26 +705,24 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
-                                             '--output-file-format-scanner', 'chronological-ch',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '1',
+                                    '--output-file-format-scanner', 'chronological-ch',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_gradient_coil.txt"))
 
-    def test_cli_rt_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -773,26 +740,24 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
-                                             '--output-file-format-scanner', 'gradient',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '1',
+                                    '--output-file-format-scanner', 'gradient',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
 
-    def test_cli_rt_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data, script_runner):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -810,20 +775,18 @@ class TestCLIRealtime(object):
             fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
                                       'sub-realtime_PMUresp_signal.resp')
 
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--anat', fname_anat,
-                                             '--mask-static', fname_mask,
-                                             '--mask-riro', fname_mask,
-                                             '--resp', fname_resp,
-                                             '--slice-factor', '2',
-                                             '--scanner-coil-order', '2',
-                                             '--output-value-format', 'absolute',
-                                             '--output', tmp],
-                                catch_exceptions=False)
+            res = script_runner.run('st_b0shim', 'realtime-dynamic',
+                                    '--fmap', fname_fmap,
+                                    '--anat', fname_anat,
+                                    '--mask-static', fname_mask,
+                                    '--mask-riro', fname_mask,
+                                    '--resp', fname_resp,
+                                    '--slice-factor', '2',
+                                    '--scanner-coil-order', '2',
+                                    '--output-value-format', 'absolute',
+                                    '--output', tmp)
 
-            assert res.exit_code == 0
+            assert res.success
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_gradient_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_gradient_coil.txt"))
