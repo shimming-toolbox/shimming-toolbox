@@ -13,6 +13,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 import multiprocessing as mp
+import multiprocessing_logging
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -28,6 +29,7 @@ from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 ListCoil = List[Coil]
 
 logger = logging.getLogger(__name__)
+multiprocessing_logging.install_mp_handler(logger)
 
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
@@ -837,10 +839,14 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     n_shims = len(slices_anat)
 
     # multiprocessing optimization
-    mp.set_start_method('spawn', force=True)
+    mp.set_start_method('fork', force=True)
     with mp.Pool(mp.cpu_count()) as pool:
         results = pool.starmap_async(_opt, [(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size,
                                              path_output, shimwise_bounds) for i in range(n_shims)]).get()
+
+        pool.close()
+        pool.join()
+
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
