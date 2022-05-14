@@ -135,9 +135,6 @@ class TestCliDynamic(object):
             with open(fname_constraints, 'w', encoding='utf-8') as f:
                 json.dump(dummy_coil_constraints, f, indent=4)
 
-            fname_dummy_coil = "/Users/alexandredastous/Desktop/tmp/profiles.nii.gz"
-            fname_constraints = "/Users/alexandredastous/Desktop/tmp/jason_coil_config.json"
-
             res = script_runner.run('st_b0shim', 'dynamic',
                                     '--coil', fname_dummy_coil, fname_constraints,
                                     '--fmap', fname_fmap,
