@@ -117,7 +117,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         fieldmap_hz = gaussian(fieldmap_hz, sigma, mode='nearest')
 
     # return fieldmap_hz_gaussian
-    return fieldmap_hz
+    return fieldmap_hz, mask
 
 
 def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
