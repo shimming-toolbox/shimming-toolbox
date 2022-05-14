@@ -14,7 +14,7 @@ from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, creat
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 FILE_OUTPUT_DEFAULT = 'fieldmap.nii.gz'
-MASK_OUTPUT_DEFAULT = 'mask.nii.gz'
+MASK_OUTPUT_DEFAULT = 'mask_fieldmap.nii.gz'
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
