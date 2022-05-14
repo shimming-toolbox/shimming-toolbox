@@ -47,6 +47,7 @@ setup(
         "psutil~=5.7.3",
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
+        "pytest-console-scripts~=1.3.1",
         "sklearn~=0.0",
         "pillow>=9.0.0",
         "dataclasses",
