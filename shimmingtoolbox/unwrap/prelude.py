@@ -13,7 +13,6 @@ import logging
 import numpy as np
 
 from shimmingtoolbox.utils import run_subprocess
-from shimmingtoolbox.utils import create_output_dir
 
 logger = logging.getLogger(__name__)
 
