@@ -16,7 +16,7 @@ VALIDITY_THRESHOLD = 0.2
 
 
 def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=None, threshold=0.05,
-                     gaussian_filter=False, sigma=1):
+                     gaussian_filter=False, sigma=1, fname_save_mask=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
@@ -33,6 +33,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
                    than the threshold are set to 0.
         gaussian_filter (bool): Option of using a Gaussian filter to smooth the fieldmaps (boolean)
         sigma (float): Standard deviation of gaussian filter.
+        fname_save_mask (str): Filename of the mask calculated by the unwrapper
+
     Returns
         numpy.ndarray: Unwrapped fieldmap in Hz.
     """
@@ -102,7 +104,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
 
     # Run the unwrapper
-    phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask)
+    phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
+                                       fname_save_mask=fname_save_mask)
 
     # If it's 4d (i.e. there are timepoints)
     if len(phasediff_unwrapped.shape) == 4:

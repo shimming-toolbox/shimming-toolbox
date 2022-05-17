@@ -64,6 +64,11 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     # Prepare the output
     create_output_dir(fname_output_v2, is_file=True)
 
+    # Save mask
+    if fname_save_mask is not None:
+        # If it is a path, add the default filename and create output directory
+        fname_save_mask = create_fname_from_path(fname_save_mask, MASK_OUTPUT_DEFAULT)
+
     # Import phase
     list_nii_phase = []
     echo_times = []
@@ -87,7 +92,7 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     affine = nii_phase.affine
 
     # Magnitude image
-    mag = nib.load(fname_mag).get_fdata()
+    _, json_mag, mag = read_nii(fname_mag)
 
     # Import mask
     if fname_mask is not None:
@@ -97,13 +102,13 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
 
     fieldmap_hz, save_mask = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
                                               mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
-                                              sigma=sigma)
+                                              sigma=sigma, fname_save_mask=fname_save_mask)
 
     # Save fieldmap
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
     nib.save(nii_fieldmap, fname_output_v2)
 
-    # Save json
+    # Save fieldmap json
     json_fieldmap = json_phase
     if len(phase) > 1:
         for i_echo in range(len(echo_times)):
@@ -112,17 +117,10 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     with open(fname_json, 'w') as outfile:
         json.dump(json_fieldmap, outfile, indent=2)
 
-    # Save mask
+    # save mask json
     if fname_save_mask is not None:
-        # If it is a path, add the default filename and create output directory
-        fname_save_mask = create_fname_from_path(fname_save_mask, MASK_OUTPUT_DEFAULT)
-        create_output_dir(fname_save_mask, is_file=True)
-
-        if fname_save_mask[-4:] != '.nii' and fname_save_mask[-7:] != '.nii.gz':
-            raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
-
-        nii_fieldmap = nib.Nifti1Image(save_mask, affine, header=nii_phase.header)
-        nib.save(nii_fieldmap, fname_save_mask)
-        logger.info(f"Filename of the output mask is: {fname_save_mask}")
+        fname_mask_json = fname_save_mask.rsplit('.nii', 1)[0] + '.json'
+        with open(fname_mask_json, 'w') as outfile:
+            json.dump(json_mag, outfile, indent=2)
 
     logger.info(f"Filename of the fieldmap is: {fname_output_v2}")
