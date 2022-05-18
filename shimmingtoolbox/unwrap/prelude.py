@@ -17,7 +17,7 @@ from shimmingtoolbox.utils import run_subprocess
 logger = logging.getLogger(__name__)
 
 
-def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False):
+def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False, fname_save_mask=None):
     """wrapper to FSL prelude
 
     This function enables phase unwrapping by calling FSL prelude on the command line. A mask can be provided to mask
@@ -31,6 +31,7 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
                                         unwrapping
         threshold: Threshold value for automatic mask generation (Use either mask or threshold, not both)
         is_unwrapping_in_2d (bool, optional): prelude parameter to unwrap slice by slice
+        fname_save_mask (str): Filename of the mask calculated by the unwrapper
 
     Returns:
         numpy.ndarray: 3D array with the shape of `complex_array` of the unwrapped phase output from prelude
@@ -70,6 +71,13 @@ def prelude(nii_wrapped_phase, mag=None, mask=None, threshold=None, is_unwrappin
             options += ['-m', fname_mask]
 
             nib.save(nii_mask, fname_mask)
+
+        # Save mask
+        if fname_save_mask is not None:
+            if fname_save_mask[-4:] != '.nii' and fname_save_mask[-7:] != '.nii.gz':
+                raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+
+            options.append(f'--savemask={fname_save_mask}')
 
         if threshold is not None:
             options += ['-t', str(threshold)]
