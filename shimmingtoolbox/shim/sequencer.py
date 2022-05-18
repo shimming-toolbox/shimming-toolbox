@@ -29,6 +29,7 @@ from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 ListCoil = List[Coil]
 
 logger = logging.getLogger(__name__)
+mp.set_start_method('fork', force=True)
 
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
@@ -845,17 +846,17 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     n_shims = len(slices_anat)
 
     # multiprocessing optimization
-    mp.set_start_method('fork', force=True)
     run_id = uuid.uuid4().hex
     global _optimize_scope
     _optimize_scope[run_id] = (
         optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
     try:
-        with mp.Pool(mp.cpu_count()) as pool:
+        # Default number of workers is set to mp.cpu_count()
+        with mp.Pool() as pool:
             # should be safe to del here. Because at this point all the child processes have forked and inherited their
             # copy
             del _optimize_scope[run_id]
-            results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get()
+            results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get(timeout=1200)
     except mp.context.TimeoutError:
         logger.info("Multiprocessing might have hung, retry the same command")
 
