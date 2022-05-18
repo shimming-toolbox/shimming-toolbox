@@ -93,12 +93,35 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
-    if anat.ndim != 3:
-        raise ValueError("Anatomical image must be in 3d")
+    if anat.ndim == 3:
+        pass
+    elif anat.ndim == 4:
+        logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+        anat = np.mean(anat, axis=3)
+        nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
+    else:
+        raise ValueError("Target anatomical image must be in 3d or 4d")
 
     # Make sure the mask has the appropriate dimensions
-    if nii_mask_anat.get_fdata().ndim != 3:
-        raise ValueError("Mask image must be in 3d")
+    mask = nii_mask_anat.get_fdata()
+    if mask.ndim == 3:
+        pass
+    elif mask.ndim == 4:
+        logger.debug("Mask is 4d, converting to 3d")
+        tmp_3d = np.zeros(mask.shape[:3])
+        n_vol = mask.shape[-1]
+        # Summing over 4th dimension making sure that the max value is 1
+        for i_vol in range(mask.shape[-1]):
+            tmp_3d += (mask[..., i_vol] / mask[..., i_vol].max())
+
+        # 80% of the volumes must contain the desired pixel to be included, this avoids having dead voxels in the
+        # output mask
+        tmp_3d = threshold(tmp_3d, thr=int(n_vol * 0.8))
+        nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), nii_mask_anat.affine, header=nii_mask_anat.header)
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_mask_anat, os.path.join(path_output, "fig_3d_mask.nii.gz"))
+    else:
+        raise ValueError("Mask must be in 3d or 4d")
 
     # Resample the input mask on the target anatomical image if they are different
     if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == nii_anat.affine):
