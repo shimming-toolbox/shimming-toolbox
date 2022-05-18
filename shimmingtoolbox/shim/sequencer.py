@@ -179,7 +179,8 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             # TODO: Output json sidecar
             # TODO: Update the shim settings if Scanner coil?
             # Output the resulting fieldmap since it can be calculated over the entire fieldmap
-            nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], nii_fieldmap_orig.affine,
+                                               header=nii_fieldmap_orig.header)
             fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim.nii.gz')
             nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
         else:
@@ -833,28 +834,32 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     return optimizer
 
 
-_optimize_scope = {}  # i?: (_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-                      #     dilation_kernel='sphere', dilation_size=3, path_output=None)
-def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-              dilation_kernel='sphere', dilation_size=3, path_output=None):
+# Used as a global dictionary to pass argument to the _opt function. This avoids to pickle the data resulting in a slow
+# start of the multiprocessing pool
+# uuid: (_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None, dilation_kernel='sphere',
+# dilation_size=3, path_output=None)
+_optimize_scope = {}
 
+
+def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
+              dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Count shims to perform
     n_shims = len(slices_anat)
-
-    global _optimize_scope
-    global optimizer
-    optimizer = _optimizer # not a super safe thing to do
 
     # multiprocessing optimization
     mp.set_start_method('fork', force=True)
     run_id = uuid.uuid4().hex
-    _optimize_scope[run_id] = (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
-    with mp.Pool(mp.cpu_count()) as pool:
-        del _optimize_scope[run_id] # should be safe to del here? because at this point all the child processes have forked and inherited their copy
-        try:
+    global _optimize_scope
+    _optimize_scope[run_id] = (
+        optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
+    try:
+        with mp.Pool(mp.cpu_count()) as pool:
+            # should be safe to del here. Because at this point all the child processes have forked and inherited their
+            # copy
+            del _optimize_scope[run_id]
             results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get()
-        except mp.context.TimeoutError:
-            logger.info("Multiprocessing might have hung, retry the same command")
+    except mp.context.TimeoutError:
+        logger.info("Multiprocessing might have hung, retry the same command")
 
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
@@ -864,8 +869,8 @@ def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds
 
 
 def _opt(run_id, i):
-
-    (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds) = _optimize_scope[run_id]
+    (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds) = \
+        _optimize_scope[run_id]
 
     logger.info(f"Shimming shim group: {i + 1} of {len(slices_anat)}")
     # Create nibabel object of the unshimmed map
