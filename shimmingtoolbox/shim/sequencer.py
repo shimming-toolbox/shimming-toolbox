@@ -838,18 +838,16 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
 
     # multiprocessing optimization
     mp.set_start_method('spawn', force=True)
-    with mp.Pool(mp.cpu_count()) as pool:
-        try:
+    try:
+        with mp.Pool(mp.cpu_count()) as pool:
             results = pool.starmap_async(_opt,
                                          [(i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size,
                                            path_output, shimwise_bounds) for i in range(n_shims)]).get(timeout=1200)
             pool.close()
             pool.join()
 
-        except mp.context.TimeoutError:
-            logger.info("Multiprocessing might have hung, retry the same command")
-
-
+    except mp.context.TimeoutError:
+        logger.info("Multiprocessing might have hung, retry the same command")
 
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
