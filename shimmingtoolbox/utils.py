@@ -18,26 +18,27 @@ PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
 
 
 def run_subprocess(cmd):
-    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+    """Wrapper for ``subprocess.run()``.
 
     Args:
-        cmd (string): full command to be run on the command line
+        cmd (list): list of arguments to be passed to the command line
     """
-    logging.debug(f'{cmd}')
+    logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
     try:
         env = os.environ.copy()
         # Add ST PATH before the rest of the path so that it takes precedence
         env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
         subprocess.run(
-            cmd.split(' '),
+            cmd,
             text=True,
             check=True,
             env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
-        raise Exception(msg)
+        print(msg)
+        raise err
 
 
 def add_suffix(fname, suffix):
