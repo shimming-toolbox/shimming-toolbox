@@ -14,6 +14,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 import multiprocessing as mp
+import multiprocessing_logging
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -29,6 +30,7 @@ from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 ListCoil = List[Coil]
 
 logger = logging.getLogger(__name__)
+multiprocessing_logging.install_mp_handler(logger)
 
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
@@ -832,13 +834,13 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
 
 
 _optimize_scope = {}  # i?: (_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-                      #     dilation_kernel='sphere', dilation_size=3, path_output=None) 
+                      #     dilation_kernel='sphere', dilation_size=3, path_output=None)
 def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
 
     # Count shims to perform
     n_shims = len(slices_anat)
-    
+
     global _optimize_scope
     global optimizer
     optimizer = _optimizer # not a super safe thing to do
@@ -849,8 +851,11 @@ def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds
     _optimize_scope[run_id] = (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
     with mp.Pool(mp.cpu_count()) as pool:
         del _optimize_scope[run_id] # should be safe to del here? because at this point all the child processes have forked and inherited their copy
-        results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get()
-    
+        try:
+            results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get()
+        except mp.context.TimeoutError:
+            logger.info("Multiprocessing might have hung, retry the same command")
+
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
@@ -859,9 +864,9 @@ def _optimize(_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds
 
 
 def _opt(run_id, i):
-    
+
     (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds) = _optimize_scope[run_id]
-    
+
     logger.info(f"Shimming shim group: {i + 1} of {len(slices_anat)}")
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
