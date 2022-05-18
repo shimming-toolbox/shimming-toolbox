@@ -13,7 +13,6 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 import multiprocessing as mp
-import multiprocessing_logging
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -29,7 +28,6 @@ from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 ListCoil = List[Coil]
 
 logger = logging.getLogger(__name__)
-multiprocessing_logging.install_mp_handler(logger)
 
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
