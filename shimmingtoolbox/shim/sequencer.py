@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 import copy
 import math
-import uuid
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
@@ -833,30 +832,24 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     return optimizer
 
 
-# Used as a global dictionary to pass argument to the _opt function. This avoids to pickle the data resulting in a slow
-# start of the multiprocessing pool
-# uuid: (_optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None, dilation_kernel='sphere',
-# dilation_size=3, path_output=None)
-_optimize_scope = {}
-
-
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Count shims to perform
     n_shims = len(slices_anat)
 
     # multiprocessing optimization
-    run_id = uuid.uuid4().hex
-    global _optimize_scope
-    _optimize_scope[run_id] = (
+    _optimize_scope = (
         optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
     try:
         # Default number of workers is set to mp.cpu_count()
-        with mp.Pool() as pool:
+        # _worker_init gets called by each worker with _optimize_scope as arguments
+        # _worker_init converts those arguments as globals so they can be accessed in _opt
+        # This works because each worker has its own version of the global variables
+        # This allows to use both fork and spawn while not serializing the arguments making it slow
+        with mp.Pool(initializer=_worker_init, initargs=_optimize_scope) as pool:
             # should be safe to del here. Because at this point all the child processes have forked and inherited their
             # copy
-            del _optimize_scope[run_id]
-            results = pool.starmap_async(_opt, [(run_id, i) for i in range(n_shims)]).get(timeout=1200)
+            results = pool.starmap_async(_opt, [(i,) for i in range(n_shims)]).get(timeout=1200)
     except mp.context.TimeoutError:
         logger.info("Multiprocessing might have hung, retry the same command")
 
@@ -867,29 +860,50 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     return np.array(results_final)
 
 
-def _opt(run_id, i):
-    (optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds) = \
-        _optimize_scope[run_id]
+gl_optimizer = None
+gl_nii_mask_anat = None
+gl_slices_anat = None
+gl_dilation_kernel = None
+gl_dilation_size = None
+gl_path_output = None
+gl_shimwise_bounds = None
 
-    logger.info(f"Shimming shim group: {i + 1} of {len(slices_anat)}")
+
+def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
+                 shimwise_bounds):
+
+    global gl_optimizer, gl_nii_mask_anat, gl_slices_anat, gl_dilation_kernel
+    global gl_dilation_size, gl_path_output, gl_shimwise_bounds
+    gl_optimizer = optimizer
+    gl_nii_mask_anat = nii_mask_anat
+    gl_slices_anat = slices_anat
+    gl_dilation_kernel = dilation_kernel
+    gl_dilation_size = dilation_size
+    gl_path_output = path_output
+    gl_shimwise_bounds = shimwise_bounds
+
+
+def _opt(i):
+
+    logger.info(f"Shimming shim group: {i + 1} of {len(gl_slices_anat)}")
     # Create nibabel object of the unshimmed map
-    nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
+    nii_unshimmed = nib.Nifti1Image(gl_optimizer.unshimmed, gl_optimizer.unshimmed_affine)
 
     # Create mask in the fieldmap coordinate system from the anat roi mask and slice anat mask
-    sliced_mask_resampled = resample_mask(nii_mask_anat, nii_unshimmed, slices_anat[i],
-                                          dilation_kernel=dilation_kernel,
-                                          dilation_size=dilation_size,
-                                          path_output=path_output).get_fdata()
+    sliced_mask_resampled = resample_mask(gl_nii_mask_anat, nii_unshimmed, gl_slices_anat[i],
+                                          dilation_kernel=gl_dilation_kernel,
+                                          dilation_size=gl_dilation_size,
+                                          path_output=gl_path_output).get_fdata()
 
     # If new bounds are included, change them for each shim
-    if shimwise_bounds is not None:
-        optimizer.set_merged_bounds(shimwise_bounds[i])
+    if gl_shimwise_bounds is not None:
+        gl_optimizer.set_merged_bounds(gl_shimwise_bounds[i])
 
     if np.all(sliced_mask_resampled == 0):
-        return i, np.zeros(optimizer.merged_coils.shape[-1])
+        return i, np.zeros(gl_optimizer.merged_coils.shape[-1])
 
     # Optimize using the mask
-    coef = optimizer.optimize(sliced_mask_resampled)
+    coef = gl_optimizer.optimize(sliced_mask_resampled)
 
     return i, coef
 
