@@ -27,7 +27,7 @@ class TestPrepareFieldmap(object):
 
     def test_prepare_fieldmap_1_echo(self):
         """Test default works."""
-        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag)
+        fieldmap, _ = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag)
 
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
@@ -53,7 +53,7 @@ class TestPrepareFieldmap(object):
 
         echo_times = [0.0025, 0.0055]
 
-        fieldmap = prepare_fieldmap([nii_phase1_re, nii_phase2_re], echo_times, mag=mag)
+        fieldmap, _ = prepare_fieldmap([nii_phase1_re, nii_phase2_re], echo_times, mag=mag)
 
         assert fieldmap.shape == phase1.shape
 
@@ -108,7 +108,7 @@ class TestPrepareFieldmap(object):
     def test_prepare_fieldmap_gaussian_filter(self):
         """Test output of gaussian filter optional argument"""
 
-        fieldmap = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, gaussian_filter=True, sigma=1)
+        fieldmap, _ = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, gaussian_filter=True, sigma=1)
 
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
