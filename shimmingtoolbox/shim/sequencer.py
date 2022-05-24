@@ -11,6 +11,7 @@ from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import json
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -18,8 +19,9 @@ from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
+from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
-from shimmingtoolbox.utils import montage
+from shimmingtoolbox.utils import montage, timeit
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
@@ -33,6 +35,7 @@ supported_optimizers = {
 }
 
 
+@timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
                    mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
     """
@@ -90,20 +93,47 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Make sure anat has the appropriate dimensions
     anat = nii_anat.get_fdata()
-    if anat.ndim != 3:
-        raise ValueError("Anatomical image must be in 3d")
+    if anat.ndim == 3:
+        pass
+    elif anat.ndim == 4:
+        logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+        anat = np.mean(anat, axis=3)
+        nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
+    else:
+        raise ValueError("Target anatomical image must be in 3d or 4d")
 
     # Make sure the mask has the appropriate dimensions
     mask = nii_mask_anat.get_fdata()
-    if mask.ndim != 3:
-        raise ValueError("Mask image must be in 3d")
+    if mask.ndim == 3:
+        pass
+    elif mask.ndim == 4:
+        logger.debug("Mask is 4d, converting to 3d")
+        tmp_3d = np.zeros(mask.shape[:3])
+        n_vol = mask.shape[-1]
+        # Summing over 4th dimension making sure that the max value is 1
+        for i_vol in range(mask.shape[-1]):
+            tmp_3d += (mask[..., i_vol] / mask[..., i_vol].max())
 
-    # Make sure shape and affine of mask are the same as the anat
-    if not np.all(mask.shape == anat.shape):
-        raise ValueError(f"Shape of mask:\n {mask.shape} must be the same as the shape of anat:\n{anat.shape}")
-    if not np.all(nii_mask_anat.affine == nii_anat.affine):
-        raise ValueError(f"Affine of mask:\n{nii_mask_anat.affine}\nmust be the same as the affine of anat:\n"
-                         f"{nii_anat.affine}")
+        # 80% of the volumes must contain the desired pixel to be included, this avoids having dead voxels in the
+        # output mask
+        tmp_3d = threshold(tmp_3d, thr=int(n_vol * 0.8))
+        nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), nii_mask_anat.affine, header=nii_mask_anat.header)
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_mask_anat, os.path.join(path_output, "fig_3d_mask.nii.gz"))
+    else:
+        raise ValueError("Mask must be in 3d or 4d")
+
+    # Resample the input mask on the target anatomical image if they are different
+    if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == nii_anat.affine):
+        logger.debug("Resampling mask on the target anat")
+        nii_mask_anat_soft = resample_from_to(nii_mask_anat, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_mask_anat_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
 
     # Select and initialize the optimizer
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
@@ -118,6 +148,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     return coefs
 
 
+@timeit
 def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
     """Calculate theoretical shimmed map and output figures"""
 
@@ -133,16 +164,16 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
 
     # Initialize
-    correction_per_channel = np.zeros(merged_coils.shape + (len(slices),))
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
         # Calculate shimmed values
-        correction_per_channel[..., i_shim] = coef[i_shim] * merged_coils
-        corrections[..., i_shim] = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
+        correction_per_channel = coef[i_shim] * merged_coils
+        corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
         shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
+        # Create non binary mask
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
         sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
@@ -161,7 +192,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
         # fieldmap)
         shimmed_masked, mask_full_binary = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
-                                                                   slices)
+                                                                   slices, masks_fmap)
 
         if len(slices) == 1:
             # TODO: Output json sidecar
@@ -196,7 +227,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             nib.save(nii_correction, fname_correction)
 
 
-def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices):
+def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices, masks_fmap):
     mask_full_binary = np.ceil(resample_from_to(nii_mask_anat,
                                                 nii_fieldmap,
                                                 order=1,
@@ -204,16 +235,13 @@ def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, 
                                                 cval=0).get_fdata())
 
     # Find the correction
-    mask_fmap_nb = np.zeros(unshimmed.shape + (len(slices),))
     full_correction = np.zeros(unshimmed.shape)
     for i_shim in range(len(slices)):
-        # Create non binary mask
-        mask_fmap_nb[..., i_shim] = resample_mask(nii_mask_anat, nii_fieldmap, slices[i_shim]).get_fdata()
         # Apply the correction weighted according to the mask
-        full_correction += correction[..., i_shim] * mask_fmap_nb[..., i_shim]
+        full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
 
     # Calculate the weighted whole mask
-    mask_weight = np.sum(mask_fmap_nb, axis=3)
+    mask_weight = np.sum(masks_fmap, axis=3)
     # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
     full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
@@ -319,6 +347,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
+@timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
                                 mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
@@ -395,20 +424,33 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         raise ValueError("Anatomical image must be in 3d")
 
     # Make sure masks have the appropriate dimensions
-    static_mask = nii_static_mask.get_fdata()
-    if static_mask.ndim != 3:
+    if nii_static_mask.get_fdata().ndim != 3:
         raise ValueError("static_mask image must be in 3d")
-    riro_mask = nii_riro_mask.get_fdata()
-    if riro_mask.ndim != 3:
+    if nii_riro_mask.get_fdata().ndim != 3:
         raise ValueError("riro_mask image must be in 3d")
 
-    # Make sure shape and affine of masks are the same as the anat
-    if not (np.all(riro_mask.shape == anat.shape) and np.all(static_mask.shape == anat.shape)):
-        raise ValueError(f"Shape of riro mask: {riro_mask.shape} and static mask: {static_mask.shape} "
-                         f"must be the same as the shape of anat: {anat.shape}")
-    if not (np.all(nii_riro_mask.affine == nii_anat.affine) and np.all(nii_static_mask.affine == nii_anat.affine)):
-        raise ValueError(f"Affine of riro mask:\n{nii_riro_mask.affine}\nand static mask: {nii_static_mask.affine}\n"
-                         f"must be the same as the affine of anat:\n{nii_anat.affine}")
+    # Resample the input masks on the target anatomical image if they are different
+    if not np.all(nii_static_mask.shape == anat.shape) or not np.all(nii_static_mask.affine == nii_anat.affine):
+        logger.debug("Resampling static mask on the target anat")
+        nii_static_mask_soft = resample_from_to(nii_static_mask, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_static_mask_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_static_mask = nib.Nifti1Image(tmp_mask, nii_static_mask_soft.affine, header=nii_static_mask_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_static_mask, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
+
+    if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(nii_riro_mask.affine == nii_anat.affine):
+        logger.debug("Resampling riro mask on the target anat")
+        nii_riro_mask_soft = resample_from_to(nii_riro_mask, nii_anat, order=1, mode='grid-constant')
+        tmp_mask = nii_riro_mask_soft.get_fdata()
+        # Change soft mask into binary mask
+        tmp_mask = threshold(tmp_mask, thr=0.001)
+        nii_riro_mask = nib.Nifti1Image(tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
+
+        if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+            nib.save(nii_riro_mask, os.path.join(path_output, "mask_riro_resampled_on_anat.nii.gz"))
 
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
@@ -497,6 +539,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     return coef_static, coef_riro, mean_p, pressure_rms
 
 
+@timeit
 def _eval_rt_shim(opt: Optimizer, nii_fieldmap, nii_mask_static, coef_static, coef_riro, mean_p,
                   acq_pressures, slices, pressure_rms, pmu: PmuResp, path_output):
     logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
@@ -955,6 +998,64 @@ def extend_slice(nii_array, n_slices=1, axis=2):
     nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
 
     return nii_extended
+
+
+def parse_slices(fname_nifti):
+    """ Parse the BIDS sidecar associated with the input nifti file.
+
+    Args:
+        fname_nifti (str): Full path to a NIfTI file
+
+    Returns:
+        list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
+    """
+
+    # Open json
+    fname_json = fname_nifti.split('.nii')[0] + '.json'
+    # Read from json file
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    # The BIDS specification mentions that the 'SliceTiming' is stored on disk depending on the
+    # 'SliceEncodingDirection'. If this tag is 'i', 'j', 'k' or non existent, index 0 of 'SliceTiming' corresponds to
+    # index 0 of the slice dimension of the NIfTI file. If 'SliceEncodingDirection' is 'i-', 'j-' or 'k-',
+    # the last value of 'SliceTiming' corresponds to index 0 of the slice dimension of the NIfTI file.
+    # https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#timing-parameters
+
+    # Note: Dcm2niix does not seem to include the tag 'SliceEncodingDirection' and always makes sure index 0 of
+    # 'SliceTiming' corresponds to index 0 of the NIfTI file.
+    # https://www.nitrc.org/forum/forum.php?thread_id=10307&forum_id=4703
+    # https://github.com/rordenlab/dcm2niix/issues/530
+
+    # Make sure tag SliceTiming exists
+    if 'SliceTiming' in json_data:
+        slice_timing = json_data['SliceTiming']
+    else:
+        raise RuntimeError("No tag SliceTiming to parse slice data")
+
+    # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
+    if 'SliceEncodingDirection' in json_data:
+        if json_data['SliceEncodingDirection'][-1] == '-':
+            logger.debug("SliceEncodeDirection is negative, SliceTiming parsed backwards")
+            slice_timing.reverse()
+
+    # Return the indexes of the sorted slice_timing
+    slice_timing = np.array(slice_timing)
+    list_slices = np.argsort(slice_timing)
+    slices = []
+    # Construct the list of tuples
+    while len(list_slices) > 0:
+        # Find if the first index has the same timing as other indexes
+        # shim_group = tuple(list_slices[list_slices == list_slices[0]])
+        shim_group = tuple(np.where(slice_timing == slice_timing[list_slices[0]])[0])
+        # Add this as a tuple
+        slices.append(shim_group)
+
+        # Since the list_slices is sorted by slice_timing, the only similar values will be at the beginning
+        n_to_remove = len(shim_group)
+        list_slices = list_slices[n_to_remove:]
+
+    return slices
 
 
 def define_slices(n_slices: int, factor=1, method='sequential'):

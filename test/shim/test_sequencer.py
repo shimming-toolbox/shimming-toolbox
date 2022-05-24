@@ -7,6 +7,8 @@ import nibabel as nib
 import numpy as np
 import os
 import pytest
+import tempfile
+import pathlib
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
@@ -16,13 +18,9 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import shim_sequencer
-from shimmingtoolbox.shim.sequencer import shim_realtime_pmu_sequencer
-from shimmingtoolbox.shim.sequencer import define_slices
-from shimmingtoolbox.shim.sequencer import resample_mask
+from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, resample_mask
+from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
-from shimmingtoolbox.shim.sequencer import extend_slice
-from shimmingtoolbox.shim.sequencer import update_affine_for_ap_slices
 from shimmingtoolbox.utils import set_all_loggers
 
 logger = logging.getLogger(__name__)
@@ -203,14 +201,14 @@ class TestSequencer(object):
         # Optimize
         slices = [(0, 2), (1,)]
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
-        with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
+        with pytest.raises(ValueError, match="Target anatomical image must be in 3d or 4d"):
             shim_sequencer(nii_fieldmap, nii_wrong_anat, nii_mask, slices, [sph_coil])
 
     def test_shim_sequencer_wrong_mask_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = [(0, 2), (1,)]
         nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[..., 0], nii_mask.affine, header=nii_mask.header)
-        with pytest.raises(ValueError, match="Mask image must be in 3d"):
+        with pytest.raises(ValueError, match="Mask must be in 3d or 4d"):
             shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
 
     # def test_shim_sequencer_wrong_units(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2, caplog):
@@ -220,41 +218,33 @@ class TestSequencer(object):
     #     shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil, sph_coil2])
     #     assert "The coils don't have matching units:" in caplog.text
 
-    def test_shim_sequencer_wrong_mask_affine(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+    def test_shim_sequencer_diff_mask_affine(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = [(0, 2), (1,)]
-        wrong_affine = nii_mask.affine
-        wrong_affine[0, 0] = 100
-        nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata(), wrong_affine, header=nii_mask.header)
-        with pytest.raises(ValueError, match="Affine of mask:"):
-            shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
+        diff_affine = nii_mask.affine
+        diff_affine[0, 0] = 2
+        nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata(), diff_affine, header=nii_mask.header)
 
-    def test_shim_sequencer_wrong_mask_shape(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        currents = shim_sequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
+        assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_diff_mask_shape(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = [(0, 2), (1,)]
-        nii_wrong_mask = nib.Nifti1Image(nii_mask.get_fdata()[:5, ...], nii_mask.affine, header=nii_mask.header)
-        with pytest.raises(ValueError, match="Shape of mask:"):
-            shim_sequencer(nii_fieldmap, nii_anat, nii_wrong_mask, slices, [sph_coil])
+        nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata()[5:, ...], nii_mask.affine, header=nii_mask.header)
 
-    # def test_speed_huge_matrix(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
-    #     # Create 1 huge coil which essentially is siemens basis concatenated 4 times
-    #     coils = [sph_coil, sph_coil, sph_coil, sph_coil]
-    #
-    #     coil_profiles_list = []
-    #
-    #     for coil in coils:
-    #         # Concat coils and bounds
-    #         coil_profiles_list.append(coil.profile)
-    #
-    #     coil_profiles = np.concatenate(coil_profiles_list, axis=3)
-    #     constraints = create_constraints(1000, -1000, 5000, 32)
-    #
-    #     huge_coil = Coil(coil_profiles, sph_coil.affine, constraints)
-    #
-    #     slices = define_slices(nii_anat.shape[2], 1)
-    #     currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [huge_coil], method='least_squares')
-    #
-    #     assert_results(nii_fieldmap, nii_anat, nii_mask, [huge_coil], currents, slices)
+        currents = shim_sequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
+        assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_4dmask_4d_anat(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        anat_4d = np.repeat(nii_anat.get_fdata()[..., np.newaxis], 3, -1)
+        mask_4d = np.repeat(nii_mask.get_fdata()[..., np.newaxis], 2, -1)
+        nii_4d_anat = nib.Nifti1Image(anat_4d, nii_anat.affine, header=nii_anat.header)
+        nii_4d_mask = nib.Nifti1Image(mask_4d, nii_mask.affine, header=nii_mask.header)
+
+        slices = [(0, 2), (1,)]
+        currents = shim_sequencer(nii_fieldmap, nii_4d_anat, nii_4d_mask, slices, [sph_coil])
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
 
 def assert_results(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
@@ -495,32 +485,34 @@ class TestShimRTpmuSimData(object):
             shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_wrong_anat, nii_mask_static, nii_mask_riro,
                                         slices, pmu, [coil])
 
-    def test_shim_sequencer_rt_wrong_mask_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
-                                              nii_mask_riro, slices, pmu, coil):
+    def test_shim_sequencer_rt_diff_mask_shape_static(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                      nii_mask_riro, slices, pmu, coil):
         # Optimize
-        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[:5, ...], nii_mask.affine, header=nii_mask.header)
-        with pytest.raises(ValueError, match="Shape of riro mask"):
-            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
-                                        slices, pmu, [coil])
+        nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[5:, ...], nii_mask_static.affine,
+                                        header=nii_mask_static.header)
+        output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
+                                             slices, pmu, [coil])
+        assert output[0].shape == (20, 3)
 
-    def test_shim_sequencer_rt_wrong_mask_affine(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
-                                                 nii_mask_riro, slices, pmu, coil):
+    def test_shim_sequencer_rt_diff_mask_shape_riro(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                                    nii_mask_riro, slices, pmu, coil):
         # Optimize
-        wrong_affine = nii_mask.affine
-        wrong_affine[0, 0] = 100
-        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata(), wrong_affine, header=nii_mask_static.header)
-        with pytest.raises(ValueError, match="Affine of riro mask:"):
-            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
-                                        slices, pmu, [coil])
+        nii_diff_mask = nib.Nifti1Image(nii_mask_riro.get_fdata()[5:, ...], nii_mask_riro.affine,
+                                        header=nii_mask_riro.header)
 
-    def test_shim_sequencer_rt_wrong_mask_shape(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+        output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_diff_mask,
+                                             slices, pmu, [coil])
+        assert output[0].shape == (20, 3)
+
+    def test_shim_sequencer_rt_diff_mask_affine(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                                 nii_mask_riro, slices, pmu, coil):
         # Optimize
-        nii_wrong_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[:5, ...], nii_mask_static.affine,
-                                         header=nii_mask_static.header)
-        with pytest.raises(ValueError, match="Shape of riro mask:"):
-            shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_wrong_mask, nii_mask_riro,
-                                        slices, pmu, [coil])
+        diff_affine = nii_mask.affine
+        diff_affine[0, 0] = 2
+        nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata(), diff_affine, header=nii_mask_static.header)
+        output = shim_realtime_pmu_sequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
+                                             slices, pmu, [coil])
+        assert output[0].shape == (20, 3)
 
 
 def test_shim_realtime_pmu_sequencer_rt_zshim_data():
@@ -739,3 +731,49 @@ class TestDefineSlices(object):
     def test_define_slices_wrong_n_slice(self):
         with pytest.raises(ValueError, match="Number of slices should be greater than 0"):
             define_slices(0, 2, "sequential")
+
+
+class TestParseSlices(object):
+    def setup(self):
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
+        # Open json
+        fname_json = fname.split('.nii')[0] + '.json'
+        # Read from json file
+        with open(fname_json) as json_file:
+            json_data = json.load(json_file)
+
+        json_data['SliceTiming'] = [10, 10, 0, 30, 30]
+        self.json_data = json_data
+
+    def test_parse_slices(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_json = os.path.join(tmp, 'test.json')
+            fname_nifti = os.path.join(tmp, 'test.nii')
+
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(self.json_data, f, indent=4)
+
+            slices = parse_slices(fname_nifti)
+
+            assert slices == [(2,), (0, 1), (3, 4)]
+
+    def test_parse_slices_real_data(self):
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        slices = parse_slices(fname)
+
+        assert slices == [(1,), (3,), (5,), (7,), (9,), (11,), (13,), (15,), (17,), (19,),
+                          (0,), (2,), (4,), (6,), (8,), (10,), (12,), (14,), (16,), (18,)]
+
+    def test_parse_slices_slice_encode(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_json = os.path.join(tmp, 'test.json')
+            fname_nifti = os.path.join(tmp, 'test.nii')
+
+            self.json_data['SliceEncodingDirection'] = 'k-'
+            with open(fname_json, 'w', encoding='utf-8') as f:
+                json.dump(self.json_data, f, indent=4)
+
+            slices = parse_slices(fname_nifti)
+
+            assert slices == [(2,), (3, 4), (0, 1)]

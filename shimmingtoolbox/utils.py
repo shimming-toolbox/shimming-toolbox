@@ -10,32 +10,37 @@ import logging
 import nibabel as nib
 import json
 from pathlib import Path
+import time
+import functools
+
+logger = logging.getLogger(__name__)
 
 HOME_DIR = str(Path.home())
 PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
 
 
 def run_subprocess(cmd):
-    """Wrapper for ``subprocess.run()`` that enables to input ``cmd`` as a full string (easier for debugging).
+    """Wrapper for ``subprocess.run()``.
 
     Args:
-        cmd (string): full command to be run on the command line
+        cmd (list): list of arguments to be passed to the command line
     """
-    logging.debug(f'{cmd}')
+    logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
     try:
         env = os.environ.copy()
         # Add ST PATH before the rest of the path so that it takes precedence
         env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
         subprocess.run(
-            cmd.split(' '),
+            cmd,
             text=True,
             check=True,
             env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
-        raise Exception(msg)
+        print(msg)
+        raise err
 
 
 def add_suffix(fname, suffix):
@@ -228,3 +233,24 @@ def save_nii_json(nii, json_data, fname_output):
     fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
     with open(fname_json, 'w') as outfile:
         json.dump(json_data, outfile, indent=2)
+
+
+def timeit(func):
+    """ Decorator to time a function. Decorate a function: @timeit on top of the function definition. The elapsed time
+    will output in debug mode
+    """
+
+    @functools.wraps(func)
+    def timed(*args, **kw):
+
+        ts = time.time()
+        # Call the original function
+        result = func(*args, **kw)
+        te = time.time()
+
+        # Log the output
+        logger.debug(f"Function: {func.__name__} took {te - ts:.4}s to run")
+
+        return result
+
+    return timed

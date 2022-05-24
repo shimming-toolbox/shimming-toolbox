@@ -2,6 +2,9 @@
 
 Static B1+ shimming
 -------------------
+.. warning::
+    This tutorial only covers static B1+ shimming applications performed on Siemens scanners. Shimming-Toolbox currently
+    only handles B1+ maps acquired using Siemens' standard TurboFLASH B1+ mapping sequence.
 
 Open a Terminal and run:
 
@@ -65,7 +68,8 @@ Static B1+ shimming
   can locate it after clicking on *input VOP file*. You can then adjust the SAR factor to indicate by how much your
   optimized shim weights might exceed the max local SAR of a phase only shimming.
 - Click *Run*.
-- The output text file containing the shim weights should be in the *Output Folder*. You then need to enter these shim
-  weights on the scanner console in the ``Options > Adjustments > B1 Shim`` window. Make sure to also select
-  *"Patient-specific"* in the ``System > pTx Volumes > B1 Shim mode`` in the sequence parameters to ensure that the
-  shim-weights will be applied.
+- The output text file containing the shim weights should be in the *Output Folder*.
+- Manually input these shim weights on the scanner console. On Siemens scanners, input them in the
+  ``Options > Adjustments > B1 Shim`` window. Make sure to also set ``System > pTx Volumes > B1 Shim mode`` to
+  *"Patient-specific"* in the sequence parameters to ensure that the
+  shim-weights will be applied during the acquisition.
