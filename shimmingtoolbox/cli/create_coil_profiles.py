@@ -83,6 +83,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     fname_mag = mags[0][0][0]
     nii_mag = nib.load(fname_mag)
     mask = np.full_like(nii_mag.get_fdata(), True, bool)
+    # TODO: VErify dead channels at the top so that dummy inputs don't end up on dead channels
     dead_channels = []
     for i_channel in range(n_channels):
         if not phases[i_channel][0]:
@@ -113,6 +114,12 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
     nib.save(nii_mask, fname_mask)
 
+    # In 4d
+    nii_mask_4d = nib.Nifti1Image(np.repeat(mask.astype(int)[..., np.newaxis], n_currents, -1), nii_mag.affine,
+                                  header=nii_mag.header)
+    fname_mask_4d = os.path.join(path_output, f"mask_4d.nii.gz")
+    nib.save(nii_mask_4d, fname_mask_4d)
+
     if not dead_channels:
         logger.warning(f"Channels: {dead_channels} do not have phase data. They will be set to 0.")
 
@@ -126,19 +133,46 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
         # Keeps track of the index since there could be dead channels
         index_channel += 1
 
+        # Method 1: Unwrap each current individually
         # for each current
+        # fnames_fmap.append([])
+        # for i_current in range(n_currents):
+        #     phase = phases[i_channel][i_current]
+        #
+        #     # Calculate fieldmap and save to a file
+        #     fname_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
+        #     prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_fmap, autoscale,
+        #                            fname_mask=fname_mask,
+        #                            gaussian_filter=gaussian_filter,
+        #                            sigma=sigma)
+        #
+        #     fnames_fmap[index_channel].append(fname_fmap)
+
+        # Method 2: Treat each channel like a 4d file (Possibly fixes 2npi discrepancies)
         fnames_fmap.append([])
+        fname_phases = []
+        for i_echo in range(n_echoes):
+            fname_tmp = os.path.join(path_output, f"channel{i_channel}_{i_echo}_phases.nii.gz")
+            tmp = [phases[i_channel][i][i_echo] for i in range(n_echoes)]
+            _concat_and_save_nii(tmp, fname_tmp)
+            fname_phases.append(fname_tmp)
+
+        fname_mag = os.path.join(path_output, f"channel{i_channel}_mags.nii.gz")
+        _concat_and_save_nii(mags[i_channel][:][0], fname_mag)
+
+        # Calculate fieldmap and save to a file
+        fname_4d_fmap = os.path.join(path_output, f"channel{i_channel}_fieldmap.nii.gz")
+        prepare_fieldmap_uncli(fname_phases, fname_mag, unwrapper, fname_4d_fmap, autoscale,
+                               fname_mask=fname_mask_4d,
+                               gaussian_filter=gaussian_filter,
+                               sigma=sigma)
+
+        nii_fmap = nib.load(fname_4d_fmap)
         for i_current in range(n_currents):
-            phase = phases[i_channel][i_current]
-
-            # Calculate fieldmap and save to a file
-            fname_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
-            prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_fmap, autoscale,
-                                   fname_mask=fname_mask,
-                                   gaussian_filter=gaussian_filter,
-                                   sigma=sigma)
-
-            fnames_fmap[index_channel].append(fname_fmap)
+            nii_3d_fmap = nib.Nifti1Image(nii_fmap.get_fdata()[..., i_current], nii_fmap.affine, header=nii_fmap.header)
+            fname_3d_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
+            nib.save(nii_3d_fmap, fname_3d_fmap)
+            fnames_fmap[index_channel].append(fname_3d_fmap)
 
     # Remove dead channels from the list of currents
     for i_channel in dead_channels:
@@ -160,9 +194,9 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
             for fname_nifti in list_fnames:
                 fname_json_m = fname_nifti.rsplit('.nii', 1)[0] + '.json'
                 # Delete nifti
-                os.remove(fname_nifti)
+                # os.remove(fname_nifti)
                 # Delete json
-                os.remove(fname_json_m)
+                # os.remove(fname_json_m)
 
     # Use header and json info from first file in the list
     fname_json_phase = phases[0][0][0].rsplit('.nii', 1)[0] + '.json'
@@ -188,3 +222,20 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
         json.dump(config_coil, f, indent=4)
 
     logger.info(f"Filename of the coil config file is: {fname_coil_config}")
+
+
+def _concat_and_save_nii(list_fnames_nii, fname_output):
+    res = []
+    for _, fname in enumerate(list_fnames_nii):
+        nii = nib.load(fname)
+        nii.get_fdata()
+        res.append(nii.get_fdata())
+
+    fname_json = fname.split('.nii')[0] + '.json'
+    # Read from json file
+    with open(fname_json) as json_file:
+        json_data = json.load(json_file)
+
+    array_4d = np.moveaxis(np.array(res), 0, 3)
+    nii_4d = nib.Nifti1Image(array_4d, nii.affine, header=nii.header)
+    save_nii_json(nii_4d, json_data, fname_output)
