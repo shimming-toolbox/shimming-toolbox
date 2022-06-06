@@ -44,7 +44,6 @@ setup(
         "scipy~=1.6.0",
         "tqdm",
         "matplotlib~=3.1.2",
-        "multiprocessing-logging~=0.3.3",
         "psutil~=5.7.3",
         "pytest~=4.6.3",
         "pytest-cov~=2.5.1",
