@@ -107,6 +107,6 @@ def test_resample_mask():
     nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,), dilation_kernel='line')
 
     expected = np.full_like(nii_target.get_fdata(), fill_value=False)
-    expected[24:28, 26:29, 0] = 1
+    expected[24:28, 27:29, 0] = 1
 
     assert np.all(nii_mask_res.get_fdata() == expected)
