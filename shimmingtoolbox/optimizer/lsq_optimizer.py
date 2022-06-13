@@ -30,16 +30,23 @@ class LsqOptimizer(Optimizer):
         """
         super().__init__(coils, unshimmed, affine)
         self._initial_guess_method = 'mean'
+        self.initial_coefs = None
 
     @property
     def initial_guess_method(self):
         return self._initial_guess_method
 
     @initial_guess_method.setter
-    def initial_guess_method(self, method):
-        allowed_methods = ['mean', 'zeros']
+    def initial_guess_method(self, method, coefs=None):
+        allowed_methods = ['mean', 'zeros', 'set']
         if method not in allowed_methods:
-            raise ValueError(f"Initial_guess_methos not supported. Supported methods are: {allowed_methods}")
+            raise ValueError(f"Initial_guess_method not supported. Supported methods are: {allowed_methods}")
+
+        if method == 'set':
+            if coefs is not None:
+                self.initial_coefs = coefs
+            else:
+                raise ValueError(f"Previous coefs were not set")
 
         self._initial_guess_method = method
 
@@ -99,12 +106,16 @@ class LsqOptimizer(Optimizer):
 
         allowed_guess_method = {
             'mean': self._initial_guess_mean_bounds,
-            'zeros': self._initial_guess_zeros
+            'zeros': self._initial_guess_zeros,
+            'set': self._initial_guess_set
         }
 
         initial_guess = allowed_guess_method[self.initial_guess_method]()
 
         return initial_guess
+
+    def _initial_guess_set(self):
+        return self.initial_coefs
 
     def _initial_guess_mean_bounds(self):
         """
