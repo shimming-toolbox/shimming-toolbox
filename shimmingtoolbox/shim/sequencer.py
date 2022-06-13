@@ -222,6 +222,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         _plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary, path_output)
         _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
         _plot_currents(coef, path_output)
+        _cal_shimmed_anat_orient(coef, merged_coils, nii_mask, nii_fieldmap_orig, slices, path_output)
 
         if logger.level <= getattr(logging, 'DEBUG'):
             # Save to a NIfTI
@@ -233,6 +234,30 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             fname_correction = os.path.join(path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
             nii_correction = nib.Nifti1Image(masks_fmap * shimmed, opt.unshimmed_affine)
             nib.save(nii_correction, fname_correction)
+
+
+def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, path_output):
+    nii_coils = nib.Nifti1Image(coils, nii_fieldmap.affine, header=nii_fieldmap.header)
+    coils_anat = resample_from_to(nii_coils,
+                                  nii_mask_anat,
+                                  order=1,
+                                  mode='grid-constant',
+                                  cval=0).get_fdata()
+    fieldmap_anat = resample_from_to(nii_fieldmap,
+                                     nii_mask_anat,
+                                     order=1,
+                                     mode='grid-constant',
+                                     cval=0).get_fdata()
+
+    shimmed_anat_orient = np.zeros_like(fieldmap_anat)
+    for i_shim in range(len(slices)):
+        corr = np.sum(coefs[i_shim] * coils_anat, axis=3, keepdims=False)
+        shimmed_anat_orient[..., slices[i_shim]] = fieldmap_anat[..., slices[i_shim]] + corr[..., slices[i_shim]]
+
+    fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
+    nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
+                                              header=nii_mask_anat.header)
+    nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
 
 
 def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices, masks_fmap):
@@ -899,7 +924,6 @@ gl_shimwise_bounds = None
 
 def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
                  shimwise_bounds):
-
     global gl_optimizer, gl_nii_mask_anat, gl_slices_anat, gl_dilation_kernel
     global gl_dilation_size, gl_path_output, gl_shimwise_bounds
     gl_optimizer = optimizer
@@ -912,7 +936,6 @@ def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilatio
 
 
 def _opt(i):
-
     logger.info(f"Shimming shim group: {i + 1} of {len(gl_slices_anat)}")
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(gl_optimizer.unshimmed, gl_optimizer.unshimmed_affine)
