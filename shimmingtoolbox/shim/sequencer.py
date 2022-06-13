@@ -228,11 +228,11 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
 
 
 def _calc_shimmed_full_mask(unshimmed, correction, nii_mask_anat, nii_fieldmap, slices, masks_fmap):
-    mask_full_binary = np.ceil(resample_from_to(nii_mask_anat,
-                                                nii_fieldmap,
-                                                order=1,
-                                                mode='grid-constant',
-                                                cval=0).get_fdata())
+    mask_full_binary = np.clip(np.ceil(resample_from_to(nii_mask_anat,
+                                                        nii_fieldmap,
+                                                        order=0,
+                                                        mode='grid-constant',
+                                                        cval=0).get_fdata()), 0, 1)
 
     # Find the correction
     full_correction = np.zeros(unshimmed.shape)
