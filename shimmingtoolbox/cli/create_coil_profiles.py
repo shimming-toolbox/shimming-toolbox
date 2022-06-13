@@ -135,44 +135,18 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
 
         # Method 1: Unwrap each current individually
         # for each current
-        # fnames_fmap.append([])
-        # for i_current in range(n_currents):
-        #     phase = phases[i_channel][i_current]
-        #
-        #     # Calculate fieldmap and save to a file
-        #     fname_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
-        #     prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_fmap, autoscale,
-        #                            fname_mask=fname_mask,
-        #                            gaussian_filter=gaussian_filter,
-        #                            sigma=sigma)
-        #
-        #     fnames_fmap[index_channel].append(fname_fmap)
-
-        # Method 2: Treat each channel like a 4d file (Possibly fixes 2npi discrepancies)
         fnames_fmap.append([])
-        fname_phases = []
-        for i_echo in range(n_echoes):
-            fname_tmp = os.path.join(path_output, f"channel{i_channel}_{i_echo}_phases.nii.gz")
-            tmp = [phases[i_channel][i][i_echo] for i in range(n_echoes)]
-            _concat_and_save_nii(tmp, fname_tmp)
-            fname_phases.append(fname_tmp)
-
-        fname_mag = os.path.join(path_output, f"channel{i_channel}_mags.nii.gz")
-        _concat_and_save_nii(mags[i_channel][:][0], fname_mag)
-
-        # Calculate fieldmap and save to a file
-        fname_4d_fmap = os.path.join(path_output, f"channel{i_channel}_fieldmap.nii.gz")
-        prepare_fieldmap_uncli(fname_phases, fname_mag, unwrapper, fname_4d_fmap, autoscale,
-                               fname_mask=fname_mask_4d,
-                               gaussian_filter=gaussian_filter,
-                               sigma=sigma)
-
-        nii_fmap = nib.load(fname_4d_fmap)
         for i_current in range(n_currents):
-            nii_3d_fmap = nib.Nifti1Image(nii_fmap.get_fdata()[..., i_current], nii_fmap.affine, header=nii_fmap.header)
-            fname_3d_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
-            nib.save(nii_3d_fmap, fname_3d_fmap)
-            fnames_fmap[index_channel].append(fname_3d_fmap)
+            phase = phases[i_channel][i_current]
+
+            # Calculate fieldmap and save to a file
+            fname_fmap = os.path.join(path_output, f"channel{i_channel}_{i_current}_fieldmap.nii.gz")
+            prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_fmap, autoscale,
+                                   fname_mask=fname_mask,
+                                   gaussian_filter=gaussian_filter,
+                                   sigma=sigma)
+
+            fnames_fmap[index_channel].append(fname_fmap)
 
     # Remove dead channels from the list of currents
     for i_channel in dead_channels:
