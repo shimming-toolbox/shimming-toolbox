@@ -74,25 +74,30 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     phases = json_data["phase"]
     mags = json_data["mag"]
     list_setup_currents = json_data["setup_currents"]
-    n_channels = len(phases)
-    n_currents = len(phases[0])
-    n_echoes = len(phases[0][0])
+    n_channels = json_data["n_channels"]
 
-    # Create a mask containing the threshold of all channels and currents
-    fname_mask = os.path.join(path_output, 'mask.nii.gz')
-    fname_mag = mags[0][0][0]
-    nii_mag = nib.load(fname_mag)
-    mask = np.full_like(nii_mag.get_fdata(), True, bool)
-    # TODO: VErify dead channels at the top so that dummy inputs don't end up on dead channels
     dead_channels = []
     for i_channel in range(n_channels):
         if not phases[i_channel][0]:
             dead_channels.append(i_channel)
             continue
 
+    # Create a mask containing the threshold of all channels and currents
+    fname_mask = os.path.join(path_output, 'mask.nii.gz')
+    fname_mag = mags[0][0][0]
+    nii_mag = nib.load(fname_mag)
+    mask = np.full_like(nii_mag.get_fdata(), True, bool)
+
+    for i_channel in range(n_channels):
+
+        # If channel is dead, dont include it in the mask
+        if i_channel in dead_channels:
+            continue
+
+        n_currents = len(phases[i_channel])
         channel_mask = np.full_like(nii_mag.get_fdata(), True, bool)
         for i_current in range(n_currents):
-
+            n_echoes = len(phases[i_channel][i_current])
             # Calculate the average mag image
             current_mean = np.zeros_like(nii_mag.get_fdata())
             for i_echo in range(n_echoes):
@@ -133,6 +138,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
         # Keeps track of the index since there could be dead channels
         index_channel += 1
 
+        n_currents = len(phases[i_channel])
         # Method 1: Unwrap each current individually
         # for each current
         fnames_fmap.append([])
