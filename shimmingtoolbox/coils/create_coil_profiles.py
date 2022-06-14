@@ -3,6 +3,10 @@
 
 import nibabel as nib
 import numpy as np
+from sklearn.linear_model import LinearRegression
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def create_coil_profiles(fnames_fmaps, list_currents):
@@ -22,11 +26,6 @@ def create_coil_profiles(fnames_fmaps, list_currents):
     if n_channels != len(list_currents):
         raise ValueError("The number of channels should be the same for the fieldmaps and for the setup currents")
 
-    n_currents = len(fnames_fmaps[0])
-    # Make sure fname_fmaps and list_currents have the same number of currents
-    if n_currents != len(list_currents[0]):
-        raise ValueError("The number of currents should be the same for the fieldmaps and for the setup currents")
-
     # Define the shape and affine that all inputs should have
     nii = nib.load(fnames_fmaps[0][0])
     affine = nii.affine
@@ -37,32 +36,27 @@ def create_coil_profiles(fnames_fmaps, list_currents):
 
     # Process each channel separately
     for i_channel in range(n_channels):
+        n_currents = len(fnames_fmaps[i_channel])
+        # Make sure fname_fmaps and list_currents have the same number of currents
+        if n_currents != len(list_currents[i_channel]):
+            raise ValueError("The number of currents should be the same for the fieldmaps and for the setup currents")
 
-        if n_currents == 2:
-
-            nii_min_fmap = nib.load(fnames_fmaps[i_channel][0])
-            nii_max_fmap = nib.load(fnames_fmaps[i_channel][1])
+        fmaps = np.zeros(shape + (n_currents,))
+        for i_current in range(n_currents):
+            nii_fmap = nib.load(fnames_fmaps[i_channel][i_current])
 
             # Make sure affine ans shape are the same for all channels
-            if np.all(nii_min_fmap.shape != shape) or np.all(nii_max_fmap.shape != shape):
+            if np.all(nii_fmap.shape != shape):
                 raise ValueError("Input shape of fieldmaps must be the same")
-            if np.all(nii_min_fmap.affine != affine) or np.all(nii_max_fmap.affine != affine):
+            if np.all(nii_fmap.affine != affine):
                 raise ValueError("Input affines of fieldmaps must be the same")
 
-            min_fmap = nii_min_fmap.get_fdata()
-            max_fmap = nii_max_fmap.get_fdata()
+            fmaps[..., i_current] = nii_fmap.get_fdata()
 
-            # Process the profiles
-            diff = list_currents[i_channel][1] - list_currents[i_channel][0]
-            profiles[..., i_channel] = _create_coil_profile(min_fmap, max_fmap, diff)
+        reg = LinearRegression().fit(np.array(list_currents[i_channel]).reshape(-1, 1),
+                                     fmaps.reshape(-1, fmaps.shape[-1]).T)
 
-        else:
-            # TODO: Implement coil profile generation for more than 2 currents
-            raise NotImplementedError("Only supports 2 different currents")
+        profiles[..., i_channel] = reg.coef_.reshape(fmaps.shape[:-1])
+        # static_offset = reg.intercept_.reshape(fmaps.shape[:-1])
 
     return profiles
-
-
-def _create_coil_profile(min_fmap, max_fmap, diff):
-    profile = (max_fmap - min_fmap) / diff
-    return profile
