@@ -180,11 +180,13 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
 
     # Use header and json info from first file in the list
     fname_json_phase = phases[0][0][0].rsplit('.nii', 1)[0] + '.json'
+    with open(fname_json_phase) as json_file:
+        json_data_phase = json.load(json_file)
     nii_phase = nib.load(phases[0][0][0])
     nii_profiles = nib.Nifti1Image(profiles, nii_phase.affine, header=nii_phase.header)
 
     # Save nii and json
-    save_nii_json(nii_profiles, fname_json_phase, fname_output)
+    save_nii_json(nii_profiles, json_data_phase, fname_output)
     logger.info(f"\n\n Filename of the coil profiles is: {fname_output}")
 
     # Create coil config file
