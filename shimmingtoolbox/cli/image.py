@@ -8,6 +8,7 @@ import logging
 import numpy as np
 
 from shimmingtoolbox.image import concat_data
+from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,8 @@ def concat(input, axis, fname_output, pixdim):
 def logical_and(inputs, fname_output):
     """Calculate the logical and for a number of NIfTIs
 
-    INPUTS: Input paths of the files to apply the logical and. Separate the files by a space.
+    INPUTS: Input paths of the files to apply the logical and. Separate the files by a space. If the volumes do not
+    have the same orientations, they will be resampled on the last volume.
     """
 
     if len(inputs) == 1:
@@ -67,15 +69,15 @@ def logical_and(inputs, fname_output):
 
     # Create nii list
     list_nii = []
-    dimensions = nib.load(inputs[0]).shape
-    affine = nib.load(inputs[0]).affine
+    nii_output = nib.load(inputs[-1])
+    dimensions = nii_output.shape
+    affine = nii_output.affine
     for fname_file in inputs:
         nii_input = nib.load(fname_file)
         # Make sure dimensions and affines are the same
-        if not np.all(nii_input.shape == dimensions):
-            raise ValueError("Dimensions of all NIfTIs must be the same")
-        if not np.all(nii_input.affine == affine):
-            raise ValueError("Affine of all NIfTIs must be the same")
+        if not np.all(nii_input.shape == dimensions) or not np.all(nii_input.affine == affine):
+            nii_input = resample_from_to(nii_input, nii_output, order=0, mode='grid-constant')
+
         list_nii.append(nii_input)
 
     # Apply the logical and
@@ -84,5 +86,5 @@ def logical_and(inputs, fname_output):
         output = np.logical_and(output, nii.get_fdata())
 
     # Save image
-    nii_out = nib.Nifti1Image(output, nii_input.affine, header=nii_input.header)
+    nii_out = nib.Nifti1Image(output, nii_output.affine, header=nii_output.header)
     nib.save(nii_out, fname_output)
