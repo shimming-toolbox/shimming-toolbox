@@ -74,7 +74,7 @@ def logical_and(inputs, fname_output):
     affine = nii_output.affine
     for fname_file in inputs:
         nii_input = nib.load(fname_file)
-        # Make sure dimensions and affines are the same
+        # Make sure to resample if dimensions and affines are not the same
         if not np.all(nii_input.shape == dimensions) or not np.all(nii_input.affine == affine):
             nii_input = resample_from_to(nii_input, nii_output, order=0, mode='grid-constant')
 
