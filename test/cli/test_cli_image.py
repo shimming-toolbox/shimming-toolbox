@@ -54,10 +54,16 @@ class TestImageConcat(object):
 
 class TestImageLogicalAnd(object):
     def setup(self):
-        nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]]), affine=np.eye(4))
-        nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]]), affine=np.eye(4))
-        self.nii1 = nii1
-        self.nii2 = nii2
+        affine_1 = np.eye(4)
+        self.nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]]), affine=affine_1)
+        self.nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]]), affine=affine_1)
+
+        mask_3 = np.ones([8, 8])
+        mask_3[0, 0] = 0
+
+        affine_3 = affine_1 * 0.5
+        affine_3[3, 3] = 1
+        self.nii3 = nib.Nifti1Image(mask_3, affine=affine_3)
 
     def test_cli_logical_and_default(self):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -70,7 +76,8 @@ class TestImageLogicalAnd(object):
             runner = CliRunner()
             result = runner.invoke(image_cli, ['logical-and',
                                                fname_1, fname_2,
-                                               '-o', fname_output])
+                                               '-o', fname_output],
+                                   catch_exceptions=False)
 
             assert result.exit_code == 0
             assert np.all(np.isclose(nib.load(fname_output).get_fdata(),
@@ -85,8 +92,27 @@ class TestImageLogicalAnd(object):
             runner = CliRunner()
             result = runner.invoke(image_cli, ['logical-and',
                                                fname_1,
-                                               '-o', fname_output])
+                                               '-o', fname_output],
+                                   catch_exceptions=False)
 
             assert result.exit_code == 0
             assert np.all(np.isclose(nib.load(fname_output).get_fdata(),
                                      np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]])))
+
+    def test_cli_logical_and_diff_orient(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_1 = os.path.join(tmp, 'and1.nii.gz')
+            nib.save(self.nii1, fname_1)
+            fname_3 = os.path.join(tmp, 'and3.nii.gz')
+            nib.save(self.nii3, fname_3)
+
+            fname_output = os.path.join(tmp, 'logical_and.nii.gz')
+            runner = CliRunner()
+            result = runner.invoke(image_cli, ['logical-and',
+                                               fname_3, fname_1,
+                                               '-o', fname_output],
+                                   catch_exceptions=False)
+
+            assert result.exit_code == 0
+            assert np.all(np.isclose(nib.load(fname_output).get_fdata(),
+                                     np.array([[[0., 0.], [1., 0.]], [[0., 0.], [0., 0.]]])))
