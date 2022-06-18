@@ -1050,7 +1050,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
                xticks=range(n_channels))
         ax.legend()
-        ax.set_title(f"Slices: {slices[i_shim]}")
+        ax.set_title(f"Slices: {slices[i_shim]}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
         ax.set_xlabel('Channels')
         ax.set_ylabel(f"Coefficients {units}")
 
