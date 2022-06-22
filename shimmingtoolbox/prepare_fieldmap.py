@@ -9,6 +9,7 @@ from skimage.filters import gaussian
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
+from shimmingtoolbox.utils import fill
 
 logger = logging.getLogger(__name__)
 # Threshold to apply when creating a mask to remove 2*pi offsets
@@ -115,7 +116,9 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
-        fieldmap_hz = gaussian(fieldmap_hz, sigma, mode='nearest') * mask
+        # Fill values
+        filled = fill(fieldmap_hz, mask == False)
+        fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
 
     # return fieldmap_hz_gaussian
     return fieldmap_hz, mask

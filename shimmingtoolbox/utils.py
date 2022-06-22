@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import time
 import functools
+from scipy import ndimage as nd
 
 logger = logging.getLogger(__name__)
 
@@ -254,3 +255,24 @@ def timeit(func):
         return result
 
     return timed
+
+
+def fill(data, invalid=None):
+    """
+    Replace the value of invalid 'data' cells (indicated by 'invalid')
+    by the value of the nearest valid data cell
+
+    Args:
+        data (numpy.ndarray)): array of any dimension
+        invalid (numpy.ndarray): a binary array of same shape as 'data'. True cells set where data
+                                 value should be replaced.
+                                 If None (default), use: invalid  = np.isnan(data)
+
+    Returns:
+        numpy.ndarray: Return a filled array.
+    """
+
+    if invalid is None: invalid = np.isnan(data)
+
+    ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
+    return data[tuple(ind)]
