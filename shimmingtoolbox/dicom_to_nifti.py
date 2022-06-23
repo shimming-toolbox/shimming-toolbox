@@ -9,7 +9,6 @@ import numpy as np
 import os
 # from dcm2bids.scaffold import scaffold
 import shutil
-import subprocess
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
