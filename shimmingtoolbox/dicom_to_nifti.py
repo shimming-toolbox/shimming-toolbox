@@ -104,7 +104,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
                     os.rename(fname_nifti_old, fname_nifti_new)
                     os.rename(fname_json, fname_new_json)
 
-    # Go in the RF map folder
+    # Go in RF map folder
     path_rfmap = os.path.join(path_nifti, 'sub-' + subject_id, 'rfmap')
     if os.path.exists(path_rfmap):
         # Make a list of the json files in rfmap folder
@@ -112,6 +112,19 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
         [file_list.append(os.path.join(path_rfmap, f)) for f in os.listdir(path_rfmap) if
          os.path.splitext(f)[1] == '.json']
         file_list = sorted(file_list)
+
+        # Initialize XFL data structure.
+        xfl_dict = {
+            "nii_ampli_list": [],
+            "nii_phase_list": [],
+            "echo_num_ampli_list": [],
+            "echo_num_phase_list": [],
+            "fname_ampli_list": [],
+            "fname_phase_list": [],
+            "fname_nii": '',
+            "amplifier_voltage": 0
+        }
+
         for fname_json_b1 in file_list:
             # Do nothing if the files have already been processed by Shimming-Toolbox
             if '_uncombined' in fname_json_b1 or '_shimmed' in fname_json_b1:
@@ -120,26 +133,75 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
             with open(fname_json_b1) as json_file:
                 json_data = json.load(json_file)
                 # Check what B1+ mapping sequence has been used to proceed accordingly
-                # If Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
                 if ('SequenceName' in json_data) and 'tfl2d1_16' in json_data['SequenceName']:
-                    fname_nii_b1 = fname_json_b1.split(".json")[0] + ".nii.gz"
-                    nii_b1 = nib.load(fname_nii_b1)
-                    nii_b1_new = fix_tfl_b1(nii_b1, json_data)
 
-                    # Save uncombined B1+ maps in a NIfTI file that can now be visualized in FSLeyes
-                    json_data["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
-                    fname_nii_b1_new = fname_nii_b1.split('.nii')[0] + '_uncombined.nii' + fname_nii_b1.split('.nii')[1]
-                    nib.save(nii_b1_new, fname_nii_b1_new)
+                    # If NeuroSpin B1 mapping (interferometric sequence)
+                    if ('SeriesDescription' in json_data) and \
+                       ('ns_tfl_rfmap_interferometric' in json_data['SeriesDescription']):
 
-                    # Save the associated JSON file
-                    fname_json_b1_new = open(os.path.join(fname_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
-                    json.dump(json_data, fname_json_b1_new)
+                        # Final amplitude map (*Ampli_All_Coils)
+                        if ('Ampli_All_Coils' in json_data['SeriesDescription']):
+                            # Append NIFTI image to xfl ampli list
+                            fname_nii_b1 = fname_json_b1.split(".json")[0] + ".nii.gz"
+                            nii_b1 = nib.load(fname_nii_b1)
+                            xfl_dict["nii_ampli_list"].append(nii_b1)
 
-                    # Remove the old buggy NIfTI and associated JSON files
-                    os.remove(fname_nii_b1)
-                    os.remove(fname_json_b1)
-                # TODO: Add handling of other B1+ mapping sequences
+                            # Append fnames of niftis and jsons to fname list
+                            xfl_dict["fname_phase_list"].append(fname_json_b1)
+                            xfl_dict["fname_ampli_list"].append(fname_nii_b1)
 
+                            # Append echo number (coil #) to xfl ampli echo list
+                            echo_num = json_data['EchoNumber']
+                            xfl_dict["echo_num_ampli_list"].append(echo_num)
+
+                            # Get the Transmission amplifier reference amplitude
+                            xfl_dict["amplifier_voltage"] = json_data['TxRefAmp']
+
+                            # Save the name of new nii xfl file and dump json data into json xfl file
+                            if not xfl_dict["fname_nii"]:
+                                xfl_dict["fname_nii"] = fname_nii_b1.split('.nii')[0] + '_xfl_uncombined.nii' + \
+                                                        fname_nii_b1.split('.nii')[1]
+
+                                fname_json_xfl = open(os.path.join(xfl_dict["fname_nii"].split('.nii')[0] + '.json'), \
+                                                      mode='w')
+                                json.dump(json_data, fname_json_xfl)  # TODO : Remove coil specific info first
+                                fname_json_xfl.close()
+
+                        # Final phase map (*Phase_All_Coils)
+                        elif ('Phase_All_Coils' in json_data['SeriesDescription']):
+                            # Append NIFTI image to xfl list
+                            fname_nii_b1 = fname_json_b1.split(".json")[0] + ".nii.gz"
+                            nii_b1 = nib.load(fname_nii_b1)
+                            xfl_dict["nii_phase_list"].append(nii_b1)
+
+                            # Append fname of niftis and jsons to fname list
+                            xfl_dict["fname_phase_list"].append(fname_json_b1)
+                            xfl_dict["fname_phase_list"].append(fname_nii_b1)
+
+                            # Append echo number (coil #) to xfl echo list
+                            echo_num = json_data['EchoNumber']
+                            xfl_dict["echo_num_phase_list"].append(echo_num)
+
+                    # Siemens' TurboFLASH B1 mapping (dcm2niix cannot separate phase and magnitude for this sequence)
+                    else:
+                        fname_nii_b1 = fname_json_b1.split(".json")[0] + ".nii.gz"
+                        nii_b1 = nib.load(fname_nii_b1)
+                        nii_b1_new = fix_tfl_b1(nii_b1, json_data)
+
+                        # Save uncombined B1+ maps in a NIfTI file that can now be visualized in FSLeyes
+                        json_data["ImageComments"] = 'Complex uncombined B1+ map (nT/V)'
+                        fname_nii_b1_new = fname_nii_b1.split('.nii')[0] + '_uncombined.nii' + fname_nii_b1.split('.nii')[1]
+                        nib.save(nii_b1_new, fname_nii_b1_new)
+
+                        # Save the associated JSON file
+                        fname_json_b1_new = open(os.path.join(fname_nii_b1_new.split('.nii')[0] + '.json'), mode='w')
+                        json.dump(json_data, fname_json_b1_new)
+
+                        # Remove the old buggy NIfTI and associated JSON files
+                        os.remove(fname_nii_b1)
+                        os.remove(fname_json_b1)
+
+        fix_xfl_b1(xfl_dict)
         logger.info("B1+ NIfTI have been reshuffled and rescaled.")
 
     # if 'win' in sys.platform:
@@ -181,7 +243,6 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
     if remove_tmp:
         shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))
-
 
 def fix_tfl_b1(nii_b1, json_data):
     """Un-shuffles and rescales the magnitude and phase of complex B1+ maps acquired with Siemens' standard B1+ mapping
@@ -242,14 +303,11 @@ def fix_tfl_b1(nii_b1, json_data):
         b1_mag_ordered[:, :, i, :] = b1_mag_vector[:, :, i * n_channels:i * n_channels + n_channels]
         b1_phase_ordered[:, :, i, :] = b1_phase_vector[:, :, i * n_channels:i * n_channels + n_channels]
 
-    # Scale magnitude in nT/V
-    b1_mag_ordered = b1_mag_ordered / 10  # Siemens magnitude values are stored in degrees x10
-    b1_mag_ordered[b1_mag_ordered > 180] = 180  # Values higher than 180 degrees are due to noise
-    # Calculate B1+ efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
     # Get the Transmission amplifier reference amplitude
     amplifier_voltage = json_data['TxRefAmp']  # [V]
-    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
-    b1_mag_ordered = (b1_mag_ordered / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V
+
+    # Scale magnitude in nT/V
+    b1_mag_ordered = scale_voltage(b1_mag_ordered, amplifier_voltage)
 
     # Scale the phase between [-pi, pi]
     # Remove potential out of range zeros (set them as null phase = 2048)
@@ -286,3 +344,59 @@ def fix_tfl_b1(nii_b1, json_data):
 
     # Return a fixed NIfTI object with the corrected affine matrix and the reshuffled/rescaled B1+ maps
     return nib.Nifti1Image(b1_complex, affine, header=nii_b1.header)
+
+def fix_xfl_b1(xfl_dict):
+    """Combines and scales amplitude and phase B1+ maps into complex B1+ map.
+    Args:
+        xfl_dict (dict): Contains data of xfl sequence.
+    """
+    # If xfl lists are not empty, an xfl sequence exists.
+    if xfl_dict["nii_ampli_list"] and xfl_dict["nii_phase_list"]:
+        # Sort the lists by echo number.
+        xfl_ampli_list_sorted = [x for _, x in sorted(zip(xfl_dict["echo_num_ampli_list"], \
+                                                          xfl_dict["nii_ampli_list"]))]
+        xfl_phase_list_sorted = [x for _, x in sorted(zip(xfl_dict["echo_num_phase_list"], \
+                                                          xfl_dict["nii_phase_list"]))]
+
+        # Concatenate the sorted lists.
+        nii_xfl_ampli = nib.concat_images(xfl_ampli_list_sorted)
+        nii_xfl_phase = nib.concat_images(xfl_phase_list_sorted)
+
+        # Fetch data object from niftis
+        data_xfl_ampli = np.squeeze(np.array(nii_xfl_ampli.dataobj))  # 0 - 1492
+        data_xfl_phase = np.squeeze(np.array(nii_xfl_phase.dataobj))  # 0 - 4095
+
+        # Scale amplitude (10x FA to nT/V) and phase ([0 4095] to [-pi  pi])
+        data_xfl_ampli = scale_voltage(data_xfl_ampli, xfl_dict["amplifier_voltage"])
+        data_xfl_phase = (data_xfl_phase - 2048) * np.pi / 2048  # [-pi pi]
+
+        # Compute the corrected complex xfl B1+ maps
+        data_xfl_complex = data_xfl_ampli * np.exp(1j * data_xfl_phase)
+
+        # Modify header tags
+        nii_xfl_ampli.header['datatype'] = 32  # 32 corresponds to complex data
+        nii_xfl_ampli.header['aux_file'] = 'Uncombined B1+ maps'
+
+        # Save XFL nifti file
+        nii_xfl_complex = nib.Nifti1Image(data_xfl_complex, nii_xfl_ampli.affine, header=nii_xfl_ampli.header)
+        nib.save(nii_xfl_complex, xfl_dict["fname_nii"])
+
+        # Remove the old nifti and json files.
+        for fname in (xfl_dict["fname_ampli_list"] + xfl_dict["fname_phase_list"]):
+            os.remove(fname)
+
+def scale_voltage(data, amplifier_voltage):
+    """Scales the magnitude B1+ maps from 10*flip angle to nT/V.
+    Args:
+        data (numpy.ndarray): Array of dimension (x, y, n_slices, n_channels) of B1+ magnitude.
+        amplifier_voltage (int): Amplifier reference voltage ('TxRefAmp' of json file).
+
+    Returns:
+        numpy.ndarray: Numpy array containing rescaled magnitude B1+ maps (x, y, n_slices, n_channels).
+    """
+    data = data / 10  # Siemens magnitude values are stored in degrees x10
+    data[data > 180] = 180  # Values higher than 180 degrees are due to noise
+
+    # Calculate B1+ efficiency (1ms, pi-pulse) and scale by the ratio of the measured FA to the saturation FA.
+    socket_voltage = amplifier_voltage * 10 ** -0.095  # -1.9dB voltage loss from amplifier to coil socket
+    return (data / SATURATION_FA) * (np.pi / (GAMMA * socket_voltage * 1e-3)) * 1e9  # nT/V

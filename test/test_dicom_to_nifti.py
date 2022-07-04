@@ -160,3 +160,14 @@ def test_fix_tfl_b1_unknown_orientation():
     json_b1_unknown_orientation['ImageOrientationText'] = 'dummy_string'
     with pytest.raises(ValueError, match="Unknown slice orientation"):
         fix_tfl_b1(nii_b1, json_b1_unknown_orientation)
+
+
+@pytest.mark.dcm2niix
+def test_dicom_to_nifti_xfl():
+    dicom_to_nifti(
+        path_dicom='/Users/justin/Documents/NeuroPoly/Experiments/acdc_spine_7t_034',
+        path_nifti='/Users/justin/Documents/NeuroPoly/main-project-data/nifti-output-xfl',
+        subject_id='testID',
+        fname_config_dcm2bids='/Users/justin/Documents/NeuroPoly/Projects/shimming-toolbox/config/dcm2bids.json'
+    )
+    a = 1

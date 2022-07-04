@@ -269,7 +269,26 @@
             "dataType": "rfmap",
             "modalityLabel": "TB1map",
             "criteria": {
-                "SequenceName": "*tfl2d1_16"
+                "SequenceName": "*tfl2d1_16",
+                "ProtocolName": "tfl_rfmap*"
+            }
+        },
+        {
+            "dataType": "rfmap",
+            "modalityLabel": "TB1map",
+            "criteria": {
+                "SequenceName": "*tfl2d1_16",
+                "ProtocolName": "ns_tfl_rfmap_interferometric*",
+                "SeriesDescription": "*B1_Ampli_All_Coils"
+            }
+        },
+        {
+            "dataType": "rfmap",
+            "modalityLabel": "TB1map",
+            "criteria": {
+                "SequenceName": "*tfl2d1_16",
+                "ProtocolName": "ns_tfl_rfmap_interferometric*",
+                "SeriesDescription": "*B1_Phase_All_Coils"
             }
         }
     ]
