@@ -147,7 +147,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
                             xfl_dict["nii_ampli_list"].append(nii_b1)
 
                             # Append fnames of niftis and jsons to fname list
-                            xfl_dict["fname_phase_list"].append(fname_json_b1)
+                            xfl_dict["fname_ampli_list"].append(fname_json_b1)
                             xfl_dict["fname_ampli_list"].append(fname_nii_b1)
 
                             # Append echo number (coil #) to xfl ampli echo list
