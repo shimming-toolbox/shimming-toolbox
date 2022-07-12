@@ -191,7 +191,7 @@ def get_sct_version() -> str:
     if sct_version.returncode != 0:
         raise subprocess.CalledProcessError("Error while getting SCT's version")
     version_output: str = sct_version.stdout.rstrip()
-    version_output = version_output.split("\n\n")[2].split("\n")[1]
+    version_output = version_output.split("\n\n")[2].split("\n")[-5]
 
     return version_output
 
