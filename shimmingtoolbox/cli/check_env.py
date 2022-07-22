@@ -187,11 +187,10 @@ def get_sct_version() -> str:
         str: Version of the ``SCT`` installation.
     """
     # `sct_check_dependencies -short` returns
-    sct_version: str = subprocess.run(["sct_check_dependencies", "-short"], capture_output=True, encoding="utf-8")
+    sct_version: str = subprocess.run(["sct_version", "-short"], capture_output=True, encoding="utf-8")
     if sct_version.returncode != 0:
         raise subprocess.CalledProcessError("Error while getting SCT's version")
     version_output: str = sct_version.stdout.rstrip()
-    version_output = version_output.split("\n\n")[2].split("\n")[-5]
 
     return version_output
 
