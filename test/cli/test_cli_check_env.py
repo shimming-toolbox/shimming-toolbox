@@ -84,7 +84,7 @@ def test_get_sct_version(test_sct_installation):
     """Checks sct version output for expected structure.
     """
     sct_version_info = st_ce.get_sct_version()
-    version_regex = r"- version *"
+    version_regex = r"git*"
     assert re.search(version_regex, sct_version_info)
 
 
