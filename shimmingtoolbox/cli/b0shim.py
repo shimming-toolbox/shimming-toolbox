@@ -67,6 +67,9 @@ def b0shim_cli():
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mae', 'std']), required=False,
+              default='mae', show_default=True,
+              help="Criteria of optimization for the optimizer. mae: Mean Absolute Error, std: Standard Deviation")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -115,7 +118,7 @@ def b0shim_cli():
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
+def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
                 dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
                 o_format_sph, output_value_format, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
@@ -241,6 +244,7 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
+                           opt_criteria=opt_criteria,
                            mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
                            path_output=path_output)
@@ -469,6 +473,9 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mae', 'std']), required=False,
+              default='mae', show_default=True,
+              help="Criteria of optimization for the optimizer. mae: Mean Absolute Error, std: Standard Deviation")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -511,8 +518,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
-                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
+def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, opt_criteria,
+                 slices, slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
                  path_output, o_format_coil, o_format_sph, output_value_format, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
@@ -629,6 +636,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
+                                      opt_criteria=opt_criteria,
                                       mask_dilation_kernel='sphere',
                                       mask_dilation_kernel_size=dilation_kernel_size,
                                       path_output=path_output)
