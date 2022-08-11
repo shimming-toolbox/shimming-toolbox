@@ -46,11 +46,11 @@ class LsqOptimizer(Optimizer):
             if coefs is not None:
                 self.initial_coefs = coefs
             else:
-                raise ValueError(f"Previous coefs were not set")
+                raise ValueError(f"There are no coefficients to set")
 
         self._initial_guess_method = method
 
-    def _residuals(self, coef, unshimmed_vec, coil_mat, factor, max_current):
+    def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor, max_current):
         """ Objective function to minimize
 
         Args:
@@ -67,8 +67,28 @@ class LsqOptimizer(Optimizer):
 
         # MAE regularized to minimize currents
         # TODO Possibly regularize by individual channels (If one channel is used with big relative max coef (f0)
-        #  then other currents a relatively not penalized
-        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + (0.15 * np.abs(coef).sum() / max_current)
+        #  then other currents are relatively not penalized
+        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + (0.15 * np.abs(coef).sum() / max_current)
+
+    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor, max_current):
+        """ Objective function to minimize
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+        """
+
+        # MSE regularized to minimize currents
+        # TODO Possibly regularize by individual channels (If one channel is used with big relative max coef (f0)
+        #  then other currents are relatively not penalized
+        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + (0.15 * np.abs(coef).sum() / max_current)
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -97,7 +117,7 @@ class LsqOptimizer(Optimizer):
         for coil in self.coils:
             max_current += coil.coef_sum_max
 
-        currents_sp = opt.minimize(self._residuals, currents_0,
+        currents_sp = opt.minimize(self._residuals_mae, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor, max_current),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
@@ -197,7 +217,7 @@ class LsqOptimizer(Optimizer):
                                     module='scipy')
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that
-            stability_factor = self._residuals(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat), factor=1, max_current=1)
+            stability_factor = self._residuals_mae(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat), factor=1, max_current=1)
 
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
@@ -328,7 +348,7 @@ class PmuLsqOptimizer(LsqOptimizer):
         for coil in self.coils:
             max_current += coil.coef_sum_max
 
-        currents_sp = opt.minimize(self._residuals, currents_0,
+        currents_sp = opt.minimize(self._residuals_mae, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor, max_current),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
