@@ -22,16 +22,17 @@ dummy_image[2, 6:8, 6:8] = 1
     )]
 )
 class TestDilateBinaryMask(object):
-    def test_dilate_binary_mask_default(self, input_mask):
+    def test_dilate_binary_mask_cross(self, input_mask):
         """Default is the cross"""
-        dilated = dilate_binary_mask(input_mask[0])
+        dilated = dilate_binary_mask(input_mask[0], shape='cross')
 
         # Expected slice 7
         expected_slice = np.zeros([10, 10])
-        expected_slice[2, 5:9] = 1
-        expected_slice[1:4, 6:8] = 1
 
-        assert np.all(expected_slice == dilated[..., 7])
+        expected_slice[2, 1:4] = 1
+        expected_slice[1:4, 2] = 1
+
+        assert np.all(expected_slice == dilated[..., 3])
 
     def test_dilate_binary_mask_sphere(self, input_mask):
 
