@@ -893,18 +893,22 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     # multiprocessing optimization
     _optimize_scope = (
         optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
+
+    # Default number of workers is set to mp.cpu_count()
+    # _worker_init gets called by each worker with _optimize_scope as arguments
+    # _worker_init converts those arguments as globals so they can be accessed in _opt
+    # This works because each worker has its own version of the global variables
+    # This allows to use both fork and spawn while not serializing the arguments making it slow
+    pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
     try:
-        # Default number of workers is set to mp.cpu_count()
-        # _worker_init gets called by each worker with _optimize_scope as arguments
-        # _worker_init converts those arguments as globals so they can be accessed in _opt
-        # This works because each worker has its own version of the global variables
-        # This allows to use both fork and spawn while not serializing the arguments making it slow
-        with mp.Pool(initializer=_worker_init, initargs=_optimize_scope) as pool:
-            # should be safe to del here. Because at this point all the child processes have forked and inherited their
-            # copy
-            results = pool.starmap_async(_opt, [(i,) for i in range(n_shims)]).get(timeout=1200)
+        # should be safe to del here. Because at this point all the child processes have forked and inherited their
+        # copy
+        results = pool.starmap_async(_opt, [(i,) for i in range(n_shims)]).get(timeout=1200)
     except mp.context.TimeoutError:
         logger.info("Multiprocessing might have hung, retry the same command")
+    finally:
+        pool.close()
+        pool.join()
 
     # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
