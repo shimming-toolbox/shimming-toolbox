@@ -19,7 +19,7 @@ class LsqOptimizer(Optimizer):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine):
+    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -27,10 +27,15 @@ class LsqOptimizer(Optimizer):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                                penalize higher current values while a lower factor will lower the effect of the
+                                regularization. A negative value will favour high currents (not preferred).
         """
         super().__init__(coils, unshimmed, affine)
         self._initial_guess_method = 'mean'
         self.initial_coefs = None
+        self.reg_factor = reg_factor
+        self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
 
     @property
     def initial_guess_method(self):
@@ -50,7 +55,7 @@ class LsqOptimizer(Optimizer):
 
         self._initial_guess_method = method
 
-    def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor, max_current):
+    def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize
 
         Args:
@@ -66,11 +71,10 @@ class LsqOptimizer(Optimizer):
         """
 
         # MAE regularized to minimize currents
-        # TODO Possibly regularize by individual channels (If one channel is used with big relative max coef (f0)
-        #  then other currents are relatively not penalized
-        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + (0.15 * np.abs(coef).sum() / max_current)
+        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
+            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
-    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor, max_current):
+    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize
 
         Args:
@@ -86,9 +90,8 @@ class LsqOptimizer(Optimizer):
         """
 
         # MSE regularized to minimize currents
-        # TODO Possibly regularize by individual channels (If one channel is used with big relative max coef (f0)
-        #  then other currents are relatively not penalized
-        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + (0.15 * np.abs(coef).sum() / max_current)
+        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -113,12 +116,9 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        max_current = 0
-        for coil in self.coils:
-            max_current += coil.coef_sum_max
 
         currents_sp = opt.minimize(self._residuals_mae, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor, max_current),
+                                   args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
                                    constraints=tuple(scipy_constraints),
@@ -216,8 +216,10 @@ class LsqOptimizer(Optimizer):
                                     category=RuntimeWarning,
                                     module='scipy')
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
-            # --> aiming for 1 then optimizing will lower that
-            stability_factor = self._residuals_mae(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat), factor=1, max_current=1)
+            # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
+            # regularization on the currents has no affect on the output stability factor.
+            stability_factor = self._residuals_mae(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
+                                                   factor=1)
 
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
@@ -344,12 +346,9 @@ class PmuLsqOptimizer(LsqOptimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
-        max_current = 0
-        for coil in self.coils:
-            max_current += coil.coef_sum_max
 
         currents_sp = opt.minimize(self._residuals_mae, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor, max_current),
+                                   args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
                                    options={'maxiter': 500})
