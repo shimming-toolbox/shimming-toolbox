@@ -43,7 +43,7 @@ setup(
         "requests",
         "scipy>=1.7",
         "tqdm",
-        "matplotlib>=3.5",
+        "matplotlib~=3.3.4",
         "psutil~=5.7.3",
         "pytest>=6.2.5",
         "pytest-cov~=2.5.1",
