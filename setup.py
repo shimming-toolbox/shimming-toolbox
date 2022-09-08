@@ -45,7 +45,7 @@ setup(
         "tqdm",
         "matplotlib>=3.5",
         "psutil~=5.7.3",
-        "pytest~=4.6.3",
+        "pytest>=6.2.5",
         "pytest-cov~=2.5.1",
         "sklearn~=0.0",
         "pillow>=9.0.0",
