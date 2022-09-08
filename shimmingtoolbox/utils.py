@@ -14,7 +14,7 @@ import functools
 logger = logging.getLogger(__name__)
 
 HOME_DIR = str(Path.home())
-PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
+PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/bin"
 
 
 def run_subprocess(cmd):
