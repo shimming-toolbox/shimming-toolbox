@@ -39,7 +39,7 @@ function edit_shellrc() {
 source "$ST_DIR/$PYTHON_DIR/bin/activate"
 
 print info "Installing dcm2niix"
-"$ST_DIR"/"$PYTHON_DIR"/bin/mamba install -y -c conda-forge dcm2niix
+"$ST_DIR"/"$PYTHON_DIR"/bin/mamba install -y -c conda-forge dcm2niix python=3.9
 
 print info "Installing shimming-toolbox"
 cd "$ST_PACKAGE_DIR"
