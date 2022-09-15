@@ -179,11 +179,19 @@ def read_nii(fname_nifti, auto_scale=True):
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
                 and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
                      or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
-            # Bootstrap, rescales from -pi to pi
-            if np.amin(image) < 0:
-                image = image * (2 * math.pi / (PHASE_SCALING_SIEMENS * 2))
+            # Rescales from -pi to pi
+            extent = (np.amax(image) - np.amin(image))
+
+            if np.amin(image) < 0 and (0.9 * 2 * PHASE_SCALING_SIEMENS < extent < 2 * PHASE_SCALING_SIEMENS * 1.1):
+                # Siemens' scaling: [-4096, 4095] --> [-pi, pi]
+                image = image * math.pi / PHASE_SCALING_SIEMENS
+            elif np.amin(image) >= 0 and (0.9 * PHASE_SCALING_SIEMENS < extent < PHASE_SCALING_SIEMENS * 1.1):
+                # Siemens' scaling [0, 4095] --> [0, 2pi]
+                # We want: [-pi, pi]
+                image = image * 2 * math.pi / PHASE_SCALING_SIEMENS
+                image = np.angle(np.exp(1j * image))
             else:
-                image = image * (2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
+                logger.info("Could not scale phase data")
 
             # Create new nibabel object with updated image
             nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
@@ -194,6 +202,3 @@ def read_nii(fname_nifti, auto_scale=True):
         logger.info("No scaling applied to selected nifti")
 
     return nii, json_data, image
-
-
-
