@@ -104,7 +104,7 @@ To run the entire testing suite, run ``pytest`` from the
 
   cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-  conda activate ~/shimming-toolbox/python/     
+  conda activate ~/shimming-toolbox/python/
   pytest
 
 See https://docs.pytest.org/ for more options.
@@ -165,4 +165,5 @@ You can then activate the ``shimming-toolbox`` environment and start coding!
 
 .. code:: bash
 
+    source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
     conda activate ~/shimming-toolbox/python/
