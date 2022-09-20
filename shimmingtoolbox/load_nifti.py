@@ -183,10 +183,10 @@ def read_nii(fname_nifti, auto_scale=True):
             extent = (np.amax(image) - np.amin(image))
 
             if np.amin(image) < 0 and (0.9 * 2 * PHASE_SCALING_SIEMENS < extent < 2 * PHASE_SCALING_SIEMENS * 1.1):
-                # Siemens' scaling: [-4096, 4095] --> [-pi, pi]
+                # Siemens' scaling: [-4096, 4095] --> [-pi, pi)
                 image = image * math.pi / PHASE_SCALING_SIEMENS
             elif np.amin(image) >= 0 and (0.9 * PHASE_SCALING_SIEMENS < extent < PHASE_SCALING_SIEMENS * 1.1):
-                # Siemens' scaling [0, 4095] --> [0, 2pi]
+                # Siemens' scaling [0, 4095] --> [0, 2pi)
                 # We want: [-pi, pi]
                 image = image * 2 * math.pi / PHASE_SCALING_SIEMENS
                 image = np.angle(np.exp(1j * image))
