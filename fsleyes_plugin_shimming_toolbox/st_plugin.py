@@ -55,7 +55,7 @@ play_icon = wx.Bitmap(os.path.join(DIR, 'img', 'play.png'), wx.BITMAP_TYPE_PNG)
 rtd_logo = wx.Bitmap(os.path.join(DIR, 'img', 'RTD.png'), wx.BITMAP_TYPE_PNG)
 # Load ShimmingToolbox logo saved as a png image, rescale it, and return it as a wx.Bitmap image.
 st_logo = wx.Image(os.path.join(DIR, 'img', 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
-st_logo.Rescale(st_logo.GetWidth() * 0.2, st_logo.GetHeight() * 0.2, wx.IMAGE_QUALITY_HIGH)
+st_logo.Rescale(int(st_logo.GetWidth() * 0.2), int(st_logo.GetHeight() * 0.2), wx.IMAGE_QUALITY_HIGH)
 st_logo = st_logo.ConvertToBitmap()
 
 

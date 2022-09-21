@@ -33,7 +33,7 @@ The `ShimmingToolbox` plugin should open as a panel.
 We can use `Docker` to spin up a Linux instance and test our install procedure in a clean
 environment. You will need to install `Docker` on your computer first: https://www.docker.com/products/docker-desktop
 
-To create our testing container, we will first build an image called `fpst:latest`:
+To create our testing container, we will first build an image called `fpst:latest`, if using an M1 mac, add `--platform linux/amd64`:
 ```
 docker build --tag fpst:latest .
 ```
@@ -64,6 +64,14 @@ Altogether:
 ```
 docker rm --force fpst
 docker build --tag fpst:latest .
+docker run --name fpst -dit fpst:latest
+docker exec -it fpst bash
+```
+
+Altogether for M1 macs:
+```
+docker rm --force fpst
+docker build --platform linux/amd64 --tag fpst:latest .
 docker run --name fpst -dit fpst:latest
 docker exec -it fpst bash
 ```
@@ -119,7 +127,7 @@ You can open a terminal from this GUI, and run `FSLeyes` by:
 
 ```
 cd src/fsleyes-plugin/shimming-toolbox/
-make run
+shimming-toolbox
 ```
 
 #### Vagrant Tips

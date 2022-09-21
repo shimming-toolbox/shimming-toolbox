@@ -16,9 +16,9 @@ cd "$ST_DIR"
 set -e
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    CONDA_INSTALLER=Miniconda3-py37_4.11.0-Linux-x86_64.sh
+    CONDA_INSTALLER=Mambaforge-Linux-x86_64.sh
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    CONDA_INSTALLER=Miniconda3-py37_4.11.0-MacOSX-x86_64.sh
+    CONDA_INSTALLER=Mambaforge-Darwin-x86_64.sh
 elif [[ "$OSTYPE" == "cygwin" ]]; then
     # POSIX compatibility layer and Linux environment emulation for Windows
     echo "Invalid operating system"
@@ -38,10 +38,10 @@ else
     exit 1
 fi
 
-CONDA_INSTALLER_URL=https://repo.anaconda.com/miniconda/$CONDA_INSTALLER
+CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/"$CONDA_INSTALLER"
 
 installConda() {
-    curl --url $CONDA_INSTALLER_URL --output $TMP_DIR/$CONDA_INSTALLER
+    curl -L --url $CONDA_INSTALLER_URL --output $TMP_DIR/$CONDA_INSTALLER
     run bash "$TMP_DIR/$CONDA_INSTALLER" -p "$ST_DIR/$PYTHON_DIR" -b -f
     # export PATH=$HOME/miniconda3/bin:$PATH
     # source $HOME/miniconda3/bin/activate
