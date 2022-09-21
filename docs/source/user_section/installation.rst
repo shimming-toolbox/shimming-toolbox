@@ -104,7 +104,7 @@ To run the entire testing suite, run ``pytest`` from the
 
   cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-  conda activate st_venv
+  conda activate ~/shimming-toolbox/python/
   pytest
 
 See https://docs.pytest.org/ for more options.
@@ -124,7 +124,7 @@ To test shimming-toolbox without ``prelude``:
 
   cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-  conda activate st_venv
+  conda activate ~/shimming-toolbox/python/
   pytest -m "not prelude"
 
 To test **only** the parts of shimming-toolbox dependent on ``prelude``, the corresponding ``-m`` argument is ``"prelude"``
@@ -165,4 +165,5 @@ You can then activate the ``shimming-toolbox`` environment and start coding!
 
 .. code:: bash
 
-    conda activate st_venv
+    source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
+    conda activate ~/shimming-toolbox/python/
