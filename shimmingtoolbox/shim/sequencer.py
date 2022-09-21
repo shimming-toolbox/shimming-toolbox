@@ -44,7 +44,7 @@ supported_optimizers = {
 
 @timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
+                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -68,6 +68,10 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
+        reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                            penalize higher current values while a lower factor will lower the effect of the
+                            regularization. A negative value will favour high currents (not preferred). Only relevant
+                            for 'least_squares' opt_method.
         path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
                            artefacts.
 
@@ -143,7 +147,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
             nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
 
     # Select and initialize the optimizer
-    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils)
+    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, reg_factor=reg_factor)
 
     # Optimize slice by slice
     coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
@@ -382,7 +386,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
 @timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
-                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares',
+                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', reg_factor=0,
                                 mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
@@ -408,6 +412,10 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                           implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+        reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                            penalize higher current values while a lower factor will lower the effect of the
+                            regularization. A negative value will favour high currents (not preferred). Only relevant
+                            for 'least_squares' opt_method.
         mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
                                     details.
@@ -538,7 +546,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         nib.save(nii_riro, os.path.join(path_output, 'fig_riro_fmap_component.nii.gz'))
 
     # Static shim
-    optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils)
+    optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils, reg_factor=reg_factor)
     logger.info("Static optimization")
     coef_static = _optimize(optimizer, nii_static_mask, slices,
                             dilation_kernel=mask_dilation_kernel,
@@ -552,7 +560,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     if opt_method == 'least_squares':
         opt_method = 'least_squares_rt'
 
-    optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, pmu)
+    optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, pmu, reg_factor=reg_factor)
     logger.info("Realtime optimization")
     coef_riro = _optimize(optimizer, nii_riro_mask, slices,
                           shimwise_bounds=bounds,
@@ -851,7 +859,7 @@ def new_bounds_from_currents(currents, old_bounds):
     return new_bounds
 
 
-def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = None):
+def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = None, reg_factor=0):
     """
     Select and initialize the optimizer
 
@@ -862,6 +870,9 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
         coils (ListCoil): List of Coils containing the coil profiles
         pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
                        'least_squares_rt'.
+        reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                    penalize higher current values while a lower factor will lower the effect of the
+                    regularization. A negative value will favour high currents (not preferred).
 
     Returns:
         Optimizer: Initialized Optimizer object
@@ -869,14 +880,17 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
 
     # global supported_optimizers
     if method in supported_optimizers:
-        if method == 'least_squares_rt':
+        if method == 'least_squares':
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, reg_factor=reg_factor)
 
+        elif method == 'least_squares_rt':
             # Make sure pmu is defined
             if pmu is None:
                 raise ValueError(f"pmu parameter is required if using the optimization method: {method}")
 
             # Add pmu to the realtime optimizer(s)
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, pmu)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, pmu, reg_factor=reg_factor)
+
         else:
             optimizer = supported_optimizers[method](coils, unshimmed, affine)
     else:

@@ -86,6 +86,7 @@ class TestCliDynamic(object):
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '2',
+                                             '--regularization-factor', '0.1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 

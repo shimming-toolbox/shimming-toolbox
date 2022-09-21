@@ -241,7 +241,7 @@ class PmuLsqOptimizer(LsqOptimizer):
         by the PMU.
     """
 
-    def __init__(self, coils, unshimmed, affine, pmu: PmuResp):
+    def __init__(self, coils, unshimmed, affine, pmu: PmuResp, reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -252,7 +252,7 @@ class PmuLsqOptimizer(LsqOptimizer):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine)
+        super().__init__(coils, unshimmed, affine, reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
         self.initial_guess_method = 'zeros'
