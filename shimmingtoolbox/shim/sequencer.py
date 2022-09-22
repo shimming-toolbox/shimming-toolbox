@@ -150,10 +150,12 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, reg_factor=reg_factor)
 
     # Optimize slice by slice
+    logger.info("Optimizing")
     coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
                       dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
+    logger.info("Calculating output files and preparing figures")
     _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
 
     return coefs
@@ -574,6 +576,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # [unit_shim/unit_pressure] * rms_pressure, ex: [Hz/unit_pressure] * rms_pressure
 
     # Evaluate theoretical shim
+    logger.info("Calculating output files and preparing figures")
     _eval_rt_shim(optimizer, nii_fieldmap, nii_static_mask, coef_static, coef_riro, mean_p,
                   acq_pressures, slices, pressure_rms, pmu, path_output)
 
@@ -913,18 +916,29 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=
     # _worker_init converts those arguments as globals so they can be accessed in _opt
     # This works because each worker has its own version of the global variables
     # This allows to use both fork and spawn while not serializing the arguments making it slow
+    # It also allows to give as input only 1 iterable (range(n_shims))) so 'starmap' does not have to be used
+
+    # 'imap_unordered' is used since a worker returns the value when it is done instead of waiting for the whole call
+    # to 'map', 'starmap' to finish. This allows to show progress. 'imap' is similar to 'imap_unordered' but since it
+    # returns in order, the progress is less accurate. Even though 'map_async' and 'starmap_async' do not block, the
+    # whole call needs to be finished to access the results (results.get()).
+    # A whole discussion thread is available here:
+    # https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the-difference-between-map-async-and-imap
     pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
     try:
-        # should be safe to del here. Because at this point all the child processes have forked and inherited their
-        # copy
-        results = pool.starmap_async(_opt, [(i,) for i in range(n_shims)]).get(timeout=1200)
+
+        results = []
+        print(f"\rProgress 0.0%")
+        for i, result in enumerate(pool.imap_unordered(_opt, range(n_shims))):
+            print(f"\rProgress {np.round((i + 1)/n_shims * 100)}%")
+            results.append(result)
+
     except mp.context.TimeoutError:
         logger.info("Multiprocessing might have hung, retry the same command")
     finally:
         pool.close()
         pool.join()
 
-    # TODO: Add a callback to have a progress bar, otherwise the logger will probably output in a messed up order
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
 
@@ -954,7 +968,7 @@ def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilatio
 
 
 def _opt(i):
-    logger.info(f"Shimming shim group: {i + 1} of {len(gl_slices_anat)}")
+
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(gl_optimizer.unshimmed, gl_optimizer.unshimmed_affine)
 
