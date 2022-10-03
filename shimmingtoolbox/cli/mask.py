@@ -29,15 +29,15 @@ def mask_cli():
                        "in 'center'. The mask is stored by default under the name 'mask.nii.gz' in the output folder."
                        "Return the filename for the output mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
+              help="Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
                    " .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
+              help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=3, required=True, type=int,
-              help="(int): Length of the side of the box along first, second and third dimension (in pixels). "
+              help="Length of the side of the box along first, second and third dimension (in pixels). "
                    "(nargs=3)")
 @click.option('--center', nargs=3, type=int, default=(None, None, None),
-              help="(int): Center of the box along first, second and third dimension (in pixels). If no center "
+              help="Center of the box along first, second and third dimension (in pixels). If no center "
                    "is provided (None), the middle is used. (nargs=3) (default: None, None, None)")
 def box(fname_input, output, size, center):
 
@@ -71,14 +71,14 @@ def box(fname_input, output, size, center):
                        " the name 'mask.nii.gz' in the output folder."
                        "Return an output nifti file with square mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
+              help="Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
                    "extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
+              help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=2, required=True, type=int,
-              help="(int): Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
+              help="Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
 @click.option('--center', nargs=2, type=int, default=(None, None),
-              help="(int): Center of the box along first and second dimension (in pixels). If no center is "
+              help="Center of the box along first and second dimension (in pixels). If no center is "
                    "provided (None), the middle is used. (nargs=2) (default: None, None)")
 def rect(fname_input, output, size, center):
     # Prepare the output
@@ -120,11 +120,11 @@ def rect(fname_input, output, size, center):
                        " of the array. The mask is stored by default under the name 'mask.nii.gz' in the output "
                        "folder. Return an output nifti file with threshold mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
+              help="Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
+              help="Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask.nii.gz'))")
-@click.option('--thr', default=30, help="(int): Value to threshold the data: voxels will be set to zero if their "
+@click.option('--thr', default=30, help="Value to threshold the data: voxels will be set to zero if their "
                                         "value is equal or less than this threshold. (default: 30)")
 def threshold(fname_input, output, thr):
     # Prepare the output

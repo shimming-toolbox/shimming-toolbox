@@ -44,7 +44,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices, dilation_kernel='None'
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
 
     # Resample the full mask onto nii_target
-    nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=1, mode='grid-constant', cval=0)
+    nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
 
     # TODO: Deal with soft mask
     # Find highest value and stretch to 1
