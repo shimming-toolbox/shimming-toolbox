@@ -1085,7 +1085,8 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
               default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
               show_default=True, help="Filename to output shim text file.")
 def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
-    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.2601
 
     """
     nii_input = nib.load(fname_input)

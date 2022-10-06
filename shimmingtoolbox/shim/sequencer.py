@@ -1224,13 +1224,15 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
 
 
 def shim_max_intensity(nii_input, nii_mask):
-    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.2601
 
     Args:
         nii_input (nib.Nifti1Image): 4d volume where 4th dimension was acquired with different shim values
         nii_mask (nib.Nifti1Image): Mask defining the spatial region to shim.
 
     Returns:
+        np.ndarray: 1d array containing the index of the volume that maximizes signal intensity for each slice
 
     """
 
