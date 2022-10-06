@@ -23,6 +23,7 @@ from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -1075,7 +1076,31 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
     logger.debug(f"Saved figure: {fname_figure}")
 
 
-b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="4d volume where 4th dimension was acquired with different shim values")
+@click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
+              help="Mask defining the spatial region to shim.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
+              show_default=True, help="Filename to output shim text file.")
+def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice
+
+    """
+    nii_input = nib.load(fname_input)
+    nii_mask = nib.load(fname_mask)
+
+    index_per_slice = shim_max_intensity(nii_input, nii_mask)
+
+    n_slices = len(index_per_slice)
+    with open(fname_output, 'w', encoding='utf-8') as f:
+        for i_slice in range(n_slices):
+            f.write(f"{i_slice} {index_per_slice[i_slice]}\n")
+
+
+b0shim_cli.add_command(realtime_shim_cli, 'gradient-realtime')
 b0shim_cli.add_command(dynamic_cli, 'dynamic')
 b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
+b0shim_cli.add_command(shim_max_intensity_cli, 'max-intensity')
 # shim_cli.add_command(define_slices_cli, 'define_slices')
