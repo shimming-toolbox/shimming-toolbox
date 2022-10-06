@@ -20,6 +20,7 @@ from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, resample_mask
 from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.utils import set_all_loggers
 
@@ -777,3 +778,30 @@ class TestParseSlices(object):
             slices = parse_slices(fname_nifti)
 
             assert slices == [(2,), (3, 4), (0, 1)]
+
+
+class TestMaxintensity():
+    """ We are using a 4d fieldmap as input just for testing. """
+    def setup(self):
+        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+        self.nii_input = nib.load(fname_input)
+
+        # Set up mask: Cube
+        nx, ny, nz = self.nii_input.shape[:3]
+        mask = shapes(self.nii_input.get_fdata()[..., 0], 'cube',
+                      center_dim1=32,
+                      center_dim2=36,
+                      len_dim1=10, len_dim2=10, len_dim3=nz)
+        self.nii_mask = nib.Nifti1Image(mask.astype(int), nii.affine)
+
+    def test_default_max_intensity(self):
+        output = shim_max_intensity(self.nii_input, self.nii_mask)
+        assert output == 8
+
+    def test_max_intensity_wrong_input_dim(self):
+        with pytest.raises(ValueError, match="Input volume must be 4d"):
+            shim_max_intensity(self.nii_mask, self.nii_mask)
+
+    def test_max_intensity_wrong_mask_dim(self):
+        with pytest.raises(ValueError, match="Input mask must be 3d"):
+            shim_max_intensity(self.nii_input, self.nii_input)
