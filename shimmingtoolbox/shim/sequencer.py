@@ -1221,3 +1221,33 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
                        f"appropriate: {slices}")
 
     return slices
+
+
+def shim_max_intensity(nii_input, nii_mask):
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice
+
+    Args:
+        nii_input (nib.Nifti1Image): 4d volume where 4th dimension was acquired with different shim values
+        nii_mask (nib.Nifti1Image): Mask defining the spatial region to shim.
+
+    Returns:
+
+    """
+
+    if len(nii_input.shape) != 4:
+        raise ValueError("Input volume must be 4d")
+    if len(nii_mask.shape) != 3:
+        raise ValueError("Input mask must be 3d")
+
+    n_slices = nii_input.shape[2]
+    n_volumes = nii_input.shape[3]
+
+    mean_values = np.zeros([n_slices, n_volumes])
+    for i_volume in range(n_volumes):
+        masked_epi_3d = nii_input.get_fdata()[..., i_volume] * nii_mask.get_fdata()
+        mean_per_slice = np.mean(masked_epi_3d, axis=(0, 1), where=nii_mask.get_fdata().astype(bool))
+        mean_values[:, i_volume] = mean_per_slice
+
+    index_per_slice = np.argmax(mean_values, axis=1)
+
+    return index_per_slice
