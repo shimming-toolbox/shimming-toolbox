@@ -29,9 +29,9 @@ class WorkerThread(Thread):
             # It seems to default to the Python executalble instead of the Shebang, removing it fixes it
             env["PYTHONEXECUTABLE"] = ""
             env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
-            
+
             # Run command using realtime output
-            process = subprocess.Popen(self.cmd.split(' '),
+            process = subprocess.Popen(self.cmd,
                                        stdout=subprocess.PIPE,
                                        stderr=subprocess.STDOUT,
                                        text=True,

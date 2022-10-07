@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-source $SCRIPT_DIR/utils.sh
+source "$SCRIPT_DIR/utils.sh"
 
 print info "Installing conda in $ST_DIR/$PYTHON_DIR"
 
