@@ -99,6 +99,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
 
     else:
+
         # TODO: More echoes
         # TODO: Add method once multiple methods are implemented
         raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
