@@ -1238,16 +1238,28 @@ def shim_max_intensity(nii_input, nii_mask):
 
     if len(nii_input.shape) != 4:
         raise ValueError("Input volume must be 4d")
-    if len(nii_mask.shape) != 3:
-        raise ValueError("Input mask must be 3d")
+
+    # Load the mask
+    if nii_mask is None:
+        mask = np.ones(nii_input.shape[:3])
+    else:
+        # Masks must be 3d
+        if len(nii_mask.shape) != 3:
+            raise ValueError("Input mask must be 3d")
+        # If the mask is of a different shape, resample it.
+        elif not np.all(nii_mask.shape == nii_input.shape[:3]) or not np.all(nii_mask.affine == nii_input.affine):
+            nii_input_3d = nib.Nifti1Image(nii_input.get_fdata()[..., 0], nii_input.affine, header=nii_input.header)
+            mask = resample_mask(nii_mask, nii_input_3d).get_fdata()
+        else:
+            mask = nii_mask.get_fdata()
 
     n_slices = nii_input.shape[2]
     n_volumes = nii_input.shape[3]
 
     mean_values = np.zeros([n_slices, n_volumes])
     for i_volume in range(n_volumes):
-        masked_epi_3d = nii_input.get_fdata()[..., i_volume] * nii_mask.get_fdata()
-        mean_per_slice = np.mean(masked_epi_3d, axis=(0, 1), where=nii_mask.get_fdata().astype(bool))
+        masked_epi_3d = nii_input.get_fdata()[..., i_volume] * mask
+        mean_per_slice = np.mean(masked_epi_3d, axis=(0, 1), where=mask.astype(bool))
         mean_values[:, i_volume] = mean_per_slice
 
     index_per_slice = np.argmax(mean_values, axis=1)

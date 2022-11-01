@@ -1090,7 +1090,11 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
 
     """
     nii_input = nib.load(fname_input)
-    nii_mask = nib.load(fname_mask)
+
+    if fname_mask is None:
+        nii_mask = None
+    else:
+        nii_mask = nib.load(fname_mask)
 
     index_per_slice = shim_max_intensity(nii_input, nii_mask)
 
