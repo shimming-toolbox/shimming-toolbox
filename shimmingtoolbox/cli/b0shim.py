@@ -1080,7 +1080,8 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 @click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
               help="4d volume where 4th dimension was acquired with different shim values")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
-              help="Mask defining the spatial region to shim.")
+              help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
+                   "considered.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
               default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
               show_default=True, help="Filename to output shim text file.")
@@ -1100,8 +1101,10 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
 
     n_slices = len(index_per_slice)
     with open(fname_output, 'w', encoding='utf-8') as f:
-        for i_slice in range(n_slices):
-            f.write(f"{i_slice} {index_per_slice[i_slice]}\n")
+        f.write(f"{n_slices}\n")
+        for i_slice in range(n_slices - 1):
+            f.write(f"{index_per_slice[i_slice]} ")
+        f.write(f"{index_per_slice[n_slices - 1]} ")
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient-realtime')
