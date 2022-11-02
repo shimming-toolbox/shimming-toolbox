@@ -1085,11 +1085,15 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
               default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
               show_default=True, help="Filename to output shim text file.")
-def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
     """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
         Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.2601
 
     """
+    # Set logger level
+    set_all_loggers(verbose)
+
     nii_input = nib.load(fname_input)
 
     if fname_mask is None:
@@ -1105,6 +1109,8 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output):
         for i_slice in range(n_slices - 1):
             f.write(f"{index_per_slice[i_slice]} ")
         f.write(f"{index_per_slice[n_slices - 1]} ")
+
+    logger.info(f"Txt file is located here:\n{fname_output}")
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient-realtime')
