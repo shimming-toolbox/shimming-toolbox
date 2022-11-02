@@ -1108,7 +1108,7 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
         f.write(f"{n_slices}\n")
         for i_slice in range(n_slices - 1):
             f.write(f"{index_per_slice[i_slice]} ")
-        f.write(f"{index_per_slice[n_slices - 1]} ")
+        f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
 
