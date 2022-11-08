@@ -1088,7 +1088,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
     """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
-        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.2601
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
 
     """
     # Set logger level
@@ -1107,8 +1107,8 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
     with open(fname_output, 'w', encoding='utf-8') as f:
         f.write(f"{n_slices}\n")
         for i_slice in range(n_slices - 1):
-            f.write(f"{index_per_slice[i_slice]} ")
-        f.write(f"{index_per_slice[n_slices - 1]}")
+            f.write(f"{index_per_slice[i_slice] + 1} ")  # Output with 1 index
+        f.write(f"{index_per_slice[n_slices - 1] + 1}")  # Output with 1 index
 
     logger.info(f"Txt file is located here:\n{fname_output}")
 
