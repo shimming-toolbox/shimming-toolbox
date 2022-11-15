@@ -1035,7 +1035,7 @@ def test_b0_shim_max_intensity():
         assert res.exit_code == 0
         with open(fname_output, 'r', encoding='utf-8') as f:
             assert f.readline().strip() == "1"
-            assert f.readline().strip() == "8"
+            assert f.readline().strip() == "9"
 
 
 def test_b0_shim_max_intensity_no_mask():
@@ -1054,4 +1054,4 @@ def test_b0_shim_max_intensity_no_mask():
         assert res.exit_code == 0
         with open(fname_output, 'r', encoding='utf-8') as f:
             assert f.readline().strip() == "1"
-            assert f.readline().strip() == "0"
+            assert f.readline().strip() == "1"
