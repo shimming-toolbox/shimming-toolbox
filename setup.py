@@ -47,7 +47,7 @@ setup(
         "psutil~=5.7.3",
         "pytest>=6.2.5",
         "pytest-cov~=2.5.1",
-        "sklearn~=0.0",
+        "scikit-learn>=1.1.2",
         "pillow>=9.0.0",
         "dataclasses",
         "raven",
