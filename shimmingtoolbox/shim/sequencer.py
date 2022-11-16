@@ -1221,3 +1221,51 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
                        f"appropriate: {slices}")
 
     return slices
+
+
+def shim_max_intensity(nii_input, nii_mask=None):
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
+
+    Args:
+        nii_input (nib.Nifti1Image): 4d volume where 4th dimension was acquired with different shim values
+        nii_mask (nib.Nifti1Image): Mask defining the spatial region to shim. If None: consider all voxels of nii_input.
+
+    Returns:
+        np.ndarray: 1d array containing the index of the volume that maximizes signal intensity for each slice
+
+    """
+
+    if len(nii_input.shape) != 4:
+        raise ValueError("Input volume must be 4d")
+
+    # Load the mask
+    if nii_mask is None:
+        mask = np.ones(nii_input.shape[:3])
+    else:
+        # Masks must be 3d
+        if len(nii_mask.shape) != 3:
+            raise ValueError("Input mask must be 3d")
+        # If the mask is of a different shape, resample it.
+        elif not np.all(nii_mask.shape == nii_input.shape[:3]) or not np.all(nii_mask.affine == nii_input.affine):
+            nii_input_3d = nib.Nifti1Image(nii_input.get_fdata()[..., 0], nii_input.affine, header=nii_input.header)
+            mask = resample_mask(nii_mask, nii_input_3d).get_fdata()
+        else:
+            mask = nii_mask.get_fdata()
+
+    n_slices = nii_input.shape[2]
+    n_volumes = nii_input.shape[3]
+
+    mean_values = np.zeros([n_slices, n_volumes])
+    for i_volume in range(n_volumes):
+        masked_epi_3d = nii_input.get_fdata()[..., i_volume] * mask
+        mean_per_slice = np.mean(masked_epi_3d, axis=(0, 1), where=mask.astype(bool))
+        mean_values[:, i_volume] = mean_per_slice
+
+    if np.any(np.isnan(mean_values)):
+        logger.warning("NaN values when calculating the mean. This is usually because the mask is not defined in all "
+                       "slices. The output will disregard slices with NaN values.")
+
+    index_per_slice = np.nanargmax(mean_values, axis=1)
+
+    return index_per_slice

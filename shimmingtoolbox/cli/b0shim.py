@@ -23,6 +23,7 @@ from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -1075,6 +1076,44 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
     logger.debug(f"Saved figure: {fname_figure}")
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="4d volume where 4th dimension was acquired with different shim values")
+@click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
+              help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
+                   "considered.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def max_intensity(fname_input, fname_mask, fname_output, verbose):
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
+
+    """
+    # Set logger level
+    set_all_loggers(verbose)
+
+    nii_input = nib.load(fname_input)
+
+    if fname_mask is None:
+        nii_mask = None
+    else:
+        nii_mask = nib.load(fname_mask)
+
+    index_per_slice = shim_max_intensity(nii_input, nii_mask)
+
+    n_slices = len(index_per_slice)
+    with open(fname_output, 'w', encoding='utf-8') as f:
+        f.write(f"{n_slices}\n")
+        for i_slice in range(n_slices - 1):
+            f.write(f"{index_per_slice[i_slice] + 1} ")  # Output with 1 index
+        f.write(f"{index_per_slice[n_slices - 1] + 1}")  # Output with 1 index
+
+    logger.info(f"Txt file is located here:\n{fname_output}")
+
+
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
+b0shim_cli.add_command(max_intensity)
