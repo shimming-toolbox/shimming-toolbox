@@ -27,7 +27,7 @@ mkdir "../../derivatives/sub-gradient_realtime"
 st_mask box --input "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" || exit
 
 # Shim
-st_b0shim gradient_realtime --fmap "sub-gradient_realtime_fieldmap.nii.gz" --anat "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradient_realtime/gradient_realtime" || exit
+st_b0shim gradient-realtime --fmap "sub-gradient_realtime_fieldmap.nii.gz" --anat "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradient_realtime/gradient_realtime" || exit
 
 echo -e "\n\033[0;32mOutput is located here: ${TESTING_DATA_PATH}/ds_b0/derivatives/sub-gradient_realtime/gradient_realtime"
 
