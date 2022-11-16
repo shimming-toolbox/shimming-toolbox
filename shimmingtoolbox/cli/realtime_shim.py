@@ -35,7 +35,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True,
               help="Directory to output gradient text file and figures.")
-def realtime_shim_cli(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
+def gradient_realtime(fname_fmap, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, fname_anat, fname_output):
     """ Perform gradient realtime xyz-shimming. This function will generate text files containing static and dynamic (due to
     respiration) Gx, Gy, Gz components based on a fieldmap time series and respiratory trace information obtained from
     Siemens bellows (PMUresp_signal.resp). An additional multi-gradient echo (MGRE) magnitude image is used to

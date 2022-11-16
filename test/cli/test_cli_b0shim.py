@@ -1007,7 +1007,7 @@ def _create_dummy_coil(nii_fmap):
     return nii_dummy_coil, dummy_coil_constraints
 
 
-def test_b0_shim_max_intensity():
+def test_b0_max_intensity():
     """ We use a 4d fieldmap not intended for this application for testing """
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
@@ -1038,7 +1038,7 @@ def test_b0_shim_max_intensity():
             assert f.readline().strip() == "9"
 
 
-def test_b0_shim_max_intensity_no_mask():
+def test_b0_max_intensity_no_mask():
     """ We use a 4d fieldmap not intended for this application for testing """
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')

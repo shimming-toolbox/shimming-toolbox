@@ -18,7 +18,7 @@ import os
 from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
-from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
+from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
@@ -122,9 +122,9 @@ def b0shim_cli():
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-                dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-                o_format_sph, output_value_format, reg_factor, verbose):
+def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
+            dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
+            o_format_sph, output_value_format, reg_factor, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -527,9 +527,9 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
-                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
-                 path_output, o_format_coil, o_format_sph, output_value_format, reg_factor, verbose):
+def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
+                     slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
+                     path_output, o_format_coil, o_format_sph, output_value_format, reg_factor, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -1086,7 +1086,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
               default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
               show_default=True, help="Filename to output shim text file.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
+def max_intensity(fname_input, fname_mask, fname_output, verbose):
     """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
         Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
 
@@ -1113,8 +1113,7 @@ def shim_max_intensity_cli(fname_input, fname_mask, fname_output, verbose):
     logger.info(f"Txt file is located here:\n{fname_output}")
 
 
-b0shim_cli.add_command(realtime_shim_cli, 'gradient-realtime')
-b0shim_cli.add_command(dynamic_cli, 'dynamic')
-b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
-b0shim_cli.add_command(shim_max_intensity_cli, 'max-intensity')
-# shim_cli.add_command(define_slices_cli, 'define_slices')
+b0shim_cli.add_command(gradient_realtime)
+b0shim_cli.add_command(dynamic)
+b0shim_cli.add_command(realtime_dynamic)
+b0shim_cli.add_command(max_intensity)
