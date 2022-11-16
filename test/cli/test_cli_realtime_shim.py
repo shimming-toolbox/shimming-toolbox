@@ -8,7 +8,7 @@ import pytest
 import json
 
 from click.testing import CliRunner
-from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
+from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.cli.realtime_shim import get_phase_encode_direction_sign
@@ -58,7 +58,7 @@ def test_cli_realtime_shim():
         path_output = os.path.join(tmp, 'test_realtime_shim')
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+        result = runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                                    '--mask-static', fname_mask_static,
                                                    '--mask-riro', fname_mask_riro,
                                                    '--output', path_output,
@@ -76,7 +76,7 @@ def test_cli_realtime_shim_no_mask():
         path_output = os.path.join(tmp, 'test_realtime_shim')
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+        result = runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                                    '--output', path_output,
                                                    '--resp', fname_resp,
                                                    '--anat', fname_anat],
@@ -151,7 +151,7 @@ def test_cli_realtime_shim_sag_anat():
         nib.save(nii, fname_anat_sag)
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+        result = runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                                    '--output', path_output,
                                                    '--resp', fname_resp,
                                                    '--anat', fname_anat_sag],
@@ -180,7 +180,7 @@ def test_cli_realtime_shim_cor_anat():
         nib.save(nii, fname_anat_cor)
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+        result = runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                                    '--output', path_output,
                                                    '--resp', fname_resp,
                                                    '--anat', fname_anat_cor],
@@ -209,7 +209,7 @@ def test_cli_realtime_shim_tra_orient_text():
         nib.save(nii, fname_anat_text)
 
         # Run the CLI
-        result = runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+        result = runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                                    '--output', path_output,
                                                    '--resp', fname_resp,
                                                    '--anat', fname_anat_text],
@@ -232,7 +232,7 @@ def test_realtime_shim_cli_dim_info():
 
         with pytest.raises(RuntimeError, match="Slice encode direction must be the 3rd dimension of the NIfTI file."):
             # Run the CLI
-            runner.invoke(realtime_shim_cli, ['--fmap', fname_fieldmap,
+            runner.invoke(gradient_realtime, ['--fmap', fname_fieldmap,
                                               '--output', path_output,
                                               '--resp', fname_resp,
                                               '--anat', fname_new_anat],
