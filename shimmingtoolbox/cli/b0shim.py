@@ -1094,15 +1094,22 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
     # Set logger level
     set_all_loggers(verbose)
 
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Load the input file
     nii_input = nib.load(fname_input)
 
+    # Load the mask
     if fname_mask is None:
         nii_mask = None
     else:
         nii_mask = nib.load(fname_mask)
 
+    # Shim
     index_per_slice = shim_max_intensity(nii_input, nii_mask)
 
+    # Write to a text file
     n_slices = len(index_per_slice)
     with open(fname_output, 'w', encoding='utf-8') as f:
         f.write(f"{n_slices}\n")
