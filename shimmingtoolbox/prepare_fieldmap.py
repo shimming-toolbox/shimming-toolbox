@@ -121,40 +121,41 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
     else:
-        # Calculates three echo field mapp
-        # Run the unwrapper for each phase individually
-        phasediff_unwrapped_1 = unwrap_phase(list_nii_phase[0], unwrapper=unwrapper, mag=mag, mask=mask,
-                                             fname_save_mask=fname_save_mask)
-        phasediff_unwrapped_2 = unwrap_phase(list_nii_phase[1], unwrapper=unwrapper, mag=mag, mask=mask,
-                                             fname_save_mask=fname_save_mask)
-        phasediff_unwrapped_3 = unwrap_phase(list_nii_phase[2], unwrapper=unwrapper, mag=mag, mask=mask,
-                                             fname_save_mask=fname_save_mask)
-
-        unwrapped_phase_1 = nibabel.Nifti1Image(phasediff_unwrapped_1, list_nii_phase[0].affine)
-        unwrapped_phase_2 = nibabel.Nifti1Image(phasediff_unwrapped_2, list_nii_phase[1].affine)
-        unwrapped_phase_3 = nibabel.Nifti1Image(phasediff_unwrapped_3, list_nii_phase[2].affine)
-
-        nibabel.save(unwrapped_phase_1, 'unwrapped_phase_1.nii')
-        nibabel.save(unwrapped_phase_2, 'unwrapped_phase_2.nii')
-        nibabel.save(unwrapped_phase_3, 'unwrapped_phase_3.nii')
-
-        rad_over_time = np.zeros(phase[0].shape)
-        for i in range(phase[2].shape[0]):
-            for j in range(phase[2].shape[1]):
-                for k in range(phase[2].shape[2]):
-                    y1 = phasediff_unwrapped_1[i, j, k]
-                    y2 = phasediff_unwrapped_2[i, j, k]
-                    y3 = phasediff_unwrapped_3[i, j, k]
-                    Y = np.asarray([y1, y2, y3])
+        # Calculates field map based on multi echo phases by running the prelude unwrapper for each phase individually.
+        unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
+                                  fname_save_mask=fname_save_mask) for echo_number in range(len(list_nii_phase))]
+        n_echoes = len(list_nii_phase)  # Number of Echoes
+        n_y = unwrapped[0].shape[0]  # Number of voxels along Y direction (rows) in each volume.
+        n_x = unwrapped[0].shape[1]  # Number of voxels along X direction (columns) in each volume.
+        n_z = unwrapped[0].shape[2]  # Number of slices along Z direction in each volume.
+        list_unwrapped_nii = []
+        for echo in range(n_echoes):
+            list_unwrapped_nii.append(unwrapped[echo])
+        # merges all the phases in the 4th dimension
+        merged_unwrapped_phases = np.stack(list_unwrapped_nii, axis=3)
+        # creates a mask based on the given magnitude image
+        new_mask = mask_threshold(mag - mag.min(), VALIDITY_THRESHOLD * (mag.max() - mag.min()))
+        mean = 0
+        for i_time in range(n_echoes):  # corrects 2pi offset between phases
+            new_mean = np.mean(merged_unwrapped_phases[..., i_time][new_mask])
+            n_offsets_float = (mean - new_mean) / (2 * np.pi)
+            n_offsets = round(n_offsets_float)
+            if n_offsets >= 1:
+                i_unwrapped = merged_unwrapped_phases[..., i_time] + n_offsets * np.pi * 2
+                merged_unwrapped_phases[..., i_time] = i_unwrapped
+            mean = new_mean
+        rad_over_time = np.zeros((n_y, n_x, n_z))
+        for slice in range(0, n_z):
+            for voxel_x in range(n_x):
+                for voxel_y in range(n_y):
+                    Y = merged_unwrapped_phases[voxel_y, voxel_x, slice, :]
                     X = np.asarray(echo_times)
                     reg = linregress(X, Y)
-                    rad_over_time[i, j, k] = reg.slope
+                    rad_over_time[voxel_y, voxel_x, slice] = reg.slope
         fieldmap_hz = rad_over_time / (2 * math.pi)
-
     # Gaussian blur the fieldmap
     if gaussian_filter:
         fieldmap_hz = gaussian(fieldmap_hz, sigma, mode='nearest')
-
     # return fieldmap_hz_gaussian
     return fieldmap_hz, mask
 
