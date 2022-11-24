@@ -7,6 +7,7 @@ import nibabel
 import numpy as np
 from skimage.filters import gaussian
 from scipy.stats import linregress
+from sklearn import linear_model
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
@@ -94,7 +95,6 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
         # Divide by echo time
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
-        fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
     elif len(phase) == 2:
         echo_0 = phase[0]
@@ -118,41 +118,29 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
         # Divide by echo time
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
-        fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
     else:
         # Calculates field map based on multi echo phases by running the prelude unwrapper for each phase individually.
-        unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
-                                  fname_save_mask=fname_save_mask) for echo_number in range(len(list_nii_phase))]
+        if len(np.shape(list_nii_phase[0])) == 4:
+            raise NotImplementedError("Four-dimensional multi echo is not implemented yet")
         n_echoes = len(list_nii_phase)  # Number of Echoes
-        n_y = unwrapped[0].shape[0]  # Number of voxels along Y direction (rows) in each volume.
-        n_x = unwrapped[0].shape[1]  # Number of voxels along X direction (columns) in each volume.
-        n_z = unwrapped[0].shape[2]  # Number of slices along Z direction in each volume.
-        list_unwrapped_nii = []
-        for echo in range(n_echoes):
-            list_unwrapped_nii.append(unwrapped[echo])
-        # merges all the phases in the 4th dimension
-        merged_unwrapped_phases = np.stack(list_unwrapped_nii, axis=3)
-        # creates a mask based on the given magnitude image
-        new_mask = mask_threshold(mag - mag.min(), VALIDITY_THRESHOLD * (mag.max() - mag.min()))
-        mean = 0
-        for i_time in range(n_echoes):  # corrects 2pi offset between phases
-            new_mean = np.mean(merged_unwrapped_phases[..., i_time][new_mask])
-            n_offsets_float = (mean - new_mean) / (2 * np.pi)
-            n_offsets = round(n_offsets_float)
-            if n_offsets >= 1:
-                i_unwrapped = merged_unwrapped_phases[..., i_time] + n_offsets * np.pi * 2
-                merged_unwrapped_phases[..., i_time] = i_unwrapped
-            mean = new_mean
-        rad_over_time = np.zeros((n_y, n_x, n_z))
-        for slice in range(0, n_z):
-            for voxel_x in range(n_x):
-                for voxel_y in range(n_y):
-                    Y = merged_unwrapped_phases[voxel_y, voxel_x, slice, :]
-                    X = np.asarray(echo_times)
-                    reg = linregress(X, Y)
-                    rad_over_time[voxel_y, voxel_x, slice] = reg.slope
-        fieldmap_hz = rad_over_time / (2 * math.pi)
+        unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
+                                  fname_save_mask=fname_save_mask) for echo_number in range(n_echoes)]
+        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, 3)  # Merges all phase nii's in 4th dimension
+        # The mag must be the same size as the unwrapped_data to yield an equal mask for the
+        # "correct_2pi_offset" function.
+        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=3)
+        mask = mask_threshold(new_mag - new_mag.min(), threshold * (new_mag.max() - new_mag.min()))
+        unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask, VALIDITY_THRESHOLD)
+        x = np.asarray(echo_times)
+        # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
+        # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
+        reg = linear_model.LinearRegression().fit(x.reshape(-1, 1), unwrapped_data_corrected.reshape(-1, n_echoes).T)
+        # Slope of linear regression reshaped into the shape of original 3D phase.
+        fieldmap_rad = reg.coef_.reshape(unwrapped_data.shape[:-1])  # [rad / s]
+
+    fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
+
     # Gaussian blur the fieldmap
     if gaussian_filter:
         fieldmap_hz = gaussian(fieldmap_hz, sigma, mode='nearest')
@@ -174,6 +162,8 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
     """
     # Create a mask that excludes the noise
+    # if len(np.shape(mag)) == 3:
+    #     mag = np.repeat(mag[..., np.newaxis], len(unwrapped), axis=3)
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
 
     for i_time in range(1, unwrapped.shape[3]):
