@@ -33,7 +33,9 @@ import wx
 from fsleyes_plugin_shimming_toolbox.events import result_event_type, EVT_RESULT, ResultEvent
 from fsleyes_plugin_shimming_toolbox.events import log_event_type, EVT_LOG, LogEvent
 from fsleyes_plugin_shimming_toolbox.worker_thread import WorkerThread
-from shimmingtoolbox.cli.b0shim import dynamic_cli, realtime_cli
+from shimmingtoolbox.cli.b0shim import dynamic as dynamic_cli
+from shimmingtoolbox.cli.b0shim import realtime_dynamic as realtime_cli
+from shimmingtoolbox.cli.b0shim import max_intensity as max_intensity_cli
 from shimmingtoolbox.cli.b1shim import b1shim_cli
 from shimmingtoolbox.cli.dicom_to_nifti import dicom_to_nifti_cli
 from shimmingtoolbox.cli.mask import box, rect, threshold
@@ -660,6 +662,10 @@ class B0ShimTab(Tab):
                 "name": "Realtime Dynamic",
                 "sizer_function": self.create_sizer_realtime_shim
             },
+            {
+                "name": "Maximum Intensity",
+                "sizer_function": self.create_sizer_max_intensity
+            },
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
 
@@ -1273,8 +1279,40 @@ class B0ShimTab(Tab):
         )
         sizer = run_component.sizer
         return sizer
+    
+    def create_sizer_max_intensity(self, metadata=None):
+        fname_output = os.path.join(CURR_DIR, "output_maximum_intensity", "shim_index.txt")
 
-
+        inputs_metadata = [
+            {
+                "button_label": "Input File",
+                "button_function": "select_from_overlay",
+                "required": True,
+                "name": "input",
+            },
+            {
+                "button_label": "Input Mask",
+                "name": "mask",
+                "button_function": "select_from_overlay",
+            },
+            {
+                "button_label": "Output File",
+                "default_text": fname_output,
+                "name": "output",
+            }
+        ]
+        component_inputs = InputComponent(self, inputs_metadata, cli=max_intensity_cli)
+        
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component_inputs],
+            st_function="st_b0shim max-intensity",
+            output_paths=[]
+        )
+        sizer = run_component.sizer
+        return sizer
+    
+    
 class B1ShimTab(Tab):
     def __init__(self, parent, title=r"B1+ Shim"):
 
