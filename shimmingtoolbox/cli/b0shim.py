@@ -1107,15 +1107,19 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
         nii_mask = nib.load(fname_mask)
 
     # Shim
-    index_per_slice = shim_max_intensity(nii_input, nii_mask)
+    # Output with 1 index
+    index_per_slice = shim_max_intensity(nii_input, nii_mask) + 1
+
+    # Log the output (1 index)
+    logger.info(f"Max intensity indexes: {index_per_slice}")
 
     # Write to a text file
     n_slices = len(index_per_slice)
     with open(fname_output, 'w', encoding='utf-8') as f:
         f.write(f"{n_slices}\n")
         for i_slice in range(n_slices - 1):
-            f.write(f"{index_per_slice[i_slice] + 1} ")  # Output with 1 index
-        f.write(f"{index_per_slice[n_slices - 1] + 1}")  # Output with 1 index
+            f.write(f"{index_per_slice[i_slice]} ")
+        f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
 
