@@ -1111,7 +1111,7 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
     index_per_slice = shim_max_intensity(nii_input, nii_mask) + 1
 
     # Log the output (1 index)
-    logging.info(f"Max intensity indexes: {index_per_slice}")
+    logger.info(f"Max intensity indexes: {index_per_slice}")
 
     # Write to a text file
     n_slices = len(index_per_slice)
