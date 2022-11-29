@@ -27,12 +27,6 @@ Dependencies
 Installation
 ------------
 
-The installer will automatically install:
-
-- ``FSLeyes``
-- ``Shimming Toolbox``
-- ``dcm2niix``
-
 .. Note::
 
     The installer will install ``FSLeyes`` and ``dcm2niix`` into isolated environments. They will be used by
