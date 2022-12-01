@@ -6,8 +6,7 @@ import math
 import nibabel
 import numpy as np
 from skimage.filters import gaussian
-from scipy.stats import linregress
-from sklearn import linear_model
+from sklearn.linear_model import LinearRegression
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
@@ -135,7 +134,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         x = np.asarray(echo_times)
         # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
         # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
-        reg = linear_model.LinearRegression().fit(x.reshape(-1, 1), unwrapped_data_corrected.reshape(-1, n_echoes).T)
+        reg = LinearRegression().fit(x.reshape(-1, 1), unwrapped_data_corrected.reshape(-1, n_echoes).T)
         # Slope of linear regression reshaped into the shape of original 3D phase.
         fieldmap_rad = reg.coef_.reshape(unwrapped_data.shape[:-1])  # [rad / s]
 
@@ -162,8 +161,6 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
     """
     # Create a mask that excludes the noise
-    # if len(np.shape(mag)) == 3:
-    #     mag = np.repeat(mag[..., np.newaxis], len(unwrapped), axis=3)
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
 
     for i_time in range(1, unwrapped.shape[3]):

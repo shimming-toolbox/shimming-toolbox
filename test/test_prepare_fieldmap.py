@@ -11,7 +11,7 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.prepare_fieldmap import prepare_fieldmap
 from shimmingtoolbox.prepare_fieldmap import correct_2pi_offset
 from shimmingtoolbox.masking.threshold import threshold
-
+from shimmingtoolbox.load_nifti import read_nii
 
 @pytest.mark.prelude
 class TestPrepareFieldmap(object):
@@ -92,12 +92,21 @@ class TestPrepareFieldmap(object):
             prepare_fieldmap([self.nii_phase], [self.echo_times[0]], self.mag)
 
     def test_prepare_fieldmap_3_echoes(self):
-        """3 echoes are not implemented so the test should fail."""
+        """Test 3 echoes works."""
 
-        echo_times = [0.001, 0.002, 0.003]
+        fname_phase1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
+        fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        mag = nib.load(fname_mag).get_fdata()
+        nii1 = read_nii(fname_phase1)[0]
+        nii2 = read_nii(fname_phase2)[0]
+        data3 = nii1.get_fdata() + nii2.get_fdata()
+        data3 = np.angle(np.exp(1j * data3))
+        nii3 = nib.Nifti1Image(data3, nii1.affine, header=nii1.header)
+        echo_times = [0.0025, 0.0055, 0.008]
 
-        with pytest.raises(NotImplementedError, match="This number of phase input is not supported:"):
-            prepare_fieldmap([self.nii_phase, self.nii_phase, self.nii_phase], echo_times, self.mag)
+        fieldmap, _ = prepare_fieldmap([nii1, nii2, nii3], echo_times, mag)
+        assert fieldmap.shape == nii1.shape
 
     def test_prepare_fieldmap_wrong_threshold(self):
         """EchoTime of length one for phasediff should fail."""
