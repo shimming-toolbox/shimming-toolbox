@@ -15,7 +15,7 @@ import json
 import multiprocessing as mp
 import sys
 
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
+from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, LsqOptimizer_faster
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -34,10 +34,11 @@ if sys.platform == 'linux':
     mp.set_start_method('fork', force=True)
 else:
     mp.set_start_method('spawn', force=True)
-
+# mp.set_start_method('fork', force=True)
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
     'least_squares': LsqOptimizer,
+    'least_squares_faster': LsqOptimizer_faster,
     'pseudo_inverse': Optimizer
 }
 
@@ -61,7 +62,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'least_squares_faster. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
         mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
@@ -78,7 +79,6 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     Returns:
         numpy.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
     """
-
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fieldmap.get_fdata().ndim != 3:
         raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
@@ -148,7 +148,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Select and initialize the optimizer
     optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, reg_factor=reg_factor)
-
+    global methods
+    methods = method
     # Optimize slice by slice
     logger.info("Optimizing")
     coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
@@ -157,14 +158,12 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
     _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
-
     return coefs
 
 
 @timeit
 def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
     """Calculate theoretical shimmed map and output figures"""
-
     # Save the merged coil profiles if in debug
     if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         # Save coils
@@ -180,26 +179,34 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
+    chaine = ""
     for i_shim in range(len(slices)):
         # Calculate shimmed values
-        correction_per_channel = coef[i_shim] * merged_coils
-        corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
+        if not np.any(coef[i_shim]):
+            chaine = chaine + str(slices[i_shim]) + ","
+            shimmed[..., i_shim] = unshimmed
+            masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+        else:
+            correction_per_channel = coef[i_shim] * merged_coils
+            corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
+            shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
-        # Create non binary mask
-        masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+            # Create non binary mask
+            masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
-        sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
+            sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
+            sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
 
-        if sum_shimmed > sum_unshimmed:
-            logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                           f"i_shim: {i_shim}")
+            if sum_shimmed > sum_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
 
-        logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                     f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
+            logger.debug(f"Slice(s): {slices[i_shim]}\n"
+                         f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
+    logger.debug(f"Slice(s): {chaine}\n"
+                 f" no shimming effectued")
     if path_output is not None:
         # fmap space
         # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
@@ -221,7 +228,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
                                                header=nii_fieldmap_orig.header)
             fname_shimmed_fmap = os.path.join(path_output, 'fieldmap_calculated_shim_masked.nii.gz')
             nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-
         # Save images to a file
         # TODO: Add units if possible
         # TODO: Add in anat space?
@@ -229,7 +235,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
         _plot_currents(coef, path_output)
         _cal_shimmed_anat_orient(coef, merged_coils, nii_mask, nii_fieldmap_orig, slices, path_output)
-
         if logger.level <= getattr(logging, 'DEBUG'):
             # Save to a NIfTI
             fname_correction = os.path.join(path_output, 'fig_correction.nii.gz')
@@ -242,6 +247,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             nib.save(nii_correction, fname_correction)
 
 
+@timeit
 def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, path_output):
     nii_coils = nib.Nifti1Image(coils, nii_fieldmap.affine, header=nii_fieldmap.header)
     coils_anat = resample_from_to(nii_coils,
@@ -254,12 +260,14 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
                                      order=1,
                                      mode='grid-constant',
                                      cval=0).get_fdata()
-
     shimmed_anat_orient = np.zeros_like(fieldmap_anat)
-    for i_shim in range(len(slices)):
-        corr = np.sum(coefs[i_shim] * coils_anat, axis=3, keepdims=False)
-        shimmed_anat_orient[..., slices[i_shim]] = fieldmap_anat[..., slices[i_shim]] + corr[..., slices[i_shim]]
 
+    for i_shim in range(len(slices)):
+        if not np.any(coefs[i_shim]):
+            shimmed_anat_orient[..., slices[i_shim]] = fieldmap_anat[..., slices[i_shim]]
+        else:
+            corr = np.sum(coefs[i_shim] * coils_anat, axis=3, keepdims=False)
+            shimmed_anat_orient[..., slices[i_shim]] = fieldmap_anat[..., slices[i_shim]] + corr[..., slices[i_shim]]
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
                                               header=nii_mask_anat.header)
@@ -885,7 +893,8 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     if method in supported_optimizers:
         if method == 'least_squares':
             optimizer = supported_optimizers[method](coils, unshimmed, affine, reg_factor=reg_factor)
-
+        elif method == 'least_squares_faster':
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, reg_factor=reg_factor)
         elif method == 'least_squares_rt':
             # Make sure pmu is defined
             if pmu is None:
@@ -902,46 +911,55 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     return optimizer
 
 
+@timeit
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Count shims to perform
     n_shims = len(slices_anat)
-
-    # multiprocessing optimization
-    _optimize_scope = (
-        optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
-
-    # Default number of workers is set to mp.cpu_count()
-    # _worker_init gets called by each worker with _optimize_scope as arguments
-    # _worker_init converts those arguments as globals so they can be accessed in _opt
-    # This works because each worker has its own version of the global variables
-    # This allows to use both fork and spawn while not serializing the arguments making it slow
-    # It also allows to give as input only 1 iterable (range(n_shims))) so 'starmap' does not have to be used
-
-    # 'imap_unordered' is used since a worker returns the value when it is done instead of waiting for the whole call
-    # to 'map', 'starmap' to finish. This allows to show progress. 'imap' is similar to 'imap_unordered' but since it
-    # returns in order, the progress is less accurate. Even though 'map_async' and 'starmap_async' do not block, the
-    # whole call needs to be finished to access the results (results.get()).
-    # A whole discussion thread is available here:
-    # https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the-difference-between-map-async-and-imap
-    pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
-    try:
-
+    # If the method is the least squares faster, it's faster to not do the multiprocessing on mac computer,
+    # But it's faster on linux ones
+    if methods == 'least_squares_faster' and sys.platform != 'linux':
+        _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
+                     shimwise_bounds)
         results = []
-        print(f"\rProgress 0.0%")
-        for i, result in enumerate(pool.imap_unordered(_opt, range(n_shims))):
-            print(f"\rProgress {np.round((i + 1)/n_shims * 100)}%")
+        for i in range(n_shims):
+            result = _opt(i)
             results.append(result)
+    else:
+        # multiprocessing optimization
+        _optimize_scope = (
+            optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
 
-    except mp.context.TimeoutError:
-        logger.info("Multiprocessing might have hung, retry the same command")
-    finally:
-        pool.close()
-        pool.join()
+        # Default number of workers is set to mp.cpu_count()
+        # _worker_init gets called by each worker with _optimize_scope as arguments
+        # _worker_init converts those arguments as globals, so they can be accessed in _opt
+        # This works because each worker has its own version of the global variables
+        # This allows to use both fork and spawn while not serializing the arguments making it slow
+        # It also allows to give as input only 1 iterable (range(n_shims))) so 'starmap' does not have to be used
+
+        # 'imap_unordered' is used since a worker returns the value when it is done instead of waiting for the whole
+        # call to 'map', 'starmap' to finish. This allows to show progress. 'imap' is similar to 'imap_unordered' but
+        # since it returns in order, the progress is less accurate. Even though 'map_async' and 'starmap_async' do
+        # not block, the whole call needs to be finished to access the results (results.get()). A whole discussion
+        # thread is available here: https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the
+        # -difference-between-map-async-and-imap
+        pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
+        try:
+
+            results = []
+            print(f"\rProgress 0.0%")
+            for i, result in enumerate(pool.imap_unordered(_opt, range(n_shims))):
+                print(f"\rProgress {np.round((i + 1) / n_shims * 100)}%")
+                results.append(result)
+
+        except mp.context.TimeoutError:
+            logger.info("Multiprocessing might have hung, retry the same command")
+        finally:
+            pool.close()
+            pool.join()
 
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
-
     return np.array(results_final)
 
 
@@ -968,7 +986,6 @@ def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilatio
 
 
 def _opt(i):
-
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(gl_optimizer.unshimmed, gl_optimizer.unshimmed_affine)
 
@@ -977,11 +994,9 @@ def _opt(i):
                                           dilation_kernel=gl_dilation_kernel,
                                           dilation_size=gl_dilation_size,
                                           path_output=gl_path_output).get_fdata()
-
     # If new bounds are included, change them for each shim
     if gl_shimwise_bounds is not None:
         gl_optimizer.set_merged_bounds(gl_shimwise_bounds[i])
-
     if np.all(sliced_mask_resampled == 0):
         return i, np.zeros(gl_optimizer.merged_coils.shape[-1])
 
