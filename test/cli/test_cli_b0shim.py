@@ -25,6 +25,7 @@ def _define_inputs(fmap_dim):
     nii = nib.load(fname_fmap)
 
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
+
     fm_data = json.load(open(fname_json))
 
     if fmap_dim == 4:
@@ -38,6 +39,7 @@ def _define_inputs(fmap_dim):
 
     # fname for anat
     fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
     nii_anat = nib.load(fname_anat)
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
@@ -81,17 +83,58 @@ class TestCliDynamic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
+
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '2',
                                              '--regularization-factor', '0.1',
+                                             # '-v', 'debug',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
+
+    def test_cli_dynamic_sph_faster(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints and least squares faster solver"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+            runner = CliRunner()
+            # If you want to try the test with the bigger dataset, please send a mail to aurelienpujolm@outlook.fr,
+            # Then uncomment the following lines, and the line 125. And Comment the line 129
+
+            # fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'fieldmap.nii.gz')
+            # fname_mask = os.path.join(__dir_testing__, 'eroded-mask.nii.gz')
+            # fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-st-shim_epi.nii.gz')
+            # fname_coil = os.path.join(__dir_testing__, 'profiles_7T_V2.nii.gz')
+            # fname_coil_constraints = os.path.join(__dir_testing__, 'jason_coil_config_15e_20a.json')
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             # '--coil', fname_coil, fname_coil_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '2',
+                                             '--regularization-factor', '0.1',
+                                             '--output', tmp,
+                                             # '-v', 'debug',
+                                             '--optimizer-method', 'least_squares_faster'],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            # assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
