@@ -85,7 +85,7 @@ def test_get_sct_version(test_sct_installation):
     """
     sct_version_info = st_ce.get_sct_version()
     version_regex = r"git*"
-    assert re.search(version_regex, sct_version_info)
+    assert re.search(version_regex, sct_version_info) or re.search(r"\d\.\d", sct_version_info)
 
 
 def test_get_env_info():

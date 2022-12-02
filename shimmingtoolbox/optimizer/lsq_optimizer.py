@@ -21,7 +21,7 @@ class LsqOptimizer(Optimizer):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mae'):
+    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mae', reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -31,9 +31,15 @@ class LsqOptimizer(Optimizer):
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
                                 'std': standard deviation.
+            reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                                penalize higher current values while a lower factor will lower the effect of the
+                                regularization. A negative value will favour high currents (not preferred).
         """
         super().__init__(coils, unshimmed, affine)
         self._initial_guess_method = 'mean'
+        self.initial_coefs = None
+        self.reg_factor = reg_factor
+        self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
 
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mae,
@@ -49,15 +55,21 @@ class LsqOptimizer(Optimizer):
         return self._initial_guess_method
 
     @initial_guess_method.setter
-    def initial_guess_method(self, method):
-        allowed_methods = ['mean', 'zeros']
+    def initial_guess_method(self, method, coefs=None):
+        allowed_methods = ['mean', 'zeros', 'set']
         if method not in allowed_methods:
-            raise ValueError(f"Initial_guess_methos not supported. Supported methods are: {allowed_methods}")
+            raise ValueError(f"Initial_guess_method not supported. Supported methods are: {allowed_methods}")
+
+        if method == 'set':
+            if coefs is not None:
+                self.initial_coefs = coefs
+            else:
+                raise ValueError(f"There are no coefficients to set")
 
         self._initial_guess_method = method
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize mae mean absolute error
+        """ Objective function to minimize the mean absolute error (MAE)
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
@@ -70,10 +82,29 @@ class LsqOptimizer(Optimizer):
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
-        if unshimmed_vec.shape[0] != coil_mat.shape[0]:
-            ValueError(f"Unshimmed ({unshimmed_vec.shape}) and coil ({coil_mat.shape} arrays do not align on axis 0")
 
-        return np.sum(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor
+        # MAE regularized to minimize currents
+        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
+            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+
+    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to minimize
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+        """
+
+        # MSE regularized to minimize currents
+        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the standard deviation
@@ -115,7 +146,8 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
+
+        currents_sp = opt.minimize(self._residuals_mae, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
@@ -132,12 +164,16 @@ class LsqOptimizer(Optimizer):
 
         allowed_guess_method = {
             'mean': self._initial_guess_mean_bounds,
-            'zeros': self._initial_guess_zeros
+            'zeros': self._initial_guess_zeros,
+            'set': self._initial_guess_set
         }
 
         initial_guess = allowed_guess_method[self.initial_guess_method]()
 
         return initial_guess
+
+    def _initial_guess_set(self):
+        return self.initial_coefs
 
     def _initial_guess_mean_bounds(self):
         """
@@ -210,8 +246,10 @@ class LsqOptimizer(Optimizer):
                                     category=RuntimeWarning,
                                     module='scipy')
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
-            # --> aiming for 1 then optimizing will lower that
-            stability_factor = self._criteria_func(currents_0, unshimmed_vec, np.zeros_like(coil_mat), factor=1)
+            # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
+            # regularization on the currents has no affect on the output stability factor.
+            stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
+                                                   factor=1)
 
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
@@ -233,7 +271,7 @@ class PmuLsqOptimizer(LsqOptimizer):
         by the PMU.
     """
 
-    def __init__(self, coils, unshimmed, affine, opt_criteria, pmu: PmuResp):
+    def __init__(self, coils, unshimmed, affine, opt_criteria, pmu: PmuResp, reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -246,7 +284,7 @@ class PmuLsqOptimizer(LsqOptimizer):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, opt_criteria)
+        super().__init__(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
         self.initial_guess_method = 'zeros'
@@ -340,6 +378,7 @@ class PmuLsqOptimizer(LsqOptimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
+
         currents_sp = opt.minimize(self._criteria_func, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
