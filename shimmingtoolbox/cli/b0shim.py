@@ -66,7 +66,8 @@ def b0shim_cli():
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
+                                                                 'least_squares_faster']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
@@ -247,7 +248,6 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
     else:
         list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
-
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
@@ -328,6 +328,7 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            options, coil_number=i_coil)
             # Plot a figure of the coefficients
+
             _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
@@ -477,7 +478,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
+                                                                 'least_squares_faster']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
@@ -966,11 +968,24 @@ def _get_current_shim_settings(json_data):
 @timeit
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
-    n_shims = static_coefs.shape[0]
-    fig = Figure(figsize=(8, 4 * n_shims), tight_layout=True)
+    # We want to find how much slices are not shimmed to have a smaller file and reduced the plotting and saving time
+    shimmed_slice = []
+    n_shims = len(slices)
+    list_slice_wo_shimmed = ""
+    for i_shim in range(n_shims):
+        if np.any(static_coefs[i_shim]):
+            shimmed_slice.append(i_shim)
+        else:
+            # Get a string with the number of all the unshimmed slices
+            list_slice_wo_shimmed = list_slice_wo_shimmed + str(slices[i_shim]) + ","
+            # Get the last index where the shimmed correction is null will permit to plot the last one as an example
+            # for all the other one
+            last_i = i_shim
+    number_slices_shimmed = len(shimmed_slice)
+    fig = Figure(figsize=(8, 4 * number_slices_shimmed), tight_layout=True)
 
     # Find min and max values of the plots
-    # Calculate the min and max of the bounds if its an input
+    # Calculate the min and max of the bounds if it's an input
     if bounds is not None:
         bounds = np.array(bounds)
         min_y = bounds.min()
@@ -978,7 +993,6 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
     else:
         min_y = None
         max_y = None
-
     # Calculate the min and max coefficient for the combined static + riro * (acq_pressure - mean_p)
     # It can expand the min/max of the bounds if necessary
     if rt_coefs is not None:
@@ -1006,32 +1020,59 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         temp_max = np.array(static_coefs).max()
         if max_y is None or max_y < temp_max:
             max_y = np.array(static_coefs).max()
+    nb_slices = 0
+    for i_shim in shimmed_slice:
+        nb_slices = nb_slices + 1
+        i_slice = slices[i_shim]
+        _add_sub_figure(i_shim, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
+                        pres_probe_max, bounds, min_y, max_y,
+                        units, static_coefs, i_slice, lastindex=False)
+    # Print a sublplot for all the non shimmed slices
+    nb_slices = nb_slices + 1
+    _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
+                    pres_probe_max, bounds, min_y, max_y,
+                    units, static_coefs, list_slice_wo_shimmed, lastindex=True)
+    # Save the figure
+    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
+    fig.savefig(fname_figure, bbox_inches='tight')
+    logger.debug(f"Saved figure: {fname_figure}")
 
-    # Create a plot for each shim group
-    for i_shim in range(n_shims):
-        ax = fig.add_subplot(n_shims + 1, 1, i_shim + 1)
-        n_channels = static_coefs.shape[1]
 
-        # Add realtime component as an errorbar
-        if rt_coefs is not None:
-            rt_coef_ishim = rt_coefs[i_shim]
-            riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
-            ax.errorbar(range(n_channels), static_coefs[i_shim], yerr=riro, fmt='o', elinewidth=4, capsize=6,
-                        label='static-riro')
-        # Add static component
+def _add_sub_figure(i_shim, fig, n_shims, axis, rt_coefs, pres_probe_min, pres_probe_max, bounds, min_y, max_y,
+                    units, static_coefs, i_slice, lastindex):
+    # Make a subplot for slices
+    # If it's the recap subplot for all the slices where the correction is null then we need to take an index further to
+    # not have visual problem
+
+    ax = fig.add_subplot(n_shims + 1, 1, axis)
+    n_channels = static_coefs.shape[1]
+
+    # Add realtime component as an errorbar
+    if rt_coefs is not None:
+        rt_coef_ishim = rt_coefs[i_shim]
+        riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
+        ax.errorbar(range(n_channels), static_coefs[i_shim], yerr=riro, fmt='o', elinewidth=4, capsize=6,
+                    label='static-riro')
+    # Add static component
+    else:
+        ax.scatter(range(n_channels), static_coefs[i_shim], marker='o', label='static')
+
+    # Draw a black line at y=0
+    ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
+
+    delta_y = max_y - min_y
+    # Add bounds on the graph
+    if bounds is not None:
+        len_vline_bounds = 0.01
+        len_hline_bounds = 0.4
+        if np.all(bounds[:, 0] == bounds[0, 0]) and np.all(bounds[:, 1] == bounds[0, 1]):
+            ax.hlines(bounds[0, 0], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
+                      label='bounds',
+                      capstyle='projecting')
+            ax.hlines(bounds[0, 1], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
+                      capstyle='projecting')
         else:
-            ax.scatter(range(n_channels), static_coefs[i_shim], marker='o', label='static')
-
-        # Draw a black line at y=0
-        ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
-
-        delta_y = max_y - min_y
-
-        # Add bounds on the graph
-        if bounds is not None:
             # Channel 0 used for the legend
-            len_vline_bounds = 0.01
-            len_hline_bounds = 0.4
             # min
             ax.hlines(bounds[0, 0], -len_hline_bounds, len_hline_bounds, colors='r', label='bounds',
                       capstyle='projecting')
@@ -1061,21 +1102,20 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
                           bounds[i_channel, 1], colors='r', capstyle='projecting')
                 ax.vlines(i_channel + len_hline_bounds, bounds[i_channel, 1] - (delta_y * len_vline_bounds),
                           bounds[i_channel, 1], colors='r', capstyle='projecting')
-
-        # Set the extent of the plot
-        ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
-               xticks=range(n_channels))
-        ax.legend()
-        ax.set_title(f"Slices: {slices[i_shim]}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
-        ax.set_xlabel('Channels')
-        ax.set_ylabel(f"Coefficients {units}")
-
-    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
-    fig.savefig(fname_figure, bbox_inches='tight')
-    logger.debug(f"Saved figure: {fname_figure}")
+    # Set the extent of the plot
+    ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
+           xticks=range(n_channels))
+    ax.legend()
+    if lastindex:
+        ax.set_title(f"Slices: {i_slice}, Total static current: {0}")
+    else:
+        ax.set_title(f"Slices: {i_slice}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
+    ax.set_xlabel('Channels')
+    ax.set_ylabel(f"Coefficients {units}")
 
 
 b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
 b0shim_cli.add_command(dynamic_cli, 'dynamic')
 b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
+
 # shim_cli.add_command(define_slices_cli, 'define_slices')
