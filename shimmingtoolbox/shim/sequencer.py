@@ -908,7 +908,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
             # Add pmu to the realtime optimizer(s)
             optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, pmu, reg_factor=reg_factor)
         else:
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine)
     else:
         raise KeyError(f"Method: {method} is not part of the supported optimizers")
 
