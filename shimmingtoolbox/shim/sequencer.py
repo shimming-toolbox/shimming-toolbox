@@ -44,7 +44,7 @@ supported_optimizers = {
 
 @timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   opt_criteria='mae', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
+                   opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
                    path_output=None):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
@@ -64,8 +64,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
-                            'std': standard deviation.
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
                                     details.
@@ -394,7 +394,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
 @timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
-                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', opt_criteria='mae',
+                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', opt_criteria='mse',
                                 reg_factor=0, mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
                                 path_output=None):
     """
@@ -421,8 +421,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                           implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
-        opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
-                          'std': standard deviation.
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                             penalize higher current values while a lower factor will lower the effect of the
                             regularization. A negative value will favour high currents (not preferred). Only relevant
@@ -883,8 +883,8 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
         unshimmed (numpy.ndarray): 3D B0 map
         affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         coils (ListCoil): List of Coils containing the coil profiles
-        opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
-                            'std': standard deviation.
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
                        'least_squares_rt'.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
@@ -898,7 +898,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
     # global supported_optimizers
     if method in supported_optimizers:
         if method == 'least_squares':
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, reg_factor=reg_factor)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
 
         elif method == 'least_squares_rt':
             # Make sure pmu is defined

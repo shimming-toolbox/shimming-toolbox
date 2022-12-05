@@ -12,7 +12,7 @@ from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
 # Mean absolute error and standard deviation
-allowed_opt_criteria = ['mae', 'std']
+allowed_opt_criteria = ['mse', 'mae', 'std']
 
 
 class LsqOptimizer(Optimizer):
@@ -21,7 +21,7 @@ class LsqOptimizer(Optimizer):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mae', reg_factor=0):
+    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -29,8 +29,8 @@ class LsqOptimizer(Optimizer):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
-                                'std': standard deviation.
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                                'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -42,8 +42,9 @@ class LsqOptimizer(Optimizer):
         self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
 
         lsq_residual_dict = {
-            allowed_opt_criteria[0]: self._residuals_mae,
-            allowed_opt_criteria[1]: self._residuals_std
+            allowed_opt_criteria[0]: self._residuals_mse,
+            allowed_opt_criteria[1]: self._residuals_mae,
+            allowed_opt_criteria[2]: self._residuals_std
         }
         if opt_criteria in lsq_residual_dict:
             self._criteria_func = lsq_residual_dict[opt_criteria]
@@ -149,7 +150,7 @@ class LsqOptimizer(Optimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
 
-        currents_sp = opt.minimize(self._residuals_mae, currents_0,
+        currents_sp = opt.minimize(self._criteria_func, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
@@ -281,8 +282,8 @@ class PmuLsqOptimizer(LsqOptimizer):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer. Supported: 'mae': mean absolute error,
-                                'std': standard deviation.
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                                'mae': mean absolute error, 'std': standard deviation.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
