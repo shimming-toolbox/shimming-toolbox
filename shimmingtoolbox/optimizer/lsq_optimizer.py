@@ -121,7 +121,9 @@ class LsqOptimizer(Optimizer):
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
 
-        return np.std(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) / factor
+        # STD regularized to minimize currents
+        return np.std(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) / factor + \
+            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
