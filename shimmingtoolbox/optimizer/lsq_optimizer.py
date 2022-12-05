@@ -11,7 +11,6 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-# Mean absolute error and standard deviation
 allowed_opt_criteria = ['mse', 'mae', 'std']
 
 

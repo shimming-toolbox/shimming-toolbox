@@ -77,7 +77,7 @@ def b0shim_cli():
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'std']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse Mean Squared Error, mae: Mean Absolute Error, std: Standard Deviation")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, std: Standard Deviation")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -489,7 +489,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'std']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse Mean Squared Error, mae: Mean Absolute Error, std: Standard Deviation")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, std: Standard Deviation")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
