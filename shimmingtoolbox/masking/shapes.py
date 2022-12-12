@@ -25,7 +25,7 @@ def shape_square(data, len_dim1, len_dim2, center_dim1=None, center_dim2=None):
 
     # Only takes data with 2 dimensions
     if data.ndim != 2:
-        raise RuntimeError('shape_square only allows for 2 dimensions')
+        raise ValueError("shape_square only allows for 2 dimensions")
 
     # Default to middle
     if center_dim1 is None:
@@ -67,7 +67,7 @@ def shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1=None, center_dim2
 
     # Only takes data with 3 dimensions
     if data.ndim != 3:
-        raise RuntimeError('shape_square only allows for 2 dimensions')
+        raise ValueError("shape_cube only allows for 2 dimensions")
 
     # Default to middle
     if center_dim1 is None:
@@ -94,7 +94,44 @@ def shape_cube(data, len_dim1, len_dim2, len_dim3, center_dim1=None, center_dim2
     return mask
 
 
-shape_mask = {'square': shape_square, 'cube': shape_cube}
+def shape_sphere(data, radius, center_dim1=None, center_dim2=None, center_dim3=None):
+    """
+    Creates a spherical mask. Returns mask with the same shape as `data`.
+
+    Args:
+        data (numpy.ndarray): Data to mask, must be 3 dimensional array.
+        radius (int): Radius of the sphere (in pixels).
+        center_dim1 (int): Center of the sphere along the first dimension (in pixels). If no center is provided, the
+                           middle is used.
+        center_dim2 (int): Center of the sphere along the second dimension (in pixels). If no center is provided, the
+                           middle is used.
+        center_dim3 (int): Center of the sphere along the third dimension (in pixels). If no center is provided, the
+                           middle is used.
+    Returns:
+        numpy.ndarray: Mask with booleans. True where the sphere is located and False in the background.
+    """
+
+    if data.ndim != 3:
+        raise ValueError("shape_sphere only allows for 3 dimensions")
+
+    shape = data.shape
+
+    # Defaults to the center of the array if no center is provided
+    if center_dim1 is None:
+        center_dim1 = shape[0] // 2
+    if center_dim2 is None:
+        center_dim2 = shape[1] // 2
+    if center_dim3 is None:
+        center_dim3 = shape[2] // 2
+
+    x, y, z = np.ogrid[:shape[0], :shape[1], :shape[2]]
+    dist = np.sqrt((x - center_dim1) ** 2 + (y - center_dim2) ** 2 + (z - center_dim3) ** 2)
+    mask = dist <= radius
+
+    return mask
+
+
+shape_mask = {'square': shape_square, 'cube': shape_cube, 'sphere': shape_sphere}
 
 
 def shapes(data, shape, **kargs):
@@ -103,7 +140,7 @@ def shapes(data, shape, **kargs):
 
     Args:
         data (numpy.ndarray): Data to mask.
-        shape (str): Shape to mask, implemented shapes include: {'square', 'cube'}.
+        shape (str): Shape to mask, implemented shapes include: {'square', 'cube', 'sphere'}.
         **kargs: Refer to the specific function in this file for the specific arguments for each shape.
                  See example section for more details.
 
