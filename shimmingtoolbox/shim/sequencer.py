@@ -171,12 +171,9 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Save coils
         nii_merged_coils = nib.Nifti1Image(opt.merged_coils, nii_fieldmap_orig.affine, header=nii_fieldmap_orig.header)
         nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
-
     unshimmed = nii_fieldmap_orig.get_fdata()
-
     # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
     merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
-
     # Initialize
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
@@ -249,7 +246,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             nii_correction = nib.Nifti1Image(masks_fmap * shimmed, opt.unshimmed_affine)
             nib.save(nii_correction, fname_correction)
 
-
 @timeit
 def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, path_output, list_shim_slice):
     nii_coils = nib.Nifti1Image(coils, nii_fieldmap.affine, header=nii_fieldmap.header)
@@ -272,7 +268,7 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
         # We want to do the np.sum with a 2D matrix to get it aster
         coils_anat_reduced = np.reshape(coils_anat[:, :, slices[i_shim], :], (-1, nb_channel))
         corr = np.sum(coefs[i_shim] * coils_anat_reduced, axis=1, keepdims=False)
-        shimmed_anat_orient[..., slices[i_shim]] += np.shape(corr, (dimx, dimy, 1))
+        shimmed_anat_orient[..., slices[i_shim]] += np.reshape(corr, (dimx, dimy, 1))
     logger.debug(f"Creating shimmed anat took {time.time() - time_start:.4}s to run ")
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
