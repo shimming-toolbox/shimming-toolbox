@@ -3,6 +3,7 @@
 
 from click.testing import CliRunner
 import os
+import json
 import pathlib
 import tempfile
 import pytest
@@ -12,6 +13,7 @@ from shutil import copyfile
 
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
 from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox.load_nifti import read_nii
 
 PHASE_SCALING_SIEMENS = 4095
 fname_phasediff = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
@@ -46,6 +48,49 @@ def test_cli_prepare_fieldmap_2_echos():
         result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag_fieldmap,
                                                       '--output', fname_output], catch_exceptions=False)
 
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_3_echos():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+        nii1 = read_nii(fname_phase1)[0]
+        nii2 = read_nii(fname_phase2)[0]
+        data3 = nii1.get_fdata() + nii2.get_fdata()
+        data3 = np.angle(np.exp(1j * data3))
+        nii3 = nib.Nifti1Image(data3, nii1.affine, header=nii1.header)
+        fname_phase3 = os.path.join(tmp, "echo3.nii.gz")
+        nib.save(nii3, fname_phase3)
+
+        # Fix the json
+        # Load the json file
+        json_path1 = fname_phase1.split('.nii')[0] + '.json'
+        json_path2 = fname_phase2.split('.nii')[0] + '.json'
+        with open(json_path1) as json_file:
+            json_1 = json.load(json_file)
+        with open(json_path2) as json_file:
+            json_2 = json.load(json_file)
+
+        # Change EchoNumber to 3
+        json_1["EchoNumber"] = 3
+        # Change echo time
+        te1 = json_1["EchoTime"]
+        te2 = json_2["EchoTime"]
+        te3 = te1 + te2
+        json_1["EchoTime"] = te3
+        # Save a new json file
+        fname_json3 = fname_phase3.rsplit('.nii', 1)[0] + '.json'
+        with open(fname_json3, 'w') as outfile:
+            json.dump(json_1, outfile, indent=2)
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, fname_phase3, '--mag',
+                                                      fname_mag_fieldmap,
+                                                      '--output', fname_output], catch_exceptions=False)
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
@@ -113,12 +158,12 @@ def test_cli_prepare_fieldmap_autoscale():
 
 
 def test_cli_prepare_fieldmap_wrong_ext():
-
     runner = CliRunner()
 
     fname_output = 'fieldmap.txt'
 
-    with pytest.raises(ValueError, match="Output filename must have one of the following extensions: '.nii', '.nii.gz'"):
+    with pytest.raises(ValueError,
+                       match="Output filename must have one of the following extensions: '.nii', '.nii.gz'"):
         runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output', fname_output],
                       catch_exceptions=False)
 
