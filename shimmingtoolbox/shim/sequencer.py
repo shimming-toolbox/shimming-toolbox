@@ -195,15 +195,27 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Create non binary mask
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
-        sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
+        ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim]==False)
+        ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim]==False)
+        std_shimmed = np.ma.std(ma_shimmed)
+        std_unshimmed = np.ma.std(ma_unshimmed)
+        mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
+        mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
+        mse_shimmed = np.ma.mean(np.square(ma_shimmed))
+        mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
 
-        if sum_shimmed > sum_unshimmed:
+        if mse_shimmed > mse_unshimmed:
             logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                            f"i_shim: {i_shim}")
 
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                     f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
+                     f"MAE:\n"
+                     f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                     f"MSE:\n"
+                     f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                     f"STD:\n"
+                     f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}"
+                     f"current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
