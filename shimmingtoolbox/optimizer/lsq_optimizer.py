@@ -88,7 +88,7 @@ class LsqOptimizer(Optimizer):
             (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize
+        """ Objective function to minimize the mean squared error (MSE)
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
@@ -107,7 +107,7 @@ class LsqOptimizer(Optimizer):
             (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize the standard deviation
+        """ Objective function to minimize the standard deviation (STD)
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
