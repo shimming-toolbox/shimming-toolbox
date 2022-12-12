@@ -36,7 +36,6 @@ def test_cli_mask_box():
         mask = nii.get_fdata()
 
         assert result.exit_code == 0
-        assert result is not None
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
 
 
@@ -62,8 +61,25 @@ def test_cli_mask_rect():
         mask = nii.get_fdata()
 
         assert result.exit_code == 0
-        assert result is not None
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
+
+
+def test_cli_mask_sphere():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        out = os.path.join(tmp, 'mask.nii.gz')
+
+        result = runner.invoke(mask_cli, ['sphere', '--input', inp, '--output', out, '--radius', 10])
+
+        nii = nib.load(out)
+        mask = nii.get_fdata()
+
+        assert result.exit_code == 0
+        # Make sure that voxels are masked
+        assert np.all(mask[58:71, 32:45, :] == 1)
+        # Make sure background is 0
+        assert not mask[0, 0, 0]
 
 
 def test_cli_mask_threshold():
@@ -84,7 +100,6 @@ def test_cli_mask_threshold():
         mask = nii.get_fdata()
 
         assert result.exit_code == 0
-        assert result is not None
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
 
 
