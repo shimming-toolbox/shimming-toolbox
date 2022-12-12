@@ -7,8 +7,7 @@ import os
 import logging
 
 import shimmingtoolbox.masking.threshold
-from shimmingtoolbox.masking.shapes import shape_square
-from shimmingtoolbox.masking.shapes import shape_cube
+from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -148,22 +147,11 @@ def sphere(fname_input, fname_output, radius, center, verbose):
     create_output_dir(fname_output, is_file=True)
 
     nii = nib.load(fname_input)
-    shape = nii.shape
 
-    # Defaults to the center of the array if no center is provided
-    if center[0] is None:
-        center[0] = shape[0] // 2
-    if center[1] is None:
-        center[1] = shape[1] // 2
-    if center[2] is None:
-        center[2] = shape[2] // 2
-
-    x, y, z = np.ogrid[:shape[0], :shape[1], :shape[2]]
-    dist = np.sqrt((x - center[0]) ** 2 + (y - center[1]) ** 2 + (z - center[2]) ** 2)
-    mask = dist <= radius
+    # API for sphere mask
+    mask = shape_sphere(nii.get_fdata(), radius, center[0], center[1], center[2])
 
     nii_mask = nib.Nifti1Image(mask.astype(int), affine=nii.affine, header=nii.header)
-    logger.info(fname_output)
     nib.save(nii_mask, fname_output)
 
 
@@ -180,7 +168,11 @@ def sphere(fname_input, fname_output, radius, center, verbose):
 @click.option('--thr', default=30, help="Value to threshold the data: voxels will be set to zero if their "
                                         "value is equal or less than this threshold. (default: 30)")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def threshold(fname_input, output, thr):
+def threshold(fname_input, output, thr, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
     # Prepare the output
     create_output_dir(output, is_file=True)
 
