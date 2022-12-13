@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 import copy
 import math
-import time
-
 import numpy as np
 from typing import List
 from sklearn.linear_model import LinearRegression
@@ -154,12 +152,10 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
         if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
             nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
     # Select and initialize the optimizer
-    global methods
-    methods = method
-    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, reg_factor=reg_factor)
+    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor)
     # Optimize slice by slice
     logger.info("Optimizing")
-    coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
+    coefs = _optimize(optimizer, nii_mask_anat, slices, opt_criteria, dilation_kernel=mask_dilation_kernel,
                       dilation_size=mask_dilation_kernel_size, path_output=path_output)
 
     # Evaluate theoretical shim
@@ -188,6 +184,8 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     chaine = ""
     list_shim_slice = []
     for i_shim in range(len(slices)):
+        # Create non binary mask
+        masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
         # Calculate shimmed values
         if not np.any(coef[i_shim]):
             chaine = chaine + str(slices[i_shim]) + ","
@@ -199,39 +197,36 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
             shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
-            # Create non binary mask
-            masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
+            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
+            ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim] == False)
+            std_shimmed = np.ma.std(ma_shimmed)
+            std_unshimmed = np.ma.std(ma_unshimmed)
+            mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
+            mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
+            mse_shimmed = np.ma.mean(np.square(ma_shimmed))
+            mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
 
-        ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim]==False)
-        ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim]==False)
-        std_shimmed = np.ma.std(ma_shimmed)
-        std_unshimmed = np.ma.std(ma_unshimmed)
-        mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
-        mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
-        mse_shimmed = np.ma.mean(np.square(ma_shimmed))
-        mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+            if opt_criteria is None or opt_criteria == 'mse':
+                if mse_shimmed > mse_unshimmed:
+                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                                   f"i_shim: {i_shim}")
+            elif opt_criteria == 'mae':
+                if mae_shimmed > mae_unshimmed:
+                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                                   f"i_shim: {i_shim}")
+            elif opt_criteria == 'std':
+                if std_shimmed > std_unshimmed:
+                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                                   f"i_shim: {i_shim}")
 
-        if opt_criteria is None or opt_criteria == 'mse':
-            if mse_shimmed > mse_unshimmed:
-                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                               f"i_shim: {i_shim}")
-        elif opt_criteria == 'mae':
-            if mae_shimmed > mae_unshimmed:
-                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                               f"i_shim: {i_shim}")
-        elif opt_criteria == 'std':
-            if std_shimmed > std_unshimmed:
-                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                               f"i_shim: {i_shim}")
-
-        logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                     f"MAE:\n"
-                     f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
-                     f"MSE:\n"
-                     f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
-                     f"STD:\n"
-                     f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}"
-                     f"current: \n{coef[i_shim, :]}")
+            logger.debug(f"Slice(s): {slices[i_shim]}\n"
+                         f"MAE:\n"
+                         f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                         f"MSE:\n"
+                         f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                         f"STD:\n"
+                         f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
+                         f"current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
@@ -274,6 +269,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             nii_correction = nib.Nifti1Image(masks_fmap * shimmed, opt.unshimmed_affine)
             nib.save(nii_correction, fname_correction)
 
+
 @timeit
 def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, path_output, list_shim_slice):
     nii_coils = nib.Nifti1Image(coils, nii_fieldmap.affine, header=nii_fieldmap.header)
@@ -287,7 +283,6 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
                                      order=1,
                                      mode='grid-constant',
                                      cval=0).get_fdata()
-    time_start = time.time()
     shimmed_anat_orient = fieldmap_anat
     nb_channel = np.shape(coefs)[1]
     dimx = np.shape(coils_anat)[0]
@@ -297,7 +292,6 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
         coils_anat_reduced = np.reshape(coils_anat[:, :, slices[i_shim], :], (-1, nb_channel))
         corr = np.sum(coefs[i_shim] * coils_anat_reduced, axis=1, keepdims=False)
         shimmed_anat_orient[..., slices[i_shim]] += np.reshape(corr, (dimx, dimy, 1))
-    logger.debug(f"Creating shimmed anat took {time.time() - time_start:.4}s to run ")
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
                                               header=nii_mask_anat.header)
@@ -906,7 +900,7 @@ def new_bounds_from_currents(currents, old_bounds):
     return new_bounds
 
 
-def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = None, reg_factor=0):
+def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, pmu: PmuResp = None, reg_factor=0):
     """
     Select and initialize the optimizer
 
@@ -948,13 +942,13 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
 
 
 @timeit
-def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
+def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Count shims to perform
     n_shims = len(slices_anat)
-    # If the method is the least squares faster, it's faster to not do the multiprocessing on mac computer,
+    # If the method is the mse with jacobian, it's faster to not do the multiprocessing on mac computer,
     # But it's faster on linux ones
-    if methods == 'least_squares_faster' and sys.platform != 'linux':
+    if opt_criteria == 'mse' and sys.platform != 'linux':
         _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
                      shimwise_bounds)
         results = []
@@ -1022,7 +1016,6 @@ def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilatio
 
 
 def _opt(i):
-
     # Create nibabel object of the unshimmed map
     nii_unshimmed = nib.Nifti1Image(gl_optimizer.unshimmed, gl_optimizer.unshimmed_affine)
 
