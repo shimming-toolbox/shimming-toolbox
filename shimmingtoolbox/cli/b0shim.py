@@ -68,7 +68,7 @@ def b0shim_cli():
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
-                                                                 'least_squares_faster']), required=False,
+                                                                 ]), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
@@ -1037,12 +1037,12 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         i_slice = slices[i_shim]
         _add_sub_figure(i_shim, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
                         pres_probe_max, bounds, min_y, max_y,
-                        units, static_coefs, i_slice, lastindex=False)
+                        units, static_coefs, i_slice)
     # Print a sublplot for all the non shimmed slices
     nb_slices = nb_slices + 1
     _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
                     pres_probe_max, bounds, min_y, max_y,
-                    units, static_coefs, list_slice_wo_shimmed, lastindex=True)
+                    units, static_coefs, list_slice_wo_shimmed)
     # Save the figure
     fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
     fig.savefig(fname_figure, bbox_inches='tight')
@@ -1050,7 +1050,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
 
 def _add_sub_figure(i_shim, fig, n_shims, axis, rt_coefs, pres_probe_min, pres_probe_max, bounds, min_y, max_y,
-                    units, static_coefs, i_slice, lastindex):
+                    units, static_coefs, i_slice):
     # Make a subplot for slices
     # If it's the recap subplot for all the slices where the correction is null then we need to take an index further to
     # not have visual problem
@@ -1117,10 +1117,8 @@ def _add_sub_figure(i_shim, fig, n_shims, axis, rt_coefs, pres_probe_min, pres_p
     ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
            xticks=range(n_channels))
     ax.legend()
-    if lastindex:
-        ax.set_title(f"Slices: {i_slice}, Total static current: {0}")
-    else:
-        ax.set_title(f"Slices: {i_slice}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
+
+    ax.set_title(f"Slices: {i_slice}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
     ax.set_xlabel('Channels')
     ax.set_ylabel(f"Coefficients {units}")
 

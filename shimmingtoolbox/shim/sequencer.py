@@ -62,7 +62,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'least_squares_faster. Note: refer to their specific
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation.
@@ -181,16 +181,13 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
-    chaine = ""
     list_shim_slice = []
     for i_shim in range(len(slices)):
         # Create non binary mask
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
         # Calculate shimmed values
         if not np.any(coef[i_shim]):
-            chaine = chaine + str(slices[i_shim]) + ","
             shimmed[..., i_shim] = unshimmed
-            masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
         else:
             list_shim_slice.append(i_shim)
             correction_per_channel = coef[i_shim] * merged_coils
@@ -588,7 +585,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     # Static shim
     optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor)
     logger.info("Static optimization")
-    coef_static = _optimize(optimizer, nii_static_mask, slices,
+    coef_static = _optimize(optimizer, nii_static_mask, slices, opt_criteria,
                             dilation_kernel=mask_dilation_kernel,
                             dilation_size=mask_dilation_kernel_size,
                             path_output=path_output)
@@ -602,7 +599,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
 
     optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, opt_criteria, pmu, reg_factor=reg_factor)
     logger.info("Realtime optimization")
-    coef_riro = _optimize(optimizer, nii_riro_mask, slices,
+    coef_riro = _optimize(optimizer, nii_riro_mask, slices, opt_criteria,
                           shimwise_bounds=bounds,
                           dilation_kernel=mask_dilation_kernel,
                           dilation_size=mask_dilation_kernel_size,
