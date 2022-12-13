@@ -162,13 +162,13 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
-    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, opt_criteria)
 
     return coefs
 
 
 @timeit
-def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, opt_criteria=None):
     """Calculate theoretical shimmed map and output figures"""
 
     # Save the merged coil profiles if in debug
@@ -204,9 +204,18 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         mse_shimmed = np.ma.mean(np.square(ma_shimmed))
         mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
 
-        if mse_shimmed > mse_unshimmed:
-            logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                           f"i_shim: {i_shim}")
+        if opt_criteria is None or opt_criteria == 'mse':
+            if mse_shimmed > mse_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
+        elif opt_criteria == 'mae':
+            if mae_shimmed > mae_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
+        elif opt_criteria == 'std':
+            if std_shimmed > std_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
 
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
                      f"MAE:\n"
