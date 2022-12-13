@@ -15,7 +15,7 @@ import json
 import multiprocessing as mp
 import sys
 
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
+from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -44,7 +44,8 @@ supported_optimizers = {
 
 @timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
-                   mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
+                   opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
+                   path_output=None):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -63,6 +64,8 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
                                     details.
@@ -134,6 +137,9 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
     else:
         raise ValueError("Mask must be in 3d or 4d")
 
+    if opt_criteria not in allowed_opt_criteria:
+        raise ValueError("Criteria for optimization not supported")
+
     # Resample the input mask on the target anatomical image if they are different
     if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == nii_anat.affine):
         logger.debug("Resampling mask on the target anat")
@@ -147,7 +153,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
             nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
 
     # Select and initialize the optimizer
-    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, reg_factor=reg_factor)
+    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor)
 
     # Optimize slice by slice
     logger.info("Optimizing")
@@ -156,13 +162,13 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
-    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, opt_criteria)
 
     return coefs
 
 
 @timeit
-def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, opt_criteria=None):
     """Calculate theoretical shimmed map and output figures"""
 
     # Save the merged coil profiles if in debug
@@ -189,15 +195,36 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Create non binary mask
         masks_fmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap_orig, slices[i_shim]).get_fdata()
 
-        sum_shimmed = np.sum(np.abs(masks_fmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(masks_fmap[..., i_shim] * unshimmed))
+        ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim]==False)
+        ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim]==False)
+        std_shimmed = np.ma.std(ma_shimmed)
+        std_unshimmed = np.ma.std(ma_unshimmed)
+        mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
+        mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
+        mse_shimmed = np.ma.mean(np.square(ma_shimmed))
+        mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
 
-        if sum_shimmed > sum_unshimmed:
-            logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                           f"i_shim: {i_shim}")
+        if opt_criteria is None or opt_criteria == 'mse':
+            if mse_shimmed > mse_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
+        elif opt_criteria == 'mae':
+            if mae_shimmed > mae_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
+        elif opt_criteria == 'std':
+            if std_shimmed > std_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
 
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                     f"unshimmed: {sum_unshimmed}, shimmed: {sum_shimmed}, current: \n{coef[i_shim, :]}")
+                     f"MAE:\n"
+                     f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                     f"MSE:\n"
+                     f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                     f"STD:\n"
+                     f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}"
+                     f"current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
@@ -388,8 +415,9 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
 @timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
-                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', reg_factor=0,
-                                mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, path_output=None):
+                                pmu: PmuResp, coils: ListCoil, opt_method='least_squares', opt_criteria='mse',
+                                reg_factor=0, mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
+                                path_output=None):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -414,6 +442,8 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
         opt_method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                           implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                             penalize higher current values while a lower factor will lower the effect of the
                             regularization. A negative value will favour high currents (not preferred). Only relevant
@@ -471,6 +501,9 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         raise ValueError("static_mask image must be in 3d")
     if nii_riro_mask.get_fdata().ndim != 3:
         raise ValueError("riro_mask image must be in 3d")
+
+    if opt_criteria not in allowed_opt_criteria:
+        raise ValueError("Criteria for optimization not supported")
 
     # Resample the input masks on the target anatomical image if they are different
     if not np.all(nii_static_mask.shape == anat.shape) or not np.all(nii_static_mask.affine == nii_anat.affine):
@@ -548,7 +581,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
         nib.save(nii_riro, os.path.join(path_output, 'fig_riro_fmap_component.nii.gz'))
 
     # Static shim
-    optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils, reg_factor=reg_factor)
+    optimizer = select_optimizer(opt_method, static, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor)
     logger.info("Static optimization")
     coef_static = _optimize(optimizer, nii_static_mask, slices,
                             dilation_kernel=mask_dilation_kernel,
@@ -562,7 +595,7 @@ def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_ma
     if opt_method == 'least_squares':
         opt_method = 'least_squares_rt'
 
-    optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, pmu, reg_factor=reg_factor)
+    optimizer = select_optimizer(opt_method, riro, affine_fieldmap, coils, opt_criteria, pmu, reg_factor=reg_factor)
     logger.info("Realtime optimization")
     coef_riro = _optimize(optimizer, nii_riro_mask, slices,
                           shimwise_bounds=bounds,
@@ -862,7 +895,7 @@ def new_bounds_from_currents(currents, old_bounds):
     return new_bounds
 
 
-def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = None, reg_factor=0):
+def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, pmu: PmuResp = None, reg_factor=0):
     """
     Select and initialize the optimizer
 
@@ -871,6 +904,8 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
         unshimmed (numpy.ndarray): 3D B0 map
         affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         coils (ListCoil): List of Coils containing the coil profiles
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
         pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
                        'least_squares_rt'.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
@@ -884,7 +919,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
     # global supported_optimizers
     if method in supported_optimizers:
         if method == 'least_squares':
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, reg_factor=reg_factor)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
 
         elif method == 'least_squares_rt':
             # Make sure pmu is defined
@@ -892,8 +927,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, pmu: PmuResp = 
                 raise ValueError(f"pmu parameter is required if using the optimization method: {method}")
 
             # Add pmu to the realtime optimizer(s)
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, pmu, reg_factor=reg_factor)
-
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, pmu, reg_factor=reg_factor)
         else:
             optimizer = supported_optimizers[method](coils, unshimmed, affine)
     else:
