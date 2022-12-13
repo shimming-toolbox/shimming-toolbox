@@ -47,6 +47,7 @@ class LsqOptimizer(Optimizer):
         }
         if opt_criteria in lsq_residual_dict:
             self._criteria_func = lsq_residual_dict[opt_criteria]
+            self.method_to_minimize = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
 
@@ -123,7 +124,7 @@ class LsqOptimizer(Optimizer):
 
         # STD regularized to minimize currents
         return np.std(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) / factor + \
-            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -148,13 +149,21 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
-                                   method='SLSQP',
-                                   bounds=self.merged_bounds,
-                                   constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 1000})
+        if self.method_to_minimize == 'mse':
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._residuals_mse_jacobian,
+                                       options={'maxiter': 1000})
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       options={'maxiter': 1000})
         return currents_sp
 
     def get_initial_guess(self):
@@ -208,6 +217,32 @@ class LsqOptimizer(Optimizer):
 
         return current_0
 
+    def _residuals_mse_jacobian(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Jacobian of the function that we want to minimize
+        The function to minimize is :
+        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
+           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        If you want to see the mathematical expression for the jacobian, of this function or for the mae one,
+         please contact : aurelienpujolmpro@gmail.com
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): unused but necessary to call the function in scipy.optimize.minimize
+
+        Returns:
+            jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
+        """
+        jacobian = np.array([
+            self.b * np.sum((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) * coil_mat[:, j]) + \
+            np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
+            for j in range(coef.size)
+        ])
+
+        return jacobian
+
     def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
@@ -252,7 +287,9 @@ class LsqOptimizer(Optimizer):
             # regularization on the currents has no affect on the output stability factor.
             stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
                                                    factor=1)
-
+            if self.method_to_minimize == 'mse':
+                # This factor is used to calculate the Jacobian of the mse function
+                self.b = (2 / (unshimmed_vec.size * stability_factor))
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
 
@@ -380,151 +417,17 @@ class PmuLsqOptimizer(LsqOptimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
-
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
+        if self.method_to_minimize == 'mse':
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       constraints=tuple(scipy_constraints),
+                                       jac = self._residuals_mse_jacobian(),
+                                       options={'maxiter': 500})
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
                                    options={'maxiter': 500})
         return currents_sp
-
-
-class LsqOptimizer_faster(LsqOptimizer):
-    """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
-        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
-        It supports bounds for each channel as well as a bound for the absolute sum of the channels.
-    """
-
-    def _residuals_mae_jacobian(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Jacobian of the mae function to minimize.
-            Obsolete, you shouldn't use it, it's slower ( I keep it, in case someone find a way to faster the time to
-            calculate the sign matrix )
-
-        Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
-
-        Returns:
-            jacobian (numpy.ndarray) : 1D array of the gradient of the mae function to minimize
-        """
-        sign_matrix = np.array([
-            np.sign(unshimmed_vec[i] + np.sum(coil_mat[i, :] * coef))
-            for i in range(unshimmed_vec.size)
-        ])
-        jacobian = np.array([
-            np.sum(sign_matrix * coil_mat[:, j]) / (unshimmed_vec.size * factor) + \
-            np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
-            for j in range(coef.size)
-        ])
-
-        return jacobian
-
-    def _scipy_minimize_with_jacobian_mae(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        """ Minimizing the Mae function with the help of a jacobian function to make it faster
-            Attention : This function is actually slower than the one without jacobian,
-             so it's better to use the one for the mse function """
-
-        currents_sp = opt.minimize(self._residuals_mae, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
-                                   method='SLSQP',
-                                   # jac=self._residuals_mae_jacobian,
-                                   constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 1000})
-        return currents_sp
-
-    def _scipy_minimize_with_jacobian_mse(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        """ Minimizing the Mae function with the help of a jacobian function to make it faster
-        This function is 10 times faster than the solver for the mae function"""
-        currents_sp = opt.minimize(self._residuals_mse, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
-                                   method='SLSQP',
-                                   jac=self._residuals_mse_jacobian,
-                                   constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 1000})
-        return currents_sp
-
-    def _residuals_mse_jacobian(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Jacobian of the function that we want to minimize
-        The function to minimize is :
-        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
-           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        If you want to see the mathematical expression for the jacobian, of this function or for the mae one,
-         please contact : aurelienpujolmpro@gmail.com
-
-        Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): unused but necessary to call the function in scipy.optimize.minimize
-
-        Returns:
-            jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
-        """
-        jacobian = np.array([
-            self.b * np.sum((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) * coil_mat[:, j]) + \
-            np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
-            for j in range(coef.size)
-        ])
-
-        return jacobian
-
-    def optimize(self, mask):
-        """
-    Optimize unshimmed volume by varying current to each channel; this function will use the mse function and jacobian
-
-    Args:
-        mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
-
-    Returns:
-        numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
-                       The shape of the array returned has shape corresponding to the total number of channels
-    """
-        # Check for sizing errors
-        self._check_sizing(mask)
-
-        # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
-
-        mask_vec = mask.reshape((-1,))
-
-        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                              (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
-
-        scipy_constraints = self._define_scipy_constraints()
-
-        # Set up output currents
-        currents_0 = self.get_initial_guess()
-
-        # Optimize
-        # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
-        # warning
-        with warnings.catch_warnings():
-            warnings.filterwarnings('ignore', message="Values in x were outside bounds during a "
-                                                      "minimize step, clipping to bounds",
-                                    category=RuntimeWarning,
-                                    module='scipy')
-        # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
-        # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
-        # regularization on the currents has no effect on the output stability factor.
-
-        stability_factor = self._residuals_mse(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
-                                               factor=1)
-        # This parameter will be use; to calculate the jacobian mse, so it's better to calculate it now, to do it
-        #  only once per slice
-        self.b = (2 / (unshimmed_vec.size * stability_factor))
-        currents_sp = self._scipy_minimize_with_jacobian_mse(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
-                                                             factor=stability_factor)
-
-        if not currents_sp.success:
-            raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
-
-        currents = currents_sp.x
-        return currents
