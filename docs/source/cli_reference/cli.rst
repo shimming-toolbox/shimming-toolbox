@@ -18,7 +18,6 @@ Fieldmapping
 Shimming
 --------
 
-
 .. click:: shimmingtoolbox.cli.b0shim:b0shim_cli
    :prog: st_b0shim
    :nested: full

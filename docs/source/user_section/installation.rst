@@ -27,17 +27,10 @@ Dependencies
 Installation
 ------------
 
-The installer will automatically install:
-
-- ``FSLeyes``
-- ``Shimming Toolbox``
-- ``dcm2niix``
-
 .. Note::
 
-    The installer will install ``FSLeyes`` and ``dcm2niix`` into isolated environments. They will be used by
-    ``Shimming Toolbox`` and will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
-    have previously installed ``FSLeyes``, it will not support the GUI.
+    The installer will install ``Shimming Toolbox``, ``FSLeyes`` and ``dcm2niix`` into an isolated environment. They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
+    have previously installed ``FSLeyes``, that version will not support the GUI.
 
 Open a Terminal and run the following commands.
 

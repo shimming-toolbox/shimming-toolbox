@@ -18,11 +18,12 @@ import os
 from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
-from shimmingtoolbox.cli.realtime_shim import realtime_shim_cli
+from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 
@@ -74,6 +75,10 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+              default='mse', show_default=True,
+              help="Criteria of optimization for the optimizer 'least_squares'."
+                   " mse: Mean Squared Error, mae: Mean Absolute Error")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -122,9 +127,9 @@ def b0shim_cli():
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_factor, coils,
-                dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-                o_format_sph, output_value_format, reg_factor, verbose):
+def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
+            dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
+            o_format_sph, output_value_format, reg_factor, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -251,6 +256,7 @@ def dynamic_cli(fname_fmap, fname_anat, fname_mask_anat, method, slices, slice_f
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
+                           opt_criteria=opt_criteria,
                            mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
                            reg_factor=reg_factor,
@@ -478,10 +484,13 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
-                                                                 'least_squares_faster']), required=False,
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+              default='mse', show_default=True,
+              help="Criteria of optimization for the optimizer 'least_squares'."
+                   " mse: Mean Squared Error, mae: Mean Absolute Error")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
@@ -528,9 +537,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method, slices,
-                 slice_factor, coils, dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat,
-                 path_output, o_format_coil, o_format_sph, output_value_format, reg_factor, verbose):
+def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
+                     opt_criteria, slices, slice_factor, coils, dilation_kernel_size, scanner_coil_order,
+                     fname_sph_constr, fatsat, path_output, o_format_coil, o_format_sph, output_value_format,
+                     reg_factor, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -646,6 +656,7 @@ def realtime_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat
     out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
                                       opt_method=method,
+                                      opt_criteria=opt_criteria,
                                       mask_dilation_kernel='sphere',
                                       mask_dilation_kernel_size=dilation_kernel_size,
                                       reg_factor=reg_factor,
@@ -1114,8 +1125,55 @@ def _add_sub_figure(i_shim, fig, n_shims, axis, rt_coefs, pres_probe_min, pres_p
     ax.set_ylabel(f"Coefficients {units}")
 
 
-b0shim_cli.add_command(realtime_shim_cli, 'gradient_realtime')
-b0shim_cli.add_command(dynamic_cli, 'dynamic')
-b0shim_cli.add_command(realtime_cli, 'realtime-dynamic')
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="4d volume where 4th dimension was acquired with different shim values")
+@click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
+              help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
+                   "considered.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def max_intensity(fname_input, fname_mask, fname_output, verbose):
+    """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
+        Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
 
-# shim_cli.add_command(define_slices_cli, 'define_slices')
+    """
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Load the input file
+    nii_input = nib.load(fname_input)
+
+    # Load the mask
+    if fname_mask is None:
+        nii_mask = None
+    else:
+        nii_mask = nib.load(fname_mask)
+
+    # Shim
+    # Output with 1 index
+    index_per_slice = shim_max_intensity(nii_input, nii_mask) + 1
+
+    # Log the output (1 index)
+    logger.info(f"Max intensity indexes: {index_per_slice}")
+
+    # Write to a text file
+    n_slices = len(index_per_slice)
+    with open(fname_output, 'w', encoding='utf-8') as f:
+        f.write(f"{n_slices}\n")
+        for i_slice in range(n_slices - 1):
+            f.write(f"{index_per_slice[i_slice]} ")
+        f.write(f"{index_per_slice[n_slices - 1]}")
+
+    logger.info(f"Txt file is located here:\n{fname_output}")
+
+
+b0shim_cli.add_command(gradient_realtime)
+b0shim_cli.add_command(dynamic)
+b0shim_cli.add_command(realtime_dynamic)
+b0shim_cli.add_command(max_intensity)

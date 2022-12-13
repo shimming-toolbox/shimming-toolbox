@@ -37,6 +37,8 @@ with standard manufacturer-supplied gradient/shim coils or with custom
 well as a `fsleyes plugin <https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox#fsleyes-plugin-for-shimming-toolbox>`__
 dedicated to make shimming more accessible and more reproducible.
 
+For more details, see: `D'Astous A, Cereza G, Papp D, Gilbert KM, Stockmann JP, Alonso-Ortiz E, Cohen-Adad J. Shimming toolbox: An open-source software toolbox for B0 and B1 shimming in MRI. Magn Reson Med. 2022; 1-17. doi:10.1002/mrm.29528 <https://onlinelibrary.wiley.com/doi/10.1002/mrm.29528>`__
+
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/overview/overview.gif
   :alt: Overview
   :width: 1000
