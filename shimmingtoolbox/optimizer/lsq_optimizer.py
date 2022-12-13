@@ -417,15 +417,8 @@ class PmuLsqOptimizer(LsqOptimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
-        if self.method_to_minimize == 'mse':
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor),
-                                       method='SLSQP',
-                                       constraints=tuple(scipy_constraints),
-                                       jac = self._residuals_mse_jacobian(),
-                                       options={'maxiter': 500})
-        else:
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
+
+        currents_sp = opt.minimize(self._criteria_func, currents_0,
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
