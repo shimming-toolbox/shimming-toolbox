@@ -286,7 +286,7 @@ class LsqOptimizer(Optimizer):
             # regularization on the currents has no affect on the output stability factor.
             stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
                                                    factor=1)
-            if self.method_to_minimize == 'mse':
+            if self.opt_criteria == 'mse':
                 # This factor is used to calculate the Jacobian of the mse function
                 self.b = (2 / (unshimmed_vec.size * stability_factor))
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
