@@ -285,7 +285,7 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
     dimx = np.shape(coils_anat)[0]
     dimy = np.shape(coils_anat)[1]
     for i_shim in list_shim_slice:
-        # We want to do the np.sum with a 2D matrix to get it aster
+        # We want to do the np.sum with a 2D matrix so that it is faster
         coils_anat_reduced = np.reshape(coils_anat[:, :, slices[i_shim], :], (-1, nb_channel))
         corr = np.sum(coefs[i_shim] * coils_anat_reduced, axis=1, keepdims=False)
         shimmed_anat_orient[..., slices[i_shim]] += np.reshape(corr, (dimx, dimy, 1))
