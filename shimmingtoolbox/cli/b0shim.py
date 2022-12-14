@@ -1078,8 +1078,7 @@ def _add_sub_figure(i_shim, fig, n_shims, axis, rt_coefs, pres_probe_min, pres_p
         len_hline_bounds = 0.4
         if np.all(bounds[:, 0] == bounds[0, 0]) and np.all(bounds[:, 1] == bounds[0, 1]):
             ax.hlines(bounds[0, 0], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
-                      label='bounds',
-                      capstyle='projecting')
+                      label='bounds', capstyle='projecting')
             ax.hlines(bounds[0, 1], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
                       capstyle='projecting')
         else:

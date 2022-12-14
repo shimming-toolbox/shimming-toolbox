@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-from timeit import timeit
 
 import numpy as np
 import scipy.optimize as opt
@@ -223,7 +222,7 @@ class LsqOptimizer(Optimizer):
         np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
         If you want to see the mathematical expression for the jacobian, of this function or for the mae one,
-         please contact : aurelienpujolmpro@gmail.com
+        please contact : aurelienpujolmpro@gmail.com
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients

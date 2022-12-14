@@ -90,14 +90,12 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '2',
                                              '--regularization-factor', '0.1',
-                                             # '-v', 'debug',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_gradient_coil.txt"))
 
-   
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
