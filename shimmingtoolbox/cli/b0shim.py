@@ -1038,7 +1038,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         _add_sub_figure(i_shim, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
                         pres_probe_max, bounds, min_y, max_y,
                         units, static_coefs, i_slice)
-    # Print a sublplot for all the non shimmed slices
+    # Print a subplot for all the non shimmed slices
     nb_slices = nb_slices + 1
     _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
                     pres_probe_max, bounds, min_y, max_y,
