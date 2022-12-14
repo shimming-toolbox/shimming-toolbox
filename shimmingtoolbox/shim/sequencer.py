@@ -189,42 +189,41 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         if not np.any(coef[i_shim]):
             shimmed[..., i_shim] = unshimmed
             continue
-        else:
-            list_shim_slice.append(i_shim)
-            correction_per_channel = coef[i_shim] * merged_coils
-            corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
-            shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
+        list_shim_slice.append(i_shim)
+        correction_per_channel = coef[i_shim] * merged_coils
+        corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
+        shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
-            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
-            ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim] == False)
-            std_shimmed = np.ma.std(ma_shimmed)
-            std_unshimmed = np.ma.std(ma_unshimmed)
-            mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
-            mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
-            mse_shimmed = np.ma.mean(np.square(ma_shimmed))
-            mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+        ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
+        ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim] == False)
+        std_shimmed = np.ma.std(ma_shimmed)
+        std_unshimmed = np.ma.std(ma_unshimmed)
+        mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
+        mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
+        mse_shimmed = np.ma.mean(np.square(ma_shimmed))
+        mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
 
-            if opt_criteria is None or opt_criteria == 'mse':
-                if mse_shimmed > mse_unshimmed:
+        if opt_criteria is None or opt_criteria == 'mse':
+            if mse_shimmed > mse_unshimmed:
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                                   f"i_shim: {i_shim}")
+        elif opt_criteria == 'mae':
+            if mae_shimmed > mae_unshimmed:
                     logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                                    f"i_shim: {i_shim}")
-            elif opt_criteria == 'mae':
-                if mae_shimmed > mae_unshimmed:
-                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                                   f"i_shim: {i_shim}")
-            elif opt_criteria == 'std':
-                if std_shimmed > std_unshimmed:
+        elif opt_criteria == 'std':
+            if std_shimmed > std_unshimmed:
                     logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                                    f"i_shim: {i_shim}")
 
-            logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                         f"MAE:\n"
-                         f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
-                         f"MSE:\n"
-                         f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
-                         f"STD:\n"
-                         f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
-                         f"current: \n{coef[i_shim, :]}")
+        logger.debug(f"Slice(s): {slices[i_shim]}\n"
+                        f"MAE:\n"
+                        f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                        f"MSE:\n"
+                        f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                        f"STD:\n"
+                        f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
+                        f"current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
@@ -939,7 +938,6 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
     return optimizer
 
 
-@timeit
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Count shims to perform
