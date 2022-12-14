@@ -979,7 +979,7 @@ def _get_current_shim_settings(json_data):
 @timeit
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
-    # We want to find how much slices are not shimmed to have a smaller file and reduced the plotting and saving time
+    # We want to find which slices are not shimmed to have a smaller file size and reduce the plot saving time
     shimmed_slice = []
     n_shims = len(slices)
     list_slice_wo_shimmed = ""
