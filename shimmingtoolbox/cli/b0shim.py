@@ -989,8 +989,8 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         else:
             # Get a string with the number of all the unshimmed slices
             list_slice_wo_shimmed = list_slice_wo_shimmed + str(slices[i_shim]) + ","
-            # Get the last index where the shimmed correction is null will permit to plot the last one as an example
-            # for all the other one
+            # Get the last index where the shimmed correction is null, this will allow to plot the last one as an example
+            # for all the other ones
             last_i = i_shim
     number_slices_shimmed = len(shimmed_slice)
     fig = Figure(figsize=(8, 4 * number_slices_shimmed), tight_layout=True)
