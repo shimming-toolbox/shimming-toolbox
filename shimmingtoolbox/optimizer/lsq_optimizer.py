@@ -46,7 +46,7 @@ class LsqOptimizer(Optimizer):
         }
         if opt_criteria in lsq_residual_dict:
             self._criteria_func = lsq_residual_dict[opt_criteria]
-            self.method_to_minimize = opt_criteria
+            self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
 
@@ -148,7 +148,7 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        if self.method_to_minimize == 'mse':
+        if self.opt_criteria == 'mse':
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='SLSQP',

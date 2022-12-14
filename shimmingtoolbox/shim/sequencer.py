@@ -188,6 +188,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Calculate shimmed values
         if not np.any(coef[i_shim]):
             shimmed[..., i_shim] = unshimmed
+            continue
         else:
             list_shim_slice.append(i_shim)
             correction_per_channel = coef[i_shim] * merged_coils
