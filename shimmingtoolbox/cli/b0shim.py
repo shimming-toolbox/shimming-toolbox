@@ -1031,15 +1031,14 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         temp_max = np.array(static_coefs).max()
         if max_y is None or max_y < temp_max:
             max_y = np.array(static_coefs).max()
-    nb_slices = 0
     for nb_slices, i_shim in enumerate(shimmed_slice):
         i_slice = slices[i_shim]
-        _add_sub_figure(i_shim, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
+        _add_sub_figure(i_shim, fig, number_slices_shimmed, nb_slices+1, rt_coefs, pres_probe_min,
                         pres_probe_max, bounds, min_y, max_y,
                         units, static_coefs, i_slice)
     # Print a subplot for all the non shimmed slices
     nb_slices = nb_slices + 1
-    _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices, rt_coefs, pres_probe_min,
+    _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices+1, rt_coefs, pres_probe_min,
                     pres_probe_max, bounds, min_y, max_y,
                     units, static_coefs, list_slice_wo_shimmed)
     # Save the figure

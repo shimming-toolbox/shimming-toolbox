@@ -281,14 +281,11 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
                                      mode='grid-constant',
                                      cval=0).get_fdata()
     shimmed_anat_orient = fieldmap_anat
-    nb_channel = np.shape(coefs)[1]
-    dimx = np.shape(coils_anat)[0]
-    dimy = np.shape(coils_anat)[1]
+
     for i_shim in list_shim_slice:
-        # We want to do the np.sum with a 2D matrix so that it is faster
-        coils_anat_reduced = np.reshape(coils_anat[:, :, slices[i_shim], :], (-1, nb_channel))
-        corr = np.sum(coefs[i_shim] * coils_anat_reduced, axis=1, keepdims=False)
-        shimmed_anat_orient[..., slices[i_shim]] += np.reshape(corr, (dimx, dimy, 1))
+        # We want to do the np.sum with a 3D matrix if possible
+        corr = np.sum(coefs[i_shim] * coils_anat[:,:, slices[i_shim], :], axis=3, keepdims=False)
+        shimmed_anat_orient[..., slices[i_shim]] += corr
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
                                               header=nii_mask_anat.header)
