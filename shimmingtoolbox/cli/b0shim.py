@@ -983,6 +983,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
     shimmed_slice = []
     n_shims = len(slices)
     list_slice_wo_shimmed = ""
+    unused_slice = False
     for i_shim in range(n_shims):
         if np.any(static_coefs[i_shim]):
             shimmed_slice.append(i_shim)
@@ -992,6 +993,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
             # Get the last index where the shimmed correction is null, this will allow to plot the last one as an example
             # for all the other ones
             last_i = i_shim
+            unused_slice = True
     number_slices_shimmed = len(shimmed_slice)
     fig = Figure(figsize=(8, 4 * number_slices_shimmed), tight_layout=True)
 
@@ -1037,8 +1039,10 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
                         pres_probe_max, bounds, min_y, max_y,
                         units, static_coefs, i_slice)
     # Print a subplot for all the non shimmed slices
-    nb_slices = nb_slices + 1
-    _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices+1, rt_coefs, pres_probe_min,
+
+    if unused_slice:
+        nb_slices = nb_slices + 1
+        _add_sub_figure(last_i, fig, number_slices_shimmed, nb_slices+1, rt_coefs, pres_probe_min,
                     pres_probe_max, bounds, min_y, max_y,
                     units, static_coefs, list_slice_wo_shimmed)
     # Save the figure
