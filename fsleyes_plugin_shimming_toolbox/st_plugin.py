@@ -38,7 +38,7 @@ from shimmingtoolbox.cli.b0shim import realtime_dynamic as realtime_cli
 from shimmingtoolbox.cli.b0shim import max_intensity as max_intensity_cli
 from shimmingtoolbox.cli.b1shim import b1shim_cli
 from shimmingtoolbox.cli.dicom_to_nifti import dicom_to_nifti_cli
-from shimmingtoolbox.cli.mask import box, rect, threshold
+from shimmingtoolbox.cli.mask import box, rect, threshold, sphere
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
 
 logger = logging.getLogger(__name__)
@@ -299,7 +299,8 @@ class InputComponent(Component):
 
 
 class DropdownComponent(Component):
-    def __init__(self, panel, dropdown_metadata, label, option_name, list_components=[], info_text=None, cli=None):
+    def __init__(self, panel, dropdown_metadata, label, option_name, list_components=[], info_text=None, cli=None,
+                 component_to_dropdown_choice=None):
         """ Create a dropdown list
 
         Args:
@@ -318,6 +319,8 @@ class DropdownComponent(Component):
             list_components (list): list of InputComponents
             info_text (str): Info message displayed when hovering over the "i" icon. Leave blank to auto fill using option_name
             cli (function): CLI function used by the dropdown
+            component_to_dropdown_choice (list): Tells which component associates with which dropdown selection. 
+                                                 If None, assumes 1:1. 
         """
         super().__init__(panel, list_components)
         self.dropdown_metadata = dropdown_metadata
@@ -329,6 +332,12 @@ class DropdownComponent(Component):
         self.dropdown_choices = [item["label"] for item in self.dropdown_metadata]
         self.option_name = option_name
         self.cli = cli
+        
+        if component_to_dropdown_choice is None:
+            self.component_to_dropdown_choice = range(len(self.list_components))
+        else:
+            self.component_to_dropdown_choice = component_to_dropdown_choice
+            
         self.add_text_info()
         self.create_choice_box()
         self.create_dropdown_sizers()
@@ -348,13 +357,19 @@ class DropdownComponent(Component):
         for index in range(len(self.list_components)):
             sizer = self.list_components[index].sizer
             self.sizer.Add(sizer, 0, wx.EXPAND)
-            self.positions[self.dropdown_choices[index]] = self.sizer.GetItemCount() - 1
+            
+            # Map list index to the dropdown selection
+            dd_index = self.component_to_dropdown_choice[index]
+            if self.dropdown_choices[dd_index] not in self.positions.keys():
+                self.positions[self.dropdown_choices[dd_index]] = []
+            self.positions[self.dropdown_choices[dd_index]].append(self.sizer.GetItemCount() - 1)
 
     def unshow_choice_box_sizers(self):
         """Set the Show variable to false for all sizers of the choice box widget"""
-        for position in self.positions.values():
-            sizer = self.sizer.GetItem(position)
-            sizer.Show(False)
+        for list_position in self.positions.values():
+            for position in list_position:
+                sizer = self.sizer.GetItem(position)
+                sizer.Show(False)
 
     def create_choice_box(self):
         self.choice_box = wx.Choice(self.panel, choices=self.dropdown_choices)
@@ -374,18 +389,24 @@ class DropdownComponent(Component):
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
         if selection in self.positions.keys():
-            sizer_item_threshold = self.sizer.GetItem(self.positions[selection])
-            sizer_item_threshold.Show(True)
+            for a_index in self.positions[selection]:
+                sizer_item = self.sizer.GetItem(a_index)
+                sizer_item.Show(True)
         else:
             pass
 
-        index = self.find_index(selection)
+        index_dd = self.find_index(selection)
         if selection in self.positions.keys():
             # Add the sizers to the current list of options
-            self.input_text_boxes = self.list_components[index].input_text_boxes
+            # find indexes of list_components that are associated with index dropdown
+            indexes = [i for i, e in enumerate(self.component_to_dropdown_choice) if e == index_dd]
+            self.input_text_boxes = {}
+            for index_comp in indexes:
+                # Merges both input_text_boxes
+                self.input_text_boxes.update(self.list_components[index_comp].input_text_boxes)
 
         # Add the dropdown to the list of options
-        self.input_text_boxes[self.option_name] = [self.dropdown_metadata[index]["option_value"]]
+        self.input_text_boxes[self.option_name] = [self.dropdown_metadata[index_dd]["option_value"]]
 
         # Update the window
         self.panel.SetVirtualSize(self.panel.sizer_run.GetMinSize())
@@ -705,9 +726,11 @@ class B0ShimTab(Tab):
             if selection == 'Dynamic':
                 self.dropdown_slice_dyn.on_choice(None)
                 self.dropdown_coil_format_dyn.on_choice(None)
+                self.dropdown_scanner_order_dyn.on_choice(None)
             elif selection == 'Realtime Dynamic':
                 self.dropdown_slice_rt.on_choice(None)
                 self.dropdown_coil_format_rt.on_choice(None)
+                self.dropdown_scanner_order_rt.on_choice(None)
         else:
             pass
 
@@ -768,16 +791,6 @@ class B0ShimTab(Tab):
 
         component_inputs = InputComponent(self, input_text_box_metadata_inputs, cli=dynamic_cli)
 
-        input_text_box_metadata_scanner = [
-            {
-                "button_label": "Scanner constraints",
-                "button_function": "select_file",
-                "name": "scanner-coil-constraints",
-                "default_text": f"{os.path.join(ST_DIR, 'coil_config.json')}",
-            },
-        ]
-        component_scanner = InputComponent(self, input_text_box_metadata_scanner, cli=dynamic_cli)
-
         input_text_box_metadata_slice = [
             {
                 "button_label": "Slice Factor",
@@ -797,7 +810,67 @@ class B0ShimTab(Tab):
             }
         ]
         component_output = InputComponent(self, output_metadata, cli=dynamic_cli)
+        
+        input_text_box_metadata_scanner = [
+            {
+                "button_label": "Scanner constraints",
+                "button_function": "select_file",
+                "name": "scanner-coil-constraints",
+                "default_text": f"{os.path.join(ST_DIR, 'coil_config.json')}",
+            },
+        ]
+        component_scanner1 = InputComponent(self, input_text_box_metadata_scanner, cli=dynamic_cli)
+        component_scanner2 = InputComponent(self, input_text_box_metadata_scanner, cli=dynamic_cli)
+        component_scanner3 = InputComponent(self, input_text_box_metadata_scanner, cli=dynamic_cli)
+        
+        dropdown_scanner_format_metadata = [
+            {
+                "label": "Slicewise per Channel",
+                "option_value": "slicewise-ch"
+            },
+            {
+                "label": "Slicewise per Coil",
+                "option_value": "slicewise-coil"
+            },
+            {
+                "label": "Chronological per Channel",
 
+                "option_value": "chronological-ch"
+            },
+            {
+                "label": "Chronological per Coil",
+                "option_value": "chronological-coil"
+            },
+            {
+                "label": "Gradient per Channel",
+                "option_value": "gradient"
+            },
+        ]
+
+        dropdown_scanner_format1 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            option_name='output-file-format-scanner',
+            label="Scanner Output Format",
+            cli=dynamic_cli
+        )
+        
+        dropdown_scanner_format2 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            option_name='output-file-format-scanner',
+            label="Scanner Output Format",
+            cli=dynamic_cli
+        )
+        
+        dropdown_scanner_format3 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            option_name='output-file-format-scanner',
+            label="Scanner Output Format",
+            cli=dynamic_cli
+        )
+        
         dropdown_scanner_order_metadata = [
             {
                 "label": "-1",
@@ -817,11 +890,16 @@ class B0ShimTab(Tab):
             }
         ]
 
-        dropdown_scanner_order = DropdownComponent(
+        self.dropdown_scanner_order_dyn = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_scanner_order_metadata,
             label="Scanner Order",
-            option_name = 'scanner-coil-order',
+            option_name='scanner-coil-order',
+            list_components=[self.create_empty_component(),
+                             dropdown_scanner_format1, component_scanner1,
+                             dropdown_scanner_format2, component_scanner2,
+                             dropdown_scanner_format3, component_scanner3],
+            component_to_dropdown_choice=[0, 1, 1, 2, 2, 3, 3],
             cli=dynamic_cli
         )
 
@@ -840,7 +918,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_ovf_metadata,
             label="Output Value Format",
-            option_name = 'output-value-format',
+            option_name='output-value-format',
             cli=dynamic_cli
         )
 
@@ -853,6 +931,25 @@ class B0ShimTab(Tab):
         ]
         component_reg_factor = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
 
+        criteria_dropdown_metadata = [
+            {
+                "label": "Mean Squared Error",
+                "option_value": "mse",
+            },
+            {
+                "label": "Mean Absolute Error",
+                "option_value": "mae",
+            },
+        ]
+        
+        dropdown_crit = DropdownComponent(
+            panel=self,
+            dropdown_metadata=criteria_dropdown_metadata,
+            label="Optimizer Criteria",
+            option_name='optimizer-criteria',
+            cli=dynamic_cli
+        )
+        
         dropdown_opt_metadata = [
             {
                 "label": "Least Squares",
@@ -868,9 +965,9 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
-            option_name = 'optimizer-method',
-            list_components = [component_reg_factor,
-                               self.create_empty_component()],
+            option_name='optimizer-method',
+            list_components=[dropdown_crit, component_reg_factor, self.create_empty_component()],
+            component_to_dropdown_choice=[0, 0, 1],
             cli=dynamic_cli
         )
 
@@ -898,7 +995,7 @@ class B0ShimTab(Tab):
             dropdown_metadata=dropdown_slice_metadata,
             label="Slice Ordering",
             cli=dynamic_cli,
-            option_name = 'slices',
+            option_name='slices',
             list_components=[self.create_empty_component(),
                              component_slice_seq,
                              component_slice_int,
@@ -942,7 +1039,7 @@ class B0ShimTab(Tab):
         dropdown_fatsat1 = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_fatsat_metadata,
-            option_name = 'fatsat',
+            option_name='fatsat',
             label="Fat Saturation",
             cli=dynamic_cli
         )
@@ -950,7 +1047,7 @@ class B0ShimTab(Tab):
         dropdown_fatsat2 = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_fatsat_metadata,
-            option_name = 'fatsat',
+            option_name='fatsat',
             label="Fat Saturation",
             cli=dynamic_cli
         )
@@ -959,7 +1056,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_coil_format_metadata,
             label="Custom Coil Output Format",
-            option_name = 'output-file-format-coil',
+            option_name='output-file-format-coil',
             cli=dynamic_cli,
             list_components=[self.create_empty_component(),
                              self.create_empty_component(),
@@ -967,42 +1064,10 @@ class B0ShimTab(Tab):
                              dropdown_fatsat2]
         )
 
-        dropdown_scanner_format_metadata = [
-            {
-                "label": "Slicewise per Channel",
-                "option_value": "slicewise-ch"
-            },
-            {
-                "label": "Slicewise per Coil",
-                "option_value": "slicewise-coil"
-            },
-            {
-                "label": "Chronological per Channel",
-
-                "option_value": "chronological-ch"
-            },
-            {
-                "label": "Chronological per Coil",
-                "option_value": "chronological-coil"
-            },
-            {
-                "label": "Gradient per Channel",
-                "option_value": "gradient"
-            },
-        ]
-
-        dropdown_scanner_format = DropdownComponent(
-            panel=self,
-            dropdown_metadata=dropdown_scanner_format_metadata,
-            option_name = 'output-file-format-scanner',
-            label="Scanner Output Format",
-            cli=dynamic_cli
-        )
-
         run_component = RunComponent(
             panel=self,
             list_components=[self.component_coils_dyn, component_inputs, dropdown_opt, self.dropdown_slice_dyn,
-                             dropdown_scanner_order, component_scanner, dropdown_scanner_format,
+                             self.dropdown_scanner_order_dyn,
                              self.dropdown_coil_format_dyn, dropdown_ovf, component_output],
             st_function="st_b0shim dynamic",
             output_paths=["fieldmap_calculated_shim_masked.nii.gz",
@@ -1071,7 +1136,9 @@ class B0ShimTab(Tab):
                 "default_text": f"{os.path.join(ST_DIR, 'coil_config.json')}",
             },
         ]
-        component_scanner = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
+        component_scanner1 = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
+        component_scanner2 = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
+        component_scanner3 = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
 
         input_text_box_metadata_slice = [
             {
@@ -1093,6 +1160,45 @@ class B0ShimTab(Tab):
         ]
         component_output = InputComponent(self, output_metadata, cli=realtime_cli)
 
+        dropdown_scanner_format_metadata = [
+            {
+                "label": "Slicewise per Channel",
+                "option_value": "slicewise-ch"
+            },
+            {
+                "label": "Chronological per Channel",
+                "option_value": "chronological-ch"
+            },
+            {
+                "label": "Gradient per Channel",
+                "option_value": "gradient"
+            },
+        ]
+
+        dropdown_scanner_format1 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            label="Scanner Output Format",
+            option_name = 'output-file-format-scanner',
+            cli=realtime_cli
+        )
+
+        dropdown_scanner_format2 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            label="Scanner Output Format",
+            option_name = 'output-file-format-scanner',
+            cli=realtime_cli
+        )
+
+        dropdown_scanner_format3 = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_scanner_format_metadata,
+            label="Scanner Output Format",
+            option_name = 'output-file-format-scanner',
+            cli=realtime_cli
+        )
+
         dropdown_scanner_order_metadata = [
             {
                 "label": "-1",
@@ -1112,11 +1218,16 @@ class B0ShimTab(Tab):
             }
         ]
 
-        dropdown_scanner_order = DropdownComponent(
+        self.dropdown_scanner_order_rt = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_scanner_order_metadata,
             label="Scanner Order",
             option_name = 'scanner-coil-order',
+            list_components=[self.create_empty_component(),
+                             dropdown_scanner_format1, component_scanner1,
+                             dropdown_scanner_format2, component_scanner2,
+                             dropdown_scanner_format3, component_scanner3],
+            component_to_dropdown_choice=[0, 1, 1, 2, 2, 3, 3],
             cli=realtime_cli
         )
 
@@ -1139,7 +1250,6 @@ class B0ShimTab(Tab):
             cli=realtime_cli
         )
 
-
         reg_factor_metadata = [
             {
                 "button_label": "Regularization factor",
@@ -1148,6 +1258,25 @@ class B0ShimTab(Tab):
             }
         ]
         component_reg_factor = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+
+        criteria_dropdown_metadata = [
+            {
+                "label": "Mean Squared Error",
+                "option_value": "mse",
+            },
+            {
+                "label": "Mean Absolute Error",
+                "option_value": "mae",
+            },
+        ]
+
+        dropdown_crit = DropdownComponent(
+            panel=self,
+            dropdown_metadata=criteria_dropdown_metadata,
+            label="Optimizer Criteria",
+            option_name='optimizer-criteria',
+            cli=dynamic_cli
+        )
 
         dropdown_opt_metadata = [
             {
@@ -1165,8 +1294,8 @@ class B0ShimTab(Tab):
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
             option_name = 'optimizer-method',
-            list_components= [component_reg_factor,
-                              self.create_empty_component()],
+            list_components= [dropdown_crit, component_reg_factor, self.create_empty_component()],
+            component_to_dropdown_choice=[0, 0, 1],
             cli=realtime_cli
         )
 
@@ -1198,29 +1327,6 @@ class B0ShimTab(Tab):
                              component_slice_seq,
                              component_slice_int,
                              self.create_empty_component()],
-            cli=realtime_cli
-        )
-
-        dropdown_scanner_format_metadata = [
-            {
-                "label": "Slicewise per Channel",
-                "option_value": "slicewise-ch"
-            },
-            {
-                "label": "Chronological per Channel",
-                "option_value": "chronological-ch"
-            },
-            {
-                "label": "Gradient per Channel",
-                "option_value": "gradient"
-            },
-        ]
-
-        dropdown_scanner_format = DropdownComponent(
-            panel=self,
-            dropdown_metadata=dropdown_scanner_format_metadata,
-            label="Scanner Output Format",
-            option_name = 'output-file-format-scanner',
             cli=realtime_cli
         )
 
@@ -1271,7 +1377,7 @@ class B0ShimTab(Tab):
         run_component = RunComponent(
             panel=self,
             list_components=[self.component_coils_rt, component_inputs, dropdown_opt, self.dropdown_slice_rt,
-                             dropdown_scanner_order, component_scanner, dropdown_scanner_format,
+                             self.dropdown_scanner_order_rt,
                              self.dropdown_coil_format_rt, dropdown_ovf, component_output],
             st_function="st_b0shim realtime-dynamic",
             # TODO: output paths
@@ -1705,6 +1811,10 @@ class MaskTab(Tab):
             {
                 "name": "Box",
                 "sizer_function": self.create_sizer_box
+            },
+            {
+                "name": "Sphere",
+                "sizer_function": self.create_sizer_sphere
             }
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
@@ -1849,6 +1959,41 @@ class MaskTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_mask box"
+        )
+        sizer = run_component.sizer
+        return sizer
+
+    def create_sizer_sphere(self):
+        path_output = os.path.join(CURR_DIR, "output_mask_sphere")
+        input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "button_function": "select_from_overlay",
+                "name": "input",
+                "required": True
+            },
+            {
+                "button_label": "Radius",
+                "name": "radius",
+                "required": True
+            },
+            {
+                "button_label": "Center",
+                "name": "center",
+                "n_text_boxes": 3,
+            },
+            {
+                "button_label": "Output File",
+                "button_function": "select_folder",
+                "default_text": os.path.join(path_output, "mask.nii.gz"),
+                "name": "output",
+            }
+        ]
+        component = InputComponent(self, input_text_box_metadata, sphere)
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask sphere"
         )
         sizer = run_component.sizer
         return sizer
