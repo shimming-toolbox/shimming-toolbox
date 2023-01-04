@@ -67,7 +67,8 @@ def b0shim_cli():
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
+                                                                 ]), required=False,
               default='least_squares', show_default=True,
               help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
@@ -252,7 +253,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     else:
         list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
-
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
@@ -333,10 +333,25 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         else:
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            options, coil_number=i_coil)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(f"Plotting figure(s)")
+
+    # Plot the coefs after outputting the currents to the text file
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
+        n_channels = coil.dim[3]
+        start_channel = end_channel
+        end_channel = start_channel + n_channels
+
+        if type(coil) != ScannerCoil:
+            # Select the coefficients for a coil
+            coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
 
-    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(f"Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
@@ -746,15 +761,30 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                                        path_output, o_format_sph, options, i_coil)
 
         else:  # Custom coil
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_coil, options, i_coil)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(f"Plotting figure(s)")
+
+    # Plot the coefs after outputting the currents to the text file
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
+        n_channels = coil.dim[3]
+        start_channel = end_channel
+        end_channel = start_channel + n_channels
+
+        if type(coil) != ScannerCoil:
+            # Select the coefficients for a coil
+            coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
+            coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=coil.coef_channel_minmax)
 
-            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_coil, options, i_coil)
-
-    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(f"Finished plotting figure(s)")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
@@ -978,11 +1008,29 @@ def _get_current_shim_settings(json_data):
 @timeit
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
-    n_shims = static_coefs.shape[0]
-    fig = Figure(figsize=(8, 4 * n_shims), tight_layout=True)
+    # Find which slices are not shimmed and group them (smaller file size and reduce the plot saving time)
+    shimmed_slice_index = []
+    n_shims = len(slices)
+    slices_index_wo_shim = []
+    unused_slice = False
+    for i_shim in range(n_shims):
+        # Static case
+        if np.any(static_coefs[i_shim]):
+            shimmed_slice_index.append(i_shim)
+            continue
+
+        # Realtime case
+        if rt_coefs is not None:
+            if np.any(rt_coefs[i_shim]):
+                shimmed_slice_index.append(i_shim)
+                continue
+
+        # Get a string with the number of all the unshimmed slices
+        slices_index_wo_shim.append(i_shim)
+        unused_slice = True
 
     # Find min and max values of the plots
-    # Calculate the min and max of the bounds if its an input
+    # Calculate the min and max of the bounds if it's an input
     if bounds is not None:
         bounds = np.array(bounds)
         min_y = bounds.min()
@@ -1019,31 +1067,69 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
         if max_y is None or max_y < temp_max:
             max_y = np.array(static_coefs).max()
 
-    # Create a plot for each shim group
-    for i_shim in range(n_shims):
-        ax = fig.add_subplot(n_shims + 1, 1, i_shim + 1)
-        n_channels = static_coefs.shape[1]
+    # Plot the currents
+    n_plots = len(shimmed_slice_index)
+    if unused_slice:
+        n_plots += 1
 
-        # Add realtime component as an errorbar
+    fig = Figure(figsize=(8, 4 * n_plots), tight_layout=True)
+    for i_plot, slice_index in enumerate(shimmed_slice_index):
+
         if rt_coefs is not None:
-            rt_coef_ishim = rt_coefs[i_shim]
-            riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
-            ax.errorbar(range(n_channels), static_coefs[i_shim], yerr=riro, fmt='o', elinewidth=4, capsize=6,
-                        label='static-riro')
-        # Add static component
+            rt_coef_tmp = rt_coefs[slice_index]
         else:
-            ax.scatter(range(n_channels), static_coefs[i_shim], marker='o', label='static')
+            rt_coef_tmp = None
 
-        # Draw a black line at y=0
-        ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
+        _add_sub_figure(fig, i_plot + 1, n_plots, static_coefs[slice_index], bounds, min_y, max_y, units,
+                        slices[slice_index], rt_coef_tmp, pres_probe_min, pres_probe_max)
 
-        delta_y = max_y - min_y
+    # Add a subplot for all the non shimmed slices
+    if unused_slice:
+        i_unshimmed_slice = slices_index_wo_shim[0]
+        slices_wo_shim = tuple(j for i in slices_index_wo_shim for j in slices[i])
+        _add_sub_figure(fig, n_plots, n_plots, static_coefs[i_unshimmed_slice], bounds,
+                        min_y, max_y, units, slices_wo_shim)
 
-        # Add bounds on the graph
-        if bounds is not None:
+    # Save the figure
+    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
+    fig.savefig(fname_figure, bbox_inches='tight')
+    logger.debug(f"Saved figure: {fname_figure}")
+
+
+def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, units, slice_number, rt_coefs=None,
+                    pres_probe_min=None, pres_probe_max=None):
+    # Make a subplot for slices
+    # If it's the recap subplot for all the slices where the correction is null then we need to take an index further to
+    # not have visual problem
+
+    ax = fig.add_subplot(n_plots, 1, i_plot)
+    n_channels = len(static_coefs)
+
+    # Add realtime component as an errorbar
+    if rt_coefs is not None:
+        rt_coef_ishim = rt_coefs
+        riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
+        ax.errorbar(range(n_channels), static_coefs, yerr=riro, fmt='o', elinewidth=4, capsize=6,
+                    label='static-riro')
+    # Add static component
+    else:
+        ax.scatter(range(n_channels), static_coefs, marker='o', label='static')
+
+    # Draw a black line at y=0
+    ax.hlines(0, 0, 1, transform=ax.get_yaxis_transform(), colors='k')
+
+    delta_y = max_y - min_y
+    # Add bounds on the graph
+    if bounds is not None:
+        len_vline_bounds = 0.01
+        len_hline_bounds = 0.4
+        if np.all(bounds[:, 0] == bounds[0, 0]) and np.all(bounds[:, 1] == bounds[0, 1]):
+            ax.hlines(bounds[0, 0], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
+                      label='bounds', capstyle='projecting')
+            ax.hlines(bounds[0, 1], 0 - len_hline_bounds, n_channels + len_hline_bounds, colors='r',
+                      capstyle='projecting')
+        else:
             # Channel 0 used for the legend
-            len_vline_bounds = 0.01
-            len_hline_bounds = 0.4
             # min
             ax.hlines(bounds[0, 0], -len_hline_bounds, len_hline_bounds, colors='r', label='bounds',
                       capstyle='projecting')
@@ -1073,18 +1159,14 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
                           bounds[i_channel, 1], colors='r', capstyle='projecting')
                 ax.vlines(i_channel + len_hline_bounds, bounds[i_channel, 1] - (delta_y * len_vline_bounds),
                           bounds[i_channel, 1], colors='r', capstyle='projecting')
+    # Set the extent of the plot
+    ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
+           xticks=range(n_channels))
+    ax.legend()
 
-        # Set the extent of the plot
-        ax.set(ylim=(min_y - (0.05 * delta_y), max_y + (0.05 * delta_y)), xlim=(-0.75, n_channels - 0.25),
-               xticks=range(n_channels))
-        ax.legend()
-        ax.set_title(f"Slices: {slices[i_shim]}, Total static current: {np.abs(static_coefs[i_shim]).sum()}")
-        ax.set_xlabel('Channels')
-        ax.set_ylabel(f"Coefficients {units}")
-
-    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
-    fig.savefig(fname_figure, bbox_inches='tight')
-    logger.debug(f"Saved figure: {fname_figure}")
+    ax.set_title(f"Slices: {slice_number}, Total static current: {np.abs(static_coefs).sum()}")
+    ax.set_xlabel('Channels')
+    ax.set_ylabel(f"Coefficients {units}")
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

@@ -25,6 +25,7 @@ def _define_inputs(fmap_dim):
     nii = nib.load(fname_fmap)
 
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
+
     fm_data = json.load(open(fname_json))
 
     if fmap_dim == 4:
@@ -38,6 +39,7 @@ def _define_inputs(fmap_dim):
 
     # fname for anat
     fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
     nii_anat = nib.load(fname_anat)
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
@@ -81,6 +83,7 @@ class TestCliDynamic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
+
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
