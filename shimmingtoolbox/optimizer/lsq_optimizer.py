@@ -5,6 +5,7 @@ import numpy as np
 import scipy.optimize as opt
 from typing import List
 import warnings
+
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
@@ -44,11 +45,20 @@ class LsqOptimizer(Optimizer):
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std
         }
-        if opt_criteria in lsq_residual_dict:
+        lsq_jacobian_dict = {
+            allowed_opt_criteria[0]: self._residuals_mse_jacobian,
+            allowed_opt_criteria[1]: None,
+            allowed_opt_criteria[2]: None
+        }
+
+        if opt_criteria in allowed_opt_criteria:
             self._criteria_func = lsq_residual_dict[opt_criteria]
+            self._jacobian_func = lsq_jacobian_dict[opt_criteria]
             self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
+
+        self.b = None
 
     @property
     def initial_guess_method(self):
@@ -148,21 +158,14 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        if self.opt_criteria == 'mse':
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor),
-                                       method='SLSQP',
-                                       bounds=self.merged_bounds,
-                                       constraints=tuple(scipy_constraints),
-                                       jac=self._residuals_mse_jacobian,
-                                       options={'maxiter': 1000})
-        else:
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor),
-                                       method='SLSQP',
-                                       bounds=self.merged_bounds,
-                                       constraints=tuple(scipy_constraints),
-                                       options={'maxiter': 1000})
+        currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                   args=(unshimmed_vec, coil_mat, factor),
+                                   method='SLSQP',
+                                   bounds=self.merged_bounds,
+                                   constraints=tuple(scipy_constraints),
+                                   jac=self._jacobian_func,
+                                   options={'maxiter': 1000})
+
         return currents_sp
 
     def get_initial_guess(self):
@@ -221,8 +224,6 @@ class LsqOptimizer(Optimizer):
         The function to minimize is :
         np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        If you want to see the mathematical expression for the jacobian, of this function or for the mae one,
-        please contact : aurelienpujolmpro@gmail.com
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
@@ -235,7 +236,7 @@ class LsqOptimizer(Optimizer):
             jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
         """
         jacobian = np.array([
-            self.b * np.sum((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) * coil_mat[:, j]) + \
+            self.b * np.sum((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) * coil_mat[:, j]) +
             np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
             for j in range(coef.size)
         ])
@@ -421,5 +422,6 @@ class PmuLsqOptimizer(LsqOptimizer):
                                    args=(unshimmed_vec, coil_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
+                                   jac=self._jacobian_func,
                                    options={'maxiter': 500})
         return currents_sp
