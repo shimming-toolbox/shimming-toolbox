@@ -62,7 +62,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', Note: refer to their specific
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                       implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation.
@@ -206,24 +206,24 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         if opt_criteria is None or opt_criteria == 'mse':
             if mse_shimmed > mse_unshimmed:
                 logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                                   f"i_shim: {i_shim}")
+                               f"i_shim: {i_shim}")
         elif opt_criteria == 'mae':
             if mae_shimmed > mae_unshimmed:
-                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                                   f"i_shim: {i_shim}")
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
         elif opt_criteria == 'std':
             if std_shimmed > std_unshimmed:
-                    logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
-                                   f"i_shim: {i_shim}")
+                logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
+                               f"i_shim: {i_shim}")
 
         logger.debug(f"Slice(s): {slices[i_shim]}\n"
-                        f"MAE:\n"
-                        f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
-                        f"MSE:\n"
-                        f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
-                        f"STD:\n"
-                        f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
-                        f"current: \n{coef[i_shim, :]}")
+                     f"MAE:\n"
+                     f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                     f"MSE:\n"
+                     f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                     f"STD:\n"
+                     f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
+                     f"current: \n{coef[i_shim, :]}")
 
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
@@ -284,7 +284,7 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
 
     for i_shim in list_shim_slice:
         # We want to do the np.sum with a 3D matrix if possible
-        corr = np.sum(coefs[i_shim] * coils_anat[:,:, slices[i_shim], :], axis=3, keepdims=False)
+        corr = np.sum(coefs[i_shim] * coils_anat[:, :, slices[i_shim], :], axis=3, keepdims=False)
         shimmed_anat_orient[..., slices[i_shim]] += corr
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
@@ -934,36 +934,39 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
 
     return optimizer
 
+
 @timeit
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
-    # Count shims to perform
+    # Number of optimizations to perform
     n_shims = len(slices_anat)
-    # If the method is the mse with jacobian, it's faster to not do the multiprocessing on mac computer for smaller
-    # dataset, but it's not the case for big ones. So for now, I will put mp for every dataset, but it can change
-    #if opt_criteria == 'mse' and sys.platform != 'linux':
-        #_worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
-                     #shimwise_bounds)
-        #results = []
-        #for i in range(n_shims):
-            #result = _opt(i)
-            #results.append(result)
-    #else:
-    # multiprocessing optimization
+
+    # If the opt_criteria is mse with jacobian, it's faster to not use multiprocessing on mac for smaller
+    # datasets. For now, we use mp for every dataset.
+    # if opt_criteria == 'mse' and sys.platform != 'linux':
+    #     _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
+    #                  shimwise_bounds)
+    #     results = []
+    #     for i in range(n_shims):
+    #         result = _opt(i)
+    #         results.append(result)
+    # else:
+
+    # Multiprocessing optimization
     _optimize_scope = (
         optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
 
     # Default number of workers is set to mp.cpu_count()
     # _worker_init gets called by each worker with _optimize_scope as arguments
-    # _worker_init converts those arguments as globals, so they can be accessed in _opt
+    # _worker_init converts those arguments as globals so they can be accessed in _opt
     # This works because each worker has its own version of the global variables
     # This allows to use both fork and spawn while not serializing the arguments making it slow
     # It also allows to give as input only 1 iterable (range(n_shims))) so 'starmap' does not have to be used
 
-    # 'imap_unordered' is used since a worker returns the value when it is done instead of waiting for the whole
-    # call to 'map', 'starmap' to finish. This allows to show progress. 'imap' is similar to 'imap_unordered' but
-    # since it returns in order, the progress is less accurate. Even though 'map_async' and 'starmap_async' do
-    # not block, the whole call needs to be finished to access the results (results.get()). A whole discussion
+    # 'imap_unordered' is used since a worker returns the value when it is done instead of waiting for the whole call
+    # to 'map', 'starmap' to finish. This allows to show progress. 'imap' is similar to 'imap_unordered' but since it
+    # returns in order, the progress is less accurate. Even though 'map_async' and 'starmap_async' do not block, the
+    # whole call needs to be finished to access the results (results.get()). A whole discussion
     # thread is available here: https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the
     # -difference-between-map-async-and-imap
     pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
