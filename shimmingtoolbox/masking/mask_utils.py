@@ -59,10 +59,10 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
-    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
-        nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    # if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+    #     nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
+    #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
 
     return nii_mask_dilated
 
