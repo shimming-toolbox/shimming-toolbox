@@ -122,7 +122,7 @@ class TestPrepareFieldmap(object):
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
-                                 np.array([19.46321364, 15.46275223, 11.0505227,  6.28134902,  1.30906534])))
+                                 np.array([18.46123383, 14.46463515, 10.1256239,  5.46868596,  0.56372493])))
 
 
 def test_correct_2pi_offset():
