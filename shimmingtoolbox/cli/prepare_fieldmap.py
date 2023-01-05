@@ -147,7 +147,7 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
     affine = nii_phase.affine
 
     # Magnitude image
-    _, json_mag, mag = read_nii(fname_mag)
+    _, json_mag, mag = read_nii(fname_mag, auto_scale=False)
 
     # Import mask
     if fname_mask is not None:
