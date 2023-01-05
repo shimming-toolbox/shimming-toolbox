@@ -141,9 +141,16 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
-        # Fill values
-        filled = fill(fieldmap_hz, mask == False)
-        fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
+        # If its 4d data, gaussian blur each volume individually
+        if len(fieldmap_hz.shape) == 4:
+            for it in range(fieldmap_hz.shape[-1]):
+                # Fill values
+                filled = fill(fieldmap_hz[..., it], mask[..., it] == False)
+                fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest') * mask[..., it]
+        # 3d data
+        else:
+            filled = fill(fieldmap_hz, mask == False)
+            fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
 
     return fieldmap_hz, mask
 
@@ -179,7 +186,11 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
     """
     # Create a mask that excludes the noise
+    # TODO: What if the validity region is bigger than the mask
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
+
+    # Logical and with the mask used for calculating the fieldmap
+    validity_masks = np.logical_and(mask, validity_masks)
 
     for i_time in range(1, unwrapped.shape[3]):
         # Take the region where both masks intersect
@@ -200,8 +211,8 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
                            "ambiguous, verify the output fieldmap.")
 
         if n_offsets != 0:
-            logger.debug(f"Correcting for phase n*2pi offset, offset was: {n_offsets_float}")
-
+            logger.info(f"Correcting for phase n*2pi offset, offset was: {n_offsets_float}")
+        logger.info(f"Offset was: {n_offsets_float}")
         # Remove n_offsets to unwrapped[..., i_time] only in the masked region
         unwrapped[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
 
