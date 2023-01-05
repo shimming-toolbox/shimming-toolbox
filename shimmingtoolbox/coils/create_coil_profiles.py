@@ -45,7 +45,7 @@ def create_coil_profiles(fnames_fmaps, list_currents):
         for i_current in range(n_currents):
             nii_fmap = nib.load(fnames_fmaps[i_channel][i_current])
 
-            # Make sure affine ans shape are the same for all channels
+            # Make sure affine and shape are the same for all channels
             if np.all(nii_fmap.shape != shape):
                 raise ValueError("Input shape of fieldmaps must be the same")
             if np.all(nii_fmap.affine != affine):
