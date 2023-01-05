@@ -25,6 +25,7 @@ def _define_inputs(fmap_dim):
     nii = nib.load(fname_fmap)
 
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
+
     fm_data = json.load(open(fname_json))
 
     if fmap_dim == 4:
@@ -38,6 +39,7 @@ def _define_inputs(fmap_dim):
 
     # fname for anat
     fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+
     nii_anat = nib.load(fname_anat)
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
@@ -81,11 +83,13 @@ class TestCliDynamic(object):
                          anat_data=anat_data, fname_anat_json=fname_anat_json)
 
             runner = CliRunner()
+
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '2',
+                                             '--regularization-factor', '0.1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -1004,3 +1008,53 @@ def _create_dummy_coil(nii_fmap):
     }
 
     return nii_dummy_coil, dummy_coil_constraints
+
+
+def test_b0_max_intensity():
+    """ We use a 4d fieldmap not intended for this application for testing """
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        fname_output = os.path.join(tmp, 'output.txt')
+
+        nii = nib.load(fname_input)
+        # Set up mask: Cube
+        nx, ny, nz = nii.shape[:3]
+        mask = shapes(nii.get_fdata()[..., 0], 'cube',
+                      center_dim1=32,
+                      center_dim2=36,
+                      len_dim1=10, len_dim2=10, len_dim3=nz)
+        nii_mask = nib.Nifti1Image(mask.astype(int), nii.affine)
+        nib.save(nii_mask, fname_mask)
+
+        runner = CliRunner()
+        res = runner.invoke(b0shim_cli, ['max-intensity',
+                                         '--input', fname_input,
+                                         '--mask', fname_mask,
+                                         '-o', fname_output],
+
+                            catch_exceptions=False)
+
+        assert res.exit_code == 0
+        with open(fname_output, 'r', encoding='utf-8') as f:
+            assert f.readline().strip() == "1"
+            assert f.readline().strip() == "9"
+
+
+def test_b0_max_intensity_no_mask():
+    """ We use a 4d fieldmap not intended for this application for testing """
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+        fname_output = os.path.join(tmp, 'output.txt')
+
+        runner = CliRunner()
+        res = runner.invoke(b0shim_cli, ['max-intensity',
+                                         '--input', fname_input,
+                                         '-o', fname_output],
+
+                            catch_exceptions=False)
+
+        assert res.exit_code == 0
+        with open(fname_output, 'r', encoding='utf-8') as f:
+            assert f.readline().strip() == "1"
+            assert f.readline().strip() == "1"

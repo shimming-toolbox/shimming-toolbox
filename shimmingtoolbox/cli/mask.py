@@ -4,14 +4,15 @@ import click
 import nibabel as nib
 import numpy as np
 import os
-from pathlib import Path
+import logging
 
 import shimmingtoolbox.masking.threshold
-from shimmingtoolbox.masking.shapes import shape_square
-from shimmingtoolbox.masking.shapes import shape_cube
-from shimmingtoolbox.utils import run_subprocess, create_output_dir
+from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
+from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS,
@@ -29,17 +30,21 @@ def mask_cli():
                        "in 'center'. The mask is stored by default under the name 'mask.nii.gz' in the output folder."
                        "Return the filename for the output mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
+              help="Input path of the nifti file to mask. This nifti file must have 3D. Supported extensions are"
                    " .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
+              help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=3, required=True, type=int,
-              help="(int): Length of the side of the box along first, second and third dimension (in pixels). "
+              help="Length of the side of the box along first, second and third dimension (in pixels). "
                    "(nargs=3)")
 @click.option('--center', nargs=3, type=int, default=(None, None, None),
-              help="(int): Center of the box along first, second and third dimension (in pixels). If no center "
+              help="Center of the box along first, second and third dimension (in pixels). If no center "
                    "is provided (None), the middle is used. (nargs=3) (default: None, None, None)")
-def box(fname_input, output, size, center):
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def box(fname_input, output, size, center, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
 
     # Prepare the output
     create_output_dir(output, is_file=True)
@@ -71,16 +76,21 @@ def box(fname_input, output, size, center):
                        " the name 'mask.nii.gz' in the output folder."
                        "Return an output nifti file with square mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
+              help="Input path of the nifti file to mask. This nifti file must have 2D or 3D. Supported "
                    "extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz.")
+              help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--size', nargs=2, required=True, type=int,
-              help="(int): Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
+              help="Length of the side of the box along first and second dimension (in pixels). (nargs=2)")
 @click.option('--center', nargs=2, type=int, default=(None, None),
-              help="(int): Center of the box along first and second dimension (in pixels). If no center is "
+              help="Center of the box along first and second dimension (in pixels). If no center is "
                    "provided (None), the middle is used. (nargs=2) (default: None, None)")
-def rect(fname_input, output, size, center):
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def rect(fname_input, output, size, center, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
     # Prepare the output
     create_output_dir(output, is_file=True)
 
@@ -115,18 +125,54 @@ def rect(fname_input, output, size, center):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Create a spherical mask in the coordinates of the input file. The mask is stored by default "
+                       "under the name 'mask.nii.gz' in the output folder.")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-r', '--radius', required=True, type=int,
+              help="Number of pixels for the radius of the sphere.")
+@click.option('--center', nargs=3, type=int, default=(None, None, None),
+              help="Center of the sphere along first, second and third dimension (in pixels). If no center is "
+                   "provided, the middle is used.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def sphere(fname_input, fname_output, radius, center, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    nii = nib.load(fname_input)
+
+    # API for sphere mask
+    mask = shape_sphere(nii.get_fdata(), radius, center[0], center[1], center[2])
+
+    nii_mask = nib.Nifti1Image(mask.astype(int), affine=nii.affine, header=nii.header)
+    nib.save(nii_mask, fname_output)
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Create a threshold mask from the input file. "
                        "The nifti file is converted into a numpy array. A binary mask is created from the thresholding"
                        " of the array. The mask is stored by default under the name 'mask.nii.gz' in the output "
                        "folder. Return an output nifti file with threshold mask.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="(str): Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
+              help="Input path of the nifti file to mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
-              help="(str): Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
+              help="Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask.nii.gz'))")
-@click.option('--thr', default=30, help="(int): Value to threshold the data: voxels will be set to zero if their "
+@click.option('--thr', default=30, help="Value to threshold the data: voxels will be set to zero if their "
                                         "value is equal or less than this threshold. (default: 30)")
-def threshold(fname_input, output, thr):
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def threshold(fname_input, output, thr, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
     # Prepare the output
     create_output_dir(output, is_file=True)
 

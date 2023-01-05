@@ -27,17 +27,10 @@ Dependencies
 Installation
 ------------
 
-The installer will automatically install:
-
-- ``FSLeyes``
-- ``Shimming Toolbox``
-- ``dcm2niix``
-
 .. Note::
 
-    The installer will install ``FSLeyes`` and ``dcm2niix`` into isolated environments. They will be used by
-    ``Shimming Toolbox`` and will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
-    have previously installed ``FSLeyes``, it will not support the GUI.
+    The installer will install ``Shimming Toolbox``, ``FSLeyes`` and ``dcm2niix`` into an isolated environment. They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
+    have previously installed ``FSLeyes``, that version will not support the GUI.
 
 Open a Terminal and run the following commands.
 
@@ -104,7 +97,7 @@ To run the entire testing suite, run ``pytest`` from the
 
   cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-  conda activate st_venv
+  conda activate ~/shimming-toolbox/python/
   pytest
 
 See https://docs.pytest.org/ for more options.
@@ -124,7 +117,7 @@ To test shimming-toolbox without ``prelude``:
 
   cd ~/shimming-toolbox/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-  conda activate st_venv
+  conda activate ~/shimming-toolbox/python/
   pytest -m "not prelude"
 
 To test **only** the parts of shimming-toolbox dependent on ``prelude``, the corresponding ``-m`` argument is ``"prelude"``
@@ -165,4 +158,5 @@ You can then activate the ``shimming-toolbox`` environment and start coding!
 
 .. code:: bash
 
-    conda activate st_venv
+    source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
+    conda activate ~/shimming-toolbox/python/

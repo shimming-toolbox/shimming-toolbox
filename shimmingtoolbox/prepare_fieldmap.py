@@ -6,6 +6,7 @@ import math
 import nibabel
 import numpy as np
 from skimage.filters import gaussian
+from sklearn.linear_model import LinearRegression
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
@@ -85,6 +86,15 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         # phase should be a phasediff
         nii_phasediff = list_nii_phase[0]
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
+        # Run the unwrapper
+        phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
+                                           fname_save_mask=fname_save_mask)
+        # If it's 4d (i.e. there are timepoints)
+        if len(phasediff_unwrapped.shape) == 4:
+            phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
+
+        # Divide by echo time
+        fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
 
     elif len(phase) == 2:
         echo_0 = phase[0]
@@ -96,22 +106,37 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
         # Calculate the echo time difference
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
+        # Run the unwrapper
+        phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
+                                           fname_save_mask=fname_save_mask)
+
+        # If it's 4d (i.e. there are timepoints)
+        if len(phasediff_unwrapped.shape) == 4:
+            phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
+
+        # Divide by echo time
+        fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
 
     else:
-        # TODO: More echoes
-        # TODO: Add method once multiple methods are implemented
-        raise NotImplementedError(f"This number of phase input is not supported: {len(phase)}.")
+        # Calculates field map based on multi echo phases by running the prelude unwrapper for each phase individually.
+        if len(np.shape(list_nii_phase[0])) == 4:
+            raise NotImplementedError("Four-dimensional multi echo is not implemented yet")
+        n_echoes = len(list_nii_phase)  # Number of Echoes
+        unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
+                                  fname_save_mask=fname_save_mask) for echo_number in range(n_echoes)]
+        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, 3)  # Merges all phase nii's in 4th dimension
+        # The mag must be the same size as the unwrapped_data to yield an equal mask for the
+        # "correct_2pi_offset" function.
+        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=3)
+        mask = mask_threshold(new_mag - new_mag.min(), threshold * (new_mag.max() - new_mag.min()))
+        unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask, VALIDITY_THRESHOLD)
+        x = np.asarray(echo_times)
+        # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
+        # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
+        reg = LinearRegression().fit(x.reshape(-1, 1), unwrapped_data_corrected.reshape(-1, n_echoes).T)
+        # Slope of linear regression reshaped into the shape of original 3D phase.
+        fieldmap_rad = reg.coef_.reshape(unwrapped_data.shape[:-1])  # [rad / s]
 
-    # Run the unwrapper
-    phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
-                                       fname_save_mask=fname_save_mask)
-
-    # If it's 4d (i.e. there are timepoints)
-    if len(phasediff_unwrapped.shape) == 4:
-        phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
-
-    # Divide by echo time
-    fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
     fieldmap_hz = fieldmap_rad / (2 * math.pi)  # [Hz]
 
     # Gaussian blur the fieldmap
@@ -120,7 +145,6 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         filled = fill(fieldmap_hz, mask == False)
         fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
 
-    # return fieldmap_hz_gaussian
     return fieldmap_hz, mask
 
 

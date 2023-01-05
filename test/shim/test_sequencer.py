@@ -20,6 +20,7 @@ from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, resample_mask
 from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.utils import set_all_loggers
 
@@ -124,17 +125,27 @@ class TestSequencer(object):
     def test_shim_sequencer_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_pseudo(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='pseudo_inverse')
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
+    def test_shim_sequencer_std(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nii_anat.shape[2], 1)
+        currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
+                                  opt_criteria='std')
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_mae(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nii_anat.shape[2], 1)
+        currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
+                                  opt_criteria='mae')
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_2_coils_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -142,36 +153,28 @@ class TestSequencer(object):
         slices = define_slices(nii_anat.shape[2], 1)
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil, sph_coil2],
                                   method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil, sph_coil2], currents, slices)
 
     def test_shim_sequencer_coefs_are_none(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Coil with None constraints
         coil = create_coil(5, 5, nz, create_constraints(None, None, None), affine)
-
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [coil], method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [coil], currents, slices)
 
     def test_shim_sequencer_slab_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         """Test for slices arranged as a slab"""
         # Optimize
         slices = define_slices(nii_anat.shape[2], nii_anat.shape[2])
-
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_dynamic_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         """Test for slices arranged for dynamic shimming"""
         # Optimize
         slices = [(0,), (1,), (2,)]
-
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_multi_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -179,7 +182,6 @@ class TestSequencer(object):
         # Optimize
         slices = [(0, 2), (1,)]
         currents = shim_sequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_wrong_optimizer(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -777,3 +779,37 @@ class TestParseSlices(object):
             slices = parse_slices(fname_nifti)
 
             assert slices == [(2,), (3, 4), (0, 1)]
+
+
+class TestMaxintensity():
+    """ We are using a 4d fieldmap as input just for testing. """
+    def setup(self):
+        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+        self.nii_input = nib.load(fname_input)
+
+        # Set up mask: Cube
+        nx, ny, nz = self.nii_input.shape[:3]
+        mask = shapes(self.nii_input.get_fdata()[..., 0], 'cube',
+                      center_dim1=32,
+                      center_dim2=36,
+                      len_dim1=10, len_dim2=10, len_dim3=nz)
+        self.nii_mask = nib.Nifti1Image(mask.astype(int), self.nii_input.affine)
+
+    def test_default_max_intensity(self):
+        output = shim_max_intensity(self.nii_input, self.nii_mask)
+        assert output == 8
+
+    def test_max_intensity_res_mask(self):
+        slice = self.nii_input.get_fdata()[:-3, :-3, 0, 0] > 100
+        nii_diff_mask = nib.Nifti1Image(np.concatenate((slice[..., np.newaxis], slice[..., np.newaxis]), axis=2),
+                                        self.nii_input.affine, header=self.nii_input.header)
+        output = shim_max_intensity(self.nii_input, nii_diff_mask)
+        assert output == 0
+
+    def test_max_intensity_wrong_input_dim(self):
+        with pytest.raises(ValueError, match="Input volume must be 4d"):
+            shim_max_intensity(self.nii_mask, self.nii_mask)
+
+    def test_max_intensity_wrong_mask_dim(self):
+        with pytest.raises(ValueError, match="Input mask must be 3d"):
+            shim_max_intensity(self.nii_input, self.nii_input)

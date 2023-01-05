@@ -3,10 +3,12 @@
 from pathlib import Path
 import shutil
 import os
+import pytest
 
 from examples.general_demo import general_demo
 
 
+@pytest.mark.prelude
 class TestCore(object):
 
     def setup(self):
