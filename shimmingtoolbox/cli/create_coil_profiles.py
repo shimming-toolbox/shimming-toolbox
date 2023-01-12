@@ -23,10 +23,17 @@ logger = logging.getLogger(__name__)
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
-              help="Input filename of json config file")
+              help="Input filename of json config file. "
+                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials.html>`_ for more "
+                   "details.")
+@click.option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
+              help="Path to add before each file in the config file. This allows to have relative paths in the config "
+                   "file. If this option is not specified, absolute paths must be provided in the config file.")
 @click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
-@click.option('--threshold', type=float, help="Threshold for masking.")
+@click.option('--threshold', type=float, required=True,
+              help="Threshold for masking. Allowed range: [0, 1] where all scaled values lower than the threshold are "
+                   "set to 0.")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
               help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
                    "standard data, it would be preferable to set this option to False and input your phase data from "
@@ -37,8 +44,8 @@ logger = logging.getLogger(__name__)
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output path filename of coil profile nifti file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussian_filter, sigma, fname_output,
-                             verbose):
+def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
+                             fname_output, verbose):
     """Create b0 coil profiles from acquisitions defined in the input json file"""
 
     # Set logger level
@@ -67,6 +74,22 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
     mags = json_data["mag"]
     list_setup_currents = json_data["setup_currents"]
     n_channels = json_data["n_channels"]
+
+    # Handle relative paths in the config file
+    if path_relative is not None:
+        path_relative = os.path.abspath(path_relative)
+        logger.info(path_relative)
+        if os.path.isdir(path_relative):
+            for i_channel in range(n_channels):
+                n_currents = len(phases[i_channel])
+                for i_current in range(n_currents):
+                    n_echoes = len(phases[i_channel][i_current])
+                    for i_echo in range(n_echoes):
+                        # Add the relative path to the fnames in the config file
+                        phases[i_channel][i_current][i_echo] = os.path.join(path_relative,
+                                                                            phases[i_channel][i_current][i_echo])
+                        mags[i_channel][i_current][i_echo] = os.path.join(path_relative,
+                                                                          mags[i_channel][i_current][i_echo])
 
     # Find dead channels (mag or phase is not filled)
     dead_channels = []
@@ -106,7 +129,7 @@ def create_coil_profiles_cli(fname_json, autoscale, unwrapper, threshold, gaussi
 
             # Threshold mask for i_channel, i_current and all echoes
             current_mean /= n_echoes
-            tmp_mask = mask_threshold(current_mean, threshold)
+            tmp_mask = mask_threshold(current_mean, threshold, scaled_thr=True)
 
             # And mask for a i_channel but all currents
             channel_mask = np.logical_and(tmp_mask, channel_mask)
