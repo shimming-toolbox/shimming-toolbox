@@ -74,12 +74,12 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
     # Make sure mask has the right shape
     if mask is None:
         # Define the mask using the threshold
-        mask = mask_threshold(mag - mag.min(), threshold * (mag.max() - mag.min()))
+        mask = mask_threshold(mag, threshold, scaled_thr=True)
     else:
         if mask.shape != phase[0].shape:
             raise ValueError("Shape of mask and phase must match.")
 
-        logger.info("A mask was provided, ignoring threshold value")
+        logger.debug("A mask was provided, ignoring threshold value")
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
@@ -118,18 +118,33 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
 
     else:
-        # Calculates field map based on multi echo phases by running the prelude unwrapper for each phase individually.
-        if len(np.shape(list_nii_phase[0])) == 4:
-            raise NotImplementedError("Four-dimensional multi echo is not implemented yet")
+        # Calculates field map based on multi echo phases by running the unwrapper for each echo individually.
         n_echoes = len(list_nii_phase)  # Number of Echoes
         unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
                                   fname_save_mask=fname_save_mask) for echo_number in range(n_echoes)]
-        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, 3)  # Merges all phase nii's in 4th dimension
+        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, -1)  # Merges all phase echoes on the last dim
         # The mag must be the same size as the unwrapped_data to yield an equal mask for the
         # "correct_2pi_offset" function.
-        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=3)
-        mask = mask_threshold(new_mag - new_mag.min(), threshold * (new_mag.max() - new_mag.min()))
-        unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask, VALIDITY_THRESHOLD)
+        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=-1)
+        mask_tmp = np.repeat(mask[..., np.newaxis], n_echoes, axis=-1)
+
+        # Time series
+        if len(np.shape(list_nii_phase[0])) == 4:
+            # dimensions: [x, y, z, t, echo]
+            unwrapped_data_corrected = np.zeros_like(unwrapped_data)
+            # Correct the first "time point" [..., 0, :] (based of [..., 0, 0])
+            unwrapped_data_corrected[..., 0, :] = correct_2pi_offset(unwrapped_data[..., 0, :], new_mag[..., 0, :],
+                                                                     mask_tmp[..., 0, :], VALIDITY_THRESHOLD)
+            # Correct each echo [..., i] (based of [..., 0, :])
+            for i_echo in range(n_echoes):
+                unwrapped_data_corrected[..., i_echo] = correct_2pi_offset(unwrapped_data[..., i_echo],
+                                                                           new_mag[..., i_echo], mask_tmp[..., i_echo],
+                                                                           VALIDITY_THRESHOLD)
+        # One time point
+        else:
+            # dimensions: [x, y, z, echo]
+            unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask_tmp, VALIDITY_THRESHOLD)
+
         x = np.asarray(echo_times)
         # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
         # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
@@ -173,7 +188,8 @@ def complex_difference(phase1, phase2):
 
 
 def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
-    """ Removes 2*pi offsets from `unwrapped` for a time series. If there is no offset, it returns the same array.
+    """ Removes 2*pi offsets from `unwrapped` for a time series. If there is no offset, it returns the same array. The
+        'correct' offset is assumed to be at time 0.
 
     Args:
         unwrapped (numpy.ndarray): 4d array of the spatially unwrapped phase
@@ -206,7 +222,7 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
         n_offsets = round(n_offsets_float)
 
-        if 0.2 < (n_offsets_float % 1) < 0.8:
+        if 0.3 < (n_offsets_float % 1) < 0.7:
             logger.warning("The number of 2*pi offsets when calculating the fieldmap of timepoints is close to "
                            "ambiguous, verify the output fieldmap.")
 
