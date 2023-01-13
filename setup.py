@@ -29,7 +29,8 @@ setup(
             "st_dump_env_info=shimmingtoolbox.cli.check_env:dump_env_info",
             "st_image=shimmingtoolbox.cli.image:image_cli",
             "st_maths=shimmingtoolbox.cli.maths:maths_cli",
-            "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli"
+            "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli",
+            "st_sort_dicoms=shimmingtoolbox.cli.sort_dicoms:sort_dicoms"
         ]
     },
     packages=find_packages(exclude=["docs"]),
@@ -45,6 +46,7 @@ setup(
         "tqdm",
         "matplotlib~=3.3.4",
         "psutil~=5.7.3",
+        "pydicom",
         "pytest>=6.2.5",
         "pytest-cov~=2.5.1",
         "scikit-learn>=1.1.2",
