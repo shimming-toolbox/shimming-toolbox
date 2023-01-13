@@ -34,7 +34,9 @@ def download_data(urls):
 
     # loop through URLs
     exceptions = []
+    print(urls)
     for url in urls:
+        print(url)
         try:
             logger.info('Trying URL: %s' % url)
             retry = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 503, 504])

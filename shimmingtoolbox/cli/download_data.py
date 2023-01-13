@@ -26,6 +26,11 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20220319.zip"],
         "B0 dynamic shimming dataset.",
     ),
+    "data_create_coil_profiles": (
+        ["https://github.com/shimming-toolbox/data-create-coil-profiles/releases/download/r20230113/dicoms.zip"],
+        ["https://github.com/shimming-toolbox/data-create-coil-profiles/archive/refs/tags/r20230113.zip"],
+        "B0 coil profile dataset.",
+    ),
     "data_b1_shimming": (
         ["https://github.com/shimming-toolbox/b1_dicoms_brain/archive/r20220319.zip"],
         "Static B1+ shimming dataset.",
@@ -55,7 +60,12 @@ def download_data(verbose, output, data):
     if verbose:
         logging.getLogger().setLevel(logging.INFO)
     logging.info(f'{output}, {data}')
-    url = URL_DICT[data][0]
+
     if output is None:
         output = os.path.join(os.path.abspath(os.curdir), data)
-    install_data(url, output, keep=True)
+
+    if data == 'data_create_coil_profiles':
+        install_data(URL_DICT[data][0], os.path.join(output, 'dicoms'), keep=True)
+        install_data(URL_DICT[data][1], output, keep=True)
+    else:
+        install_data(URL_DICT[data][0], output, keep=True)
