@@ -21,9 +21,6 @@ logger = logging.getLogger(__name__)
 def sort_dicoms(path_input, path_output, verbose):
     set_all_loggers(verbose)
 
-    # Create output directory
-    create_output_dir(path_output)
-
     # Create a list containing all the DICOMs in the input folder
     list_dicoms = []
     for name in os.listdir(path_input):
@@ -39,6 +36,9 @@ def sort_dicoms(path_input, path_output, verbose):
     # Make sure there is at least one DICOM
     if not list_dicoms:
         raise RuntimeError(f"{path_input} does not contain dicom files")
+
+    # Create output directory
+    create_output_dir(path_output)
 
     # For loop on all DICOMs in the directory
     for fname_dcm in sorted(list_dicoms):
