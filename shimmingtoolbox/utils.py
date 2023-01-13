@@ -222,7 +222,8 @@ def save_nii_json(nii, json_data, fname_output):
     """
     # Make sure output filename is valid
     if fname_output[-4:] != '.nii' and fname_output[-7:] != '.nii.gz':
-        raise ValueError("Output filename must have one of the following extensions: '.nii', '.nii.gz'")
+        raise ValueError(f"Output filename: {fname_output} must have one of the following extensions: '.nii', "
+                         "'.nii.gz'")
 
     # Create output directory if it does not exist
     create_output_dir(fname_output, is_file=True)
