@@ -45,9 +45,11 @@ The first step is to convert the DICOMs into NIfTI files. To do so, we first nee
 The command :ref:`st_create_coil_profiles` requires the different phase, magnitude, echoes and currents to be separated
 in different NIfTI files. A helper script was downloaded with the dataset named: `batch_dicom_to_nifti.sh` that will
 process each folder of DICOMs into NIfTI files sorted by the folder names of the input. This script can be used with other datasets.
+You will need to give executable permission to the script beforehand.
 
 .. code:: bash
 
+    chmod +x batch_dicom_to_nifti.sh
     ./batch_dicom_to_nifti.sh dicoms_sorted .
 
 Config file
@@ -58,26 +60,21 @@ NIfTI folders, the current used for each channel and other information that will
 required for B0 shimming (:ref:`st_shimming`). The configuration file for this dataset is already filled in as:
 `configuration_file.json`. The following describes the different arguments required in the JSON file:
 
-"phase": 3D list containing the path of phase NIfTI files of the different channels, currents and echos. Note that the
-first dimension is the different channels, the second the different currents and the third the different echoes.
+* "phase": 3D list containing the path of phase NIfTI files of the different channels, currents and echos. Note that the first dimension is the different channels, the second the different currents and the third the different echoes.
 
-"mag": 3D list containing the path of magnitude NIfTI files of the different channels, currents and echoes.
+* "mag": 3D list containing the path of magnitude NIfTI files of the different channels, currents and echoes.
 
-"setup_currents": 2D list containing the currents used for each channel. Note that the first dimension is the different
-channels and the second is the different currents.
+* "setup_currents": 2D list containing the currents used for each channel. Note that the first dimension is the different channels and the second is the different currents.
 
-"name": Name of the coil
+* "name": Name of the coil
 
-"n_channels": Number of channels
+* "n_channels": Number of channels
 
-"Units": Units used for setup_currents. Note that this is for displayed text purposes and does not affect any coil
-profile output.
+* "Units": Units used for setup_currents. Note that this is for displayed text purposes and does not affect any coil profile output.
 
-"coef_channel_minmax": 2D list containing the minimum and maximum currents allowed for each channel when shimming. Note
-that the first dimension is for the channels and the second dimension for the minimum and maximum current.
+* "coef_channel_minmax": 2D list containing the minimum and maximum currents allowed for each channel when shimming. Note that the first dimension is for the channels and the second dimension for the minimum and maximum current.
 
-"coef_sum_max": Maximum total current that the coil can use during shimming. Use null if there is not a limit on the
-total current.
+* "coef_sum_max": Maximum total current that the coil can use during shimming. Use null if there is not a limit on the total current.
 
 Create the coil profiles
 ________________________
@@ -88,6 +85,6 @@ each current and channel. A linear regression is then performed for each channel
 
 .. code:: bash
 
-    st_create_coil_profiles --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz"
+    st_create_coil_profiles --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
 
 The coil profiles are in a NIfTI file: "coil_profiles.nii.gz"
