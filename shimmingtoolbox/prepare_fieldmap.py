@@ -227,8 +227,9 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
                            "ambiguous, verify the output fieldmap.")
 
         if n_offsets != 0:
-            logger.info(f"Correcting for phase n*2pi offset, offset was: {n_offsets_float}")
-        logger.info(f"Offset was: {n_offsets_float}")
+            logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
+
+        logger.debug(f"Offset was: {n_offsets_float}")
         # Remove n_offsets to unwrapped[..., i_time] only in the masked region
         unwrapped[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
 
