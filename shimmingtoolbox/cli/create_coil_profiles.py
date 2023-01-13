@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
-              help="Output path filename of coil profile nifti file. Supported types : '.nii', '.nii.gz'")
+              help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
                              fname_output, verbose):
@@ -141,7 +141,7 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
     nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
     nib.save(nii_mask, fname_mask)
 
-    if not dead_channels:
+    if dead_channels:
         logger.warning(f"Channels: {dead_channels} do(es) not have phase or magnitude data. They will be set to 0.")
 
     # Calculate fieldmaps
