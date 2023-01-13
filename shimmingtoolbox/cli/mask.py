@@ -169,9 +169,11 @@ def sphere(fname_input, fname_output, radius, center, verbose):
                                         "value is equal or less than this threshold. (default: 30)")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def threshold(fname_input, output, thr, verbose):
-
+    
     # Set all loggers
     set_all_loggers(verbose)
+    # test
+    logger.info("this works third time")
 
     # Prepare the output
     create_output_dir(output, is_file=True)

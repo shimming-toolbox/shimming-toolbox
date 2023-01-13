@@ -45,7 +45,7 @@ supported_optimizers = {
 @timeit
 def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoil, method='least_squares',
                    opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
-                   path_output=None):
+                   w_signal_loss=0, epi_te=0, path_output=None):
     """
     Performs shimming according to slices using one of the supported optimizers and coil profiles.
 
@@ -153,22 +153,24 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
             nib.save(nii_mask_anat, os.path.join(path_output, "mask_static_resampled_on_anat.nii.gz"))
 
     # Select and initialize the optimizer
-    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor)
+    optimizer = select_optimizer(method, fieldmap, affine_fieldmap, coils, opt_criteria, reg_factor=reg_factor,
+    w_signal_loss=w_signal_loss, epi_te=epi_te)
 
     # Optimize slice by slice
     logger.info("Optimizing")
     coefs = _optimize(optimizer, nii_mask_anat, slices, dilation_kernel=mask_dilation_kernel,
-                      dilation_size=mask_dilation_kernel_size, path_output=path_output)
+                      dilation_size=mask_dilation_kernel_size, w_signal_loss=w_signal_loss,
+                      epi_te=epi_te, path_output=path_output)
 
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
-    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, opt_criteria)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, epi_te, path_output, opt_criteria)
 
     return coefs
 
 
 @timeit
-def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, opt_criteria=None):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, epi_te, path_output, opt_criteria=None):
     """Calculate theoretical shimmed map and output figures"""
 
     # Save the merged coil profiles if in debug
@@ -253,6 +255,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # TODO: Add units if possible
         # TODO: Add in anat space?
         _plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary, path_output)
+        _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask_full_binary, path_output, epi_te)
         _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
         _plot_currents(coef, path_output)
         _cal_shimmed_anat_orient(coef, merged_coils, nii_mask, nii_fieldmap_orig, slices, path_output)
@@ -411,13 +414,74 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     # Save
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
+    
+def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
+    # Plot
+    def calculate_signal_loss(B0_map):
+        signal_loss_map = 1
+        for i in range(0,3):
+            G = np.gradient(B0_map, axis = i)
+            signal_loss_map = signal_loss_map * np.sinc(epi_te * G)
+        signal_loss_map = 1 - signal_loss_map
+        return signal_loss_map
+    
+    unshimmed_signal_loss = calculate_signal_loss(unshimmed)
+    shimmed_signal_loss = calculate_signal_loss(shimmed_masked)
+    
+    mt_unshimmed = montage(unshimmed_signal_loss)
+    mt_unshimmed_masked = montage(unshimmed_signal_loss*mask)
+    mt_shimmed_masked = montage(shimmed_signal_loss)
+
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed_signal_loss, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_signal_loss, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_signal_loss, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_signal_loss, mask, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_signal_loss), mask, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_signal_loss), mask, metric='mean')
+
+    min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+
+    fig = Figure(figsize=(9, 6))
+    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    #ax.imshow(mt_unshimmed, cmap='gray')
+    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='hot')
+    ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+                 f"abs mean: {metric_unshimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    #ax.imshow(mt_unshimmed, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='hot')
+    ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+                 f"abs mean: {metric_shimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Lower suptitle
+    fig.subplots_adjust(top=0.85)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
 
 
 @timeit
 def shim_realtime_pmu_sequencer(nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices,
                                 pmu: PmuResp, coils: ListCoil, opt_method='least_squares', opt_criteria='mse',
                                 reg_factor=0, mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
-                                path_output=None):
+                                w_signal_loss=0, epi_te=0, path_output=None):
     """
     Performs realtime shimming using one of the supported optimizers and an external respiratory trace.
 
@@ -895,7 +959,7 @@ def new_bounds_from_currents(currents, old_bounds):
     return new_bounds
 
 
-def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, pmu: PmuResp = None, reg_factor=0):
+def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, pmu: PmuResp = None, reg_factor=0, w_signal_loss=0, epi_te=0):
     """
     Select and initialize the optimizer
 
@@ -919,7 +983,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
     # global supported_optimizers
     if method in supported_optimizers:
         if method == 'least_squares':
-            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
+            optimizer = supported_optimizers[method](coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor, w_signal_loss=w_signal_loss, epi_te=epi_te)
 
         elif method == 'least_squares_rt':
             # Make sure pmu is defined
@@ -937,13 +1001,13 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
 
 
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, shimwise_bounds=None,
-              dilation_kernel='sphere', dilation_size=3, path_output=None):
+              dilation_kernel='sphere', dilation_size=3, w_signal_loss=0, epi_te=0, path_output=None):
     # Count shims to perform
     n_shims = len(slices_anat)
 
     # multiprocessing optimization
     _optimize_scope = (
-        optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
+        optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, w_signal_loss, epi_te, shimwise_bounds)
 
     # Default number of workers is set to mp.cpu_count()
     # _worker_init gets called by each worker with _optimize_scope as arguments
@@ -988,8 +1052,7 @@ gl_path_output = None
 gl_shimwise_bounds = None
 
 
-def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
-                 shimwise_bounds):
+def _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, w_signal_loss, epi_te, shimwise_bounds):
     global gl_optimizer, gl_nii_mask_anat, gl_slices_anat, gl_dilation_kernel
     global gl_dilation_size, gl_path_output, gl_shimwise_bounds
     gl_optimizer = optimizer

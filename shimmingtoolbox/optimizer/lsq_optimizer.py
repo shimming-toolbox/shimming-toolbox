@@ -11,16 +11,17 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std']
+# add allowed criteria 'grad'
+allowed_opt_criteria = ['mse', 'mae', 'std', 'grad']
 
 
 class LsqOptimizer(Optimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
-        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
+        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.allowed_opt_criteria
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', reg_factor=0):
+    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', reg_factor=0, w_signal_loss=0, epi_te=0):
         """
         Initializes coils according to input list of Coil
 
@@ -38,12 +39,18 @@ class LsqOptimizer(Optimizer):
         self._initial_guess_method = 'mean'
         self.initial_coefs = None
         self.reg_factor = reg_factor
+        self.w_signal_loss = w_signal_loss
+        self.epi_te = epi_te
         self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
 
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
-            allowed_opt_criteria[2]: self._residuals_std
+            allowed_opt_criteria[2]: self._residuals_std,
+            #############################################
+            ####### Yixin add the following code ########
+            allowed_opt_criteria[3]: self._residuals_grad
+            #############################################
         }
         if opt_criteria in lsq_residual_dict:
             self._criteria_func = lsq_residual_dict[opt_criteria]
@@ -86,6 +93,31 @@ class LsqOptimizer(Optimizer):
         # MAE regularized to minimize currents
         return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
             (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+            
+    def _residuals_grad(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to minimize the mean squared error (MSE) and the signal loss function (gradient in z direction)
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+        Returns:
+            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+        """
+        #print("w_signal_loss is: " + str(self.w_signal_loss) + "," + " epi_te is: " + str(self.epi_te) + " factor is" + str(factor))
+        nx,ny,nz,nc = np.shape(self.merged_coils)
+        shimmed = self.unshimmed + np.sum(self.merged_coils * np.tile(coef,(nx,ny,nz,1)),axis= 3) # need test
+        signal = 1
+        # if consider signal loss from x, y, and z
+        for i in range(0,3):
+            G = np.gradient(shimmed, axis = i)
+            signal = signal * np.sinc(self.epi_te * G)
+        # MSE regularized to minimize currents
+        #print("" + str(np.shape(signal)))
+        #print("in this round of optimization, residual from signal loss is : " + str(np.mean(1 - signal) * self.w_signal_loss) + ", residual from B0 inhomogeneity is: " + str(np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))) + ", residual from current is " + str((self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))))
+        return np.mean(1 - signal) * self.w_signal_loss + \
+               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean squared error (MSE)
