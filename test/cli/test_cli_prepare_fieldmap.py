@@ -163,7 +163,7 @@ def test_cli_prepare_fieldmap_wrong_ext():
     fname_output = 'fieldmap.txt'
 
     with pytest.raises(ValueError,
-                       match="Output filename must have one of the following extensions: '.nii', '.nii.gz'"):
+                       match=r"Output filename: .* must have one of the following extensions: '.nii', '.nii.gz'"):
         runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output', fname_output],
                       catch_exceptions=False)
 
