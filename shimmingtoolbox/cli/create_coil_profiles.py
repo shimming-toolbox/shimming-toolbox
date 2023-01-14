@@ -62,8 +62,12 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
     #   "coef_channel_minmax": [i_channel][2]
     #   "coef_sum_max": null
 
-    # Get directory
-    path_output = os.path.dirname(os.path.abspath(fname_output))
+    # Get directory and set default name
+    fname_output = os.path.abspath(fname_output)
+    if os.path.isdir(fname_output):
+        os.path.join(fname_output, 'coil_profiles.nii.gz')
+    path_output = os.path.dirname(fname_output)
+
     create_output_dir(path_output)
 
     # Open json config file
@@ -95,6 +99,9 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
     # Find dead channels (mag or phase is not filled)
     dead_channels = []
     for i_channel in range(n_channels):
+        if not phases[i_channel] or not mags[i_channel]:
+            dead_channels.append(i_channel)
+            continue
         if not phases[i_channel][0] or not mags[i_channel][0]:
             dead_channels.append(i_channel)
             continue
