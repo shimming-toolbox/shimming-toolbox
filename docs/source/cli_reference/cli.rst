@@ -15,10 +15,10 @@ Field mapping
 .. click:: shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli
    :prog: st_prepare_fieldmap
 
-.. _st_shimming:
-
 Shimming
 --------
+
+.. _st_b0shimming:
 
 .. click:: shimmingtoolbox.cli.b0shim:b0shim_cli
    :prog: st_b0shim
@@ -40,10 +40,10 @@ File Conversion
 .. click:: shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli
    :prog: st_dicom_to_nifti
 
-.. _st_create_coil_profiles:
-
 Coil Profile Generation
 -----------------------
+
+.. _st_create_coil_profiles:
 
 .. click:: shimmingtoolbox.cli.create_coil_profiles:create_coil_profiles_cli
    :prog: st_create_coil_profiles

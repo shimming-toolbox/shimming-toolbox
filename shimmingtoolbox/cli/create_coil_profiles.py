@@ -46,7 +46,8 @@ logger = logging.getLogger(__name__)
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
                              fname_output, verbose):
-    """Create b0 coil profiles from acquisitions defined in the input json file"""
+    """ Create B0 coil profiles from acquisitions defined in the input json file. The output is in Hz/<current> where
+        current depends on the value in the configuration file"""
 
     # Set logger level
     set_all_loggers(verbose)
@@ -212,6 +213,8 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
         with open(fname_json_4d, mode='w') as f:
             json.dump(json_data_3d, f, indent=4)
 
+        # TODO: Check if we have already created this fmap (baseline is often there so checking the filename could save
+        #  a lot of time)
         fname_fmap = os.path.join(path_output, f"channel{i_channel}_fieldmap.nii.gz")
         prepare_fieldmap_uncli(list_fname_phase_4d, fname_4d, unwrapper, fname_fmap, autoscale,
                                fname_mask=fname_mask_4d,
@@ -227,6 +230,7 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
             nib.save(nii, fname_fmap_3d)
             fnames_fmap[index_channel].append(fname_fmap_3d)
 
+        # TODO: Use tmp directory instead
         # If not debug, remove junk output
         if not logger.level <= getattr(logging, 'DEBUG'):
             # Delete tmp fieldmaps
