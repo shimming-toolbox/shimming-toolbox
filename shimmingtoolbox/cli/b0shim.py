@@ -157,23 +157,28 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fmap_orig.get_fdata().ndim != 3:
-        raise ValueError("Fieldmap must be 3d (dim1, dim2, dim3)")
-
-    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
-    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
-    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
-    # for each dimension This is usually useful in the through plane direction where we could have less slices.
-    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
-    extending = False
-    for i_axis in range(3):
-        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
-            extending = True
-            break
-
-    if extending:
-        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+        if nii_fmap_orig.get_fdata().ndim == 2:
+            nii_fmap = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
+                                       header=nii_fmap_orig.header)
+            nii_fmap = extend_fmap_to_kernel_size(nii_fmap, dilation_kernel_size, path_output)
+        else:
+            raise ValueError("Fieldmap must be 3d or 2d")
     else:
-        nii_fmap = copy.deepcopy(nii_fmap_orig)
+        # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+        # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting
+        # (2 voxels in one dimension can differentiate order 1 at most), the parameter allows to have at least the
+        # size of the kernel for each dimension This is usually useful in the through plane direction where we could
+        # have less slices. To mitigate this, we create a 3d volume by replicating the slices on the edges.
+        extending = False
+        for i_axis in range(3):
+            if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+                extending = True
+                break
+
+        if extending:
+            nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+        else:
+            nii_fmap = copy.deepcopy(nii_fmap_orig)
 
     # Prepare the output
     create_output_dir(path_output)
