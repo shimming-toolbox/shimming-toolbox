@@ -194,9 +194,9 @@ class TestSequencer(object):
     def test_shim_sequencer_wrong_fmap_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = [(0, 2), (1,)]
-        nii_wrong_fmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine,
+        nii_wrong_fmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., np.newaxis], nii_fieldmap.affine,
                                          header=nii_fieldmap.header)
-        with pytest.raises(ValueError, match="Fieldmap must be 3d"):
+        with pytest.raises(ValueError, match="Fieldmap must be 2d or 3d"):
             shim_sequencer(nii_wrong_fmap, nii_anat, nii_mask, slices, [sph_coil])
 
     def test_shim_sequencer_wrong_anat_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):

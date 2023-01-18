@@ -91,7 +91,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
                                             header=nii_fmap_orig.header)
             nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
         else:
-            raise ValueError("Fieldmap must be 3d or 2d")
+            raise ValueError("Fieldmap must be 2d or 3d")
     else:
         # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
         # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting
