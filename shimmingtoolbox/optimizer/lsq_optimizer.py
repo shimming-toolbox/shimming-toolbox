@@ -39,7 +39,7 @@ class LsqOptimizer(Optimizer):
         self.initial_coefs = None
         self.reg_factor = reg_factor
         self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
-
+        self.reg_vector = self.reg_factor / len(self.reg_factor_channel) / self.reg_factor_channel
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
@@ -269,7 +269,6 @@ class LsqOptimizer(Optimizer):
         coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
                               (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
-        self.reg_vector = self.reg_factor / len(self.reg_factor_channel) / self.reg_factor_channel
         scipy_constraints = self._define_scipy_constraints()
 
         # Set up output currents
