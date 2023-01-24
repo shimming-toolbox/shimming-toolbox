@@ -132,13 +132,11 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         if len(np.shape(list_nii_phase[0])) == 4:
             # dimensions: [x, y, z, t, echo]
             unwrapped_data_corrected = np.zeros_like(unwrapped_data)
-            # Correct the first "time point" [..., 0, :] (based of [..., 0, 0])
-            unwrapped_data_corrected[..., 0, :] = correct_2pi_offset(unwrapped_data[..., 0, :], new_mag[..., 0, :],
-                                                                     mask_tmp[..., 0, :], VALIDITY_THRESHOLD)
-            # Correct each echo [..., i] (based of [..., 0, :])
-            for i_echo in range(n_echoes):
-                unwrapped_data_corrected[..., i_echo] = correct_2pi_offset(unwrapped_data[..., i_echo],
-                                                                           new_mag[..., i_echo], mask_tmp[..., i_echo],
+            # Correct all time points individually
+            n_t = np.shape(list_nii_phase[0])[3]
+            for i_t in range(n_t):
+                unwrapped_data_corrected[..., i_t, :] = correct_2pi_offset(unwrapped_data[..., i_t, :],
+                                                                           new_mag[..., i_t, :], mask_tmp[..., i_t, :],
                                                                            VALIDITY_THRESHOLD)
         # One time point
         else:
@@ -223,7 +221,7 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         n_offsets = round(n_offsets_float)
 
         if 0.3 < (n_offsets_float % 1) < 0.7:
-            logger.warning("The number of 2*pi offsets when calculating the fieldmap of timepoints is close to "
+            logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
                            "ambiguous, verify the output fieldmap.")
 
         if n_offsets != 0:
