@@ -94,7 +94,7 @@ class LsqOptimizer(Optimizer):
         """
 
         # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
+        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + \
                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
@@ -114,7 +114,7 @@ class LsqOptimizer(Optimizer):
         # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
         #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
         # MSE regularized to minimize currents
-        return np.mean((unshimmed_vec + coil_mat@coef) ** 2) / factor + \
+        return np.mean((unshimmed_vec + coil_mat @ coef) ** 2) / factor + \
                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
@@ -133,7 +133,7 @@ class LsqOptimizer(Optimizer):
         """
 
         # STD regularized to minimize currents
-        return np.std(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) / factor + \
+        return np.std(unshimmed_vec + coil_mat @ coef) / factor + \
                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _define_scipy_constraints(self):
