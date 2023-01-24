@@ -90,7 +90,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
 
         # MAE regularized to minimize currents
@@ -109,11 +109,12 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
-
+        # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
+        #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
         # MSE regularized to minimize currents
-        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+        return np.mean((unshimmed_vec + coil_mat@coef) ** 2) / factor + \
                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
@@ -128,7 +129,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
 
         # STD regularized to minimize currents
@@ -236,7 +237,7 @@ class LsqOptimizer(Optimizer):
             jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
         """
         jacobian = np.array([
-            self.b * np.sum((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) * coil_mat[:, j]) +
+            self.b * np.sum((unshimmed_vec + coil_mat @ coef) * coil_mat[:, j]) + \
             np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
             for j in range(coef.size)
         ])
@@ -268,7 +269,7 @@ class LsqOptimizer(Optimizer):
         coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
                               (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
-
+        self.reg_vector = self.reg_factor / len(self.reg_factor_channel) / self.reg_factor_channel
         scipy_constraints = self._define_scipy_constraints()
 
         # Set up output currents
