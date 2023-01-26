@@ -39,7 +39,7 @@ class LsqOptimizer(Optimizer):
         self.initial_coefs = None
         self.reg_factor = reg_factor
         self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
-        self.reg_vector = self.reg_factor / len(self.reg_factor_channel) / self.reg_factor_channel
+        self.reg_vector = self.reg_factor / (len(self.reg_factor_channel) * self.reg_factor_channel)
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
@@ -114,8 +114,8 @@ class LsqOptimizer(Optimizer):
         # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
         #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
         # MSE regularized to minimize currents
-        return np.mean((unshimmed_vec + coil_mat @ coef) ** 2) / factor + \
-               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        inner = unshimmed_vec + np.matmul(coil_mat, coef)
+        return inner.dot(inner) / len(inner) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the standard deviation (STD)
@@ -236,13 +236,12 @@ class LsqOptimizer(Optimizer):
         Returns:
             jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
         """
-        jacobian = np.array([
-            self.b * np.sum((unshimmed_vec + coil_mat @ coef) * coil_mat[:, j]) + \
-            np.sign(coef[j]) * (self.reg_factor / (9 * self.reg_factor_channel[j]))
-            for j in range(coef.size)
-        ])
-
-        return jacobian
+        #jacobian = np.array([
+            #self.b * np.sum((unshimmed_vec + coil_mat @ coef) * coil_mat[:, j]) + \
+            #np.sign(coef[j]) * (self.reg_factor / (len(coef) * self.reg_factor_channel[j]))
+            #for j in range(coef.size)
+        #])
+        return self.b * (unshimmed_vec + np.matmul(coil_mat, coef)) @ coil_mat + np.sign(coef) * self.reg_vector
 
     def optimize(self, mask):
         """
