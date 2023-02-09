@@ -384,7 +384,11 @@ class DropdownComponent(Component):
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
-        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+        if self.choice_box.GetSelection() < 0:
+            selection = self.choice_box.GetString(0)
+            self.choice_box.SetSelection(0)
+        else:
+            selection = self.choice_box.GetString(self.choice_box.GetSelection())
 
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
@@ -713,7 +717,11 @@ class B0ShimTab(Tab):
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
-        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+        if self.choice_box.GetSelection() < 0:
+            selection = self.choice_box.GetString(0)
+            self.choice_box.SetSelection(0)
+        else:
+            selection = self.choice_box.GetString(self.choice_box.GetSelection())
 
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
@@ -1465,7 +1473,11 @@ class B1ShimTab(Tab):
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
-        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+        if self.choice_box.GetSelection() < 0:
+            selection = self.choice_box.GetString(0)
+            self.choice_box.SetSelection(0)
+        else:
+            selection = self.choice_box.GetString(self.choice_box.GetSelection())
 
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
@@ -1835,7 +1847,11 @@ class MaskTab(Tab):
 
     def on_choice(self, event):
         # Get the selection from the choice box widget
-        selection = self.choice_box.GetString(self.choice_box.GetSelection())
+        if self.choice_box.GetSelection() < 0:
+            selection = self.choice_box.GetString(0)
+            self.choice_box.SetSelection(0)
+        else:
+            selection = self.choice_box.GetString(self.choice_box.GetSelection())
 
         # Unshow everything then show the correct item according to the choice box
         self.unshow_choice_box_sizers()
