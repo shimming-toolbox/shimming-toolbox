@@ -167,18 +167,19 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
             # Unwrapping each current individually can lead to n*2pi offset between currents for phase difference and
             # dual-echo field mapping. This induces an error in the linear regression in the next steps. To avoid this,
             # we can correct the 2npi offset by assuming that the difference in current does not induce more than 2pi
-            # dephasing on average in the mask (ROI). In the dataset tested, the maximum offset for 0.75 amps was observed
-            # to be n=0.03. This leaves plenty of room for more difference in current.
-            # In the multi-echo case, there are 2npi offset between echoes, these are corrected and produce a valid field
-            # map. Therefore, there is no need to correct for any offset between currents.
+            # dephasing on average in the mask (ROI). In the dataset tested, the maximum offset for 0.75 amps was
+            # observed to be n=0.03. This leaves plenty of room for more difference in current.
+            # In the multi-echo case, there are 2npi offset between echoes, these are corrected and produce a valid
+            # field map. Therefore, there is no need to correct for any offset between currents.
             # Note: The choice of reference field map is not important since we are only interested in the slope and we
             # disregard the intercept.
             # To implement the above mentioned method, we feed the field mapping pipeline the currents as if they were
             # time-points along the 4th dimension.
 
-            # TODO: Parse input and avoid recalculating the same field map if the same filename is provided more than once
-            # This can only be done for multi-echo field maps since we need the unwrapped phase to correct for 2pi offset
-            # in the phase difference/dual-echo case
+            # TODO: Parse input and avoid recalculating the same field map if the same filename is provided more than
+            #  once
+            # This can only be done for multi-echo field maps since we need the unwrapped phase to correct for 2pi
+            # offset in the phase difference/dual-echo case
 
             # Repeat the mask along 4th dimension
             n_currents = len(phases[i_channel])
