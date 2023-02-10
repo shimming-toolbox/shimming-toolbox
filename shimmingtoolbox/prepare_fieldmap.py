@@ -10,6 +10,7 @@ from sklearn.linear_model import LinearRegression
 
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
+from shimmingtoolbox.utils import fill
 
 logger = logging.getLogger(__name__)
 # Threshold to apply when creating a mask to remove 2*pi offsets
@@ -73,12 +74,12 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
     # Make sure mask has the right shape
     if mask is None:
         # Define the mask using the threshold
-        mask = mask_threshold(mag - mag.min(), threshold * (mag.max() - mag.min()))
+        mask = mask_threshold(mag, threshold, scaled_thr=True)
     else:
         if mask.shape != phase[0].shape:
             raise ValueError("Shape of mask and phase must match.")
 
-        logger.info("A mask was provided, ignoring threshold value")
+        logger.debug("A mask was provided, ignoring threshold value")
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
@@ -100,9 +101,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         echo_1 = phase[1]
 
         # Calculate phasediff using complex difference
-        comp_0 = np.ones_like(echo_0) * np.exp(-1j * echo_0)
-        comp_1 = np.ones_like(echo_1) * np.exp(1j * echo_1)
-        phasediff = np.angle(comp_0 * comp_1)
+        phasediff = complex_difference(echo_0, echo_1)
         nii_phasediff = nibabel.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
 
         # Calculate the echo time difference
@@ -119,18 +118,31 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
 
     else:
-        # Calculates field map based on multi echo phases by running the prelude unwrapper for each phase individually.
-        if len(np.shape(list_nii_phase[0])) == 4:
-            raise NotImplementedError("Four-dimensional multi echo is not implemented yet")
+        # Calculates field map based on multi echo phases by running the unwrapper for each echo individually.
         n_echoes = len(list_nii_phase)  # Number of Echoes
         unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
                                   fname_save_mask=fname_save_mask) for echo_number in range(n_echoes)]
-        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, 3)  # Merges all phase nii's in 4th dimension
+        unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, -1)  # Merges all phase echoes on the last dim
         # The mag must be the same size as the unwrapped_data to yield an equal mask for the
         # "correct_2pi_offset" function.
-        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=3)
-        mask = mask_threshold(new_mag - new_mag.min(), threshold * (new_mag.max() - new_mag.min()))
-        unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask, VALIDITY_THRESHOLD)
+        new_mag = np.repeat(mag[..., np.newaxis], n_echoes, axis=-1)
+        mask_tmp = np.repeat(mask[..., np.newaxis], n_echoes, axis=-1)
+
+        # Time series
+        if len(np.shape(list_nii_phase[0])) == 4:
+            # dimensions: [x, y, z, t, echo]
+            unwrapped_data_corrected = np.zeros_like(unwrapped_data)
+            # Correct all time points individually
+            n_t = np.shape(list_nii_phase[0])[3]
+            for i_t in range(n_t):
+                unwrapped_data_corrected[..., i_t, :] = correct_2pi_offset(unwrapped_data[..., i_t, :],
+                                                                           new_mag[..., i_t, :], mask_tmp[..., i_t, :],
+                                                                           VALIDITY_THRESHOLD)
+        # One time point
+        else:
+            # dimensions: [x, y, z, echo]
+            unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask_tmp, VALIDITY_THRESHOLD)
+
         x = np.asarray(echo_times)
         # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
         # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
@@ -142,13 +154,40 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
-        fieldmap_hz = gaussian(fieldmap_hz, sigma, mode='nearest')
-    # return fieldmap_hz_gaussian
+        # If its 4d data, gaussian blur each volume individually
+        if len(fieldmap_hz.shape) == 4:
+            for it in range(fieldmap_hz.shape[-1]):
+                # Fill values
+                filled = fill(fieldmap_hz[..., it], mask[..., it] == False)
+                fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest') * mask[..., it]
+        # 3d data
+        else:
+            filled = fill(fieldmap_hz, mask == False)
+            fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
+
     return fieldmap_hz, mask
 
 
+def complex_difference(phase1, phase2):
+    """ Calculates the complex difference between 2 phase arrays (phase2 - phase1)
+
+    Args:
+        phase1 (numpy.ndarray): Array containing phase data in radians
+        phase2 (numpy.ndarray): Array containing phase data in radians. Must be the same shape as phase1.
+
+    Returns:
+        numpy.ndarray: The difference in phase between each voxels of phase2 and phase1 (phase2 - phase1)
+    """
+
+    # Calculate phasediff using complex difference
+    comp_0 = np.ones_like(phase1) * np.exp(-1j * phase1)
+    comp_1 = np.ones_like(phase2) * np.exp(1j * phase2)
+    return np.angle(comp_0 * comp_1)
+
+
 def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
-    """ Removes 2*pi offsets from `unwrapped` for a time series. If there is no offset, it returns the same array.
+    """ Removes 2*pi offsets from `unwrapped` for a time series. If there is no offset, it returns the same array. The
+        'correct' offset is assumed to be at time 0.
 
     Args:
         unwrapped (numpy.ndarray): 4d array of the spatially unwrapped phase
@@ -161,7 +200,11 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
     """
     # Create a mask that excludes the noise
+    # TODO: What if the validity region is bigger than the mask
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
+
+    # Logical and with the mask used for calculating the fieldmap
+    validity_masks = np.logical_and(mask, validity_masks)
 
     for i_time in range(1, unwrapped.shape[3]):
         # Take the region where both masks intersect
@@ -177,13 +220,14 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
         n_offsets = round(n_offsets_float)
 
-        if 0.2 < (n_offsets_float % 1) < 0.8:
-            logger.warning("The number of 2*pi offsets when calculating the fieldmap of timepoints is close to "
+        if 0.3 < (n_offsets_float % 1) < 0.7:
+            logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
                            "ambiguous, verify the output fieldmap.")
 
         if n_offsets != 0:
-            logger.debug(f"Correcting for phase n*2pi offset, offset was: {n_offsets_float}")
+            logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
 
+        logger.debug(f"Offset was: {n_offsets_float}")
         # Remove n_offsets to unwrapped[..., i_time] only in the masked region
         unwrapped[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
 

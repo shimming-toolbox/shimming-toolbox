@@ -76,12 +76,12 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
                 mask_input = mask4d
                 mag_input = mag4d
 
-                phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold)
-
                 # If it's the first volume, call it using save mask to save the mask only once
                 if i_t == 0:
                     phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold,
                                                         fname_save_mask=fname_save_mask)
+                else:
+                    phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold)
 
         else:
             raise ValueError("Shape of input phase is not supported.")

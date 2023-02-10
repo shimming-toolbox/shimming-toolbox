@@ -108,6 +108,29 @@ class TestPrepareFieldmap(object):
         fieldmap, _ = prepare_fieldmap([nii1, nii2, nii3], echo_times, mag)
         assert fieldmap.shape == nii1.shape
 
+    def test_prepare_fieldmap_3_echoes_timeseries(self):
+        fname_phase1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
+        fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
+        fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+        nii_mag = nib.load(fname_mag)
+        data_mag = np.repeat(nii_mag.get_fdata()[..., np.newaxis], 3, 3)
+
+        nii1 = read_nii(fname_phase1)[0]
+        data1 = np.repeat(nii1.get_fdata()[..., np.newaxis], 3, 3)
+        nii1_t = nib.Nifti1Image(data1, nii1.affine, header=nii1.header)
+
+        nii2 = read_nii(fname_phase2)[0]
+        data2 = np.repeat(nii2.get_fdata()[..., np.newaxis], 3, 3)
+        nii2_t = nib.Nifti1Image(data2, nii2.affine, header=nii2.header)
+
+        data3 = nii1_t.get_fdata() + nii2_t.get_fdata()
+        data3 = np.angle(np.exp(1j * data3))
+        nii3_t = nib.Nifti1Image(data3, nii1.affine, header=nii1.header)
+        echo_times = [0.0025, 0.0055, 0.008]
+
+        fieldmap, _ = prepare_fieldmap([nii1_t, nii2_t, nii3_t], echo_times, data_mag)
+        assert fieldmap.shape == nii1_t.shape
+
     def test_prepare_fieldmap_wrong_threshold(self):
         """EchoTime of length one for phasediff should fail."""
 
@@ -122,7 +145,7 @@ class TestPrepareFieldmap(object):
         assert fieldmap.shape == self.nii_phase.shape
         # If the behaviour of the called function is modified, this assertion below should capture it:
         assert np.all(np.isclose(fieldmap[30:35, 40, 0, 0],
-                                 np.array([19.46321364, 15.46275223, 11.0505227,  6.28134902,  1.30906534])))
+                                 np.array([18.46123383, 14.46463515, 10.1256239,  5.46868596,  0.56372493])))
 
 
 def test_correct_2pi_offset():
