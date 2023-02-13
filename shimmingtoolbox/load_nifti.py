@@ -173,7 +173,7 @@ def read_nii(fname_nifti, auto_scale=True):
     # Store nifti image in a numpy array
     image = np.asarray(nii.dataobj)
     if auto_scale:
-        logger.info("Scaling the selected nifti")
+        logger.info("Scaling the selected NIfTI")
 
         # If B0 phase maps
         if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
@@ -182,10 +182,10 @@ def read_nii(fname_nifti, auto_scale=True):
             # Rescales from -pi to pi
             extent = (np.amax(image) - np.amin(image))
 
-            if np.amin(image) < 0 and (0.9 * 2 * PHASE_SCALING_SIEMENS < extent < 2 * PHASE_SCALING_SIEMENS * 1.1):
+            if np.amin(image) < 0 and (0.95 * 2 * PHASE_SCALING_SIEMENS < extent < 2 * PHASE_SCALING_SIEMENS * 1.05):
                 # Siemens' scaling: [-4096, 4095] --> [-pi, pi)
                 image = image * math.pi / PHASE_SCALING_SIEMENS
-            elif np.amin(image) >= 0 and (0.9 * PHASE_SCALING_SIEMENS < extent < PHASE_SCALING_SIEMENS * 1.1):
+            elif np.amin(image) >= 0 and (0.95 * PHASE_SCALING_SIEMENS < extent < PHASE_SCALING_SIEMENS * 1.05):
                 # Siemens' scaling [0, 4095] --> [0, 2pi)
                 # We want: [-pi, pi]
                 image = image * 2 * math.pi / PHASE_SCALING_SIEMENS
@@ -195,10 +195,21 @@ def read_nii(fname_nifti, auto_scale=True):
 
             # Create new nibabel object with updated image
             nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
+        elif (('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Philips')) \
+                and (('ImageType' in json_data) and (('Phase' in json_data['ImageType']) or
+                                                     ('P' in json_data['ImageType']))):
+
+            extent = (np.amax(image) - np.amin(image))
+            if np.amin(image) < 0 and np.amax(image) and (0.95 * math.pi < extent < 1.05 * 2 * math.pi):
+                # Philips scaling: [-pi, pi)
+                pass
+            else:
+                logger.info("Could not scale phase data")
+
         else:
-            logger.info("Unknown nifti type: No scaling applied")
+            logger.info("Unknown NIfTI type: No scaling applied")
 
     else:
-        logger.info("No scaling applied to selected nifti")
+        pass
 
     return nii, json_data, image
