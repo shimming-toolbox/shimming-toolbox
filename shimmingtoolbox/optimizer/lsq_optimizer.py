@@ -236,11 +236,6 @@ class LsqOptimizer(Optimizer):
         Returns:
             jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
         """
-        #jacobian = np.array([
-            #self.b * np.sum((unshimmed_vec + coil_mat @ coef) * coil_mat[:, j]) + \
-            #np.sign(coef[j]) * (self.reg_factor / (len(coef) * self.reg_factor_channel[j]))
-            #for j in range(coef.size)
-        #])
         return self.b * (unshimmed_vec + np.matmul(coil_mat, coef)) @ coil_mat + np.sign(coef) * self.reg_vector
 
     def optimize(self, mask):
