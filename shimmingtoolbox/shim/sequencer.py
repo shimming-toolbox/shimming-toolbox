@@ -195,11 +195,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             shimmed[..., i_shim] = unshimmed
             continue
         list_shim_slice.append(i_shim)
-        #Old version of the code
-        #correction_per_channel = coef[i_shim] * merged_coils
-        #corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
-        #shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
-        #New version of the code
         corrections[...,i_shim] = merged_coils @ coef[i_shim]
         shimmed[..., i_shim] = unshimmed + corrections[...,i_shim]
         ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
@@ -291,9 +286,7 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
     shimmed_anat_orient = fieldmap_anat
 
     for i_shim in list_shim_slice:
-        # We want to do the np.sum with a 3D matrix if possible
         corr = np.sum(coefs[i_shim] * coils_anat[:,:, slices[i_shim], :], axis=3, keepdims=False)
-        #Equivalent to this line :  corr = coils_anat[:, :, slices[i_shim], :] @ coefs[i_shim]
         shimmed_anat_orient[..., slices[i_shim]] += corr
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
