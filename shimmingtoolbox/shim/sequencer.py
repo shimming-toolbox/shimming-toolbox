@@ -286,7 +286,7 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
     shimmed_anat_orient = fieldmap_anat
 
     for i_shim in list_shim_slice:
-        corr = np.sum(coefs[i_shim] * coils_anat[:,:, slices[i_shim], :], axis=3, keepdims=False)
+        corr = np.sum(coefs[i_shim] * coils_anat[:, :, slices[i_shim], :], axis=3, keepdims=False)
         shimmed_anat_orient[..., slices[i_shim]] += corr
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
     nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * nii_mask_anat.get_fdata(), nii_mask_anat.affine,
