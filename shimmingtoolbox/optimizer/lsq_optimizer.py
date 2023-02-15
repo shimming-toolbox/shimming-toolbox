@@ -90,7 +90,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
 
         # MAE regularized to minimize currents
@@ -109,7 +109,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
         # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
         #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
@@ -132,7 +132,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
 
         # STD regularized to minimize currents
