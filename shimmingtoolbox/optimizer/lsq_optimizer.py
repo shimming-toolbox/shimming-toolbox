@@ -90,7 +90,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
 
         # MAE regularized to minimize currents
@@ -109,13 +109,16 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
         # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
         #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        # First it's faster to switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
+        #Then for a vector , mean(x**2) is equivalent to x.dot(x)/n It's faster to do this operation instead of a np.mean
+        #Finally np.abs(coef).dot(self.reg_vector) is equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel)
+        #For the mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
         # MSE regularized to minimize currents
-        inner = unshimmed_vec + np.matmul(coil_mat, coef)
-        return inner.dot(inner) / len(inner) / factor + np.abs(coef).dot(self.reg_vector)
+        return (unshimmed_vec + coil_mat@coef).dot(unshimmed_vec + coil_mat @ coef) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the standard deviation (STD)
@@ -129,7 +132,7 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization 
         """
 
         # STD regularized to minimize currents
@@ -236,7 +239,7 @@ class LsqOptimizer(Optimizer):
         Returns:
             jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
         """
-        return self.b * (unshimmed_vec + np.matmul(coil_mat, coef)) @ coil_mat + np.sign(coef) * self.reg_vector
+        return self.b * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector
 
     def optimize(self, mask):
         """
