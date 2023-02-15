@@ -939,7 +939,7 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
 @timeit
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
-    # Count shims to perform
+    # Number of optimizations to perform
     n_shims = len(slices_anat)
     # If the method is the mse with jacobian, it's faster to not do the multiprocessing on mac computer so far.
     # However, if there is a way to make multiprocessing faster, we should do it.
