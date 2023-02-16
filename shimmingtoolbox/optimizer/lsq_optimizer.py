@@ -113,12 +113,13 @@ class LsqOptimizer(Optimizer):
         """
         # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
         #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        # First it's faster to switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
-        #Then for a vector , mean(x**2) is equivalent to x.dot(x)/n It's faster to do this operation instead of a np.mean
-        #Finally np.abs(coef).dot(self.reg_vector) is equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel)
-        #For the mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
+        # switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
+        # Then for a vector , mean(x**2) is equivalent to x.dot(x)/n , it's faster to do this operation instead of a np.mean
+        # Finally np.abs(coef).dot(self.reg_vector) is equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel)
+        # For the mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
         # MSE regularized to minimize currents
-        return (unshimmed_vec + coil_mat@coef).dot(unshimmed_vec + coil_mat @ coef) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
+        shimmed_vec = unshimmed_vec + coil_mat@coef
+        return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the standard deviation (STD)
