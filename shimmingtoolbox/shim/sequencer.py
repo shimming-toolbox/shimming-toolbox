@@ -165,13 +165,15 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
-    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, opt_criteria)
+    # We want to check the affine and data of both fieldmap to eventually save time in eval_static_shim
+    equal_fieldmap = np.all(nii_fmap_orig.affine == affine_fieldmap ) and np.all(nii_fmap_orig.get_fdata() == fieldmap)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, equal_fieldmap, opt_criteria)
 
     return coefs
 
 
 @timeit
-def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, opt_criteria=None):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, equal_fieldmap, opt_criteria=None):
     """Calculate theoretical shimmed map and output figures"""
 
     # Save the merged coil profiles if in debug
@@ -181,7 +183,12 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
     unshimmed = nii_fieldmap_orig.get_fdata()
     # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
-    merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
+    if equal_fieldmap:
+        # We extend the dimensions to have the same one as unshimmed
+        merged_coils = np.expand_dims(opt.merged_coils[:, :, 1, :], 2)
+
+    else:
+        merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
     # Initialize
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
