@@ -184,7 +184,7 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     unshimmed = nii_fieldmap_orig.get_fdata()
     # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
     if equal_fieldmap:
-        # We extend the dimensions to have the same one as unshimmed
+        # We extend to make sure that merged_coils @ coef[i_shim] has the same dimensions of corrections[...,i_shim]
         merged_coils = np.expand_dims(opt.merged_coils[:, :, 1, :], 2)
 
     else:
