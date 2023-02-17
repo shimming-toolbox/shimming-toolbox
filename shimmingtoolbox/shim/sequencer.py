@@ -958,7 +958,7 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, sh
             result = _opt(i)
             results.append(result)
     else:
-    # multiprocessing optimization
+        # multiprocessing optimization
         _optimize_scope = (
             optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
 
