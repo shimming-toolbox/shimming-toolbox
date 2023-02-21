@@ -189,7 +189,7 @@ def convert_to_mp(shim_setting, manufacturers_model_name):
             raise ValueError("Multipole values exceed known system limits.")
 
     else:
-        logger.warning(f"Manufacturer {manufacturers_model_name} not implemented, bounds might not be respected. "
+        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented, bounds might not be respected. "
                        f"Setting initial shim_setting to 0")
         shim_setting = [0, 0, 0, 0, 0, 0, 0, 0]
 
