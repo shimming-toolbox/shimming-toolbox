@@ -160,25 +160,23 @@ def read_nii(fname_nifti, auto_scale=True):
         image (numpy.ndarray): For B0-maps, image contained in the nifti. Siemens phase images are rescaled between 0
         and 2pi.
     """
-
     nii = nib.load(fname_nifti)
-    # `extractBefore` should get the correct filename in both.nii and.nii.gz cases
     json_path = fname_nifti.split('.nii')[0] + '.json'
 
     if os.path.isfile(json_path):
-        json_data = json.load(open(json_path))
+        with open(json_path, 'r') as json_file:
+            json_data = json.load(json_file)
     else:
         raise OSError("Missing json file")
-
     # Store nifti image in a numpy array
     image = np.asarray(nii.dataobj)
     if auto_scale:
         logger.info("Scaling the selected NIfTI")
 
         # If B0 phase maps
-        if ('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Siemens') \
-                and (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
-                     or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
+        if json_data.get('Manufacturer') == 'Siemens' and \
+                (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
+                 or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
             # Rescales from -pi to pi
             extent = (np.amax(image) - np.amin(image))
 
@@ -195,7 +193,7 @@ def read_nii(fname_nifti, auto_scale=True):
 
             # Create new nibabel object with updated image
             nii = nib.Nifti1Image(image, nii.affine, header=nii.header)
-        elif (('Manufacturer' in json_data) and (json_data['Manufacturer'] == 'Philips')) \
+        elif json_data.get('Manufacturer') == 'Philips' \
                 and (('ImageType' in json_data) and (('Phase' in json_data['ImageType']) or
                                                      ('P' in json_data['ImageType']))):
 
