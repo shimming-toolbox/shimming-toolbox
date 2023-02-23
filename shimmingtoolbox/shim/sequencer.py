@@ -90,6 +90,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
             nii_fmap_orig = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
                                             header=nii_fmap_orig.header)
             nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+            extending = True 
         else:
             raise ValueError("Fieldmap must be 2d or 3d")
     else:
