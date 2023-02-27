@@ -118,7 +118,7 @@ class LsqOptimizer(Optimizer):
         # Finally np.abs(coef).dot(self.reg_vector) is equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel)
         # For the mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
         # MSE regularized to minimize currents
-        shimmed_vec = unshimmed_vec + coil_mat@coef
+        shimmed_vec = unshimmed_vec + coil_mat @ coef
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
