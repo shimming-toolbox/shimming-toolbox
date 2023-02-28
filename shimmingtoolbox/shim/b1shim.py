@@ -12,7 +12,7 @@ from shimmingtoolbox.masking.threshold import threshold
 
 logger = logging.getLogger(__name__)
 
-
+#test
 def b1shim(b1, mask=None, algorithm=1, target=None, q_matrix=None, sar_factor=1.5):
     """
     Computes static optimized shim weights that minimize the B1+ field coefficient of variation over the masked region.
