@@ -7,6 +7,7 @@ the gradient method in a st_shim CLI with the argument being:
 - fieldmap_realtime
 - gradient_realtime
 """
+import time
 
 import click
 import copy
@@ -21,12 +22,11 @@ from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
+from shimmingtoolbox.shim.sequencer import *
 from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
-
+from PIL import Image
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -259,14 +259,16 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
-    coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
+    # 1 ) Create the Shimming sequencer object
+    sequencer = ShimSequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
                            opt_criteria=opt_criteria,
                            mask_dilation_kernel='sphere',
                            mask_dilation_kernel_size=dilation_kernel_size,
                            reg_factor=reg_factor,
                            path_output=path_output)
-
+    #2) Launch shim sequencer
+    coefs = sequencer.shim_sequencer()
     # Output
     # Load output options
     options = _load_output_options(json_anat_data, fatsat)
@@ -671,16 +673,17 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Load PMU
     pmu = PmuResp(fname_resp)
-
-    out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
+    # 1 ) Create the real time pmu sequencer object
+    real_time_pmu_sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
                                       list_slices, pmu, list_coils,
-                                      opt_method=method,
+                                      method=method,
                                       opt_criteria=opt_criteria,
                                       mask_dilation_kernel='sphere',
                                       mask_dilation_kernel_size=dilation_kernel_size,
                                       reg_factor=reg_factor,
                                       path_output=path_output)
-
+    # 2) Launch the sequencer
+    out = real_time_pmu_sequencer.shim_realtime_pmu_sequencer()
     coefs_static, coefs_riro, mean_p, p_rms = out
 
     # Output
@@ -1097,7 +1100,11 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
     # Save the figure
     fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
-    fig.savefig(fname_figure, bbox_inches='tight')
+    time1 = time.time()
+    img = fig2img(fig)
+    img.save(fname_figure)
+    logger.debug(f"save took {time.time() - time1 }")
+    #fig.savefig(fname_figure, bbox_inches='tight')
     logger.debug(f"Saved figure: {fname_figure}")
 
 
@@ -1221,6 +1228,14 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
 
     logger.info(f"Txt file is located here:\n{fname_output}")
 
+def fig2img(fig):
+    """Convert a Matplotlib figure to a PIL Image and return it"""
+    import io
+    buf = io.BytesIO()
+    fig.savefig(buf)
+    buf.seek(0)
+    img = Image.open(buf)
+    return img
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
