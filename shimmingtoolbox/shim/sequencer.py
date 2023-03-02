@@ -90,6 +90,7 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
             nii_fmap_orig = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
                                             header=nii_fmap_orig.header)
             nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, mask_dilation_kernel_size, path_output)
+            extending = True 
         else:
             raise ValueError("Fieldmap must be 2d or 3d")
     else:
@@ -165,13 +166,13 @@ def shim_sequencer(nii_fieldmap, nii_anat, nii_mask_anat, slices, coils: ListCoi
 
     # Evaluate theoretical shim
     logger.info("Calculating output files and preparing figures")
-    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, opt_criteria)
+    _eval_static_shim(optimizer, nii_fmap_orig, nii_mask_anat, coefs, slices, path_output, extending, opt_criteria)
 
     return coefs
 
 
 @timeit
-def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, opt_criteria=None):
+def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices, path_output, extending, opt_criteria=None):
     """Calculate theoretical shimmed map and output figures"""
 
     # Save the merged coil profiles if in debug
@@ -181,7 +182,11 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         nib.save(nii_merged_coils, os.path.join(path_output, "merged_coils.nii.gz"))
     unshimmed = nii_fieldmap_orig.get_fdata()
     # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
-    merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
+    if extending:
+        merged_coils, _ = opt.merge_coils(unshimmed, nii_fieldmap_orig.affine)
+
+    else:
+        merged_coils = opt.merged_coils
     # Initialize
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
@@ -195,10 +200,8 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
             shimmed[..., i_shim] = unshimmed
             continue
         list_shim_slice.append(i_shim)
-        correction_per_channel = coef[i_shim] * merged_coils
-        corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
-
+        corrections[...,i_shim] = merged_coils @ coef[i_shim]
+        shimmed[..., i_shim] = unshimmed + corrections[...,i_shim]
         ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
         ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim] == False)
         std_shimmed = np.ma.std(ma_shimmed)
@@ -288,7 +291,6 @@ def _cal_shimmed_anat_orient(coefs, coils, nii_mask_anat, nii_fieldmap, slices, 
     shimmed_anat_orient = fieldmap_anat
 
     for i_shim in list_shim_slice:
-        # We want to do the np.sum with a 3D matrix if possible
         corr = np.sum(coefs[i_shim] * coils_anat[:, :, slices[i_shim], :], axis=3, keepdims=False)
         shimmed_anat_orient[..., slices[i_shim]] += corr
     fname_shimmed_anat_orient = os.path.join(path_output, 'fig_shimmed_anat_orient.nii.gz')
@@ -939,27 +941,24 @@ def select_optimizer(method, unshimmed, affine, coils: ListCoil, opt_criteria, p
 
     return optimizer
 
-
 @timeit
 def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, shimwise_bounds=None,
               dilation_kernel='sphere', dilation_size=3, path_output=None):
     # Number of optimizations to perform
     n_shims = len(slices_anat)
-
-    # If the opt_criteria is mse with jacobian, it's faster to not use multiprocessing on mac for smaller
-    # datasets. For now, we use mp for every dataset.
-    # if opt_criteria == 'mse' and sys.platform != 'linux':
-    #     _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
-    #                  shimwise_bounds)
-    #     results = []
-    #     for i in range(n_shims):
-    #         result = _opt(i)
-    #         results.append(result)
-    # else:
-
-    # Multiprocessing optimization
-    _optimize_scope = (
-        optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
+    # If the method is the mse with jacobian, it's faster to not do the multiprocessing on mac computer so far.
+    # However, if there is a way to make multiprocessing faster, we should do it.
+    if opt_criteria == 'mse' and sys.platform != 'linux':
+        _worker_init(optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
+                     shimwise_bounds)
+        results = []
+        for i in range(n_shims):
+            result = _opt(i)
+            results.append(result)
+    else:
+        # multiprocessing optimization
+        _optimize_scope = (
+            optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output, shimwise_bounds)
 
     # Default number of workers is set to mp.cpu_count()
     # _worker_init gets called by each worker with _optimize_scope as arguments
@@ -974,20 +973,20 @@ def _optimize(optimizer: Optimizer, nii_mask_anat, slices_anat, opt_criteria, sh
     # whole call needs to be finished to access the results (results.get()). A whole discussion
     # thread is available here: https://stackoverflow.com/questions/26520781/multiprocessing-pool-whats-the
     # -difference-between-map-async-and-imap
-    pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
-    try:
+        pool = mp.Pool(initializer=_worker_init, initargs=_optimize_scope)
+        try:
 
-        results = []
-        print(f"\rProgress 0.0%")
-        for i, result in enumerate(pool.imap_unordered(_opt, range(n_shims))):
-            print(f"\rProgress {np.round((i + 1) / n_shims * 100)}%")
-            results.append(result)
+            results = []
+            print(f"\rProgress 0.0%")
+            for i, result in enumerate(pool.imap_unordered(_opt, range(n_shims))):
+                print(f"\rProgress {np.round((i + 1) / n_shims * 100)}%")
+                results.append(result)
 
-    except mp.context.TimeoutError:
-        logger.info("Multiprocessing might have hung, retry the same command")
-    finally:
-        pool.close()
-        pool.join()
+        except mp.context.TimeoutError:
+            logger.info("Multiprocessing might have hung, retry the same command")
+        finally:
+            pool.close()
+            pool.join()
 
     results.sort(key=lambda x: x[0])
     results_final = [r for i, r in results]
