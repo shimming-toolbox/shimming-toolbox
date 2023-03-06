@@ -7,8 +7,6 @@ the gradient method in a st_shim CLI with the argument being:
 - fieldmap_realtime
 - gradient_realtime
 """
-import time
-
 import click
 import copy
 import json
@@ -26,7 +24,6 @@ from shimmingtoolbox.shim.sequencer import *
 from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
-from PIL import Image
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1100,11 +1097,7 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
     # Save the figure
     fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
-    time1 = time.time()
-    img = fig2img(fig)
-    img.save(fname_figure)
-    logger.debug(f"save took {time.time() - time1 }")
-    #fig.savefig(fname_figure, bbox_inches='tight')
+    fig.savefig(fname_figure, bbox_inches='tight')
     logger.debug(f"Saved figure: {fname_figure}")
 
 
@@ -1227,15 +1220,6 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
         f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
-
-def fig2img(fig):
-    """Convert a Matplotlib figure to a PIL Image and return it"""
-    import io
-    buf = io.BytesIO()
-    fig.savefig(buf)
-    buf.seek(0)
-    img = Image.open(buf)
-    return img
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
