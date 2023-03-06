@@ -212,8 +212,8 @@ class ShimSequencer(Sequencer):
                                                  header=self.nii_mask_anat.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(self.nii_mask_anat, os.path.join(self.path_output, "fig_3d_mask.nii.gz"))
-            else:
-                raise ValueError("Mask must be in 3d or 4d")
+        else:
+            raise ValueError("Mask must be in 3d or 4d")
 
         if self.opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
