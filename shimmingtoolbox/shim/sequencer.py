@@ -142,7 +142,7 @@ class Sequencer(object):
         coef = optimizer.optimize(sliced_mask_resampled)
         return i, coef
 
-    def _plot_currents(self, static, path_output: str, riro=None):
+    def _plot_currents(self, static, riro=None):
         """Plot evolution of currents through shims
         Args:
             static (numpy.ndarray) : Array with the static coefficients
@@ -160,7 +160,7 @@ class Sequencer(object):
         ax.set_ylabel('Coefficients (Physical CS [RAS])')
         ax.legend()
         ax.set_title("Currents through shims")
-        fname_figure = os.path.join(path_output, 'fig_currents.png')
+        fname_figure = os.path.join(self.path_output, 'fig_currents.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
