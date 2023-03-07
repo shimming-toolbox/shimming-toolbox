@@ -20,8 +20,9 @@ from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import *
-from shimmingtoolbox.shim.sequencer import shim_max_intensity
+from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
+from shimmingtoolbox.shim.sequencer import shim_max_intensity,  define_slices
+from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -258,12 +259,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
     sequencer = ShimSequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
-                           method=method,
-                           opt_criteria=opt_criteria,
-                           mask_dilation_kernel='sphere',
-                           mask_dilation_kernel_size=dilation_kernel_size,
-                           reg_factor=reg_factor,
-                           path_output=path_output)
+                              method=method,
+                              opt_criteria=opt_criteria,
+                              mask_dilation_kernel='sphere',
+                              mask_dilation_kernel_size=dilation_kernel_size,
+                              reg_factor=reg_factor,
+                              path_output=path_output)
     #2) Launch shim sequencer
     coefs = sequencer.shim_sequencer()
     # Output
