@@ -938,58 +938,58 @@ class RealTimeSequencer(Sequencer):
         def _plot_static_riro(self, masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                           shimmed_static,
                           shimmed_static_riro, i_t=0, i_slice=0, i_shim=0):
-        """
-        Plot Static and RIRO fieldmap for a perticular fieldmap slice, anat shim and timepoint
+            """
+            Plot Static and RIRO fieldmap for a perticular fieldmap slice, anat shim and timepoint
 
-        Args
-            masked_unshimmed (np.ndarray) : mask with the unshimmed values
-            masked_shim_static (np.ndarray) : mask with the static shimmed coefficients
-            masked_shim_static_riro (np.ndarray) : mask with the riro shimmed coefficients
-            unshimmed (np.ndarray) : unshimmed values that needs to be optimised
-            shimmed_static (np.ndarray) : New values with the static coefficients
-            shimmed_static_riro (np.ndarray) : New values with the riro coefficients
+            Args
+                masked_unshimmed (np.ndarray) : mask with the unshimmed values
+                masked_shim_static (np.ndarray) : mask with the static shimmed coefficients
+                masked_shim_static_riro (np.ndarray) : mask with the riro shimmed coefficients
+                unshimmed (np.ndarray) : unshimmed values that needs to be optimised
+                shimmed_static (np.ndarray) : New values with the static coefficients
+                shimmed_static_riro (np.ndarray) : New values with the riro coefficients
 
-        """
+            """
 
-        min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
+            min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
                         masked_shim_static[..., i_slice, i_t, i_shim].min(),
                         masked_unshimmed[..., i_slice, i_t, i_shim].min())
-        max_value = max(masked_shim_static_riro[..., i_slice, i_t, i_shim].max(),
+            max_value = max(masked_shim_static_riro[..., i_slice, i_t, i_shim].max(),
                         masked_shim_static[..., i_slice, i_t, i_shim].max(),
                         masked_unshimmed[..., i_slice, i_t, i_shim].max())
 
-        index_slice_to_show = self.slices[i_shim][i_slice]
+            index_slice_to_show = self.slices[i_shim][i_slice]
 
-        fig = Figure(figsize=(15, 10))
-        fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
-        ax = fig.add_subplot(2, 3, 1)
-        im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_shim static + riro")
-        ax = fig.add_subplot(2, 3, 2)
-        im = ax.imshow(np.rot90(masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_shim static")
-        ax = fig.add_subplot(2, 3, 3)
-        im = ax.imshow(np.rot90(masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_unshimmed")
+            fig = Figure(figsize=(15, 10))
+            fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
+            ax = fig.add_subplot(2, 3, 1)
+            im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+            fig.colorbar(im)
+            ax.set_title("masked_shim static + riro")
+            ax = fig.add_subplot(2, 3, 2)
+            im = ax.imshow(np.rot90(masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+            fig.colorbar(im)
+            ax.set_title("masked_shim static")
+            ax = fig.add_subplot(2, 3, 3)
+            im = ax.imshow(np.rot90(masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+            fig.colorbar(im)
+            ax.set_title("masked_unshimmed")
 
-        ax = fig.add_subplot(2, 3, 4)
-        im = ax.imshow(np.rot90(shimmed_static_riro[..., i_slice, i_t, i_shim]))
-        fig.colorbar(im)
-        ax.set_title("shim static + riro")
-        ax = fig.add_subplot(2, 3, 5)
-        im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]))
-        fig.colorbar(im)
-        ax.set_title(f"shim static")
-        ax = fig.add_subplot(2, 3, 6)
-        im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]))
-        fig.colorbar(im)
-        ax.set_title(f"unshimmed")
-        fname_figure = os.path.join(self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure)
-        logger.debug(f"Saved figure: {fname_figure}")
+            ax = fig.add_subplot(2, 3, 4)
+            im = ax.imshow(np.rot90(shimmed_static_riro[..., i_slice, i_t, i_shim]))
+            fig.colorbar(im)
+            ax.set_title("shim static + riro")
+            ax = fig.add_subplot(2, 3, 5)
+            im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]))
+            fig.colorbar(im)
+            ax.set_title(f"shim static")
+            ax = fig.add_subplot(2, 3, 6)
+            im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]))
+            fig.colorbar(im)
+            ax.set_title(f"unshimmed")
+            fname_figure = os.path.join(self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
+            fig.savefig(fname_figure)
+            logger.debug(f"Saved figure: {fname_figure}")
 
     def _plot_pressure_points(self, acq_pressures, ylim):
         """Plot respiratory trace pressure points
