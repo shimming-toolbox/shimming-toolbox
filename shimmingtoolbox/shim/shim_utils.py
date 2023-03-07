@@ -191,3 +191,38 @@ def shim_to_phys_cs(coefs, manufacturer):
     coefs = phys_to_shim_cs(coefs, manufacturer)
 
     return coefs
+
+
+def get_scanner_shim_settings(bids_json_dict):
+    """ Get the scanner's shim settings using the BIDS tag ShimSetting and ImagingFrequency and returns it in a
+        dictionary
+
+    Args:
+        bids_json_dict (dict): Bids sidecar as a dictionary
+
+    Returns:
+        dict: Dictionary containing the following keys: 'f0', 'order1' 'order2', 'order3'. The different orders are
+              lists unless the different values could not be populated.
+    """
+    def get_imaging_frequency(bids_json):
+        if bids_json.get('ImagingFrequency'):
+            return int(bids_json.get('ImagingFrequency') * 1e6)
+
+    def get_shim_order1(bids_json):
+        if bids_json.get('ShimSetting'):
+            return bids_json.get('ShimSetting')[:3]
+        else:
+            logger.warning("ShimSetting tag is not available, ignoring the scanner bounds.")
+
+    def get_shim_order2(bids_json):
+        if bids_json.get('ShimSetting'):
+            return bids_json.get('ShimSetting')[3:]
+
+    scanner_shim = {
+        'f0': get_imaging_frequency(bids_json_dict),
+        'order1': get_shim_order1(bids_json_dict),
+        'order2': get_shim_order2(bids_json_dict),
+        'order3': None
+    }
+
+    return scanner_shim

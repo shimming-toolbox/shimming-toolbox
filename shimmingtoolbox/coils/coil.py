@@ -165,32 +165,46 @@ class ScannerCoil(Coil):
         return sph_coil_profile
 
 
-def convert_to_mp(shim_setting, manufacturers_model_name):
+def convert_to_mp(manufacturers_model_name, order1=None, order2=None, order3=None):
     """ Converts the ShimSettings tag from the json BIDS sidecar to the scanner units.
         (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
 
     Args:
-        shim_setting (list): List of coefficients. Found in the json BIDS sidecar under 'ShimSetting'.
         manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
                                         ManufacturersModelName'. Supported names: 'Prisma_fit'.
+        order1 (list): List of 3 coefficients for the first order. Found in the json BIDS sidecar under 'ShimSetting'.
+        order2 (list): List of 5 coefficients. Found in the json BIDS sidecar under 'ShimSetting'.
+        order3 (list): List of coefficients.
 
     Returns:
-        list: Coefficients with units converted.
+        tuple: Coefficients of the first, second and third order converted according to the appropriate manufacturer
+               model
     """
+    order1_mp = order2_mp = order3_mp = None
 
     if manufacturers_model_name == "Prisma_fit":
-        # One can use the Siemens commandline AdjValidate tool to get all the values below:
-        max_current_mp = np.array([2300, 2300, 2300, 4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
-        max_current_dcm = np.array([14436, 14265, 14045, 9998, 9998, 9998, 9998, 9998])
+        if order1:
+            # One can use the Siemens commandline AdjValidate tool to get all the values below:
+            max_current_mp_order1 = np.array([2300] * 3)
+            max_current_dcm_order1 = np.array([14436, 14265, 14045])
+            order1_mp = np.array(order1) * max_current_mp_order1 / max_current_dcm_order1
 
-        shim_setting = np.array(shim_setting) * max_current_mp / max_current_dcm
+            if np.any(np.abs(order1_mp) > max_current_mp_order1):
+                raise ValueError("Multipole values exceed known system limits.")
 
-        if np.any(np.abs(shim_setting) > max_current_mp):
-            raise ValueError("Multipole values exceed known system limits.")
+        if order2:
+            max_current_mp_order2 = np.array([4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
+            max_current_dcm_order2 = np.array([9998, 9998, 9998, 9998, 9998])
+            order2_mp = np.array(order2) * max_current_mp_order2 / max_current_dcm_order2
+
+            if np.any(np.abs(order2_mp) > max_current_mp_order2):
+                raise ValueError("Multipole values exceed known system limits.")
+
+        if order3:
+            # Not implemented yet
+            pass
 
     else:
-        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented, bounds might not be respected. "
-                       f"Setting initial shim_setting to 0")
-        shim_setting = [0, 0, 0, 0, 0, 0, 0, 0]
+        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented, bounds might not be respected.")
 
-    return list(shim_setting)
+    return order1_mp, order2_mp, order3_mp

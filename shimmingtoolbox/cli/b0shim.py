@@ -26,6 +26,7 @@ from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_
 from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import get_scanner_shim_settings
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -239,14 +240,36 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     else:
         raise OSError("Missing fieldmap json file")
 
-    # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
-    if 'ManufacturersModelName' in json_fm_data:
-        json_coefs = _get_current_shim_settings(json_fm_data)
-        converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
-        initial_coefs = [json_coefs[0]] + converted_coefs
-    else:
-        logger.warning(f"ManufacturerModelName not found. Initial coefficients set to 0")
-        initial_coefs = np.zeros([9])
+    # options = {
+    #     'scanner_shim': {
+    #         'f0': None,
+    #         'order1': None,
+    #         'order2': None,
+    #         'order3': None
+    #     }
+    # }
+
+    initial_shim_settings = get_scanner_shim_settings(json_fm_data)
+    converted_shim_settings = convert_to_mp(json_fm_data.get('ManufacturersModelName'),
+                                            initial_shim_settings['order1'],
+                                            initial_shim_settings['order2'],
+                                            initial_shim_settings['order3'])
+    options = {'scanner_shim': {
+        'f0': initial_shim_settings['f0'],
+        'order1': converted_shim_settings[0],
+        'order2': converted_shim_settings[1],
+        'order3': converted_shim_settings[2]
+        }
+    }
+
+    initial_coefs = [0] * 9
+    if options['scanner_shim']['f0'] is not None:
+        initial_coefs[0] = options['scanner_shim']['f0']
+    if options['scanner_shim']['order1'] is not None:
+        initial_coefs[1:4] = options['scanner_shim']['order1']
+    if options['scanner_shim']['order2'] is not None:
+        initial_coefs[4:9] = options['scanner_shim']['order2']
+
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
                              json_fm_data['Manufacturer'])
@@ -998,16 +1021,6 @@ def define_slices_cli(slices, factor, method, fname_output):
         json.dump(list_slices, f, ensure_ascii=False, indent=4)
 
     logger.info(f"The slices to shim are: {list_slices}")
-
-
-def _get_current_shim_settings(json_data):
-    # Get the current coefficients of the spherical harmonics coil profiles
-    current_coefs = json_data['ShimSetting']
-    f0 = json_data['ImagingFrequency'] * 1e6
-    # Tx (1) + 1st order (3) + 2nd order (5)
-    current_coefs.insert(0, int(f0))
-
-    return current_coefs
 
 
 @timeit
