@@ -275,7 +275,7 @@ class LsqOptimizer(Optimizer):
         currents_0 = self.get_initial_guess()
         #In case if there is nothing to shimmed
         if np.all(unshimmed_vec == 0):
-            return currents_0
+            return np.zeros(np.shape(currents_0))
         # Optimize
         # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
         # warning
