@@ -273,7 +273,7 @@ class LsqOptimizer(Optimizer):
 
         # Set up output currents
         currents_0 = self.get_initial_guess()
-        #In case if there is nothing to shimmed
+        # If what to shim is already 0s
         if np.all(unshimmed_vec == 0):
             return np.zeros(np.shape(currents_0))
         # Optimize
