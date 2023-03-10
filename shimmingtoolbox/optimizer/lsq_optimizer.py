@@ -111,12 +111,14 @@ class LsqOptimizer(Optimizer):
         Returns:
             float: Residuals for least squares optimization 
         """
-        # Old one was : np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \
-        #                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        # switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
-        # Then for a vector , mean(x**2) is equivalent to x.dot(x)/n , it's faster to do this operation instead of a np.mean
-        # Finally np.abs(coef).dot(self.reg_vector) is equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel)
-        # For the mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
+        # Old one was :
+        # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
+        # self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        # And switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
+        # Then for a vector , mean(x**2) is equivalent to x.dot( x)/n
+        # it's faster to do this operation instead of a np.mean Finally np.abs(coef).dot(self.reg_vector) is
+        # equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel) For the
+        # mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
         # MSE regularized to minimize currents
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
@@ -271,7 +273,9 @@ class LsqOptimizer(Optimizer):
 
         # Set up output currents
         currents_0 = self.get_initial_guess()
-
+        # If what to shim is already 0s
+        if np.all(unshimmed_vec == 0):
+            return np.zeros(np.shape(currents_0))
         # Optimize
         # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
         # warning
