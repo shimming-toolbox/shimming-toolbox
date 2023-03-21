@@ -265,8 +265,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               mask_dilation_kernel_size=dilation_kernel_size,
                               reg_factor=reg_factor,
                               path_output=path_output)
-    #2) Launch shim sequencer
-    coefs = sequencer.shim_sequencer()
+    # 2) Launch shim sequencer
+    coefs = sequencer.shim()
     # Output
     # Load output options
     options = _load_output_options(json_anat_data, fatsat)
@@ -341,6 +341,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
+    sequencer.eval(coefs)
+    logger.info(f" Plotting currents")
 
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
@@ -672,16 +674,17 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Load PMU
     pmu = PmuResp(fname_resp)
     # 1 ) Create the real time pmu sequencer object
-    real_time_pmu_sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
-                                      list_slices, pmu, list_coils,
-                                      method=method,
-                                      opt_criteria=opt_criteria,
-                                      mask_dilation_kernel='sphere',
-                                      mask_dilation_kernel_size=dilation_kernel_size,
-                                      reg_factor=reg_factor,
-                                      path_output=path_output)
+    sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
+                                                nii_mask_anat_riro,
+                                                list_slices, pmu, list_coils,
+                                                method=method,
+                                                opt_criteria=opt_criteria,
+                                                mask_dilation_kernel='sphere',
+                                                mask_dilation_kernel_size=dilation_kernel_size,
+                                                reg_factor=reg_factor,
+                                                path_output=path_output)
     # 2) Launch the sequencer
-    out = real_time_pmu_sequencer.shim_realtime_pmu_sequencer()
+    out = sequencer.shim()
     coefs_static, coefs_riro, mean_p, p_rms = out
 
     # Output
@@ -772,7 +775,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
-
+    sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
+    logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
