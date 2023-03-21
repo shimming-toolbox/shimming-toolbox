@@ -132,7 +132,7 @@ class ShimSequencer(Sequencer):
                            artefacts.
         """
         self.nii_fieldmap = nii_fieldmap
-        self.nii_fieldmap_orig = nii_fieldmap
+        self.nii_fieldmap_orig = copy.deepcopy(nii_fieldmap)
         self.nii_anat = nii_anat
         self.nii_mask_anat = nii_mask_anat
         self.slices = slices
