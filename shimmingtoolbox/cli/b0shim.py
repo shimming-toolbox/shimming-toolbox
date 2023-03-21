@@ -7,6 +7,7 @@ the gradient method in a st_shim CLI with the argument being:
 - fieldmap_realtime
 - gradient_realtime
 """
+
 import click
 import copy
 import json
@@ -25,6 +26,7 @@ from shimmingtoolbox.shim.sequencer import shim_max_intensity,  define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1225,6 +1227,7 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
         f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
+    
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
