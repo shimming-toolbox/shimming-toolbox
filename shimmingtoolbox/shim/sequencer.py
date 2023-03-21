@@ -168,6 +168,7 @@ class ShimSequencer(Sequencer):
                 self.nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
                                                                self.path_output)
         # Make sure anat has the appropriate dimensions
+        self.nii_fieldmap_orig = nii_fmap_orig
         anat = self.nii_anat.get_fdata()
         if anat.ndim == 3:
             pass
