@@ -97,18 +97,54 @@ class Sequencer(object):
 
 
 class ShimSequencer(Sequencer):
+    """
+    Sequencer object that stores different nibabel objects, and that does the optimization, and the evaluation of the 
+    different currents
+    Attributes:
+        nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine transformation.
+        nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
+        nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
+                                             (only consider voxels with non-zero values)
+        slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape 
+                    of anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+        coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
+                          matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
+                          Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
+                          are larger than the extent of the fieldmap. This is especially true for dimensions with only
+                          1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
+                          :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
+                      implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                            'mae': mean absolute error, 'std': standard deviation.
+        mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
+                                    'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
+                                    details.
+        mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
+                            For example, a kernel of size 3 will dilate the mask by 1 pixel.
+        reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                            penalize higher current values while a lower factor will lower the effect of the
+                            regularization. A negative value will favour high currents (not preferred). Only relevant
+                            for 'least_squares' opt_method.
+        path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
+        nii_fieldmap_orig (nibabel.Nifti1Image): Nibabel object containing the copy of the fieldmap data
+        optimizer (object) : Object that contains everything needed for the optimization created from
+                                `shimmingtoolbox.optimizer` init method
+        extending (boolean) : To see, if there is a modification of the original fieldmap
+    """
     def __init__(self, nii_fieldmap, nii_anat, nii_mask_anat, slices, coils, method='least_squares',
                  opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
                  path_output=None):
         """
         Make the initialization for the ShimSequencer class
         Args :
-            nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine transformation.
+            nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 3d and an affine 
+                transformation.
             nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
             nii_mask_anat (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape of anat
-                       is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape of 
+                            anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
                           Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
@@ -122,14 +158,14 @@ class ShimSequencer(Sequencer):
             mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
                                     details.
-            mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
-                                         a kernel of size 3 will dilate the mask by 1 pixel.
+            mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. 
+                                            For example, a kernel of size 3 will dilate the mask by 1 pixel.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                             penalize higher current values while a lower factor will lower the effect of the
                             regularization. A negative value will favour high currents (not preferred). Only relevant
                             for 'least_squares' opt_method.
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
-                           artefacts.
+                           artefacts.            
         """
         self.nii_fieldmap = nii_fieldmap
         self.nii_fieldmap_orig = copy.deepcopy(nii_fieldmap)
@@ -144,7 +180,6 @@ class ShimSequencer(Sequencer):
         self.reg_factor = reg_factor
         self.path_output = path_output
         self.optimizer = None
-        self.bounds = None
         self.extending = True
         self.prepared_shimming()
 
@@ -559,13 +594,10 @@ class ShimSequencer(Sequencer):
 
 
 class RealTimeSequencer(Sequencer):
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
-                 method='least_squares',
-                 opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
-                 path_output=None):
-        """
-        Initialization of the RealTimeSequencer class
-        Args:
+    """
+    Sequencer object that stores different nibabel object, and parameters. It's also doing real time optimization
+    of the currents, and the evaluation of the shimming
+    Attributes:
             nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension is the
                                                 timeseries. Also contains an affine transformation.
             json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
@@ -575,30 +607,74 @@ class RealTimeSequencer(Sequencer):
                                                    component.
             nii_riro_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
                                                  component.
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of anat:
-                           (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of 
+                            anat: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
-            coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must have
-                              matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
-                              Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
-                              are larger than the extent of the fieldmap. This is especially true for dimensions with only
-                              1 voxel(e.g. (50x50x1x10). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
-                              :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+            coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must 
+                            have matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
+                            Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
+                            are larger than the extent of the fieldmap. This is especially true for dimensions with only
+                            1 voxel(e.g. (50x50x1x10). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
+                            :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
             method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
                               implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred). Only relevant
-                                for 'least_squares' opt_method.
+                                regularization. A negative value will favour high currents (not preferred). 
+                                Only relevant for 'least_squares' opt_method.
             mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
-                                        details.
-            mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
-                                             a kernel of size 3 will dilate the mask by 1 pixel.
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for 
+                                        more details.
+            mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. 
+                                                For example, a kernel of size 3 will dilate the mask by 1 pixel.
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
                                artefacts.
+            optimizer (object) : Object that contains everything needed for the optimization created from
+                                `shimmingtoolbox.optimizer` init method                   
+            bounds (list) : List of the bounds for the currents for the real time optimization
+            extending (boolean) : boolean to see, if there was a modification of the fieldmap or not 
+            acq_pressures (numpy.ndarray) : acquisitions pressures
+    """
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
+                 method='least_squares',
+                 opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
+                 path_output=None):
+        """
+        Initialization of the RealTimeSequencer class
+        Args:
+            nii_fieldmap (nibabel.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension 
+                                                is the timeseries. Also contains an affine transformation.
+            json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
+                              timestamps).
+            nii_anat (nibabel.Nifti1Image): Nibabel object containing anatomical data in 3d.
+            nii_static_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the static
+                                                   component.
+            nii_riro_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
+                                                 component.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of 
+                            anat: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            pmu (PmuResp): PmuResp object containing the respiratory trace information.
+            coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must 
+                            have matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
+                            Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
+                            are larger than the extent of the fieldmap. This is especially true for dimensions with only
+                            1 voxel(e.g. (50x50x1x10). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
+                            :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
+                              implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+                                'mae': mean absolute error, 'std': standard deviation.
+            reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
+                                penalize higher current values while a lower factor will lower the effect of the
+                                regularization. A negative value will favour high currents (not preferred). 
+                                Only relevant for 'least_squares' opt_method.
+            mask_dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for 
+                                        more details.
+            mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. 
+                                                For example, a kernel of size 3 will dilate the mask by 1 pixel.
         """
         self.nii_fieldmap = nii_fieldmap
         self.json_fmap = json_fmap
@@ -891,7 +967,6 @@ class RealTimeSequencer(Sequencer):
             coef_static (numpy.ndarray) : coefficients got during the static optimization
             coef_riro (numpy.ndarray) : coefficients got during the real time optimization
             mean_p (float) : mean of the acquisitions pressures
-            acq_pressures (numpy.ndarray) : acquisitions pressures
             pressure_rms (float) : rms of the acquisitions pressures
         """
         logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
