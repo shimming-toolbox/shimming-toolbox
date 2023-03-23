@@ -674,9 +674,8 @@ class RealTimeSequencer(Sequencer):
             acq_pressures (numpy.ndarray) : acquisitions pressures
     """
     def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
-                 method='least_squares',
-                 opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0,
-                 path_output=None):
+                 method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
+                 reg_factor=0, path_output=None):
         """
         Initialization of the RealTimeSequencer class
 
@@ -713,22 +712,16 @@ class RealTimeSequencer(Sequencer):
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                                 For example, a kernel of size 3 will dilate the mask by 1 pixel.
         """
+        super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
         self.nii_fieldmap = nii_fieldmap
         self.json_fmap = json_fmap
         self.nii_anat = nii_anat
         self.nii_static_mask = nii_static_mask
         self.nii_riro_mask = nii_riro_mask
-        self.slices = slices
         self.pmu = pmu
         self.coils = coils
         self.method = method
         self.opt_criteria = opt_criteria
-        self.mask_dilation_kernel = mask_dilation_kernel
-        self.mask_dilation_kernel_size = mask_dilation_kernel_size
-        self.reg_factor = reg_factor
-        self.path_output = path_output
-        self.optimizer = None
-        self.bounds = None
         self.extending = True
         self.acq_pressures = None
         self.check_inputs()
