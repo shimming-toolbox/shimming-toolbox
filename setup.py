@@ -54,6 +54,7 @@ setup(
         "pillow>=9.0.0",
         "dataclasses",
         "raven",
+        "joblib",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
