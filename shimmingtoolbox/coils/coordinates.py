@@ -187,12 +187,6 @@ def _resample_4d(nii_from_img, nii_to_vox_map, i, order, mode, cval, out_class )
     return i, resampled_image
 
 
-# def _resample_3d(nii_3d, nii_to_vox_map, order, mode, cval, out_class):
-#
-#     nii_resampled_3d = nib_resample_from_to(nii_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
-#                                             out_class=out_class)
-#     return nii_resampled_3d.get_fdata()
-
 
 def get_main_orientation(cosines: list):
     """ Returns the orientation of the slice axis by looking at the ImageOrientationPatientDICOM JSON tag
