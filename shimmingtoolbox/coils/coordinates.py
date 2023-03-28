@@ -5,12 +5,9 @@
 import numpy as np
 from nibabel.affines import apply_affine
 import math
-import multiprocessing as mp
 import nibabel as nib
-from joblib import Parallel, delayed
 from nibabel.processing import resample_from_to as nib_resample_from_to
-
-
+from joblib import Parallel, delayed, effective_n_jobs
 def generate_meshgrid(dim, affine):
     """
     Generate meshgrid of size dim, with coordinate system defined by affine.
@@ -167,7 +164,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
 
     elif from_img.ndim == 4:
         nt = from_img.shape[3]
-        nb_cpu_used = int(mp.cpu_count())
+        nb_cpu_used = int(effective_n_jobs())
         results = Parallel(n_jobs=nb_cpu_used, backend='loky')(
             delayed(_resample_4d)( nii_from_img, nii_to_vox_map, it, order, mode, cval, out_class)
             for it in range(nt))
@@ -188,6 +185,13 @@ def _resample_4d(nii_from_img, nii_to_vox_map, i, order, mode, cval, out_class )
     resampled_image = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
                                             cval=cval, out_class=out_class).get_fdata()
     return i, resampled_image
+
+
+# def _resample_3d(nii_3d, nii_to_vox_map, order, mode, cval, out_class):
+#
+#     nii_resampled_3d = nib_resample_from_to(nii_3d, nii_to_vox_map, order=order, mode=mode, cval=cval,
+#                                             out_class=out_class)
+#     return nii_resampled_3d.get_fdata()
 
 
 def get_main_orientation(cosines: list):
