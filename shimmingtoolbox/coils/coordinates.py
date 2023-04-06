@@ -7,7 +7,7 @@ from nibabel.affines import apply_affine
 import math
 import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
-from joblib import Parallel, delayed, effective_n_jobs
+from joblib import Parallel, delayed
 def generate_meshgrid(dim, affine):
     """
     Generate meshgrid of size dim, with coordinate system defined by affine.
@@ -164,8 +164,7 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
 
     elif from_img.ndim == 4:
         nt = from_img.shape[3]
-        nb_cpu_used = int(effective_n_jobs())
-        results = Parallel(n_jobs=nb_cpu_used, backend='loky')(
+        results = Parallel(-1, backend='loky')(
             delayed(_resample_4d)( nii_from_img, nii_to_vox_map, it, order, mode, cval, out_class)
             for it in range(nt))
         results.sort(key=lambda x: x[0])
