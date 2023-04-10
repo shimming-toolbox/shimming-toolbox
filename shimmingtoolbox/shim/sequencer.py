@@ -15,6 +15,22 @@ import json
 import multiprocessing as mp
 import sys
 
+import matplotlib as plt
+from shimmingtoolbox.masking.mask_utils import erode_binary_mask
+
+SMALL_SIZE = 10
+MEDIUM_SIZE = 20
+BIGGER_SIZE = 30
+
+plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+plt.rc('legend', fontsize=BIGGER_SIZE)    # legend fontsize
+plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
@@ -255,7 +271,8 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # TODO: Add units if possible
         # TODO: Add in anat space?
         _plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary, path_output)
-        _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask_full_binary, path_output, epi_te)
+        _plot_static_signal_recovery_mask(unshimmed, shimmed, mask_full_binary, path_output, epi_te)
+        _plot_T2_star_mask(unshimmed, shimmed, mask_full_binary, path_output, epi_te)
         _plot_static_partial_mask(unshimmed, shimmed, masks_fmap, path_output)
         _plot_currents(coef, path_output)
         _cal_shimmed_anat_orient(coef, merged_coils, nii_mask, nii_fieldmap_orig, slices, path_output)
@@ -367,27 +384,31 @@ def _plot_static_partial_mask(unshimmed, shimmed, masks, path_output):
 
 def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     # Plot
-    mt_unshimmed = montage(unshimmed)
-    mt_unshimmed_masked = montage(unshimmed * mask)
-    mt_shimmed_masked = montage(shimmed_masked)
+    mask_erode = erode_binary_mask(mask,shape='sphere',size=3) # both optimization and plot are in eroded mask
+    
+    # choose selected slices to plot
+    nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0];
+    mt_unshimmed = montage(unshimmed[:,:,nonzero_indices])
+    mt_unshimmed_masked = montage(unshimmed[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+    mt_shimmed_masked = montage(shimmed_masked[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
 
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
-    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask_erode, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask_erode, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask_erode, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask_erode, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask_erode, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask_erode, metric='mean')
 
     min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-    fig = Figure(figsize=(9, 6))
-    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+    fig = Figure(figsize=(60, 30))
+    fig.suptitle(f"B0 Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_unshimmed_masked, vmin=-100, vmax=100, cmap='jet')
     ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
                  f"abs mean: {metric_unshimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
@@ -399,7 +420,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
     mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_shimmed_masked, vmin=-100, vmax=100, cmap='jet')
     ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
                  f"abs mean: {metric_shimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
@@ -409,47 +430,119 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.colorbar(im, cax=cax)
 
     # Lower suptitle
-    fig.subplots_adjust(top=0.85)
+    #fig.subplots_adjust(top=0.85)
 
     # Save
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
     
 def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
-    # Plot
+    # Plot signal loss maps
+    [nx,ny,nz] = np.shape(unshimmed)
+    shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
     def calculate_signal_loss(B0_map):
-        signal_loss_map = 1
-        for i in range(0,3):
+        signal_map = 1
+        for i in range(2,3):
             G = np.gradient(B0_map, axis = i)
-            signal_loss_map = signal_loss_map * np.sinc(epi_te * G)
-        signal_loss_map = 1 - signal_loss_map
+            signal_map = signal_map * abs(np.sinc(epi_te * G))
+        signal_loss_map = 1 - signal_map
         return signal_loss_map
-    
     unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-    shimmed_signal_loss = calculate_signal_loss(shimmed_masked)
+    shimmed_signal_loss = calculate_signal_loss(shimmed)
+    mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
     
-    mt_unshimmed = montage(unshimmed_signal_loss)
-    mt_unshimmed_masked = montage(unshimmed_signal_loss*mask)
-    mt_shimmed_masked = montage(shimmed_signal_loss)
-
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed_signal_loss, mask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_signal_loss, mask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_signal_loss, mask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_signal_loss, mask, metric='mean')
-    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_signal_loss), mask, metric='mean')
-    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_signal_loss), mask, metric='mean')
+    # choose selected slices to plot
+    nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0];
+    mt_unshimmed = montage(unshimmed_signal_loss[:,:,nonzero_indices])
+    mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
+    mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
+    
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed_signal_loss, mask_erode, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_signal_loss, mask_erode, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_signal_loss, mask_erode, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_signal_loss, mask_erode, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_signal_loss), mask_erode, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_signal_loss), mask_erode, metric='mean')
 
     min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-    fig = Figure(figsize=(9, 6))
-    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+    fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
+    fig.suptitle(f"Signal Percentage Loss Map\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
-    #ax.imshow(mt_unshimmed, cmap='gray')
-    mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='hot')
+    #ax.imshow(mt_unshimmed, cmap='gray')s
+    mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
+    #
+    #nan_mask = mt_unshimmed_masked
+    #nan_count = np.count_nonzero(nan_mask)
+    #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
+    #
+    im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
     ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+                 f"abs mean: {metric_unshimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax) #signal loss map should be from [0, 1]
+
+    ax = fig.add_subplot(1, 2, 2)
+    #ax.imshow(mt_unshimmed, cmap='gray')
+    mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+    im = ax.imshow(mt_shimmed_masked, vmin=0, vmax=1, cmap='hot')
+    ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+                 f"abs mean: {metric_shimmed_absmean:.3}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax) #signal loss map should be from [0, 1]
+    # Lower suptitle
+    #fig.subplots_adjust(top=0.85)
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
+    
+def _plot_T2_star_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
+    # Plot T2 star change / Gz maps
+    [nx,ny,nz] = np.shape(unshimmed)
+    shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
+    
+    unshimmed_Gz = np.gradient(unshimmed, axis = 2)
+    shimmed_Gz = np.gradient(shimmed, axis = 2)
+    mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
+    
+    # choose selected slices to plot
+    nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0];
+    mt_unshimmed = montage(unshimmed_Gz[:,:,nonzero_indices])
+    mt_unshimmed_masked = montage(unshimmed_Gz[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+    mt_shimmed_masked = montage(shimmed_Gz[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+    
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed_Gz, mask_erode, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_Gz, mask_erode, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_Gz, mask_erode, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_Gz, mask_erode, metric='mean')
+    metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_Gz), mask_erode, metric='mean')
+    metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_Gz), mask_erode, metric='mean')
+
+    min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+    max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+    print('for Gz, min value is: ' + str(min_value) + 'max value is: ' + str(max_value))
+
+    fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
+    fig.suptitle(f"Gz - R2* T2* \nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    #ax.imshow(mt_unshimmed, cmap='gray')s
+    mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
+    #
+    #nan_mask = mt_unshimmed_masked
+    #nan_count = np.count_nonzero(nan_mask)
+    #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
+    #
+    im = ax.imshow(mt_unshimmed_masked, vmin=-30, vmax=30, cmap='jet')
+    ax.set_title(f"Before shimming Gz \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
                  f"abs mean: {metric_unshimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
@@ -460,20 +553,18 @@ def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_outp
     ax = fig.add_subplot(1, 2, 2)
     #ax.imshow(mt_unshimmed, cmap='gray')
     mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='hot')
-    ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+    im = ax.imshow(mt_shimmed_masked, vmin=-30, vmax=30, cmap='jet')
+    ax.set_title(f"After shimming Gz \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
                  f"abs mean: {metric_shimmed_absmean:.3}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im, cax=cax)
-
     # Lower suptitle
-    fig.subplots_adjust(top=0.85)
-
+    #fig.subplots_adjust(top=0.85)
     # Save
-    fname_figure = os.path.join(path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
+    fname_figure = os.path.join(path_output, 'fig_Gz_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
@@ -797,7 +888,7 @@ def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_r
 
     index_slice_to_show = slices[i_shim][i_slice]
 
-    fig = Figure(figsize=(15, 10))
+    fig = Figure(figsize=(60, 40))
     fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
     ax = fig.add_subplot(2, 3, 1)
     im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
@@ -831,7 +922,7 @@ def _plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_r
 
 def _plot_currents(static, path_output: str, riro=None):
     """Plot evolution of currents through shims"""
-    fig = Figure(figsize=(10, 10))
+    fig = Figure(figsize=(60, 30))
     ax = fig.add_subplot(111)
     n_channels = static.shape[1]
     for i_channel in range(n_channels):
@@ -850,7 +941,7 @@ def _plot_currents(static, path_output: str, riro=None):
 
 def _plot_pressure_points(acq_pressures, ylim, path_output):
     """Plot respiratory trace pressure points"""
-    fig = Figure(figsize=(10, 10))
+    fig = Figure(figsize=(60, 60))
     ax = fig.add_subplot(111)
     ax.plot(acq_pressures, label='pressures')
     ax.legend()

@@ -5,7 +5,7 @@ import logging
 import nibabel as nib
 import numpy as np
 import os
-from scipy.ndimage import binary_dilation, binary_opening, generate_binary_structure, iterate_structure
+from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -207,6 +207,158 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         open3 = binary_opening(mask, structure=struct_dim3)
         # Select Everything that does not fit within the structure and erode along a dim
         dim3 = binary_dilation(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
+
+        mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
+
+    elif shape == 'None':
+        mask_dilated = mask
+
+    else:
+        raise ValueError("Use of non supported algorithm for dilating the mask")
+
+    return mask_dilated
+
+
+def erode_binary_mask(mask, shape='sphere', size=3):
+    """
+    Dilates a binary mask according to different shapes and kernel size
+
+    Args:
+        mask (numpy.ndarray): 3d array containing the binary mask.
+        shape (str): 3d kernel to perform the erosion. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.
+                     'line' uses 3 line kernels to extend in each directions by "(size - 1) / 2" only if that direction
+                     is smaller than (size - 1) / 2
+        size (int): Length of a side of the 3d kernel. Must be odd.
+
+    Returns:
+        numpy.ndarray: Dilated mask.
+
+    Notes:
+
+        Kernels for
+
+            * 'cross' size 3:
+                ::
+
+                      np.array([[[0, 0, 0],
+                                 [0, 1, 0],
+                                 [0, 0, 0]],
+                                [[0, 1, 0],
+                                 [1, 1, 1],
+                                 [0, 1, 0]],
+                                [[0, 0, 0],
+                                 [0, 1, 0],
+                                 [0, 0, 0]]])
+
+            * 'sphere' size 5:
+                ::
+
+                    np.array([[[0 0 0 0 0],
+                               [0 0 0 0 0],
+                               [0 0  1 0 0],
+                               [0 0 0 0 0],
+                               [0 0 0 0 0]],
+                              [[0 0 0 0 0],
+                               [0 0 1 0 0],
+                               [0 1 1 1 0],
+                               [0 0 1 0 0],
+                               [0 0 0 0 0]],
+                              [[0 0 1 0 0],
+                               [0 1 1 1 0],
+                               [1 1 1 1 1],
+                               [0 1 1 1 0],
+                               [0 0 1 0 0]],
+                              [[0 0 0 0 0],
+                               [0 0 1 0 0],
+                               [0 1 1 1 0],
+                               [0 0 1 0 0],
+                               [0 0 0 0 0]],
+                              [[0 0 0 0 0],
+                               [0 0 0 0 0],
+                               [0 0 1 0 0],
+                               [0 0 0 0 0],
+                               [0 0 0 0 0]]]
+
+            * 'cube' size 3:
+                ::
+
+                    np.array([[[1, 1, 1],
+                               [1, 1, 1],
+                               [1, 1, 1]],
+                              [[1, 1, 1],
+                               [1, 1, 1],
+                               [1, 1, 1]],
+                              [[1, 1, 1],
+                               [1, 1, 1],
+                               [1, 1, 1]]])
+
+            * 'line' size 3:
+                ::
+
+                  np.array([[[0, 0, 0],
+                             [0, 1, 0],
+                             [0, 0, 0]],
+                            [[0, 0, 0],
+                             [0, 1, 0],
+                             [0, 0, 0]],
+                            [[0, 0, 0],
+                             [0, 1, 0],
+                             [0, 0, 0]]])
+
+    """
+
+    if size % 2 == 0 or size < 3:
+        raise ValueError("Size must be odd and greater or equal to 3")
+    # Find the middle pixel, will always work since we check size is odd
+    mid_pixel = int((size - 1) / 2)
+
+    if shape == 'sphere':
+        # Define kernel to perform the dilation
+        struct_sphere_size1 = generate_binary_structure(3, 1)
+        struct = iterate_structure(struct_sphere_size1, mid_pixel)
+
+        # Dilate
+        mask_dilated = binary_erosion(mask, structure=struct)
+
+    elif shape == 'cross':
+        struct = np.zeros([size, size, size])
+        struct[:, mid_pixel, mid_pixel] = 1
+        struct[mid_pixel, :, mid_pixel] = 1
+        struct[mid_pixel, mid_pixel, :] = 1
+
+        # Dilate
+        mask_dilated = binary_erosion(mask, structure=struct)
+
+    elif shape == 'cube':
+        # Define kernel to perform the dilation
+        struct_cube_size1 = generate_binary_structure(3, 3)
+        struct = iterate_structure(struct_cube_size1, mid_pixel)
+
+        # Dilate
+        mask_dilated = binary_erosion(mask, structure=struct)
+
+    elif shape == 'line':
+
+        struct_dim1 = np.zeros([size, size, size])
+        struct_dim1[:, mid_pixel, mid_pixel] = 1
+        # Finds where the structure fits
+        open1 = binary_opening(mask, structure=struct_dim1)
+        # Select Everything that does not fit within the structure and erode along a dim
+        dim1 = binary_erosion(np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
+
+        struct_dim2 = np.zeros([size, size, size])
+        struct_dim2[mid_pixel, :, mid_pixel] = 1
+        # Finds where the structure fits
+        open2 = binary_opening(mask, structure=struct_dim2)
+        # Select Everything that does not fit within the structure and erode along a dim
+        dim2 = binary_erosion(np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
+
+        struct_dim3 = np.zeros([size, size, size])
+        struct_dim3[mid_pixel, mid_pixel, :] = 1
+        # Finds where the structure fits
+        open3 = binary_opening(mask, structure=struct_dim3)
+        # Select Everything that does not fit within the structure and erode along a dim
+        dim3 = binary_erosion(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
 
         mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
 

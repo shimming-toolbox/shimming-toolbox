@@ -30,36 +30,36 @@ from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-def command_required_option_from_option(require_name, require_map):
-
-    class CommandOptionRequiredClass(click.Command):
-
-        def invoke(self, ctx):
-            require = ctx.params[require_name]
-            if require not in require_map:
-                raise click.ClickException(
-                    "Unexpected value for --'{}': {}".format(
-                        require_name, require))
-            if ctx.params[require_map[require].lower()] is None:
-                raise click.ClickException(
-                    "With {}={} must specify option --{}".format(
-                        require_name, require, require_map[require]))
-            super(CommandOptionRequiredClass, self).invoke(ctx)
-
-    return CommandOptionRequiredClass
+#def command_required_option_from_option(require_name, require_map):
+#
+#    class CommandOptionRequiredClass(click.Command):
+#
+#        def invoke(self, ctx):
+#            require = ctx.params[require_name]
+#            if require not in require_map:
+#                raise click.ClickException(
+#                    "Unexpected value for --'{}': {}".format(
+#                        require_name, require))
+#            if ctx.params[require_map[require].lower()] is None:
+#                raise click.ClickException(
+#                    "With {}={} must specify option --{}".format(
+#                        require_name, require, require_map[require]))
+#            super(CommandOptionRequiredClass, self).invoke(ctx)
+#
+#    return CommandOptionRequiredClass
 
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Shim according to the specified algorithm as an argument e.g. st_b0shim xxxxx")
 def b0shim_cli():
     pass
 
-required_options = {
-    'grad': ['w_signal_loss', 'reg_factor'],
-    'mse': 'reg_factor',
-    'mae': 'reg_factor',
-}
-@click.command(context_settings=CONTEXT_SETTINGS, cls=command_required_option_from_option('opt_criteria', required_options))
+#required_options = {
+#    'grad': ['w_signal_loss', 'reg_factor'],
+#    'mse': 'reg_factor',
+#    'mae': 'reg_factor',
+#}
+#@click.command(context_settings=CONTEXT_SETTINGS, cls=command_required_option_from_option('opt_criteria', required_options))
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
@@ -1020,7 +1020,7 @@ def _get_current_shim_settings(json_data):
 def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=None, pres_probe_min=None,
                 pres_probe_max=None, units='', bounds=None):
     n_shims = static_coefs.shape[0]
-    fig = Figure(figsize=(8, 4 * n_shims), tight_layout=True)
+    fig = Figure(figsize=(60, 30 * n_shims), tight_layout=True)
 
     # Find min and max values of the plots
     # Calculate the min and max of the bounds if its an input

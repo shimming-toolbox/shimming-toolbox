@@ -5,6 +5,7 @@ import numpy as np
 import scipy.optimize as opt
 from typing import List
 import warnings
+from shimmingtoolbox.masking.mask_utils import erode_binary_mask
 
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
@@ -94,7 +95,7 @@ class LsqOptimizer(Optimizer):
         return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
             (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
             
-    def _residuals_grad(self, coef, unshimmed_vec, coil_mat, factor):
+    def _residuals_grad_orig(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean squared error (MSE) and the signal loss function (gradient in z direction)
 
         Args:
@@ -109,16 +110,27 @@ class LsqOptimizer(Optimizer):
         shimmed = self.unshimmed + np.sum(self.merged_coils * np.tile(coef,(nx,ny,nz,1)),axis= 3) # need test
         signal = 1
         # if consider signal loss from x, y, and z
-        for i in range(0,3):
+        for i in range(2,3):
             G = np.gradient(shimmed, axis = i)
-            signal = signal * np.sinc(self.epi_te * G)
+            signal = signal * abs(np.sinc(self.epi_te * G))
         # MSE regularized to minimize currents
         #print("" + str(np.shape(signal)))
         #print("in this round of optimization, residual from signal loss is : " + str(np.mean(1 - signal) * self.w_signal_loss) + ", residual from B0 inhomogeneity is: " + str(np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))) + ", residual from current is " + str((self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))))
-        return np.mean(1 - signal) * self.w_signal_loss + \
-               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+        return np.mean(1 - signal) + \
+               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor * self.w_signal_loss + \
                (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-
+    
+    def _residuals_grad(self, coef, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor):
+        #print("current Gradient residual is:" + str(np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
+        #               np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
+        #               np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss))
+        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
+               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel)) + \
+               np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss
+            #  np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
+            #  np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
+               
+        
     def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean squared error (MSE)
 
@@ -179,10 +191,10 @@ class LsqOptimizer(Optimizer):
             start_index = end_index
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor):
 
         currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
+                                   args=(unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor),
                                    method='SLSQP',
                                    bounds=self.merged_bounds,
                                    constraints=tuple(scipy_constraints),
@@ -257,15 +269,37 @@ class LsqOptimizer(Optimizer):
 
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
-
         mask_vec = mask.reshape((-1,))
-
+        
+        mask_erode = erode_binary_mask(mask,shape='sphere',size = 3)
+        mask_erode_vec = mask.reshape((-1,))
         # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
         #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        coil_mat = np.reshape(temp,
                               (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
-
+        
+        merged_coils_Gx = np.zeros(np.shape(temp))
+        merged_coils_Gy = np.zeros(np.shape(temp))
+        merged_coils_Gz = np.zeros(np.shape(temp))
+        for ch in range(n_channels):
+            merged_coils_Gx[ch] = np.gradient(temp[ch], axis = 0)
+            merged_coils_Gy[ch] = np.gradient(temp[ch], axis = 1)
+            merged_coils_Gz[ch] = np.gradient(temp[ch], axis = 2)
+            
+        coil_Gx_mat = np.reshape(merged_coils_Gx,
+                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        coil_Gy_mat = np.reshape(merged_coils_Gy,
+                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        coil_Gz_mat = np.reshape(merged_coils_Gz,
+                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                              
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
+        
+        unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed,axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+        unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed,axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+        unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed,axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+                
         scipy_constraints = self._define_scipy_constraints()
 
         # Set up output currents
@@ -282,11 +316,9 @@ class LsqOptimizer(Optimizer):
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
             # regularization on the currents has no affect on the output stability factor.
-            stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
-                                                   factor=1)
+            stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat), unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor=1)
 
-            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
-                                               factor=stability_factor)
+            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor=stability_factor)
 
         if not currents_sp.success:
             raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
@@ -410,12 +442,12 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
 
         currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
+                                   args=(unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor),
                                    method='SLSQP',
                                    constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 500})
+                                   options={'maxiter': 30000})
         return currents_sp
