@@ -7,7 +7,6 @@ import json
 
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil
 from shimmingtoolbox.coils.siemens_basis import siemens_basis
-from shimmingtoolbox.coils.coil import convert_to_mp
 from shimmingtoolbox import __dir_config_scanner_constraints__
 
 
