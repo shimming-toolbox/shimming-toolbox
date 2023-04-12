@@ -236,7 +236,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     fname_json = fname_fmap.split('.nii')[0] + '.json'
     # Read from json file
     if os.path.isfile(fname_json):
-        json_fm_data = json.load(open(fname_json))
+        with open(fname_json) as json_file:
+            json_fm_data = json.load(json_file)
     else:
         raise OSError("Missing fieldmap json file")
 
@@ -641,7 +642,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     fname_json = fname_fmap.split('.nii')[0] + '.json'
     # Read from json file
     if os.path.isfile(fname_json):
-        json_fm_data = json.load(open(fname_json))
+        with open(fname_json) as json_file:
+            json_fm_data = json.load(json_file)
     else:
         raise OSError("Missing fieldmap json file")
 
@@ -885,14 +887,16 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
     # Load custom coils
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
-        constraints = json.load(open(coil[1]))
+        with open(coil[1]) as json_file:
+            constraints = json.load(json_file)
         list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
 
     # Create the spherical harmonic coil profiles of the scanner
     if 0 <= order <= 2:
 
         if os.path.isfile(fname_constraints):
-            sph_contraints = json.load(open(fname_constraints))
+            with open(fname_constraints) as json_file:
+                sph_contraints = json.load(json_file)
 
             def _initial_in_bounds(coefs, bounds):
                 """Makes sure the initial values are within the bounds of the constraints"""
