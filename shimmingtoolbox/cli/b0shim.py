@@ -19,14 +19,14 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, convert_to_mp
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
 from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
-from shimmingtoolbox.shim.shim_utils import get_scanner_shim_settings
+from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -240,38 +240,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     else:
         raise OSError("Missing fieldmap json file")
 
-    # options = {
-    #     'scanner_shim': {
-    #         'f0': None,
-    #         'order1': None,
-    #         'order2': None,
-    #         'order3': None
-    #     }
-    # }
-
-    initial_shim_settings = get_scanner_shim_settings(json_fm_data)
-    converted_shim_settings = convert_to_mp(json_fm_data.get('ManufacturersModelName'),
-                                            initial_shim_settings['order1'],
-                                            initial_shim_settings['order2'],
-                                            initial_shim_settings['order3'])
-    options = {'scanner_shim': {
-        'f0': initial_shim_settings['f0'],
-        'order1': converted_shim_settings[0],
-        'order2': converted_shim_settings[1],
-        'order3': converted_shim_settings[2]
-        }
-    }
-
-    initial_coefs = [0] * 9
-    if options['scanner_shim']['f0'] is not None:
-        initial_coefs[0] = options['scanner_shim']['f0']
-    if options['scanner_shim']['order1'] is not None:
-        initial_coefs[1:4] = options['scanner_shim']['order1']
-    if options['scanner_shim']['order2'] is not None:
-        initial_coefs[4:9] = options['scanner_shim']['order2']
+    # Read the current shim settings from the scanner
+    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
                              json_fm_data['Manufacturer'])
 
     # Get the shim slice ordering
@@ -292,7 +266,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Output
     # Load output options
-    options = _load_output_options(json_anat_data, fatsat)
+    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -346,6 +320,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
+                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
                     for i_channel in range(n_channels):
                         # abs_coef = delta + initial
                         coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
@@ -670,13 +645,12 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     else:
         raise OSError("Missing fieldmap json file")
 
-    # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
-    json_coefs = _get_current_shim_settings(json_fm_data)
-    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
-    initial_coefs = [json_coefs[0]] + converted_coefs
+    # Read the current shim settings from the scanner
+    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
                              json_fm_data['Manufacturer'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
@@ -708,7 +682,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Output
     # Load output options
-    options = _load_output_options(json_anat_data, fatsat)
+    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -775,6 +749,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 #             bounds=bounds_shim_cs)
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
+                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
                     for i_channel in range(n_channels):
                         # abs_coef = delta + initial
                         coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
@@ -891,7 +866,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
     return list_fname_output
 
 
-def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufacturer):
+def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -899,7 +874,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufa
         order (int): Order of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
-        initial_coefs (list): List of coefficients corresponding to the scanner coil.
+        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('f0', 'order1', 'order2')
         manufacturer (str): Name of the MRI manufacturer
 
     Returns:
@@ -929,6 +904,15 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, initial_coefs, manufa
                         logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
                                        f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
+            initial_coefs = [0] * 9
+            if scanner_shim_settings['f0'] is not None:
+                initial_coefs[0] = scanner_shim_settings['f0']
+            if scanner_shim_settings['order1'] is not None:
+                initial_coefs[1:4] = scanner_shim_settings['order1']
+            if scanner_shim_settings['order2'] is not None:
+                initial_coefs[4:9] = scanner_shim_settings['order2']
+
+            # TODO: Handle if scanner_shim_settings['has_valid_settings'] is False
             _initial_in_bounds(initial_coefs, sph_contraints['coef_channel_minmax'])
             # Set the bounds to what they should be by taking into account that the fieldmap was acquired using some
             # shimming
@@ -971,18 +955,28 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nib.save(nii, fname_to_save)
 
 
-def _load_output_options(json_anat, fatsat):
-    options = {'fatsat': False}
+def _get_fatsat_option(json_anat, fatsat):
+    """ Return if the fat saturation option should be turned on or off. This function maily exists to resolve the 'auto'
+        case
+
+    Args:
+        json_anat (dict): BIDS Json sidecar
+        fatsat (str): String containing either : 'yes', 'no' or 'auto'
+
+    Returns:
+        bool: Whether to activate fatsat or not
+    """
+    fatsat_option = False
 
     if fatsat == 'auto':
         if 'ScanOptions' in json_anat:
             if 'FS' in json_anat['ScanOptions']:
                 logger.debug("Fat Saturation pulse detected")
-                options['fatsat'] = True
+                fatsat_option = True
     elif fatsat == 'yes':
-        options['fatsat'] = True
+        fatsat_option = True
 
-    return options
+    return fatsat_option
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

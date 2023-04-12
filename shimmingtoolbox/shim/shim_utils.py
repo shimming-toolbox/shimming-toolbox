@@ -204,25 +204,101 @@ def get_scanner_shim_settings(bids_json_dict):
         dict: Dictionary containing the following keys: 'f0', 'order1' 'order2', 'order3'. The different orders are
               lists unless the different values could not be populated.
     """
-    def get_imaging_frequency(bids_json):
-        if bids_json.get('ImagingFrequency'):
-            return int(bids_json.get('ImagingFrequency') * 1e6)
-
-    def get_shim_order1(bids_json):
-        if bids_json.get('ShimSetting'):
-            return bids_json.get('ShimSetting')[:3]
-        else:
-            logger.warning("ShimSetting tag is not available, ignoring the scanner bounds.")
-
-    def get_shim_order2(bids_json):
-        if bids_json.get('ShimSetting'):
-            return bids_json.get('ShimSetting')[3:]
 
     scanner_shim = {
-        'f0': get_imaging_frequency(bids_json_dict),
-        'order1': get_shim_order1(bids_json_dict),
-        'order2': get_shim_order2(bids_json_dict),
-        'order3': None
+        'f0': None,
+        'order1': None,
+        'order2': None,
+        'order3': None,
+        'has_valid_settings': False
     }
 
+    # get_imaging_frequency
+    if bids_json_dict.get('ImagingFrequency'):
+        scanner_shim['f0'] = int(bids_json_dict.get('ImagingFrequency') * 1e6)
+
+    # get_shim_orders
+    if bids_json_dict.get('ShimSetting'):
+        scanner_shim['order1'] = bids_json_dict.get('ShimSetting')[:3]
+        scanner_shim['order2'] = bids_json_dict.get('ShimSetting')[3:]
+        scanner_shim['has_valid_settings'] = True
+    else:
+        logger.warning("ShimSetting tag is not available")
+
     return scanner_shim
+
+
+def convert_to_mp(manufacturers_model_name, shim_settings):
+    """ Converts the ShimSettings tag from the json BIDS sidecar to the scanner units.
+        (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
+
+    Args:
+        manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
+                                        ManufacturersModelName'. Supported names: 'Prisma_fit'.
+        shim_settings (dict): Dictionnary with keys: 'order1', 'order2', 'has_valid_settings'. 'order1' is a list of 3
+                       coefficients for the first order. Found in the json BIDS sidecar under 'ShimSetting'. 'order2' is
+                       a list of 5 coefficients. 'has_valid_settings' is a boolean.
+
+    Returns:
+        dict: Same dictionnary as the shim_settings input with coefficients of the first, second and third order
+              converted according to the appropriate manufacturer model.
+    """
+    scanner_shim_mp = shim_settings
+
+    if manufacturers_model_name == "Prisma_fit":
+        if shim_settings.get('order1'):
+            # One can use the Siemens commandline AdjValidate tool to get all the values below:
+            max_current_mp_order1 = np.array([2300] * 3)
+            max_current_dcm_order1 = np.array([14436, 14265, 14045])
+            order1_mp = np.array(shim_settings['order1']) * max_current_mp_order1 / max_current_dcm_order1
+
+            if np.any(np.abs(order1_mp) > max_current_mp_order1):
+                scanner_shim_mp['has_valid_settings'] = False
+                raise ValueError("Multipole values exceed known system limits.")
+            else:
+                scanner_shim_mp['order1'] = order1_mp
+
+        if shim_settings.get('order2'):
+            max_current_mp_order2 = np.array([4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
+            max_current_dcm_order2 = np.array([9998, 9998, 9998, 9998, 9998])
+            order2_mp = np.array(shim_settings['order2']) * max_current_mp_order2 / max_current_dcm_order2
+
+            if np.any(np.abs(order2_mp) > max_current_mp_order2):
+                scanner_shim_mp['has_valid_settings'] = False
+                raise ValueError("Multipole values exceed known system limits.")
+            else:
+                scanner_shim_mp['order2'] = order2_mp
+
+    else:
+        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented")
+
+    return scanner_shim_mp
+
+
+class ScannerShimSettings:
+    def __init__(self, bids_json_dict):
+
+        shim_settings_dac = get_scanner_shim_settings(bids_json_dict)
+        self.shim_settings = convert_to_mp(bids_json_dict.get('ManufacturersModelName'), shim_settings_dac)
+
+    def concatenate_shim_settings(self, order=2):
+        coefs = []
+        if not self.shim_settings['has_valid_settings']:
+            logger.warning("Invalid Shim Settings")
+            return coefs
+
+        if self.shim_settings.get('f0') is not None and order >= 0:
+            # Concatenate 2 lists
+            coefs = [self.shim_settings.get('f0')]
+        else:
+            coefs = [0]
+
+        for i_order in range(1, order + 1):
+            if self.shim_settings.get(f'order{i_order}') is not None:
+                # Concatenate 2 lists
+                coefs.extend(self.shim_settings.get(f'order{i_order}'))
+            else:
+                n_coefs = (i_order + 1) * 2
+                coefs.extend([0] * n_coefs)
+
+        return coefs
