@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
+
 import copy
 import logging
 import math
 import nibabel as nib
 import numpy as np
-import os
 from skimage.filters import gaussian
 from sklearn.linear_model import LinearRegression
 
