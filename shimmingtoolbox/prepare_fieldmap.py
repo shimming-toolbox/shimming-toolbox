@@ -144,12 +144,6 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
             # dimensions: [x, y, z, echo]
             unwrapped_data_corrected = correct_2pi_offset(unwrapped_data, new_mag, mask_tmp, VALIDITY_THRESHOLD)
 
-        for i_echo in range(n_echoes):
-            nii = nib.Nifti1Image(unwrapped_data[..., i_echo], list_nii_phase[0].affine, list_nii_phase[0].header)
-            nib.save(nii, f"/Users/alexandredastous/Downloads/data_code/acdc_208p/output_fieldmap/unwrapped_002_{i_echo}.nii.gz")
-            nii = nib.Nifti1Image(unwrapped_data_corrected[..., i_echo], list_nii_phase[0].affine, list_nii_phase[0].header)
-            nib.save(nii, f"/Users/alexandredastous/Downloads/data_code/acdc_208p/output_fieldmap/unwrapped_corr_002_{i_echo}.nii.gz")
-
         x = np.asarray(echo_times)
         # Calculates multi linear regression for the whole "unwrapped_data_corrected" as Y and "echo_times" as X.
         # So, X and Y reshaped into [n_echoes * 1] array and [n_echoes * total number of voxels / phase] respectively.
