@@ -205,7 +205,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
     for i_shim in range(len(slices)):
-        print('current i_shim number is:' + str(i_shim))
         # Calculate shimmed values
         correction_per_channel = coef[i_shim] * merged_coils
         corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
@@ -244,8 +243,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
                      f"STD:\n"
                      f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}"
                      f"current: \n{coef[i_shim, :]}")
-    print('the shape of shimmed is: ' + str(np.shape(shimmed)))
-    print('len(slices) is: ' +  str(np.shape(slices)))
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
         # fmap space
@@ -253,7 +250,6 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # fieldmap)
         shimmed_masked, mask_full_binary, shimmed_unmasked = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
                                                                    slices, masks_fmap)
-        print('the shape of shimmed_masked is: ' + str(np.shape(shimmed_masked)))
         if len(slices) == 1:
             # TODO: Output json sidecar
             # TODO: Update the shim settings if Scanner coil?
@@ -508,7 +504,6 @@ def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_outp
     fig.savefig(fname_figure, bbox_inches='tight')
     
 def _plot_T2_star_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
-    print('Gz map has been plotted')
     # Plot T2 star change / Gz maps
     [nx,ny,nz] = np.shape(unshimmed)
     shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
@@ -532,7 +527,6 @@ def _plot_T2_star_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
 
     min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
     max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-    print('for Gz, min value is: ' + str(min_value) + 'max value is: ' + str(max_value))
 
     fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
     fig.suptitle(f"Gz - R2* T2* \nFieldmap Coordinate System")
