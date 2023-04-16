@@ -204,10 +204,12 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
     shimmed = np.zeros(unshimmed.shape + (len(slices),))
     corrections = np.zeros(unshimmed.shape + (len(slices),))
     masks_fmap = np.zeros(unshimmed.shape + (len(slices),))
+    print('The variable slices is as following: ' + str(slices)) # Currently the code works for --slice sequential shimming, but need to adapt it so that it also works for the --slices volume
     for i_shim in range(len(slices)):
         # Calculate shimmed values
         correction_per_channel = coef[i_shim] * merged_coils
         corrections[..., i_shim] = np.sum(correction_per_channel, axis=3, keepdims=False)
+        
         shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
 
         # Create non binary mask
@@ -243,11 +245,22 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
                      f"STD:\n"
                      f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}"
                      f"current: \n{coef[i_shim, :]}")
+    full_shimmed = np.zeros(unshimmed.shape)
+    full_Gz = np.zeros(unshimmed.shape)
+    for i_shim in range(len(slices)):
+        slc = slices[i_shim]
+        print('Currently writing: i_shim is ' + str(i_shim) + ', corespondingly, slices are: ' + str(slc))
+        shimmed_temp = corrections[..., i_shim] + unshimmed
+        grad_temp = np.gradient(shimmed_temp, axis = 2)
+        full_Gz[:,:,slc] = grad_temp[:,:,slc]
+        # Apply the correction weighted according to the mask
+        full_shimmed[:,:,slc] = shimmed_temp[:,:,slc]
     # Figure that shows unshimmed vs shimmed for each slice
     if path_output is not None:
         # fmap space
         # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on the
         # fieldmap)
+        print('the shape of corrections is: ' + str(np.shape(corrections)))
         shimmed_masked, mask_full_binary, shimmed_unmasked = _calc_shimmed_full_mask(unshimmed, corrections, nii_mask, nii_fieldmap_orig,
                                                                    slices, masks_fmap)
         if len(slices) == 1:
@@ -268,9 +281,9 @@ def _eval_static_shim(opt: Optimizer, nii_fieldmap_orig, nii_mask, coef, slices,
         # Save images to a file
         # TODO: Add units if possible
         # TODO: Add in anat space?
-        _plot_static_full_mask(unshimmed, shimmed_unmasked, mask_full_binary, path_output)
-        _plot_static_signal_recovery_mask(unshimmed, shimmed_unmasked, mask_full_binary, path_output, epi_te)
-        _plot_T2_star_mask(unshimmed, shimmed_unmasked, mask_full_binary, path_output, epi_te)
+        _plot_static_full_mask(unshimmed, full_shimmed, mask_full_binary, path_output)
+        _plot_static_signal_recovery_mask(unshimmed, full_shimmed, full_Gz, mask_full_binary, path_output, epi_te)
+        _plot_T2_star_mask(unshimmed, full_shimmed, full_Gz, mask_full_binary, path_output, epi_te)
         #_plot_static_partial_mask(unshimmed, shimmed_masked, masks_fmap, path_output)
         _plot_currents(coef, path_output)
         _cal_shimmed_anat_orient(coef, merged_coils, nii_mask, nii_fieldmap_orig, slices, path_output)
@@ -435,7 +448,7 @@ def _plot_static_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
     
-def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
+def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, shimmed_Gz, mask, path_output, epi_te):
     # Plot signal loss maps
     [nx,ny,nz] = np.shape(unshimmed)
     shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
@@ -447,7 +460,8 @@ def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_outp
         signal_loss_map = 1 - signal_map
         return signal_loss_map
     unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-    shimmed_signal_loss = calculate_signal_loss(shimmed)
+    shimmed_signal_loss = 1 - abs(np.sinc(epi_te * shimmed_Gz))
+    #shimmed_signal_loss = calculate_signal_loss(shimmed)
     mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
     
     # choose selected slices to plot
@@ -503,13 +517,13 @@ def _plot_static_signal_recovery_mask(unshimmed, shimmed_masked, mask, path_outp
     fname_figure = os.path.join(path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
     
-def _plot_T2_star_mask(unshimmed, shimmed_masked, mask, path_output, epi_te):
+def _plot_T2_star_mask(unshimmed, shimmed_masked, shimmed_Gz, mask, path_output, epi_te):
     # Plot T2 star change / Gz maps
     [nx,ny,nz] = np.shape(unshimmed)
     shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
     
     unshimmed_Gz = np.gradient(unshimmed, axis = 2)
-    shimmed_Gz = np.gradient(shimmed, axis = 2)
+    #shimmed_Gz = np.gradient(shimmed, axis = 2)
     mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
     
     # choose selected slices to plot
