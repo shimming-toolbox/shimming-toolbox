@@ -172,8 +172,6 @@ def threshold(fname_input, output, thr, verbose):
     
     # Set all loggers
     set_all_loggers(verbose)
-    # test
-    logger.info("this works third time")
 
     # Prepare the output
     create_output_dir(output, is_file=True)
