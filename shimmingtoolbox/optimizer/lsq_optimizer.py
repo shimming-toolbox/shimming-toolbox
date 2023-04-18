@@ -111,7 +111,7 @@ class LsqOptimizer(Optimizer):
         signal = 1
         # if consider signal loss from x, y, and z
         for i in range(2,3):
-            G = np.gradient(shimmed, axis = i)
+            G = np.gradient(shimmed, axis=i)
             signal = signal * abs(np.sinc(self.epi_te * G))
         # MSE regularized to minimize currents
         #print("" + str(np.shape(signal)))
