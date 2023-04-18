@@ -15,6 +15,7 @@ import nibabel as nib
 import numpy as np
 import logging
 import os
+import time
 from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
@@ -279,7 +280,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     else:
         list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
-
+    start_time = time.time()
     # Get shimming coefficients
     coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
                            method=method,
@@ -290,7 +291,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                            w_signal_loss=w_signal_loss,
                            epi_te=epi_te,
                            path_output=path_output)
-
+    end_time = time.time()
+    print("Time taken for shim_sequencer to run is : ", end_time - start_time, "seconds")
     # Output
     # Load output options
     options = _load_output_options(json_anat_data, fatsat)
