@@ -165,11 +165,10 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
     elif from_img.ndim == 4:
         nt = from_img.shape[3]
         results = Parallel(-1, backend='loky')(
-            delayed(_resample_4d)( nii_from_img, nii_to_vox_map, it, order, mode, cval, out_class)
+            delayed(_resample_4d)(it, nii_from_img, nii_to_vox_map, order, mode, cval, out_class)
             for it in range(nt))
-        results.sort(key=lambda x: x[0])
-        resampled_4d = np.array([results[i][1] for i in range(nt)]).transpose(1, 2, 3, 0)
-
+        # results.sort(key=lambda x: x[0])
+        resampled_4d = np.array([results[it] for it in range(nt)]).transpose(1, 2, 3, 0)
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine, header=nii_to_vox_map.header)
 
     else:
@@ -178,13 +177,11 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
     return nii_resampled
 
 
-def _resample_4d(nii_from_img, nii_to_vox_map, i, order, mode, cval, out_class ):
-
-    nii_from_img_3d = nib.Nifti1Image(nii_from_img.get_fdata()[...,i], nii_from_img.affine, header=nii_from_img.header)
+def _resample_4d(i, nii_from_img, nii_to_vox_map, order, mode, cval, out_class):
+    nii_from_img_3d = nib.Nifti1Image(nii_from_img.get_fdata()[..., i], nii_from_img.affine, header=nii_from_img.header)
     resampled_image = nib_resample_from_to(nii_from_img_3d, nii_to_vox_map, order=order, mode=mode,
-                                            cval=cval, out_class=out_class).get_fdata()
-    return i, resampled_image
-
+                                           cval=cval, out_class=out_class).get_fdata()
+    return resampled_image
 
 
 def get_main_orientation(cosines: list):
