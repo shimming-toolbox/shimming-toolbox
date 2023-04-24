@@ -33,7 +33,6 @@ supported_optimizers = {
     'pseudo_inverse': Optimizer
 }
 
-
 class Sequencer(object):
     """
     General class for the sequencer
@@ -83,7 +82,7 @@ class Sequencer(object):
         Returns:
                 Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
-        # It's faster to use local arguments for the optimization
+        # It's faster to use local arguments for the optimization with joblib
         n_shims = len(self.slices)
         optimizer = self.optimizer
         slices = self.slices
@@ -94,9 +93,8 @@ class Sequencer(object):
         for i in range(n_shims):
             result = self.opt(i, optimizer, nii_mask_anat, slices, dilation_kernel, dilation_kernel_size, path_output)
             results.append(result)
-        results_final = [r for i, r in results]
 
-        return np.array(results_final)
+        return np.array(results)
 
     def opt(self, i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output):
 
@@ -131,12 +129,12 @@ class Sequencer(object):
                                               path_output=path_output).get_fdata()
 
         if np.all(sliced_mask_resampled == 0):
-            return i, np.zeros(optimizer.merged_coils.shape[-1])
+            return np.zeros(optimizer.merged_coils.shape[-1])
 
         # Optimize using the mask
         coef = optimizer.optimize(sliced_mask_resampled)
 
-        return i, coef
+        return coef
 
 
 class ShimSequencer(Sequencer):
@@ -449,11 +447,13 @@ class ShimSequencer(Sequencer):
                 list_shim_slice.append(i_shim)
 
         # Calculate shimmed values
-        # TODO: what this does
+        # This is doing this, but in a faster way by avoiding the for loop :
+        # for i_shim in range(len(slices)):
+        # corrections[..., i_shim] = merged_coils @ coef[i_shim]
         corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
         shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
         self.display_shimmed_results(shimmed, unshimmed, masks_fmap, coef)
-
+        
         return shimmed, corrections, masks_fmap, list_shim_slice
 
     def display_shimmed_results(self, shimmed, unshimmed, masks_fmap, coef):
@@ -469,9 +469,7 @@ class ShimSequencer(Sequencer):
                 """
 
         for i_shim in range(len(self.slices)):
-            # TODO: Verify if "np.where(masks_fmap[..., i_shim], False, True)" works
-            mask = np.where(masks_fmap[..., i_shim] == False, True, False)
-            # TODO: dtype=np.float32
+            mask = np.where(masks_fmap[..., i_shim], False, True)
             ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask, dtype=np.float32)
             ma_unshimmed = np.ma.array(unshimmed, mask=mask, dtype=np.float32)
 
@@ -545,6 +543,9 @@ class ShimSequencer(Sequencer):
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
         # Find the correction
+        # This is the same as this but in a faster way:
+        # for i_shim in range(len(slices)):
+        # full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
         full_correction = np.einsum('ijkl,ijkl->ijk', masks_fmap, correction, optimize='optimizer')
         # Calculate the weighted whole mask
         mask_weight = np.sum(masks_fmap, axis=3)
@@ -713,6 +714,7 @@ class ShimSequencer(Sequencer):
         for i_shim in list_shim_slice:
             corr = np.sum(coefs[i_shim] * coils_anat[:, :, self.slices[i_shim], :], axis=3, keepdims=False)
             shimmed_anat_orient[..., self.slices[i_shim]] += corr
+
         fname_shimmed_anat_orient = os.path.join(self.path_output, 'fig_shimmed_anat_orient.nii.gz')
         nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * self.nii_mask_anat.get_fdata(),
                                                   self.nii_mask_anat.affine,
@@ -854,6 +856,7 @@ class RealTimeSequencer(Sequencer):
                 nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
                                                           self.path_output)
                 break
+                
         return nii_fieldmap
 
     def get_mask(self, nii_static_mask, nii_riro_mask):
@@ -1064,6 +1067,7 @@ class RealTimeSequencer(Sequencer):
                 optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine)
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
+        
         self.optimizer = optimizer
 
     def optimize_riro(self, nii_mask_anat):
@@ -1087,9 +1091,8 @@ class RealTimeSequencer(Sequencer):
                                    path_output,
                                    bounds)
             results.append(result)
-        results_final = [r for i, r in results]
 
-        return np.array(results_final)
+        return np.array(results)
 
     def opt_riro(self, i, optimizer, nii_mask_anat, slices_anat, dilation_kernel, dilation_size, path_output,
                  shimwise_bounds):
@@ -1130,12 +1133,12 @@ class RealTimeSequencer(Sequencer):
         if shimwise_bounds is not None:
             optimizer.set_merged_bounds(shimwise_bounds[i])
         if np.all(sliced_mask_resampled == 0):
-            return i, np.zeros(optimizer.merged_coils.shape[-1])
+            return np.zeros(optimizer.merged_coils.shape[-1])
 
         # Optimize using the mask
         coef = optimizer.optimize(sliced_mask_resampled)
 
-        return i, coef
+        return coef
 
     def eval(self, coef_static, coef_riro, mean_p, pressure_rms):
         """
