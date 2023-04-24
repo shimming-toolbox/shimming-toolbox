@@ -8,6 +8,8 @@ import math
 import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
 from joblib import Parallel, delayed
+
+
 def generate_meshgrid(dim, affine):
     """
     Generate meshgrid of size dim, with coordinate system defined by affine.
@@ -167,7 +169,6 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
         results = Parallel(-1, backend='loky')(
             delayed(_resample_4d)(it, nii_from_img, nii_to_vox_map, order, mode, cval, out_class)
             for it in range(nt))
-        # results.sort(key=lambda x: x[0])
         resampled_4d = np.array([results[it] for it in range(nt)]).transpose(1, 2, 3, 0)
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine, header=nii_to_vox_map.header)
 
