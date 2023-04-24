@@ -408,7 +408,7 @@ class ShimSequencer(Sequencer):
             self.plot_static_full_mask(unshimmed, shimmed_masked, mask_full_binary)
             self.plot_static_partial_mask(unshimmed, shimmed, masks_fmap)
             self.plot_currents(coef)
-            self.cal_shimmed_anat_orient(coef, list_shim_slice)
+            self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Save to a NIfTI
                 fname_correction = os.path.join(self.path_output, 'fig_correction.nii.gz')
@@ -688,8 +688,7 @@ class ShimSequencer(Sequencer):
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
-    def cal_shimmed_anat_orient(self, coefs, list_shim_slice):
-        # TODO: Add c
+    def calc_shimmed_anat_orient(self, coefs, list_shim_slice):
         """
         Calculate and save the shimmed anat orient
 
