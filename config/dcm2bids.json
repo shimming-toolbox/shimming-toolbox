@@ -379,6 +379,40 @@
             "criteria": {
                 "SequenceName": "*tfl2d1_16"
             }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "fieldmap",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ImageType": ["*", "*", "B0 MAP", "B0", "*", "FIELDMAPHZ"]
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "1",
+                "ImageType": ["*", "*", "M", "*", "M", "*"]
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "fieldmap",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ImageType": ["*", "*", "T1", "MIXED", "REAL", "FIELDMAPHZ"]
+            }
+        },
+        {
+            "dataType": "fmap",
+            "modalityLabel": "magnitude1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "1",
+                "ImageType": ["*", "*", "T1", "MIXED", "FIELDMAPHZ"]
+            }
         }
     ]
 }
