@@ -12,7 +12,6 @@ import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
-
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
@@ -160,7 +159,7 @@ class ShimSequencer(Sequencer):
         nii_fieldmap_orig (nibabel.Nifti1Image): Nibabel object containing the copy of the fieldmap data
         optimizer (object) : Object that contains everything needed for the optimization created from
                                 `shimmingtoolbox.optimizer` init method
-        extending (boolean) : To see, if there is a modification of the original fieldmap
+        fmap_is_extended (boolean) : To see, if there is a modification of the original fieldmap
 
     """
 
@@ -200,7 +199,7 @@ class ShimSequencer(Sequencer):
                            artefacts.
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
-        self.nii_fieldmap, self.nii_fieldmap_orig, self.extending = self.get_fieldmap(nii_fieldmap)
+        self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
         self.nii_anat = self.get_anat(nii_anat)
         self.nii_mask_anat = self.get_mask(nii_mask_anat)
         self.coils = coils
@@ -326,8 +325,6 @@ class ShimSequencer(Sequencer):
         coefs = self.optimize(self.nii_mask_anat)
         return coefs
 
-    # TODO : Maybe put the select_optimizer in the init
-
     def select_optimizer(self):
         """
         Select and initialize the optimizer
@@ -365,7 +362,7 @@ class ShimSequencer(Sequencer):
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
         unshimmed = self.nii_fieldmap_orig.get_fdata()
         # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
-        if self.extending:
+        if self.fmap_is_extended:
             merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap_orig.affine)
 
         else:
@@ -428,8 +425,6 @@ class ShimSequencer(Sequencer):
                 * list_shim_slice (list): List containing the indexes of the unshimmed slices
         """
         # Initialize
-        shimmed = np.zeros(unshimmed.shape + (len(self.slices),))
-        corrections = np.zeros(unshimmed.shape + (len(self.slices),))
         masks_fmap = np.zeros(unshimmed.shape + (len(self.slices),))
         list_shim_slice = []
         for i_shim in range(len(self.slices)):
@@ -437,40 +432,70 @@ class ShimSequencer(Sequencer):
             masks_fmap[..., i_shim] = resample_mask(self.nii_mask_anat, self.nii_fieldmap_orig,
                                                     self.slices[i_shim]).get_fdata()
             # Calculate shimmed values
-            if not np.any(coef[i_shim]):
-                shimmed[..., i_shim] = unshimmed
-                continue
-            list_shim_slice.append(i_shim)
-            corrections[..., i_shim] = merged_coils @ coef[i_shim]
-            shimmed[..., i_shim] = unshimmed + corrections[..., i_shim]
-            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=masks_fmap[..., i_shim] == False)
-            ma_unshimmed = np.ma.array(unshimmed, mask=masks_fmap[..., i_shim] == False)
-            std_shimmed = np.ma.std(ma_shimmed)
-            std_unshimmed = np.ma.std(ma_unshimmed)
-            mae_shimmed = np.ma.mean(np.ma.abs(ma_shimmed))
-            mae_unshimmed = np.ma.mean(np.ma.abs(ma_unshimmed))
-            mse_shimmed = np.ma.mean(np.square(ma_shimmed))
-            mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+            if np.any(coef[i_shim]):
+                list_shim_slice.append(i_shim)
 
-            if self.opt_criteria is None or self.opt_criteria == 'mse' and mse_shimmed > mse_unshimmed:
-                logger.warning("With mse criteria, verify the shim parameters. Some give worse results than no shim.\n "
-                               f"i_shim: {i_shim}")
-            elif self.opt_criteria == 'mae' and mae_shimmed > mae_unshimmed:
-                logger.warning("With mae criteria, verify the shim parameters. Some give worse results than no shim.\n "
-                               f"i_shim: {i_shim}")
-            elif self.opt_criteria == 'std' and std_shimmed > std_unshimmed:
-                logger.warning("With std criteria, verify the shim parameters. Some give worse results than no shim.\n"
-                               f"i_shim: {i_shim}")
-
-            logger.debug(f"Slice(s): {self.slices[i_shim]}\n"
-                         f"MAE:\n"
-                         f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
-                         f"MSE:\n"
-                         f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
-                         f"STD:\n"
-                         f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
-                         f"current: \n{coef[i_shim, :]}")
+        corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
+        shimmed = np.add(corrections, np.reshape(unshimmed, (112, 112, 70, 1)))
+        self.display_shimmed_results(shimmed, unshimmed, masks_fmap, coef)
         return shimmed, corrections, masks_fmap, list_shim_slice
+
+    def display_shimmed_results(self, shimmed, unshimmed, masks_fmap, coef):
+        """
+                Print the efficiency of the corrections according to the opt_criteria
+
+                Args:
+                    shimmed (numpy.ndarray): Data of nii_fieldmap_orig after the correction
+                    unshimmed (numpy.ndarray): Data of nii_fieldmap_orig
+                    masks_fmap (numpy.ndarray): Resampled mask on the original fieldmap
+                    coef (numpy.ndarray): Coefficients of the coil profiles to shim (len(slices) x n_channels)
+
+                """
+        if logger.level <= getattr(logging, 'DEBUG'):
+            log = True
+        else:
+            log = False
+        for i_shim in range(len(self.slices)):
+            mask = np.where(masks_fmap[..., i_shim] == False, True, False)
+            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask).astype(np.float32)
+            ma_unshimmed = np.ma.array(unshimmed, mask=mask).astype(np.float32)
+            if log:
+                mse_shimmed = np.ma.mean(np.square(ma_shimmed))
+                mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+                mae_shimmed = np.ma.mean(np.abs(ma_shimmed))
+                mae_unshimmed = np.ma.mean(np.abs(ma_unshimmed))
+                std_shimmed = np.ma.std(ma_shimmed)
+                std_unshimmed = np.ma.std(ma_unshimmed)
+                if mse_unshimmed < mse_shimmed and (self.opt_criteria is None or self.opt_criteria == 'mse'):
+                    logger.warning("With mse criteria, verify the shim parameters."
+                                   " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
+                elif mae_unshimmed < mae_shimmed and self.opt_criteria == "mae":
+                    logger.warning("With mae criteria, verify the shim parameters."
+                                   " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
+                elif std_unshimmed < std_shimmed:
+                    logger.warning("With std criteria, verify the shim parameters."
+                                   " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
+                logger.debug(f"Slice(s): {self.slices[i_shim]}\n"
+                             f"MAE:\n"
+                             f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
+                             f"MSE:\n"
+                             f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                             f"STD:\n"
+                             f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
+                             f"current: \n{coef[i_shim, :]}")
+            else:
+                if self.opt_criteria is None or self.opt_criteria == 'mse':
+                    results_shimmed = np.ma.mean(np.square(ma_shimmed))
+                    results_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+                elif self.opt_criteria == "mae":
+                    results_shimmed = np.ma.mean(np.abs(ma_shimmed))
+                    results_unshimmed = np.ma.mean(np.abs(ma_unshimmed))
+                else:
+                    results_shimmed = np.ma.std(ma_shimmed)
+                    results_unshimmed = np.ma.std(ma_unshimmed)
+                if results_shimmed > results_unshimmed:
+                    logger.warning(f"With {self.opt_criteria} criteria, verify the shim parameters."
+                                   " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
     def calc_shimmed_full_mask(self, unshimmed, correction, masks_fmap):
         """
@@ -490,13 +515,8 @@ class ShimSequencer(Sequencer):
                                                             order=0,
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
-
         # Find the correction
-        full_correction = np.zeros(unshimmed.shape)
-        for i_shim in range(len(self.slices)):
-            # Apply the correction weighted according to the mask
-            full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
-
+        full_correction = np.einsum('ijkl,ijkl->ijk', masks_fmap, correction, optimize='optimizer')
         # Calculate the weighted whole mask
         mask_weight = np.sum(masks_fmap, axis=3)
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
@@ -504,7 +524,7 @@ class ShimSequencer(Sequencer):
 
         # Apply the correction to the unshimmed image
         shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
-
+        
         return shimmed_masked, mask_full_binary
 
     def plot_static_full_mask(self, unshimmed, shimmed_masked, mask):
@@ -530,7 +550,7 @@ class ShimSequencer(Sequencer):
 
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
+        
         fig = Figure(figsize=(9, 6))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
@@ -575,19 +595,20 @@ class ShimSequencer(Sequencer):
             masks (numpy.ndarray): Resampled mask on the original fieldmap
         """
         a_slice = 0
-        unshimmed_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3)
+        unshimmed_repeated = unshimmed[..., np.newaxis] * np.ones(masks.shape[-1])
         mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
         mt_shimmed = montage(shimmed[:, :, a_slice, :])
-        unshimmed_masked_repeated = np.repeat(unshimmed[..., np.newaxis], masks.shape[-1], axis=3) * np.ceil(masks)
-        mt_unshimmed_masked = montage(unshimmed_masked_repeated[:, :, a_slice, :])
+        
+        unshimmed_masked = unshimmed_repeated * np.greater(masks, 0)
+        mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
         mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(masks[:, :, a_slice, :]))
+        
+        min_masked_value = np.min([mt_unshimmed_masked, mt_shimmed_masked])
+        max_masked_value = np.max([mt_unshimmed_masked, mt_shimmed_masked])
 
-        min_masked_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_masked_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
-        min_fmap_value = min(mt_unshimmed.min(), mt_shimmed.min())
-        max_fmap_value = max(mt_unshimmed.max(), mt_shimmed.max())
-
+        min_fmap_value = np.min([mt_unshimmed, mt_shimmed])
+        max_fmap_value = np.max([mt_unshimmed, mt_shimmed])
+        
         fig = Figure(figsize=(8, 5))
         fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
 
@@ -658,7 +679,7 @@ class ShimSequencer(Sequencer):
                                          mode='grid-constant',
                                          cval=0).get_fdata()
         shimmed_anat_orient = fieldmap_anat
-
+        
         for i_shim in list_shim_slice:
             corr = np.sum(coefs[i_shim] * coils_anat[:, :, self.slices[i_shim], :], axis=3, keepdims=False)
             shimmed_anat_orient[..., self.slices[i_shim]] += corr
@@ -711,7 +732,6 @@ class RealTimeSequencer(Sequencer):
             optimizer (object) : Object that contains everything needed for the optimization created from
                                 `shimmingtoolbox.optimizer` init method
             bounds (list) : List of the bounds for the currents for the real time optimization
-            extending (boolean) : boolean to see, if there was a modification of the fieldmap or not
             acq_pressures (numpy.ndarray) : 1D array that contains the acquisitions pressures
     """
 
@@ -807,8 +827,8 @@ class RealTimeSequencer(Sequencer):
             Get both masks for the RealTimeSequencer Class
 
             Args:
-                nii_static_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the static
-                                                       component.
+                nii_static_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region
+                                                        for the static component.
                 nii_riro_mask (nibabel.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
                                                      component.
 
