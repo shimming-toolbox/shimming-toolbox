@@ -436,7 +436,7 @@ class ShimSequencer(Sequencer):
                 list_shim_slice.append(i_shim)
 
         corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
-        shimmed = np.add(corrections, np.reshape(unshimmed, (112, 112, 70, 1)))
+        shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
         self.display_shimmed_results(shimmed, unshimmed, masks_fmap, coef)
         return shimmed, corrections, masks_fmap, list_shim_slice
 
