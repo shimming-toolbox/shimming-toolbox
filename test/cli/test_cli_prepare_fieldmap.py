@@ -187,7 +187,7 @@ def test_cli_prepare_fieldmap_savemask():
         runner = CliRunner()
 
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
-        fname_output_mask = os.path.join(tmp, 'output_mask.nii.gz')
+        fname_output_mask = os.path.join(tmp, 'a', 'output_mask.nii.gz')
 
         result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
                                                       '--mag', fname_mag_realtime,
