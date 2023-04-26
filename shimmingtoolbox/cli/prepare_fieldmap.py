@@ -85,7 +85,7 @@ def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
     nii_fieldmap, json_fieldmap = prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask,
                                                               threshold, fname_save_mask, gaussian_filter, sigma)
 
-    # Create filename for the output if it,s a path
+    # Create filename for the output if it's a path
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
 
     # Save fieldmap and json file to their respective filenames
@@ -123,6 +123,7 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
     if fname_save_mask is not None:
         # If it is a path, add the default filename and create output directory
         fname_save_mask = create_fname_from_path(fname_save_mask, MASK_OUTPUT_DEFAULT)
+        create_output_dir(fname_save_mask, is_file=True)
 
     # Import phase
     list_nii_phase = []
@@ -159,14 +160,15 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
                                               mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
                                               sigma=sigma, fname_save_mask=fname_save_mask)
 
-    # Save fieldmap
+    # Create nii fieldmap
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
 
-    # Save fieldmap json
+    # Create fieldmap json
     json_fieldmap = json_phase
     if len(phase) > 1:
         for i_echo in range(len(echo_times)):
             json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
+
     # save mask json
     if fname_save_mask is not None:
         fname_mask_json = fname_save_mask.rsplit('.nii', 1)[0] + '.json'
