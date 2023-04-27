@@ -316,7 +316,7 @@ class DropdownComponent(Component):
 
             label (str): Label of the button describing the dropdown
             option_name (str): Name of the options of the dropdown, set to 'no_arg' is not an option
-            list_components (list): list of InputComponents
+            list_components (list): list of Components
             info_text (str): Info message displayed when hovering over the "i" icon. Leave blank to auto fill using option_name
             cli (function): CLI function used by the dropdown
             component_to_dropdown_choice (list): Tells which component associates with which dropdown selection. 
@@ -328,6 +328,11 @@ class DropdownComponent(Component):
         self.info_text = info_text
         self.positions = {}
         self.input_text_boxes = {}
+
+        # If there is a dropdown parent, it needs to be added after instanciantion with self.add_dropdown_parent(parent)
+        self.dropdown_parent = None
+
+        self.dropdown_children = self.get_dropdown_children()
         self.sizer = self.create_sizer()
         self.dropdown_choices = [item["label"] for item in self.dropdown_metadata]
         self.option_name = option_name
@@ -342,6 +347,18 @@ class DropdownComponent(Component):
         self.create_choice_box()
         self.create_dropdown_sizers()
         self.on_choice(None)
+
+    def get_dropdown_children(self):
+        """ Finds the DropdownComponent from list_components and adds it to the list of children (dropdown_children)"""
+        dropdown_children = []
+        for component in self.list_components:
+            if type(component) == DropdownComponent:
+                dropdown_children.append(component)
+        return dropdown_children
+
+    def add_dropdown_parent(self, parent):
+        """ Method to add the parent dropdown after instanciation of the class"""
+        self.dropdown_parent = parent
 
     def add_text_info(self):
         """ This function adds the help text. """
@@ -382,7 +399,15 @@ class DropdownComponent(Component):
         self.sizer.Add(self.choice_box_sizer)
         self.sizer.AddSpacer(10)
 
-    def on_choice(self, event):
+    def on_choice(self, event, is_propagating_up=True):
+        """ To enable nested dropdowns, every time a user selects a dropdown, we need to recalculate all other
+            dropdowns and associated options. Dropdowns affect other dropdowns.
+
+            is_propagating_up tells the dropdown to propagate the on_choice() command to the parent drop down until
+            there is no more parent. Moreover, on each call of on_choice(), the propagation will also go down. This
+            allows to recalculate each dropdown. THere is some redundency since we would really just want the most
+            parent dropdown to send the down propagation, but this will do for now.
+        """
         # Get the selection from the choice box widget
         if self.choice_box.GetSelection() < 0:
             selection = self.choice_box.GetString(0)
@@ -406,11 +431,20 @@ class DropdownComponent(Component):
             indexes = [i for i, e in enumerate(self.component_to_dropdown_choice) if e == index_dd]
             self.input_text_boxes = {}
             for index_comp in indexes:
-                # Merges both input_text_boxes
-                self.input_text_boxes.update(self.list_components[index_comp].input_text_boxes)
+                component = self.list_components[index_comp]
+                # Merge both input_text_boxes
+                self.input_text_boxes.update(component.input_text_boxes)
+                # Propagate down to show or hide the relevant sub DropdownComponents
+                if type(component) == DropdownComponent:
+                    component.on_choice(None, is_propagating_up=False)
 
         # Add the dropdown to the list of options
         self.input_text_boxes[self.option_name] = [self.dropdown_metadata[index_dd]["option_value"]]
+
+        # Update the parent if there is one (This allows to propagate nested dropdown selection)
+        if is_propagating_up:
+            if self.dropdown_parent is not None:
+                self.dropdown_parent.on_choice(None)
 
         # Update the window
         self.panel.SetVirtualSize(self.panel.sizer_run.GetMinSize())
@@ -735,10 +769,12 @@ class B0ShimTab(Tab):
                 self.dropdown_slice_dyn.on_choice(None)
                 self.dropdown_coil_format_dyn.on_choice(None)
                 self.dropdown_scanner_order_dyn.on_choice(None)
+                self.dropdown_opt_dyn.on_choice(None)
             elif selection == 'Realtime Dynamic':
                 self.dropdown_slice_rt.on_choice(None)
                 self.dropdown_coil_format_rt.on_choice(None)
                 self.dropdown_scanner_order_rt.on_choice(None)
+                self.dropdown_opt_rt.on_choice(None)
         else:
             pass
 
@@ -842,7 +878,6 @@ class B0ShimTab(Tab):
             },
             {
                 "label": "Chronological per Channel",
-
                 "option_value": "chronological-ch"
             },
             {
@@ -911,6 +946,10 @@ class B0ShimTab(Tab):
             cli=dynamic_cli
         )
 
+        dropdown_scanner_format1.add_dropdown_parent(self.dropdown_scanner_order_dyn)
+        dropdown_scanner_format2.add_dropdown_parent(self.dropdown_scanner_order_dyn)
+        dropdown_scanner_format3.add_dropdown_parent(self.dropdown_scanner_order_dyn)
+
         dropdown_ovf_metadata = [
             {
                 "label": "delta",
@@ -969,7 +1008,7 @@ class B0ShimTab(Tab):
             },
         ]
 
-        dropdown_opt = DropdownComponent(
+        self.dropdown_opt_dyn = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
@@ -978,6 +1017,8 @@ class B0ShimTab(Tab):
             component_to_dropdown_choice=[0, 0, 1],
             cli=dynamic_cli
         )
+
+        dropdown_crit.add_dropdown_parent(self.dropdown_opt_dyn)
 
         dropdown_slice_metadata = [
             {
@@ -1072,9 +1113,12 @@ class B0ShimTab(Tab):
                              dropdown_fatsat2]
         )
 
+        dropdown_fatsat1.add_dropdown_parent(self.dropdown_coil_format_dyn)
+        dropdown_fatsat2.add_dropdown_parent(self.dropdown_coil_format_dyn)
+
         run_component = RunComponent(
             panel=self,
-            list_components=[self.component_coils_dyn, component_inputs, dropdown_opt, self.dropdown_slice_dyn,
+            list_components=[self.component_coils_dyn, component_inputs, self.dropdown_opt_dyn, self.dropdown_slice_dyn,
                              self.dropdown_scanner_order_dyn,
                              self.dropdown_coil_format_dyn, dropdown_ovf, component_output],
             st_function="st_b0shim dynamic",
@@ -1239,6 +1283,10 @@ class B0ShimTab(Tab):
             cli=realtime_cli
         )
 
+        dropdown_scanner_format1.add_dropdown_parent(self.dropdown_scanner_order_rt)
+        dropdown_scanner_format2.add_dropdown_parent(self.dropdown_scanner_order_rt)
+        dropdown_scanner_format3.add_dropdown_parent(self.dropdown_scanner_order_rt)
+
         dropdown_ovf_metadata = [
             {
                 "label": "delta",
@@ -1297,7 +1345,7 @@ class B0ShimTab(Tab):
             },
         ]
 
-        dropdown_opt = DropdownComponent(
+        self.dropdown_opt_rt = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
@@ -1306,6 +1354,8 @@ class B0ShimTab(Tab):
             component_to_dropdown_choice=[0, 0, 1],
             cli=realtime_cli
         )
+
+        dropdown_crit.add_dropdown_parent(self.dropdown_opt_rt)
 
         dropdown_slice_metadata = [
             {
@@ -1382,9 +1432,11 @@ class B0ShimTab(Tab):
                              dropdown_fatsat]
         )
 
+        dropdown_fatsat.add_dropdown_parent(self.dropdown_coil_format_rt)
+
         run_component = RunComponent(
             panel=self,
-            list_components=[self.component_coils_rt, component_inputs, dropdown_opt, self.dropdown_slice_rt,
+            list_components=[self.component_coils_rt, component_inputs, self.dropdown_opt_rt, self.dropdown_slice_rt,
                              self.dropdown_scanner_order_rt,
                              self.dropdown_coil_format_rt, dropdown_ovf, component_output],
             st_function="st_b0shim realtime-dynamic",
@@ -1705,7 +1757,7 @@ class FieldMapTab(Tab):
                 "option_value": "prelude"
             }
         ]
-        self.dropdown = DropdownComponent(
+        self.dropdown_unwrapper = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_metadata_unwrapper,
             label="Unwrapper",
@@ -1795,8 +1847,8 @@ class FieldMapTab(Tab):
 
         self.run_component = RunComponent(
             panel=self,
-            list_components=[self.component_input, self.component_input2, self.dropdown_mask_threshold, self.dropdown,
-                             self.component_output],
+            list_components=[self.component_input, self.component_input2, self.dropdown_mask_threshold,
+                             self.dropdown_unwrapper, self.component_output],
             st_function="st_prepare_fieldmap"
         )
 
@@ -2211,12 +2263,12 @@ def select_file(event, tab, ctrl, focus=False):
     dlg = wx.FileDialog(parent=None,
                         message="Select File",
                         defaultDir=CURR_DIR,
-                        style=wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+                        style=wx.FD_DEFAULT_STYLE | wx.FD_FILE_MUST_EXIST)
 
     if dlg.ShowModal() == wx.ID_OK:
-        path = dlg.GetPath()
-        ctrl.SetValue(path)
-        logger.info(f"File set to: {path}")
+        fname = dlg.GetPath()
+        ctrl.SetValue(fname)
+        logger.info(f"File set to: {fname}")
 
     # Skip allows to handle other events
     event.Skip()
