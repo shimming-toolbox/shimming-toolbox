@@ -141,7 +141,7 @@ class TestSequencer(object):
     def test_shim_sequencer_std(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencerShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
+        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
                                   opt_criteria='std')
         currents = Sequencer_test.shim()
         Sequencer_test.eval(currents)
@@ -151,7 +151,7 @@ class TestSequencer(object):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
         Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
-                                  opt_criteria='mae').shim()
+                                  opt_criteria='mae')
         currents = Sequencer_test.shim()
         Sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
