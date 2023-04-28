@@ -245,7 +245,7 @@ class TestSequencer(object):
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata(), diff_affine, header=nii_mask.header)
 
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil]).shim()
+        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
         currents = Sequencer_test.shim()
         Sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
@@ -478,7 +478,6 @@ class TestShimRTpmuSimData(object):
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
                                              slices, pmu, [new_coil], method='least_squares').shim()
         currents_static, currents_riro, mean_p, p_rms = output
-        RealTimeSequencer.eval(currents_static, currents_riro, mean_p, p_rms)
 
         print(f"\nSlices: {slices}"
               f"\nFieldmap affine:\n{nii_fieldmap.affine}\n"
