@@ -11,6 +11,7 @@ the gradient method in a st_shim CLI with the argument being:
 import click
 import copy
 import json
+import cv2 as cv
 import nibabel as nib
 import numpy as np
 import logging
@@ -1104,9 +1105,19 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
 
     # Save the figure
     fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
-    fig.savefig(fname_figure, bbox_inches='tight')
+    save_figure_as_image(fig, fname_figure)
     logger.debug(f"Saved figure: {fname_figure}")
 
+
+def save_figure_as_image(figure, filename):
+    canvas = FigureCanvas(figure)
+    canvas.draw()
+    # convert canvas to image
+    graph_image = np.array(figure.canvas.get_renderer()._renderer)
+
+    # it still is rgb, convert to opencv's default bgr
+    graph_image = cv.cvtColor(graph_image, cv.COLOR_RGB2BGR)
+    cv.imwrite(filename, graph_image)
 
 def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, units, slice_number, rt_coefs=None,
                     pres_probe_min=None, pres_probe_max=None):
