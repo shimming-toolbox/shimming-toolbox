@@ -951,7 +951,6 @@ class RealTimeSequencer(Sequencer):
         # regularization --> static, riro
         # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
         mean_p = np.mean(self.acq_pressures)
-        # TODO: See dot product
         pressure_rms = np.sqrt(np.mean((self.acq_pressures - mean_p) ** 2))
         x = self.acq_pressures.reshape(-1, 1) - mean_p
 
@@ -1171,11 +1170,10 @@ class RealTimeSequencer(Sequencer):
         unshimmed_trace = []
         for i_shim in range(len(self.slices)):
             # Calculate static correction
-            # TODO: Replace with matrix multiplication
-            correction_static = np.sum(coef_static[i_shim] * self.optimizer.merged_coils, axis=3, keepdims=False)
+            correction_static = self.optimizer.merged_coils @ coef_static[i_shim]
 
             # Calculate the riro coil profiles
-            riro_profile = np.sum(coef_riro[i_shim] * self.optimizer.merged_coils, axis=3, keepdims=False)
+            riro_profile = self.optimizer.merged_coils @ coef_riro[i_shim]
 
             mask_fmap_cs[..., i_shim] = np.ceil(resample_mask(self.nii_static_mask, nii_target,
                                                               self.slices[i_shim]).get_fdata())
