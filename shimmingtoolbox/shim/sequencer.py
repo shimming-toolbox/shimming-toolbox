@@ -409,7 +409,11 @@ class ShimSequencer(Sequencer):
             # TODO: Add in anat space?
             # Figure that shows unshimmed vs shimmed for each slice
             self.plot_full_mask(unshimmed, shimmed_masked, mask_full_binary)
-            self.plot_partial_mask(unshimmed, shimmed, masks_fmap)
+
+            # Figure that shows shim correction for each shim group
+            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+                self.plot_partial_mask(unshimmed, shimmed, masks_fmap)
+
             self.plot_currents(coef)
             self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
@@ -620,7 +624,8 @@ class ShimSequencer(Sequencer):
 
     def plot_partial_mask(self, unshimmed, shimmed, masks):
         """
-        Plot and save the static partial mask
+        This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
+        the background and the correction is overlaid in color.
 
         Args:
             unshimmed (np.ndarray): Original fieldmap not shimmed
