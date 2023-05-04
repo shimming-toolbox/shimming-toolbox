@@ -194,7 +194,7 @@ class ShimSequencer(Sequencer):
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for 
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                               For example, a kernel of size 3 will dilate the mask by 1 pixel.
@@ -386,7 +386,7 @@ class ShimSequencer(Sequencer):
 
         if self.path_output is not None:
             # fmap space
-            # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on 
+            # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on
             # the fieldmap)
             shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections, masks_fmap)
 
@@ -469,7 +469,6 @@ class ShimSequencer(Sequencer):
             unshimmed (np.ndarray): Original fieldmap not shimmed
             masks_fmap (np.ndarray): Resampled mask on the fieldmap
             coef (np.ndarray): Coefficients of the coil profiles to shim (len(slices) x n_channels)
-
         """
 
         for i_shim in range(len(self.slices)):
@@ -952,7 +951,7 @@ class RealTimeSequencer(Sequencer):
         # regularization --> static, riro
         # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
         mean_p = np.mean(self.acq_pressures)
-        # TODO: Voir l'astuce du produit scalaire
+        # TODO: See dot product
         pressure_rms = np.sqrt(np.mean((self.acq_pressures - mean_p) ** 2))
         x = self.acq_pressures.reshape(-1, 1) - mean_p
 
@@ -1172,7 +1171,7 @@ class RealTimeSequencer(Sequencer):
         unshimmed_trace = []
         for i_shim in range(len(self.slices)):
             # Calculate static correction
-            # TODO :Ici remplacer par une multiplication matricielle
+            # TODO: Replace with matrix multiplication
             correction_static = np.sum(coef_static[i_shim] * self.optimizer.merged_coils, axis=3, keepdims=False)
 
             # Calculate the riro coil profiles
@@ -1195,8 +1194,8 @@ class RealTimeSequencer(Sequencer):
                 masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
                 # Calculate the sum over the ROI
-                # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If bigger roi due to
-                #  interpolation, it should not count more) Psibly use soft mask?
+                # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If the roi is bigger due to
+                #  interpolation, it should not count more). Possibly use soft mask?
                 sum_shimmed_static = np.sum(np.abs(masked_shim_static[..., i_t, i_shim]))
                 sum_shimmed_static_riro = np.sum(np.abs(masked_shim_static_riro[..., i_t, i_shim]))
                 sum_shimmed_riro = np.sum(np.abs(masked_shim_riro[..., i_t, i_shim]))
@@ -1739,6 +1738,3 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     new_affine[:3, 3] = affine[:3, 3] - spacing
 
     return new_affine
-
-
-      

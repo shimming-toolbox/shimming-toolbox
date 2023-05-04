@@ -71,10 +71,10 @@ def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
         bounds.append((min_coef, max_coef))
 
     constraints = {
-                "name": "test",
-                "coef_sum_max": sum_coef,
-                "coef_channel_minmax": bounds
-            }
+        "name": "test",
+        "coef_sum_max": sum_coef,
+        "coef_channel_minmax": bounds
+    }
     return constraints
 
 
@@ -113,56 +113,57 @@ nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_
 
 @pytest.mark.parametrize(
     "nii_fieldmap,nii_anat,nii_mask,sph_coil,sph_coil2", [(
-        nii_to_shim,
-        nii_anat,
-        nii_mask,
-        coil1,
-        coil2,
+            nii_to_shim,
+            nii_anat,
+            nii_mask,
+            coil1,
+            coil2,
     )]
 )
 class TestSequencer(object):
     """Tests for shim_sequencer"""
+
     def test_shim_sequencer_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_pseudo(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='pseudo_inverse')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='pseudo_inverse')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_std(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
-                                  opt_criteria='std')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
+                                       opt_criteria='std')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_mae(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
-                                  opt_criteria='mae')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares',
+                                       opt_criteria='mae')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_2_coils_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil, sph_coil2],
-                                  method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil, sph_coil2],
+                                       method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil, sph_coil2], currents, slices)
 
     def test_shim_sequencer_coefs_are_none(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -170,36 +171,36 @@ class TestSequencer(object):
         coil = create_coil(5, 5, nz, create_constraints(None, None, None), affine)
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [coil], method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [coil], method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [coil], currents, slices)
 
     def test_shim_sequencer_slab_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         """Test for slices arranged as a slab"""
         # Optimize
         slices = define_slices(nii_anat.shape[2], nii_anat.shape[2])
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_dynamic_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         """Test for slices arranged for dynamic shimming"""
         # Optimize
         slices = [(0,), (1,), (2,)]
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_multi_slices(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         """Test for slices arranged for multi slice"""
         # Optimize
         slices = [(0, 2), (1,)]
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='least_squares')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_wrong_optimizer(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -245,9 +246,9 @@ class TestSequencer(object):
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata(), diff_affine, header=nii_mask.header)
 
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_diff_mask_shape(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -255,9 +256,9 @@ class TestSequencer(object):
         slices = [(0, 2), (1,)]
         nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata()[5:, ...], nii_mask.affine, header=nii_mask.header)
 
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_diff_mask, slices, [sph_coil])
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
 
     def test_shim_sequencer_4dmask_4d_anat(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -267,9 +268,9 @@ class TestSequencer(object):
         nii_4d_mask = nib.Nifti1Image(mask_4d, nii_mask.affine, header=nii_mask.header)
 
         slices = [(0, 2), (1,)]
-        Sequencer_test = ShimSequencer(nii_fieldmap, nii_4d_anat, nii_4d_mask, slices, [sph_coil])
-        currents = Sequencer_test.shim()
-        Sequencer_test.eval(currents)
+        sequencer_test = ShimSequencer(nii_fieldmap, nii_4d_anat, nii_4d_mask, slices, [sph_coil])
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
 
 
@@ -377,29 +378,30 @@ nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro
 
 @pytest.mark.parametrize(
     "nii_fieldmap,json_data,nii_anat,nii_mask_static,nii_mask_riro,slices,pmu,coil", [(
-        nii_rt_fieldmap,
-        json_rt_data,
-        nii_rt_anat,
-        nii_mask_rt_static,
-        nii_mask_rt_riro,
-        slices_rt,
-        pmu_rt,
-        coil_rt
+            nii_rt_fieldmap,
+            json_rt_data,
+            nii_rt_anat,
+            nii_mask_rt_static,
+            nii_mask_rt_riro,
+            slices_rt,
+            pmu_rt,
+            coil_rt
     )]
 )
 class TestShimRTpmuSimData(object):
     """Tests for realtime Sequencer with simulated data"""
+
     def test_shim_realtime_pmu_sequencer_fake_data(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                                    nii_mask_riro, slices, pmu, coil):
         """Test on the shim_realtime_pmu_sequencer using simulated data"""
 
         # Find optimal currents
-        Sequencer_RealTime_test =  RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                             slices, pmu, [coil], method='least_squares',
-                                             mask_dilation_kernel='sphere')
-        output = Sequencer_RealTime_test.shim()
+        sequencer_realtime_test = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
+                                                    slices, pmu, [coil], method='least_squares',
+                                                    mask_dilation_kernel='sphere')
+        output = sequencer_realtime_test.shim()
         currents_static, currents_riro, mean_p, p_rms = output
-        Sequencer_RealTime_test.eval(currents_static, currents_riro, mean_p, p_rms)
+        sequencer_realtime_test.eval(currents_static, currents_riro, mean_p, p_rms)
         currents_riro_rms = currents_riro * p_rms
 
         print(f"\nSlices: {slices}"
@@ -444,7 +446,8 @@ class TestShimRTpmuSimData(object):
 
                 # Calculate masked shim
                 masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-                masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
+                masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[
+                    ..., i_t, i_shim]
                 masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
                 masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
 
@@ -476,7 +479,7 @@ class TestShimRTpmuSimData(object):
 
         # Find optimal currents
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                             slices, pmu, [new_coil], method='least_squares').shim()
+                                   slices, pmu, [new_coil], method='least_squares').shim()
         currents_static, currents_riro, mean_p, p_rms = output
 
         print(f"\nSlices: {slices}"
@@ -491,7 +494,7 @@ class TestShimRTpmuSimData(object):
                                            nii_mask_riro, slices, pmu, coil):
         # Optimize
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                             slices, pmu, [coil], mask_dilation_kernel='line').shim()
+                                   slices, pmu, [coil], mask_dilation_kernel='line').shim()
 
         assert output[0].shape == (20, 3)
 
@@ -502,7 +505,7 @@ class TestShimRTpmuSimData(object):
                                          header=nii_fieldmap.header)
         with pytest.raises(ValueError, match="Fieldmap must be 4d"):
             RealTimeSequencer(nii_wrong_fmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                                 slices, pmu, [coil]).shim()
+                              slices, pmu, [coil]).shim()
 
     def test_shim_sequencer_rt_wrong_anat_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                               nii_mask_riro, slices, pmu, coil):
@@ -510,7 +513,7 @@ class TestShimRTpmuSimData(object):
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
         with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
             RealTimeSequencer(nii_fieldmap, json_data, nii_wrong_anat, nii_mask_static, nii_mask_riro,
-                                        slices, pmu, [coil]).shim()
+                              slices, pmu, [coil]).shim()
 
     def test_shim_sequencer_rt_diff_mask_shape_static(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                                       nii_mask_riro, slices, pmu, coil):
@@ -518,7 +521,7 @@ class TestShimRTpmuSimData(object):
         nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[5:, ...], nii_mask_static.affine,
                                         header=nii_mask_static.header)
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
-                                             slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil]).shim()
         assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_diff_mask_shape_riro(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
@@ -528,7 +531,7 @@ class TestShimRTpmuSimData(object):
                                         header=nii_mask_riro.header)
 
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_diff_mask,
-                                             slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil]).shim()
         assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_diff_mask_affine(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
@@ -538,7 +541,7 @@ class TestShimRTpmuSimData(object):
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata(), diff_affine, header=nii_mask_static.header)
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
-                                             slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil]).shim()
         assert output[0].shape == (20, 3)
 
 
@@ -584,7 +587,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
 
     # Find optimal currents
     output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu,
-                                         [coil], method='least_squares').shim()
+                               [coil], method='least_squares').shim()
     currents_static, currents_riro, mean_p, p_rms = output
 
     # Scale according to rms
@@ -632,7 +635,8 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
 
             # Calculate masked shim
             masked_shim_static[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static[..., i_t, i_shim]
-            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[..., i_t, i_shim]
+            masked_shim_static_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_static_riro[
+                ..., i_t, i_shim]
             masked_shim_riro[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * shimmed_riro[..., i_t, i_shim]
             masked_unshimmed[..., i_t, i_shim] = masked_fieldmap[..., i_shim] * unshimmed[..., i_t]
 
@@ -649,6 +653,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
             unshimmed_trace.append(sum_unshimmed)
 
             assert sum_shimmed_static_riro < sum_unshimmed
+
 
 def save_nii(nii_fieldmap, coil, opt, nii_mask):
     """Save relevant nifti files"""
@@ -685,12 +690,11 @@ nii = nib.Nifti1Image(array, affine)
 
 @pytest.mark.parametrize(
     "nii_4d", [(
-        nii,
+            nii,
     )]
 )
 class TestExtendSlice(object):
     def test_extend_slice_4d_dim1(self, nii_4d):
-
         nii_out = extend_slice(nii_4d[0], 1, 0)
 
         assert nii_out.get_fdata().shape == (4, 8, 1, 5)
@@ -700,13 +704,11 @@ class TestExtendSlice(object):
                                                            [0., 0., 0., 1.]])))
 
     def test_extend_slice_4d_dim2(self, nii_4d):
-
         nii_out = extend_slice(nii_4d[0], 1, 1)
 
         assert nii_out.get_fdata().shape == (2, 10, 1, 5)
 
     def test_extend_slice_4d_dim3(self, nii_4d):
-
         nii_out = extend_slice(nii_4d[0], 1, 2)
 
         assert nii_out.get_fdata().shape == (2, 8, 3, 5)
@@ -718,7 +720,6 @@ class TestExtendSlice(object):
         assert nii_out.get_fdata().shape == (2, 8, 3)
 
     def test_extend_slice_3d_dim1_2slices(self, nii_4d):
-
         nii_out = extend_slice(nii_4d[0], 2, 2)
 
         assert nii_out.get_fdata().shape == (2, 8, 5, 5)
@@ -807,6 +808,7 @@ class TestParseSlices(object):
 
 class TestMaxintensity():
     """ We are using a 4d fieldmap as input just for testing. """
+
     def setup(self):
         fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
         self.nii_input = nib.load(fname_input)
