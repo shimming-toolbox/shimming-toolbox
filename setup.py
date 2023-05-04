@@ -55,6 +55,7 @@ setup(
         "dataclasses",
         "raven",
         "joblib",
+        "opencv-python"
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
