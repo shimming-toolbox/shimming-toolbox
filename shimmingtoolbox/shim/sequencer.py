@@ -4,6 +4,7 @@
 import copy
 import math
 import numpy as np
+from joblib import delayed, Parallel
 from typing import List
 from sklearn.linear_model import LinearRegression
 import nibabel as nib
@@ -98,10 +99,11 @@ class Sequencer(object):
         dilation_kernel = self.mask_dilation_kernel
         dilation_kernel_size = self.mask_dilation_kernel_size
         path_output = self.path_output
-        results = []
-        for i in range(n_shims):
-            result = self.opt(i, optimizer, nii_mask_anat, slices, dilation_kernel, dilation_kernel_size, path_output)
-            results.append(result)
+        
+        results = Parallel(-1, backend='loky')(
+            delayed(self.opt)(i, optimizer, nii_mask_anat, slices, dilation_kernel, dilation_kernel_size,
+                              path_output)
+            for i in range(n_shims))
 
         return np.array(results)
 
@@ -1091,12 +1093,11 @@ class RealTimeSequencer(Sequencer):
         dilation_kernel_size = self.mask_dilation_kernel_size
         path_output = self.path_output
         bounds = self.bounds
-        results = []
-        for i in range(n_shims):
-            result = self.opt_riro(i, optimizer, nii_mask_anat, slices, dilation_kernel, dilation_kernel_size,
-                                   path_output,
-                                   bounds)
-            results.append(result)
+        
+        results = Parallel(-1, backend='loky')(
+            delayed(self.opt_riro)(i, optimizer, nii_mask_anat, slices, dilation_kernel, dilation_kernel_size,
+                              path_output, bounds)
+            for i in range(n_shims))
 
         return np.array(results)
 
