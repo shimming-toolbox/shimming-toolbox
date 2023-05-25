@@ -2,16 +2,15 @@
 # -*- coding: utf-8 -*-
 
 import os
-from pathlib import Path
 import subprocess
 from threading import Thread
 import wx
 
-from fsleyes_plugin_shimming_toolbox.events import result_event_type, EVT_RESULT, ResultEvent
-from fsleyes_plugin_shimming_toolbox.events import log_event_type, EVT_LOG, LogEvent
+from fsleyes_plugin_shimming_toolbox import __ST_DIR__
+from fsleyes_plugin_shimming_toolbox.events import result_event_type, ResultEvent
+from fsleyes_plugin_shimming_toolbox.events import log_event_type, LogEvent
 
-HOME_DIR = str(Path.home())
-PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/envs/st_venv/bin"
+PATH_ST_VENV = os.path.join(__ST_DIR__, 'python', 'bin')
 
 
 class WorkerThread(Thread):
@@ -26,7 +25,7 @@ class WorkerThread(Thread):
 
         try:
             env = os.environ.copy()
-            # It seems to default to the Python executalble instead of the Shebang, removing it fixes it
+            # It seems to default to the Python executable instead of the Shebang, removing it fixes it
             env["PYTHONEXECUTABLE"] = ""
             env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
@@ -49,6 +48,7 @@ class WorkerThread(Thread):
             evt = ResultEvent(result_event_type, -1, self.name)
             evt.set_data(rc)
             wx.PostEvent(self._notify_window, evt)
+
         except Exception as err:
             # Send the error if there was one
             evt = ResultEvent(result_event_type, - 1, self.name)
