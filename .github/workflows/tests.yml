@@ -31,7 +31,7 @@ jobs:
         run: |
           echo ~
           echo $HOME
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set XCode version
         if: contains(matrix.os, 'macos-11.0')
