@@ -1121,6 +1121,7 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
     if rt_coefs is not None:
         rt_coef_ishim = rt_coefs
         riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
+        riro = np.abs(riro)
         ax.errorbar(range(n_channels), static_coefs, yerr=riro, fmt='o', elinewidth=4, capsize=6,
                     label='static-riro')
     # Add static component
