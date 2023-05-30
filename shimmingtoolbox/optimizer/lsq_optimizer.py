@@ -13,11 +13,6 @@ from shimmingtoolbox.coils.coil import Coil
 ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'std']
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-
 class LsqOptimizer(Optimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
