@@ -303,11 +303,12 @@ class ShimSequencer(Sequencer):
 
     def get_resampled_masks(self):
         """
-        This function resample the mask on the differents elements needed for the optimization and the evaluation
+        This function resample the mask on the different elements needed for the optimization and the evaluation
+
         Returns:
             (tuple) : tuple containing:
-                * nib.Nifti1Image: Mask resampled  and dilated on the fieldmap for the optimization
-                * nib.Nifti1Image: Mask resampled on the original fieldmap.
+            * nib.Nifti1Image: Mask resampled  and dilated on the fieldmap for the optimization
+            * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
         nii_mask_anat = self.nii_mask_anat
