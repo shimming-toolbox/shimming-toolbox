@@ -22,7 +22,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
-from shimmingtoolbox.utils import montage
+from shimmingtoolbox.utils import montage, is_similar_affine
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
@@ -308,8 +308,8 @@ class ShimSequencer(Sequencer):
         else:
             raise ValueError("Mask must be in 3d or 4d")
 
-        if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(
-                nii_mask_anat.affine == self.nii_anat.affine):
+        if not np.all(nii_mask_anat.shape == anat.shape) or \
+                not is_similar_affine(nii_mask_anat.affine, self.nii_anat.affine):
             logger.debug("Resampling mask on the target anat")
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
@@ -462,7 +462,7 @@ class ShimSequencer(Sequencer):
         shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
         self.display_shimmed_results(shimmed, unshimmed, masks_fmap, coef)
 
-        return  shimmed, corrections, masks_fmap, list_shim_slice
+        return shimmed, corrections, masks_fmap, list_shim_slice
 
     def display_shimmed_results(self, shimmed, unshimmed, masks_fmap, coef):
         """
@@ -544,11 +544,20 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
         """
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
-                                                            self.nii_fieldmap_orig,
-                                                            order=0,
-                                                            mode='grid-constant',
-                                                            cval=0).get_fdata()), 0, 1)
+        # Do not calculate a new mask if the mask shape and affine are the same as the fmap
+
+        is_mask_anat_same_dims_as_fmap = is_similar_affine(self.nii_mask_anat.affine,
+                                                           self.nii_fieldmap_orig.affine) and \
+                                         np.all(self.nii_mask_anat.shape == self.nii_fieldmap_orig.shape)
+
+        if is_mask_anat_same_dims_as_fmap:
+            mask_full_binary = np.clip(np.ceil(self.nii_mask_anat.get_fdata()), 0, 1)
+        else:
+            mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
+                                                                self.nii_fieldmap_orig,
+                                                                order=0,
+                                                                mode='grid-constant',
+                                                                cval=0).get_fdata()), 0, 1)
         # Find the correction
         # This is the same as this but in a faster way:
         # for i_shim in range(len(slices)):
@@ -896,8 +905,9 @@ class RealTimeSequencer(Sequencer):
             raise ValueError("riro_mask image must be in 3d")
 
         # Resample the input masks on the target anatomical image if they are different
-        if not np.all(nii_static_mask.shape == anat.shape) or not np.all(
-                nii_static_mask.affine == self.nii_anat.affine):
+
+        if not np.all(nii_static_mask.shape == anat.shape) or \
+                not is_similar_affine(self.nii_anat.affine, nii_static_mask.affine):
             logger.debug("Resampling static mask on the target anat")
             nii_static_mask_soft = resample_from_to(nii_static_mask, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_static_mask_soft.get_fdata()
@@ -909,8 +919,8 @@ class RealTimeSequencer(Sequencer):
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_static_mask, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
 
-        if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(
-                nii_riro_mask.affine == self.nii_anat.affine):
+        if not np.all(nii_riro_mask.shape == anat.shape) or \
+                not is_similar_affine(self.nii_anat.affine, nii_riro_mask.affine):
             logger.debug("Resampling riro mask on the target anat")
             nii_riro_mask_soft = resample_from_to(nii_riro_mask, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_riro_mask_soft.get_fdata()
@@ -1192,7 +1202,7 @@ class RealTimeSequencer(Sequencer):
                 # Calculate masked shim
                 masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
                 masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
-                                                                                                            i_shim]
+                i_shim]
                 masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
                 masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
@@ -1611,7 +1621,9 @@ def shim_max_intensity(nii_input, nii_mask=None):
         if len(nii_mask.shape) != 3:
             raise ValueError("Input mask must be 3d")
         # If the mask is of a different shape, resample it.
-        elif not np.all(nii_mask.shape == nii_input.shape[:3]) or not np.all(nii_mask.affine == nii_input.affine):
+
+        elif not np.all(nii_mask.shape == nii_input.shape[:3]) or \
+                not is_similar_affine(nii_input.affine, nii_mask.affine):
             nii_input_3d = nib.Nifti1Image(nii_input.get_fdata()[..., 0], nii_input.affine, header=nii_input.header)
             mask = resample_mask(nii_mask, nii_input_3d).get_fdata()
         else:

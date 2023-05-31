@@ -277,3 +277,20 @@ def fill(data, invalid=None):
 
     ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
     return data[tuple(ind)]
+
+
+def is_similar_affine(affine1, affine2):
+    """
+    Makes sure two affines are similar. The translation has an absolute tolerance of 0.05 and the other coefficients use
+     default numpy tolerance values.
+
+    Args:
+        affine1 (np.ndarray): 4x4 matrix containing a spatial transformation
+        affine2 (np.ndarray): 4x4 matrix containing a spatial transformation
+
+    Returns:
+        bool: If the matrixes are similar
+
+    """
+
+    return np.allclose(affine1[:, 3], affine2[:, 3], atol=0.05) and np.allclose(affine1[:, :3], affine2[:, :3])
