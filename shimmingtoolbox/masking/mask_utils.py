@@ -4,15 +4,15 @@
 import logging
 import nibabel as nib
 import numpy as np
-
 from scipy.ndimage import binary_dilation, binary_opening, generate_binary_structure, iterate_structure
+
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
 
 
 def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='None', dilation_size=3,
-                  path_output=None, both_masks=False):
+                  path_output=None, return_non_dil_mask=False):
     """
     Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
 
@@ -25,7 +25,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
         path_output (str): Path to output debug artefacts.
-        both_masks (bool): See if we want to return the dilated and non dilated resampled mask
+        return_non_dil_mask (bool): See if we want to return the dilated and non dilated resampled mask
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
@@ -60,10 +60,11 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
     #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
 
-    if both_masks:
+    if return_non_dil_mask:
         mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
-        nii_mask = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
-        return nii_mask, nii_mask_dilated
+        nii_mask_resampled = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
+
+        return nii_mask_resampled, nii_mask_dilated
 
     else:
 

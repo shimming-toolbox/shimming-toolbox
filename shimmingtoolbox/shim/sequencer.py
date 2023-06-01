@@ -1,9 +1,8 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-iwq
+# -*- coding: utf-8 -*-
 
 import copy
 import math
-
 import numpy as np
 from joblib import delayed, Parallel
 from typing import List
@@ -97,30 +96,15 @@ class Sequencer(object):
         n_shims = len(self.slices)
         coefs = []
         for i in range(n_shims):
-            coefs.append(self.opt(resampled_mask[..., i]))
+            # If there is nothing to shim in this shim group
+            if np.all(resampled_mask[..., i] == 0):
+                coefs.append(np.zeros(self.optimizer.merged_coils.shape[-1]))
+
+            # Otherwise optimize
+            else:
+                coefs.append(self.optimizer.optimize(resampled_mask[..., i]))
 
         return np.array(coefs)
-
-    def opt(self, sliced_mask_resampled):
-        """
-        Make the optimization of the currents for one shim group.
-
-        Args:
-            sliced_mask_resampled (np.ndarray): 3D anat mask used for the optimizer to shim in the region of interest.
-                                             (only consider voxels with non-zero values)
-            optimizer (Optimizer): Initialized Optimizer object.
-
-
-        Returns:
-            np.ndarray: Coefficients of the coil profiles to shim (n_channels)
-        """
-
-        if np.all(sliced_mask_resampled == 0):
-            return np.zeros(self.optimizer.merged_coils.shape[-1])
-
-            # Optimize using the mask
-        coef = self.optimizer.optimize(sliced_mask_resampled)
-        return coef
 
 
 class ShimSequencer(Sequencer):
@@ -188,12 +172,12 @@ class ShimSequencer(Sequencer):
         self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
         self.nii_anat = self.get_anat(nii_anat)
         self.nii_mask_anat = self.get_mask(nii_mask_anat)
-        self.masks_fmap = self.nii_mask_anat.get_fdata()
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
         self.opt_criteria = opt_criteria
         self.method = method
+        self.masks_fmap = None
 
     def get_fieldmap(self, nii_fieldmap):
         """
@@ -303,11 +287,11 @@ class ShimSequencer(Sequencer):
 
     def get_resampled_masks(self):
         """
-        This function resample the mask on the different elements needed for the optimization and the evaluation
+        This function resamples the mask on the fieldmap and on the dilated fieldmap
 
         Returns:
             (tuple) : tuple containing:
-            * nib.Nifti1Image: Mask resampled  and dilated on the fieldmap for the optimization
+            * nib.Nifti1Image: Mask resampled and dilated on the fieldmap for the optimization
             * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
@@ -339,7 +323,7 @@ class ShimSequencer(Sequencer):
             # Joblib multiprocessing to resampled the mask
             results_mask = Parallel(-1, backend='loky')(
                 delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i], dilation_kernel,
-                                       dilation_kernel_size, path_output, both_masks=True)
+                                       dilation_kernel_size, path_output, return_non_dil_mask=True)
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
@@ -1141,10 +1125,10 @@ class RealTimeSequencer(Sequencer):
 
         return static_mask_resampled, riro_mask_resampled
 
-    def optimize_riro(self, nii_mask_anat):
+    def optimize_riro(self, mask_anat):
         """
         Args:
-            nii_mask_anat (np.ndarray): anat mask on which the optimization will be made
+            mask_anat (np.ndarray): anat mask on which the optimization will be made
         Returns:
             Riro coefficients of the coil profiles to shim (len(slices) x channels) [Hz/unit_pressure]
         """
@@ -1154,35 +1138,17 @@ class RealTimeSequencer(Sequencer):
         shimwise_bounds = self.bounds
         coefs_riro = []
         for i in range(n_shims):
-            coefs_riro.append(self.opt_riro(i, optimizer, nii_mask_anat[..., i], shimwise_bounds))
+            # Change bounds
+            if shimwise_bounds is not None:
+                optimizer.set_merged_bounds(shimwise_bounds[i])
+            # Return 0s if there is no optimization to perform
+            if np.all(mask_anat[..., i] == 0):
+                coefs_riro.append(np.zeros(optimizer.merged_coils.shape[-1]))
+            # Optimize
+            else:
+                coefs_riro.append(optimizer.optimize(mask_anat[..., i]))
 
         return np.array(coefs_riro)
-
-    def opt_riro(self, i, optimizer, riro_mask, shimwise_bounds):
-
-        """
-        Make the optmization of the currents for each slice
-
-        Args:
-            i (int): Index of the shim group of the optimization
-            optimizer (Optimizer): Initialized Optimizer object
-            riro_mask (np.ndarray): riro mask on which the optimization will be make
-            shimwise_bounds (list) : Bounds of the currents for the optimization
-
-        Returns:
-                np.ndarray : Riro coefficients of the coil profiles to shim (channels) [Hz/unit_pressure]
-
-        """
-
-        if shimwise_bounds is not None:
-            optimizer.set_merged_bounds(shimwise_bounds[i])
-        if np.all(riro_mask == 0):
-            return np.zeros(optimizer.merged_coils.shape[-1])
-
-        # Optimize using the mask
-        coef = optimizer.optimize(riro_mask)
-
-        return coef
 
     def eval(self, coef_static, coef_riro, mean_p, pressure_rms):
         """
@@ -1782,4 +1748,3 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     new_affine[:3, 3] = affine[:3, 3] - spacing
 
     return new_affine
-

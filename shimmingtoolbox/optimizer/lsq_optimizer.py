@@ -13,6 +13,7 @@ from shimmingtoolbox.coils.coil import Coil
 ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'std']
 
+
 class LsqOptimizer(Optimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
@@ -326,10 +327,12 @@ class LsqOptimizer(Optimizer):
                                                        factor=1)
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
+
         if not currents_sp.success:
             raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
 
         currents = currents_sp.x
+
         return currents
 
 
