@@ -38,16 +38,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Factor (=> 1) to which the shimmed max local SAR can exceed the phase-only shimming max local SAR."
                    "Values between 1 and 1.5 should work with Siemens scanners. High factors allow more shimming "
                    "liberty but are more likely to result in SAR excess at the scanner.")
-@click.option('--output-file-format', 'o_format',
-              type=click.Choice(['human', 'machine']),
-              default='human',
-              show_default=True, help="Specifies how the output text file will be formatted. Either 'human' readable "
-                                      "where more information will be displayed or a more crude 'machine' version to be"
-                                      " easily copy/pasted. 'machine' will output in this format: mag1 phase1 mag2 "
-                                      "phase2...")
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.join(os.curdir, 'b1_shim_results'),
               show_default=True, help="Output directory for shim weights, B1+ maps and figures.")
-def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, o_format, path_output):
+def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, path_output):
     """ Perform static B1+ shimming over the volume defined by the mask. This function will generate a text file
     containing shim weights for each transmit element.
     """
@@ -87,17 +80,19 @@ def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, o
     json.dump(json_b1, file_json_b1_shim)
 
     # Write to a text file
+    fname_output_weights = os.path.join(path_output, 'b1_shim_weights_hrd.txt')
+    with open(fname_output_weights, 'w') as file_rf_shim_weights:
+
+        file_rf_shim_weights.write(f'Channel\tmag\tphase (\u00b0)\n')
+        for i_channel in range(len(shim_weights)):
+            file_rf_shim_weights.write(f'Tx{i_channel + 1}\t{np.abs(shim_weights[i_channel]):.3f}\t'
+                                       f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
+
     fname_output_weights = os.path.join(path_output, 'b1_shim_weights.txt')
     with open(fname_output_weights, 'w') as file_rf_shim_weights:
-        if o_format == 'human':
-            file_rf_shim_weights.write(f'Channel\tmag\tphase (\u00b0)\n')
-            for i_channel in range(len(shim_weights)):
-                file_rf_shim_weights.write(f'Tx{i_channel + 1}\t{np.abs(shim_weights[i_channel]):.3f}\t'
-                                           f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
-        else:  # 'machine'
-            for i_channel in range(len(shim_weights)):
-                file_rf_shim_weights.write(f"{np.abs(shim_weights[i_channel]):.3f} "
-                                           f"{np.rad2deg(np.angle(shim_weights[i_channel])):.3f} ")
+        for i_channel in range(len(shim_weights)):
+            file_rf_shim_weights.write(f"{np.abs(shim_weights[i_channel]):.3f} "
+                                       f"{np.rad2deg(np.angle(shim_weights[i_channel])):.3f} ")
 
     # Plot B1+ shimming results
     b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # B1+ shimming result

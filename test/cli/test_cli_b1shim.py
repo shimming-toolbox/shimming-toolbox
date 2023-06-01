@@ -77,8 +77,7 @@ def test_b1shim_output_machine_cli():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         path_output = os.path.join(tmp, 'b1_shim_results')
         # Run the CLI
-        result = CliRunner().invoke(b1shim_cli, ['--b1', fname_b1_nii_axial, '--output-file-format', 'machine',
-                                                 '--output', path_output],
+        result = CliRunner().invoke(b1shim_cli, ['--b1', fname_b1_nii_axial, '--output', path_output],
                                     catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
