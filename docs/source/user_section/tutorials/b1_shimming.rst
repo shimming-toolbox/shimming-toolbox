@@ -82,6 +82,3 @@ Copy the SarDataUser.mat file from C:/Medcom/MriProduct/PhysConfig/ to the lapto
   ``Options > Adjustments > B1 Shim`` window. Make sure to also set ``System > pTx Volumes > B1 Shim mode`` to
   *"Patient-specific"* in the sequence parameters to ensure that the
   shim-weights will be applied during the acquisition.
-
-
-  
