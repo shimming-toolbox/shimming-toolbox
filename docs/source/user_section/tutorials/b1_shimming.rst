@@ -5,7 +5,7 @@ Static B1+ shimming
 .. warning::
     This tutorial only covers static B1+ shimming applications performed on Siemens scanners. Shimming-Toolbox currently
     only handles B1+ maps acquired using Siemens' standard TurboFLASH B1+ mapping sequence.
-    This is the tfl_rfmap sequennce, which can be found under Siemens/Service Sequences in the Protocols. Not to be confused      
+    This is the tfl_rfmap sequence, which can be found under Siemens/Service Sequences in the Protocols. Not to be confused      
     with the tfl_b1map sequence, which will not create the channel-specific B1+ maps necessary for the shim process.
 
 Open a Terminal and run:
