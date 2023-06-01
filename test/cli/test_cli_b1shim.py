@@ -70,3 +70,18 @@ def test_b1shim_cli_sagittal():
                                                  '--output', path_output], catch_exceptions=True)
         assert len(os.listdir(path_output)) != 0
         assert result.exit_code == 0
+
+
+def test_b1shim_output_machine_cli():
+    """Test CLI for performing RF shimming with machine output format"""
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        path_output = os.path.join(tmp, 'b1_shim_results')
+        # Run the CLI
+        result = CliRunner().invoke(b1shim_cli, ['--b1', fname_b1_nii_axial, '--output', path_output],
+                                    catch_exceptions=True)
+        assert len(os.listdir(path_output)) != 0
+        assert result.exit_code == 0
+        with open(os.path.join(path_output, 'b1_shim_weights.txt'), 'r') as f:
+            txt = f.readline()
+
+        assert txt[:12] == "0.501 0.000 "

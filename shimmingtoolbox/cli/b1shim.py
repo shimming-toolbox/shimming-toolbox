@@ -80,12 +80,19 @@ def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, p
     json.dump(json_b1, file_json_b1_shim)
 
     # Write to a text file
-    fname_output_weights = os.path.join(path_output, 'b1_shim_weights.txt')
+    fname_output_weights = os.path.join(path_output, 'b1_shim_weights_hrd.txt')
     with open(fname_output_weights, 'w') as file_rf_shim_weights:
+
         file_rf_shim_weights.write(f'Channel\tmag\tphase (\u00b0)\n')
         for i_channel in range(len(shim_weights)):
             file_rf_shim_weights.write(f'Tx{i_channel + 1}\t{np.abs(shim_weights[i_channel]):.3f}\t'
                                        f'{np.rad2deg(np.angle(shim_weights[i_channel])):.3f}\n')
+
+    fname_output_weights = os.path.join(path_output, 'b1_shim_weights.txt')
+    with open(fname_output_weights, 'w') as file_rf_shim_weights:
+        for i_channel in range(len(shim_weights)):
+            file_rf_shim_weights.write(f"{np.abs(shim_weights[i_channel]):.3f} "
+                                       f"{np.rad2deg(np.angle(shim_weights[i_channel])):.3f} ")
 
     # Plot B1+ shimming results
     b1_shimmed = montage(combine_maps(b1_map, shim_weights))  # B1+ shimming result
