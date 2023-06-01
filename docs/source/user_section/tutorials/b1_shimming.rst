@@ -61,7 +61,7 @@ Create a Mask
 
 Static B1+ shimming: CV reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*(Optional)* The SarDataUser.mat is a hard requirement for the "SAR efficiency" shim option, and an optional requirement for CV reduction. To ensure that the SarDataUser.mat on the scanner contains to the VOPs of the coil currently being used, create a copy of the anatomical scan used to create the mask, and start the scan. The scan can be stopped once data acquisition starts. In the Exam Card, under System/pTx Volumes, set the B1 shim mode to "Patient Specific". See the figure below for the location of the switch
+*(Optional)* The SarDataUser.mat is a hard requirement for the "SAR efficiency" shim option, and an optional requirement for CV reduction. To ensure that the SarDataUser.mat on the scanner contains the VOPs of the coil currently being used, create a copy of the anatomical scan used to create the mask, and start the scan. The scan can be stopped once data acquisition starts. In the Exam Card, under System/pTx Volumes, set the B1 shim mode to "Patient Specific". See the figure below for the location of the switch
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/B1shim_button.jpg
   :width: 400
