@@ -18,7 +18,6 @@ Authors: Alexandre D'Astous, Ainsleigh Hill, Gaspard Cereza, Julien Cohen-Adad
 
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.views.canvaspanel as canvaspanel
-import logging
 import wx
 
 from fsleyes_plugin_shimming_toolbox.tabs.b0shim_tab import B0ShimTab
@@ -66,6 +65,7 @@ class STControlPanel(ctrlpanel.ControlPanel):
         nb.AddPage(tab5, tab5.title)
 
         self.sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.sizer.AddSpacer(5)
         self.sizer.Add(nb, 2, wx.EXPAND)
         self.sizer.Add(nb.terminal_component.sizer, 1, wx.EXPAND)
         self.sizer.AddSpacer(5)

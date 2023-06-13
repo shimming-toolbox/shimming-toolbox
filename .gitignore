@@ -7,3 +7,6 @@ dist/
 .idea
 dcm2bids.json
 output_*
+
+# Project's data
+testing_data

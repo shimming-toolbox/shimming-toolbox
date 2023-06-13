@@ -5,13 +5,13 @@ import os
 import webbrowser
 import wx
 
-from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN__
+from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
 
 # Load icon resources
-rtd_logo = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN__, 'img', 'RTD.png'), wx.BITMAP_TYPE_PNG)
+rtd_logo = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'RTD.png'), wx.BITMAP_TYPE_PNG)
 # Load ShimmingToolbox logo saved as a png image, rescale it, and return it as a wx.Bitmap image.
-st_logo = wx.Image(os.path.join(__DIR_ST_PLUGIN__, 'img', 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
+st_logo = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
 st_logo.Rescale(int(st_logo.GetWidth() * 0.2), int(st_logo.GetHeight() * 0.2), wx.IMAGE_QUALITY_HIGH)
 st_logo = st_logo.ConvertToBitmap()
 

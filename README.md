@@ -33,7 +33,7 @@ The `ShimmingToolbox` plugin should open as a panel.
 We can use `Docker` to spin up a Linux instance and test our install procedure in a clean
 environment. You will need to install `Docker` on your computer first: https://www.docker.com/products/docker-desktop
 
-To create our testing container, we will first build an image called `fpst:latest`, if using an M1 mac, add `--platform linux/amd64`:
+To create our testing container, we will first build an image called `fpst:latest`:
 ```
 docker build --tag fpst:latest .
 ```
@@ -68,7 +68,8 @@ docker run --name fpst -dit fpst:latest
 docker exec -it fpst bash
 ```
 
-Altogether for M1 macs:
+If you want to test the plugin on arm and you are using an M1/M2 mac, use the following commands:
+
 ```
 docker rm --force fpst
 docker build --platform linux/amd64 --tag fpst:latest .

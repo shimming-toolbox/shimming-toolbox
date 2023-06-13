@@ -3,7 +3,10 @@ from setuptools import setup, find_packages
 setup(
     # the name must begin with "fsleyes-plugin-"
     name='fsleyes-plugin-shimming-toolbox',
-    install_requires=["imageio"],
+    install_requires=[
+        "imageio",
+        'pre-commit>=2.10.0'
+    ],
     packages=find_packages(exclude=['.git']),
     include_package_data=True,
 

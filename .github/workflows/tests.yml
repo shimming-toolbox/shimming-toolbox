@@ -1,0 +1,64 @@
+name: CI-Tests
+
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  test:
+    env:
+      FSLOUTPUTTYPE: NIFTI_GZ
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+#          - 'macos-11'
+#          - 'macos-12'
+          - 'ubuntu-22.04'
+          - 'ubuntu-20.04'
+        python-version:
+          - '3.9'
+
+    steps:
+      - name: Get home directory
+        run: |
+          echo ~
+          echo $HOME
+      - uses: actions/checkout@v3
+
+#      - name: Set XCode version
+#        if: contains(matrix.os, 'macos-11.0')
+#        run: sudo xcode-select -s "/Applications/Xcode_12.2.app"
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Package installation
+        run: |
+          echo "fsleyes-plugin-shimming-toolbox installation"
+          make install
+
+      - name: Set path for Shimming Toolbox
+        run: |
+          echo "$HOME/shimming-toolbox/bin" >> $GITHUB_PATH
+
+#      - name: Run unit tests Mac
+#        if: contains(matrix.os, 'macos')
+#        run: |
+#          source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
+#          py.test . -v
+
+      - name: Run unit tests Ubuntu
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
+          xvfb-run -a -s "-screen 0 1920x1200x24" py.test . -v

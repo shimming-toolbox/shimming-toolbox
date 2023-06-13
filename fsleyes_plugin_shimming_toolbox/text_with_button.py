@@ -4,12 +4,12 @@
 import os
 import wx
 
-from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN__
+from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.select import select_file, select_folder, select_from_overlay
 
 # Load icon resources
-info_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN__, 'img', 'info-icon.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
-asterisk_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN__, 'img', 'asterisk.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+info_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'info-icon.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
+asterisk_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'asterisk.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
 
 
 class TextWithButton:

@@ -9,13 +9,13 @@ import numpy as np
 import os
 import wx
 
-from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN__
+from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.components.component import Component
 from fsleyes_plugin_shimming_toolbox.events import EVT_RESULT, EVT_LOG
 from fsleyes_plugin_shimming_toolbox.worker_thread import WorkerThread
 
 # Load icon resources
-play_icon = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN__, 'img', 'play.png'), wx.BITMAP_TYPE_PNG)
+play_icon = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'play.png'), wx.BITMAP_TYPE_PNG)
 
 
 class RunComponent(Component):
