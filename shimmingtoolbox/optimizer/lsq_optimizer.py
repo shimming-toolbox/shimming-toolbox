@@ -58,8 +58,6 @@ class LsqOptimizer(Optimizer):
         else:
             raise ValueError("Optimization criteria not supported")
 
-        self.b = None
-
     @property
     def initial_guess_method(self):
         return self._initial_guess_method
@@ -90,15 +88,42 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization 
+            float: Residuals for least squares optimization
         """
 
         # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + \
-               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
-    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
+    def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            a (numpy.ndarray): 2D array used for the optimization
+            b (numpy.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization
+
+        Returns:
+            float: Residuals for least squares optimization
+        """
+        # The first version was :
+        # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
+        # self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        # For the second version we switched np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef
+        # which is way faster Then for a vector, mean(x**2) is equivalent to x.dot( x)/n
+        # it's faster to do this operation instead of a np.mean Finally np.abs(coef).dot(self.reg_vector) is
+        # equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel) For the
+        # mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432
+        # This gave us the following expression for the residuals mse :
+        # shimmed_vec = unshimmed_vec + coil_mat @ coef
+        # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
+        # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
+        # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
+
+        return a @ coef @ coef + b @ coef + c
+
+    def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to find the initial guess for the mean squared error (MSE) optimization
 
         Args:
             coef (numpy.ndarray): 1D array of channel coefficients
@@ -109,17 +134,8 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization 
+            float: Residuals for least squares optimization
         """
-        # Old one was :
-        # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
-        # self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        # And switch np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef which is way faster
-        # Then for a vector , mean(x**2) is equivalent to x.dot( x)/n
-        # it's faster to do this operation instead of a np.mean Finally np.abs(coef).dot(self.reg_vector) is
-        # equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel) For the
-        # mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432 
-        # MSE regularized to minimize currents
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
@@ -135,12 +151,32 @@ class LsqOptimizer(Optimizer):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization 
+            float: Residuals for least squares optimization
         """
 
         # STD regularized to minimize currents
-        return np.std(unshimmed_vec + coil_mat @ coef) / factor + \
-               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        return np.std(unshimmed_vec + coil_mat @ coef) / factor + np.abs(coef).dot(self.reg_vector)
+
+    def _residuals_mse_jacobian(self, coef, a, b, c):
+        """ Jacobian of the function that we want to minimize
+        The function to minimize is :
+        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
+           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        The first Version of the jacobian was :
+        self.b * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector where self.b was equal
+        to 2/(len(unshimmed_vec * factor)
+        This jacobian come from the new version of the residuals mse that was implemented with the PR#451
+
+        Args:
+            coef (numpy.ndarray): 1D array of channel coefficients
+            a (numpy.ndarray): 2D array using for the optimization
+            b (numpy.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization but not used here
+
+        Returns:
+            jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
+        """
+        return 2 * a @ coef + b
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -165,13 +201,26 @@ class LsqOptimizer(Optimizer):
         return constraints
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
-                                   method='SLSQP',
-                                   bounds=self.merged_bounds,
-                                   constraints=tuple(scipy_constraints),
-                                   jac=self._jacobian_func,
-                                   options={'maxiter': 1000})
+        if self.opt_criteria == 'mse':
+            inv_factor = 1 / (len(unshimmed_vec) * factor)
+            a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
+            b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+            c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(a, b, c),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 1000})
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 1000})
 
         return currents_sp
 
@@ -226,24 +275,6 @@ class LsqOptimizer(Optimizer):
 
         return current_0
 
-    def _residuals_mse_jacobian(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Jacobian of the function that we want to minimize
-        The function to minimize is :
-        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
-           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-
-        Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): unused but necessary to call the function in scipy.optimize.minimize
-
-        Returns:
-            jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
-        """
-        return self.b * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector
-
     def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
@@ -258,17 +289,16 @@ class LsqOptimizer(Optimizer):
 
         # Check for sizing errors
         self._check_sizing(mask)
-
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
-
         mask_vec = mask.reshape((-1,))
-
-        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                              (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
+        # # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
+        # #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
+        merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+                                           (n_channels, -1))
+        masked_points_indices = np.where(mask_vec != 0)
+        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
         scipy_constraints = self._define_scipy_constraints()
 
         # Set up output currents
@@ -287,11 +317,14 @@ class LsqOptimizer(Optimizer):
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
             # regularization on the currents has no affect on the output stability factor.
-            stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat),
-                                                   factor=1)
             if self.opt_criteria == 'mse':
-                # This factor is used to calculate the Jacobian of the mse function
-                self.b = (2 / (unshimmed_vec.size * stability_factor))
+                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
+                                                           np.zeros_like(coil_mat),
+                                                           factor=1)
+            else:
+                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
+                                                       np.zeros_like(coil_mat),
+                                                       factor=1)
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
 
@@ -419,11 +452,23 @@ class PmuLsqOptimizer(LsqOptimizer):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
+        if self.opt_criteria == 'mse':
+            inv_factor = 1 / (len(unshimmed_vec) * factor)
+            a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
+            b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+            c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(a, b, c),
+                                       method='SLSQP',
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 500})
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 500})
 
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, factor),
-                                   method='SLSQP',
-                                   constraints=tuple(scipy_constraints),
-                                   jac=self._jacobian_func,
-                                   options={'maxiter': 500})
         return currents_sp
