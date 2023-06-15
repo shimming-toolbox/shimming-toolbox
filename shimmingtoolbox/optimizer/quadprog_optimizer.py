@@ -289,10 +289,10 @@ class PmuQuadProgOpt(QuadProgOpt):
         super().__init__(coils, unshimmed, affine, reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
-        self.ineq_matrix, self.ineq_vector = self._get_linear_inequality_matrices()
+        self.ineq_matrix, self.ineq_vector = self._get_linear_inequality_matrices_rt()
         self.initial_guess_method = 'zeros'
 
-    def _get_linear_inequality_matrices(self):
+    def _get_linear_inequality_matrices_rt(self):
 
         """
         This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
