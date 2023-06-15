@@ -509,7 +509,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
-                                                                 'quad-prog']), required=False,
+                                                                 'quad_prog']), required=False,
               default='quad_prog', show_default=True,
               help="Method used by the optimizer. LS and QP will respect the constraints,"
                    "PS will not respect the constraints")
