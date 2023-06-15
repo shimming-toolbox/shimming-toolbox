@@ -35,8 +35,6 @@ class QuadProgOpt(Optimizer):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -72,7 +70,7 @@ class QuadProgOpt(Optimizer):
     def _get_linear_inequality_matrices(self):
         """
         This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
+        g @ x < h, to see all details please see the PR #458
 
         Returns:
             (tuple) : tuple containing:
@@ -119,7 +117,7 @@ class QuadProgOpt(Optimizer):
                           [np.zeros([n, n]), np.eye(n)]])
             # dim(g) = (6n +n_coils, 2n)
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [ub], [np.zeros([n, 1])], [sum_constraints * np.ones([n, 1])]])
+                          [-lb], [ub], [np.zeros([n, 1])], [np.max(sum_constraints) * np.ones([n, 1])]])
             # dim(h) = (6n +n_coils, 1)
 
         return g, h
@@ -232,6 +230,20 @@ class QuadProgOpt(Optimizer):
         return currents
 
     def get_currents(self, unshimmed_vec, coil_mat, factor, currents_0):
+        """
+        Returns the currents needed for the shimming
+        Args:
+            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+            currents_0 (numpy.ndarray) : Initial guess for the function
+
+        Returns:
+            np.ndarray : Vector of currents that make the better shimming
+
+        """
 
         n = len(currents_0)
         initial_guess = np.zeros(2 * n)
@@ -263,7 +275,7 @@ class PmuQuadProgOpt(QuadProgOpt):
             by the PMU.
         """
 
-    def __init__(self, coils, unshimmed, affine, opt_criteria, pmu: PmuResp, reg_factor=0):
+    def __init__(self, coils, unshimmed, affine, pmu: PmuResp, reg_factor=0):
         """
         Initializes coils according to input list of Coil
 
@@ -271,8 +283,6 @@ class PmuQuadProgOpt(QuadProgOpt):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (numpy.ndarray): 3d array of unshimmed volume
             affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
@@ -286,7 +296,7 @@ class PmuQuadProgOpt(QuadProgOpt):
 
         """
         This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
+        g @ x < h, to see all details please see the PR #458
         Redefined from QuadProgo to match the new bounds
 
         Returns:
@@ -346,7 +356,7 @@ class PmuQuadProgOpt(QuadProgOpt):
             # dim(g) = (8n +n_coils, 2n)
 
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [-lb], [ub], [ub], [np.zeros([n, 1])], [sum_constraints * np.ones([n, 1])]])
+                          [-lb], [-lb], [ub], [ub], [np.zeros([n, 1])], [np.max(sum_constraints) * np.ones([n, 1])]])
             # dim(h) = (8n +n_coils, 1)
 
         return g, h
