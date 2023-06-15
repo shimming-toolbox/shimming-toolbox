@@ -780,6 +780,7 @@ class RealTimeSequencer(Sequencer):
                                 `shimmingtoolbox.optimizer` init method
             bounds (list) : List of the bounds for the currents for the real time optimization
             acq_pressures (np.ndarray) : 1D array that contains the acquisitions pressures
+            acq_timestamps (np.ndarray) : 1D array that contains the acquisitions timestamps
     """
 
     def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
@@ -842,6 +843,7 @@ class RealTimeSequencer(Sequencer):
 
         self.nii_anat = nii_anat
         self.nii_static_mask, self.nii_riro_mask = self.get_mask(nii_static_mask, nii_riro_mask)
+        self.acq_timestamps = None
         self.acq_pressures = self.get_acq_pressures()
         self.optimizer_riro = None
 
@@ -938,10 +940,10 @@ class RealTimeSequencer(Sequencer):
             np.ndarray: 1D array that contains the acquisitions pressures
         """
         # Fetch PMU timing
-        acq_timestamps = get_acquisition_times(self.nii_fieldmap, self.json_fmap)
+        self.acq_timestamps = get_acquisition_times(self.nii_fieldmap, self.json_fmap)
         # TODO: deal with saturation
         # fit PMU and fieldmap values
-        acq_pressures = self.pmu.interp_resp_trace(acq_timestamps)
+        acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
 
         return acq_pressures
 
@@ -1199,7 +1201,7 @@ class RealTimeSequencer(Sequencer):
                 # Calculate masked shim
                 masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
                 masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
-                                                                                                            i_shim]
+                i_shim]
                 masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
                 masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
@@ -1250,7 +1252,7 @@ class RealTimeSequencer(Sequencer):
                                   shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
             self.plot_currents(coef_static, riro=coef_riro * pressure_rms)
             self.plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
-            self.plot_pressure_points(self.acq_pressures, (self.pmu.min, self.pmu.max))
+            self.plot_pressure_and_field(unshimmed_trace)
             self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
 
             # Save shimmed result
@@ -1348,21 +1350,73 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
-    def plot_pressure_points(self, acq_pressures, ylim):
+    def plot_pressure_and_field(self, unshimmed_trace):
         """
-        Plot respiratory trace pressure points
+        Plot respiratory trace, acquisition time pressure points and the scaled B0 field
 
         Args:
-            acq_pressures (np.ndarray): acquisitions pressures
-            ylim (float): Limit of the y-axis
-
+            unshimmed_trace (np.ndarray): field in the ROI for each shim volume
         """
-        fig = Figure(figsize=(10, 10))
-        ax = fig.add_subplot(111)
-        ax.plot(acq_pressures, label='pressures')
-        ax.legend()
-        ax.set_ylim(ylim)
-        ax.set_title("Pressures vs time points")
+        # Get the pmu data values in the range of the acquisition
+        pmu_timestamps = self.pmu.get_times()
+        pmu_pressures = self.pmu.data
+        indexes = np.where(np.logical_and(pmu_timestamps >= (self.acq_timestamps[0] - 1000),
+                                          pmu_timestamps <= self.acq_timestamps[-1] + 1000))
+        pmu_timestamps_curated = pmu_timestamps[indexes]
+        pmu_pressures_curated = pmu_pressures[indexes]
+
+        # Remove slices not being shimmed
+        shim_to_display = []
+        shim_to_remove = []
+        curated_unshimmed_trace = copy.deepcopy(unshimmed_trace)
+        for i_shim in range(len(self.slices)):
+            if np.all(unshimmed_trace[i_shim] != 0):
+                shim_to_display.append(i_shim)
+            else:
+                shim_to_remove.append(i_shim)
+        curated_unshimmed_trace = np.delete(curated_unshimmed_trace, shim_to_remove, axis=0)
+
+        # Get the b0 field in the same units as the pressure reading
+        n_plots = len(shim_to_display)
+        max_diff_field = 0
+        for i_plot in range(n_plots):
+            diff_field = curated_unshimmed_trace[i_plot].max() - curated_unshimmed_trace[i_plot].min()
+            if abs(max_diff_field) < abs(diff_field):
+                max_diff_field = diff_field
+
+        diff_pressure = pmu_pressures_curated.max() - pmu_pressures_curated.min()
+        scaling = max_diff_field / diff_pressure
+        avg_pressure = np.mean(pmu_pressures_curated)
+
+        curated_unshimmed_trace_scaled = np.zeros_like(curated_unshimmed_trace)
+        for i_plot in range(n_plots):
+            avg_b0field = np.mean(curated_unshimmed_trace[i_plot])
+            curated_unshimmed_trace_scaled[i_plot] = (curated_unshimmed_trace[i_plot] - avg_b0field) / scaling + avg_pressure
+
+        # Find y limits
+        perc = (self.pmu.max - self.pmu.min) / 20
+        ylim = (min(curated_unshimmed_trace_scaled.min(), self.pmu.min - perc),
+                max(curated_unshimmed_trace_scaled.max(), self.pmu.max + perc))
+
+        fig = Figure(figsize=(8, 4 * n_plots), tight_layout=True)
+        for i_plot in range(n_plots):
+            # Plot
+            ax = fig.add_subplot(n_plots, 1, i_plot + 1)
+            ax.plot((pmu_timestamps_curated - pmu_timestamps_curated[0]) / 1000, pmu_pressures_curated,
+                    label='Pressure Trace')
+            ax.plot((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
+                    label='B0_field')
+            ax.scatter((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, self.acq_pressures, color='red',
+                       label='Fieldmap timepoints')
+            ax.legend()
+            ax.set_ylim(ylim)
+            ax.set_yticklabels([])
+            ax.set_yticks([])
+            ax.set_xlabel('Time (s)')
+            ax.set_title(f"Slices: {self.slices[shim_to_display[i_plot]]}")
+
+        # TODO: Title is in the plot
+        # fig.suptitle("Pressures and field vs time points")
         fname_figure = os.path.join(self.path_output, 'fig_trace_pressures.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")

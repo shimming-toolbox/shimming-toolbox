@@ -587,7 +587,8 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
-                                             '--output', tmp],
+                                             '--output', tmp,
+                                             '-v', 'debug'],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0

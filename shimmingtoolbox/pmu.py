@@ -123,6 +123,18 @@ class PmuResp(object):
 
         return attributes
 
+    def get_times(self):
+        """
+        Get the times in ms at which the respiration took place.
+
+        Returns:
+            np.ndarray: Array containing the timepoints in ms of each data
+        """
+        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data)-1)
+        times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
+
+        return times
+
     def interp_resp_trace(self, acquisition_times):
         """
         Interpolates ``data`` to the specified ``acquisition_times``
@@ -138,9 +150,7 @@ class PmuResp(object):
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
-        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data)-1)
-        times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
-
+        times = self.get_times()
         interp_data = np.interp(acquisition_times, times, self.data)
 
         return interp_data
