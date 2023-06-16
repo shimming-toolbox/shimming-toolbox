@@ -29,7 +29,7 @@ def sort_dicoms(path_input, path_output, verbose):
         # If it's not a file
         if not os.path.isfile(fname_tmp):
             continue
-        # If it's not a .dcm or .ima
+        # If it's not a DICOM file
         if not is_dicom(fname_tmp):
             continue
 
