@@ -1398,7 +1398,7 @@ class RealTimeSequencer(Sequencer):
         ylim = (min(curated_unshimmed_trace_scaled.min(), self.pmu.min - perc),
                 max(curated_unshimmed_trace_scaled.max(), self.pmu.max + perc))
 
-        fig = Figure(figsize=(8, 4 * n_plots), tight_layout=True)
+        fig = Figure(figsize=(8, 4 * n_plots))
         for i_plot in range(n_plots):
             # Plot
             ax = fig.add_subplot(n_plots, 1, i_plot + 1)
@@ -1415,10 +1415,14 @@ class RealTimeSequencer(Sequencer):
             ax.set_xlabel('Time (s)')
             ax.set_title(f"Slices: {self.slices[shim_to_display[i_plot]]}")
 
-        # TODO: Title is in the plot
-        # fig.suptitle("Pressures and field vs time points")
+        # Place suptitle
+        # 10 = 2%, 5 = 4%, 1 = 10%
+        top = 1 - (0.1 / (n_plots / 1.5))
+        fig.tight_layout(rect=[0, 0.03, 1, top])
+
+        # Save figure
         fname_figure = os.path.join(self.path_output, 'fig_trace_pressures.png')
-        fig.savefig(fname_figure)
+        fig.savefig(fname_figure, bbox_inches='tight')
         logger.debug(f"Saved figure: {fname_figure}")
 
     def plot_shimmed_trace(self, unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro):
