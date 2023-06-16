@@ -5,6 +5,7 @@ import click
 import logging
 import os
 from pydicom import dcmread
+from pydicom.misc import is_dicom
 import shutil
 
 from shimmingtoolbox.utils import set_all_loggers, create_output_dir
@@ -29,8 +30,9 @@ def sort_dicoms(path_input, path_output, verbose):
         if not os.path.isfile(fname_tmp):
             continue
         # If it's not a .dcm or .ima
-        if (fname_tmp[-4:] != '.ima') and (fname_tmp[-4:] != '.dcm'):
+        if not is_dicom(fname_tmp):
             continue
+
         list_dicoms.append(fname_tmp)
 
     # Make sure there is at least one DICOM
