@@ -1119,9 +1119,9 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
 
     # Add realtime component as an errorbar
     if rt_coefs is not None:
-        riro = np.zeros((rt_coefs.shape[0], 2))
+        riro = np.zeros((2, rt_coefs.shape[0]))
         for i_slice in range(rt_coefs.shape[0]):
-            riro[i_slice] = np.abs([min(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max),
+            riro[:, i_slice] = np.abs([min(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max),
                                     max(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max)])
         ax.errorbar(range(n_channels), static_coefs, yerr=riro, fmt='o', elinewidth=4, capsize=6,
                     label='static-riro')
