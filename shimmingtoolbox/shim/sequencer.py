@@ -327,8 +327,8 @@ class ShimSequencer(Sequencer):
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
-            resampled_mask = np.array([results_mask[it][0].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
-            masks_fmap = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            resampled_mask = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap = np.array([results_mask[it][0].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
         return resampled_mask, masks_fmap
 
