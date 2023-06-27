@@ -13,6 +13,7 @@ from pathlib import Path
 import time
 import functools
 from scipy import ndimage as nd
+from nibabel.affines import voxel_sizes
 
 logger = logging.getLogger(__name__)
 
@@ -289,8 +290,20 @@ def is_similar_affine(affine1, affine2):
         affine2 (np.ndarray): 4x4 matrix containing a spatial transformation
 
     Returns:
-        bool: If the matrixes are similar
+        bool: If the affine transformation can be considered the same
 
     """
 
-    return np.allclose(affine1[:, 3], affine2[:, 3], atol=0.05) and np.allclose(affine1[:, :3], affine2[:, :3])
+    # Make sure the scaling of voxels is the same
+    if not np.allclose(affine1[:, :3], affine2[:, :3]):
+        return False
+
+    # Get the voxel size
+    vox_size = voxel_sizes(affine1)
+
+    # Make sure the translation is below 2.5% of the pixel size
+    x_is_close = np.allclose(affine1[0, 3], affine2[0, 3], atol=0.025 * vox_size[0])
+    y_is_close = np.allclose(affine1[1, 3], affine2[1, 3], atol=0.025 * vox_size[1])
+    z_is_close = np.allclose(affine1[2, 3], affine2[2, 3], atol=0.025 * vox_size[2])
+
+    return x_is_close and y_is_close and z_is_close
