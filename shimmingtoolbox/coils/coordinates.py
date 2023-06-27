@@ -3,8 +3,7 @@
 # Deals with coordinate systems, going from voxel-based to physical-based coordinates.
 
 import numpy as np
-from nibabel.affines import apply_affine
-import math
+from nibabel.affines import apply_affine, voxel_sizes
 import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
 from joblib import Parallel, delayed
@@ -49,29 +48,26 @@ def phys_gradient(data, affine):
         numpy.ndarray: 3D matrix containing the gradient along the y direction in the physical coordinate system
         numpy.ndarray: 3D matrix containing the gradient along the z direction in the physical coordinate system
     """
+    # Calculate the spacing along the different voxel axis
+    vox_spacing = voxel_sizes(affine)
 
     x_vox = 0
     y_vox = 1
     z_vox = 2
 
-    # Calculate the spacing along the different voxel axis
-    x_vox_spacing = math.sqrt((affine[0, x_vox] ** 2) + (affine[1, x_vox] ** 2) + (affine[2, x_vox] ** 2))
-    y_vox_spacing = math.sqrt((affine[0, y_vox] ** 2) + (affine[1, y_vox] ** 2) + (affine[2, y_vox] ** 2))
-    z_vox_spacing = math.sqrt((affine[0, z_vox] ** 2) + (affine[1, z_vox] ** 2) + (affine[2, z_vox] ** 2))
-
     # Compute the gradient along the different voxel axis
     if data.shape[x_vox] != 1:
-        x_vox_gradient = np.gradient(data, x_vox_spacing, axis=x_vox)
+        x_vox_gradient = np.gradient(data, vox_spacing[x_vox], axis=x_vox)
     else:
         x_vox_gradient = np.zeros_like(data)
 
     if data.shape[y_vox] != 1:
-        y_vox_gradient = np.gradient(data, y_vox_spacing, axis=y_vox)
+        y_vox_gradient = np.gradient(data, vox_spacing[y_vox], axis=y_vox)
     else:
         y_vox_gradient = np.zeros_like(data)
 
     if data.shape[z_vox] != 1:
-        z_vox_gradient = np.gradient(data, z_vox_spacing, axis=z_vox)
+        z_vox_gradient = np.gradient(data, vox_spacing[z_vox], axis=z_vox)
     else:
         # realtime_zshim case where sagittal, rotated, one slice Gx = Gy
         # z_vox_gradient = (x_vox_gradient * y_vox_spacing * z_vox_spacing * (affine[0, x_vox] - affine[1, x_vox]) +
@@ -80,15 +76,15 @@ def phys_gradient(data, affine):
         z_vox_gradient = np.zeros_like(data)
 
     # Compute the gradient along the physical axis
-    x_gradient = (x_vox_gradient * affine[0, x_vox] / x_vox_spacing) + \
-                 (y_vox_gradient * affine[0, y_vox] / y_vox_spacing) + \
-                 (z_vox_gradient * affine[0, z_vox] / z_vox_spacing)
-    y_gradient = (x_vox_gradient * affine[1, x_vox] / x_vox_spacing) + \
-                 (y_vox_gradient * affine[1, y_vox] / y_vox_spacing) + \
-                 (z_vox_gradient * affine[1, z_vox] / z_vox_spacing)
-    z_gradient = (x_vox_gradient * affine[2, x_vox] / x_vox_spacing) + \
-                 (y_vox_gradient * affine[2, y_vox] / y_vox_spacing) + \
-                 (z_vox_gradient * affine[2, z_vox] / z_vox_spacing)
+    x_gradient = (x_vox_gradient * affine[0, x_vox] / vox_spacing[x_vox]) + \
+                 (y_vox_gradient * affine[0, y_vox] / vox_spacing[y_vox]) + \
+                 (z_vox_gradient * affine[0, z_vox] / vox_spacing[z_vox])
+    y_gradient = (x_vox_gradient * affine[1, x_vox] / vox_spacing[x_vox]) + \
+                 (y_vox_gradient * affine[1, y_vox] / vox_spacing[y_vox]) + \
+                 (z_vox_gradient * affine[1, z_vox] / vox_spacing[z_vox])
+    z_gradient = (x_vox_gradient * affine[2, x_vox] / vox_spacing[x_vox]) + \
+                 (y_vox_gradient * affine[2, y_vox] / vox_spacing[y_vox]) + \
+                 (z_vox_gradient * affine[2, z_vox] / vox_spacing[z_vox])
 
     return x_gradient, y_gradient, z_gradient
 
@@ -109,27 +105,24 @@ def phys_to_vox_coefs(gx, gy, gz, affine):
         numpy.ndarray: 3D matrix containing the coefs along the y direction in the image coordinate system
         numpy.ndarray: 3D matrix containing the coefs along the z direction in the image coordinate system
     """
+    # Calculate the spacing along the different voxel axis
+    vox_spacing = voxel_sizes(affine)
+
+    inv_affine = np.linalg.inv(affine[:3, :3])
 
     x_vox = 0
     y_vox = 1
     z_vox = 2
 
-    # Calculate the spacing along the different voxel axis
-    x_vox_spacing = math.sqrt((affine[0, x_vox] ** 2) + (affine[1, x_vox] ** 2) + (affine[2, x_vox] ** 2))
-    y_vox_spacing = math.sqrt((affine[0, y_vox] ** 2) + (affine[1, y_vox] ** 2) + (affine[2, y_vox] ** 2))
-    z_vox_spacing = math.sqrt((affine[0, z_vox] ** 2) + (affine[1, z_vox] ** 2) + (affine[2, z_vox] ** 2))
-
-    inv_affine = np.linalg.inv(affine[:3, :3])
-
-    gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
-             (gy * inv_affine[0, y_vox] * x_vox_spacing) + \
-             (gz * inv_affine[0, z_vox] * x_vox_spacing)
-    gy_vox = (gx * inv_affine[1, x_vox] * y_vox_spacing) + \
-             (gy * inv_affine[1, y_vox] * y_vox_spacing) + \
-             (gz * inv_affine[1, z_vox] * y_vox_spacing)
-    gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
-             (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
-             (gz * inv_affine[2, z_vox] * z_vox_spacing)
+    gx_vox = (gx * inv_affine[0, x_vox] * vox_spacing[x_vox]) + \
+             (gy * inv_affine[0, y_vox] * vox_spacing[x_vox]) + \
+             (gz * inv_affine[0, z_vox] * vox_spacing[x_vox])
+    gy_vox = (gx * inv_affine[1, x_vox] * vox_spacing[y_vox]) + \
+             (gy * inv_affine[1, y_vox] * vox_spacing[y_vox]) + \
+             (gz * inv_affine[1, z_vox] * vox_spacing[y_vox])
+    gz_vox = (gx * inv_affine[2, x_vox] * vox_spacing[z_vox]) + \
+             (gy * inv_affine[2, y_vox] * vox_spacing[z_vox]) + \
+             (gz * inv_affine[2, z_vox] * vox_spacing[z_vox])
 
     return gx_vox, gy_vox, gz_vox
 
