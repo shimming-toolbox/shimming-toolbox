@@ -440,6 +440,15 @@ class ShimSequencer(Sequencer):
                 nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
 
+            metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask_full_binary, metric='std')
+            metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask_full_binary, metric='std')
+            metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask_full_binary, metric='mean')
+            metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask_full_binary, metric='mean')
+            metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask_full_binary, metric='mean')
+            metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask_full_binary, metric='mean')
+
+            return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
         Evaluate the shimming and print the efficiency of the corrections.
@@ -536,7 +545,8 @@ class ShimSequencer(Sequencer):
                     if mse_unshimmed < mse_shimmed:
                         logger.warning("Evaluating the mse. Verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
-
+            
+    
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
         Calculate the shimmed full mask
@@ -589,6 +599,7 @@ class ShimSequencer(Sequencer):
         metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
         metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
         metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
+
 
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
