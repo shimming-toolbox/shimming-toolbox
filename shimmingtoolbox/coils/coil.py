@@ -150,7 +150,7 @@ class ScannerCoil(Coil):
 
     def _create_coil_profile(self, dim):
         # Define profile for Tx (constant volume)
-        profile_order_0 = np.ones(dim)
+        profile_order_0 = -np.ones(dim)
 
         # define the coil profiles
         if self.order == 0:

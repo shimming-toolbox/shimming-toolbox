@@ -21,9 +21,9 @@ from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import shim_sequencer, shim_realtime_pmu_sequencer, new_bounds_from_currents
-from shimmingtoolbox.shim.sequencer import define_slices, extend_fmap_to_kernel_size, parse_slices
-from shimmingtoolbox.shim.sequencer import shim_max_intensity
+from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
+from shimmingtoolbox.shim.sequencer import shim_max_intensity,  define_slices
+from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
@@ -257,14 +257,16 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         list_slices = define_slices(n_slices, slice_factor, slices)
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
-    coefs = shim_sequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
-                           method=method,
-                           opt_criteria=opt_criteria,
-                           mask_dilation_kernel='sphere',
-                           mask_dilation_kernel_size=dilation_kernel_size,
-                           reg_factor=reg_factor,
-                           path_output=path_output)
-
+    # 1 ) Create the Shimming sequencer object
+    sequencer = ShimSequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
+                              method=method,
+                              opt_criteria=opt_criteria,
+                              mask_dilation_kernel='sphere',
+                              mask_dilation_kernel_size=dilation_kernel_size,
+                              reg_factor=reg_factor,
+                              path_output=path_output)
+    # 2) Launch shim sequencer
+    coefs = sequencer.shim()
     # Output
     # Load output options
     options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
@@ -340,6 +342,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
+    sequencer.eval(coefs)
+    logger.info(f" Plotting currents")
 
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
@@ -670,16 +674,18 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Load PMU
     pmu = PmuResp(fname_resp)
-
-    out = shim_realtime_pmu_sequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static, nii_mask_anat_riro,
-                                      list_slices, pmu, list_coils,
-                                      opt_method=method,
-                                      opt_criteria=opt_criteria,
-                                      mask_dilation_kernel='sphere',
-                                      mask_dilation_kernel_size=dilation_kernel_size,
-                                      reg_factor=reg_factor,
-                                      path_output=path_output)
-
+    # 1 ) Create the real time pmu sequencer object
+    sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
+                                                nii_mask_anat_riro,
+                                                list_slices, pmu, list_coils,
+                                                method=method,
+                                                opt_criteria=opt_criteria,
+                                                mask_dilation_kernel='sphere',
+                                                mask_dilation_kernel_size=dilation_kernel_size,
+                                                reg_factor=reg_factor,
+                                                path_output=path_output)
+    # 2) Launch the sequencer
+    out = sequencer.shim()
     coefs_static, coefs_riro, mean_p, p_rms = out
 
     # Output
@@ -771,7 +777,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
-
+    sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
+    logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
     for i_coil, coil in enumerate(list_coils):
@@ -1123,8 +1130,10 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
 
     # Add realtime component as an errorbar
     if rt_coefs is not None:
-        rt_coef_ishim = rt_coefs
-        riro = [rt_coef_ishim * -pres_probe_min, rt_coef_ishim * pres_probe_max]
+        riro = np.zeros((2, rt_coefs.shape[0]))
+        for i_slice in range(rt_coefs.shape[0]):
+            riro[0, i_slice] = np.abs(min(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
+            riro[1, i_slice] = np.abs(max(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
         ax.errorbar(range(n_channels), static_coefs, yerr=riro, fmt='o', elinewidth=4, capsize=6,
                     label='static-riro')
     # Add static component
@@ -1231,7 +1240,7 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
         f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
-
+    
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)

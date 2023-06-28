@@ -45,7 +45,7 @@ setup(
         "requests",
         "scipy>=1.7",
         "tqdm",
-        "matplotlib~=3.3.4",
+        "matplotlib>=3.5",
         "psutil~=5.7.3",
         "pydicom",
         "pytest>=6.2.5",
@@ -54,6 +54,7 @@ setup(
         "pillow>=9.0.0",
         "dataclasses",
         "raven",
+        "joblib",
     ],
     extras_require={
         'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
