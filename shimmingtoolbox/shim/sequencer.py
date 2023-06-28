@@ -1479,8 +1479,7 @@ class RealTimeSequencer(Sequencer):
         mt_unshimmed = montage(unshimmed_avg)
         mt_unshimmed_masked = montage(unshimmed_avg * mask)
         mt_shimmed_masked = montage(shimmed_masked_avg)
-        print("----------------------------------------------------------------")
-        print(mt_unshimmed.shape, mt_shimmed_masked.shape, mt_shimmed_masked.shape)
+        
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed_avg, mask, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked_avg, mask, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_avg, mask, metric='mean')
