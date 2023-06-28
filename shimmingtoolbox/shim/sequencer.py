@@ -834,7 +834,7 @@ class RealTimeSequencer(Sequencer):
             raise ValueError("Criteria for optimization not supported")
 
         self.opt_criteria = opt_criteria
-        self.nii_fieldmap = self.get_fieldmap(nii_fieldmap)
+        self.nii_fieldmap, self.nii_fieldmap_orig = self.get_fieldmap(nii_fieldmap)
 
         # Check if anat has the good dimensions
         if nii_anat.get_fdata().ndim != 3:
@@ -874,7 +874,7 @@ class RealTimeSequencer(Sequencer):
                                                           self.path_output)
                 break
 
-        return nii_fieldmap
+        return nii_fieldmap, nii_fmap_orig
 
     def get_mask(self, nii_static_mask, nii_riro_mask):
         """
@@ -928,7 +928,7 @@ class RealTimeSequencer(Sequencer):
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_riro_mask, os.path.join(self.path_output, "mask_riro_resampled_on_anat.nii.gz"))
 
-        return nii_riro_mask, nii_static_mask
+        return nii_static_mask, nii_riro_mask
 
     def get_acq_pressures(self):
         """
@@ -1180,6 +1180,11 @@ class RealTimeSequencer(Sequencer):
         shim_trace_static = []
         shim_trace_riro = []
         unshimmed_trace = []
+        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_static_mask,
+                                                            nii_target,
+                                                            order=0,
+                                                            mode='grid-constant',
+                                                            cval=0).get_fdata()), 0, 1)
         for i_shim in range(len(self.slices)):
             # Calculate static correction
             correction_static = self.optimizer_riro.merged_coils @ coef_static[i_shim]
@@ -1244,6 +1249,9 @@ class RealTimeSequencer(Sequencer):
             if i_shim >= n_shim - 1:
                 break
 
+        # Plot before vs after shimming averaged on PMU signal and time
+        self.plot_full_mask(unshimmed, masked_shim_static_riro, mask_full_binary)
+
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                                   shimmed_static,
@@ -1252,7 +1260,6 @@ class RealTimeSequencer(Sequencer):
             self.plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
             self.plot_pressure_points(self.acq_pressures, (self.pmu.min, self.pmu.max))
             self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
-
             # Save shimmed result
             nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nii_fieldmap.affine,
                                                       header=self.nii_fieldmap.header)
@@ -1454,6 +1461,70 @@ class RealTimeSequencer(Sequencer):
                      f"\nstatic_shim_static_riro: {static_shim_static_riro}"
                      f"\nstatic_shim_riro: {static_shim_riro}"
                      f"\nstatic_unshimmed: {static_unshimmed}")
+    
+
+    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
+        """
+        Plot and save the static full mask
+
+        Args:
+            unshimmed (np.ndarray): Original fieldmap not shimmed
+            shimmed_masked(np.ndarray): Masked shimmed fieldmap
+            mask (np.ndarray): Binary mask in the fieldmap space
+        """
+        # Plot
+        unshimmed_avg = np.mean(unshimmed, axis=3)
+        shimmed_masked_avg = np.mean(shimmed_masked, axis=(3, 4))
+     
+        mt_unshimmed = montage(unshimmed_avg)
+        mt_unshimmed_masked = montage(unshimmed_avg * mask)
+        mt_shimmed_masked = montage(shimmed_masked_avg)
+        print("----------------------------------------------------------------")
+        print(mt_unshimmed.shape, mt_shimmed_masked.shape, mt_shimmed_masked.shape)
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed_avg, mask, metric='std')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked_avg, mask, metric='std')
+        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_avg, mask, metric='mean')
+        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked_avg, mask, metric='mean')
+        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_avg), mask, metric='mean')
+        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked_avg), mask, metric='mean')
+
+        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
+        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+
+        fig = Figure(figsize=(9, 6))
+        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+        ax = fig.add_subplot(1, 2, 1)
+        ax.imshow(mt_unshimmed, cmap='gray')
+        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+                     f"abs mean: {metric_unshimmed_absmean:.3}")
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax)
+
+        ax = fig.add_subplot(1, 2, 2)
+        ax.imshow(mt_unshimmed, cmap='gray')
+        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
+        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+                     f"abs mean: {metric_shimmed_absmean:.3}")
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        fig.colorbar(im, cax=cax)
+
+        # Lower suptitle
+        fig.subplots_adjust(top=0.85)
+
+        # Save
+        print("---------------------------------------------------------------- \n SAVING")
+        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
+        fig.savefig(fname_figure, bbox_inches='tight')
 
 
 def new_bounds_from_currents(currents, old_bounds):
