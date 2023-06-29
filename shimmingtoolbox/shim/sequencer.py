@@ -1249,10 +1249,10 @@ class RealTimeSequencer(Sequencer):
             if i_shim >= n_shim - 1:
                 break
 
-        # Plot before vs after shimming averaged on PMU signal and time
-        self.plot_full_mask(unshimmed, masked_shim_static_riro, mask_full_binary)
-
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+            # Plot before vs after shimming averaged on PMU signal and time
+            self.plot_full_mask(unshimmed, masked_shim_static_riro, mask_full_binary)
+            
             self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                                   shimmed_static,
                                   shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
