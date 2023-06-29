@@ -87,8 +87,8 @@ class Sequencer(object):
         Optimization of the currents for each shim group. Wraps :meth:`shimmingtoolbox.shim.sequencer.Sequencer.opt`.
 
         Args:
-            masks_fmap_dilated (np.ndarray): 3D anat mask used for the optimizer to shim in the region of interest.
-                                             (only consider voxels with non-zero values)
+            masks_fmap_dilated (np.ndarray): 3D fieldmap mask used for the optimizer to shim in the region
+                                             of interest (only consider voxels with non-zero values)
         Returns:
                 np.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
