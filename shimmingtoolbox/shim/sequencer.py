@@ -1248,10 +1248,11 @@ class RealTimeSequencer(Sequencer):
             i_shim += 1
             if i_shim >= n_shim - 1:
                 break
-
+        
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # Plot before vs after shimming averaged on PMU signal and time
-            self.plot_full_mask(unshimmed, masked_shim_static_riro, mask_full_binary)
+            shimmed_mask = np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool))
+            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask, mask_full_binary)
             
             self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                                   shimmed_static,
@@ -1473,19 +1474,17 @@ class RealTimeSequencer(Sequencer):
             mask (np.ndarray): Binary mask in the fieldmap space
         """
         # Plot
-        unshimmed_avg = np.mean(unshimmed, axis=3)
-        shimmed_masked_avg = np.mean(shimmed_masked, axis=(3, 4))
      
-        mt_unshimmed = montage(unshimmed_avg)
-        mt_unshimmed_masked = montage(unshimmed_avg * mask)
-        mt_shimmed_masked = montage(shimmed_masked_avg)
+        mt_unshimmed = montage(unshimmed)
+        mt_unshimmed_masked = montage(unshimmed * mask)
+        mt_shimmed_masked = montage(shimmed_masked)
         
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed_avg, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked_avg, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_avg, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked_avg, mask, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_avg), mask, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked_avg), mask, metric='mean')
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
+        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
 
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
