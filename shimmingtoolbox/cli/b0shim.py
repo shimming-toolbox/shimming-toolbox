@@ -932,7 +932,7 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
         manufacturer (str): Name of the MRI manufacturer
 
     Returns:
-        dict: Updated constraint of the scanner
+        dict: Updated constraints of the scanner
     """
     def _initial_in_bounds(coefs, bounds):
         """Makes sure the initial values are within the bounds of the constraints"""
@@ -1005,7 +1005,7 @@ def _save_nii_to_new_dir(list_fname, path_output):
 
 
 def _get_fatsat_option(json_anat, fatsat):
-    """ Return if the fat saturation option should be turned on or off. This function maily exists to resolve the 'auto'
+    """ Return if the fat saturation option should be turned on or off. This function mainly exists to resolve the 'auto'
         case
 
     Args:
