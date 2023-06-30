@@ -127,26 +127,9 @@ class ScannerCoil(Coil):
         # Todo: add coord system
         sph_coil_profile = self._create_coil_profile(dim_volume)
         # Restricts the constraints to the specified order
-        sph_constraints = self._restrict_constraints(constraints)
+        constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.order)
 
-        super().__init__(sph_coil_profile, affine, sph_constraints)
-
-    def _restrict_constraints(self, in_contraints):
-        # Restrict constraint coefficient size/bounds depending on the order
-        out_constraints = in_contraints
-        if self.order == 0:
-            # f0 --> [1]
-            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:1]
-        elif self.order == 1:
-            # f0, ch1, ch2, ch3 -- > [4]
-            # Order 1 only requires the first 3 channels + Tx
-            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:4]
-        elif self.order == 2:
-            # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
-            # Order 2 requires 8 channels + Tx
-            out_constraints['coef_channel_minmax'] = in_contraints['coef_channel_minmax'][:9]
-
-        return out_constraints
+        super().__init__(sph_coil_profile, affine, constraints)
 
     def _create_coil_profile(self, dim):
         # Define profile for Tx (constant volume)
@@ -163,3 +146,78 @@ class ScannerCoil(Coil):
             sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
         return sph_coil_profile
+
+
+def get_scanner_constraints(manufacturers_model_name, order=2):
+    """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
+        order
+
+    Args:
+        manufacturers_model_name (str): Name of the scanner
+        order (int): Maximum order of the shim system
+
+    Returns:
+        dict: The constraints including the scanner name, bounds and the maximum sum of currents.
+    """
+
+    if manufacturers_model_name == "Prisma_fit":
+        constraints = {
+            "name": "Prisma_fit",
+            "coef_channel_minmax": [],
+            "coef_sum_max": None
+        }
+        if order >= 0:
+            constraints["coef_channel_minmax"].append([123100100, 123265000])
+        if order >= 1:
+            for _ in range(3):
+                constraints["coef_channel_minmax"].append([-2300, 2300])
+        if order >= 2:
+            constraints["coef_channel_minmax"].append([-4959.01, 4959.01])
+            constraints["coef_channel_minmax"].append([-3551.29, 3551.29])
+            constraints["coef_channel_minmax"].append([-3503.299, 3503.299])
+            constraints["coef_channel_minmax"].append([-3551.29, 3551.29])
+            constraints["coef_channel_minmax"].append([-3487.302, 3487.302])
+
+    else:
+        logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
+                       f"respected.")
+        constraints = {
+            "name": "Unknown",
+            "coef_sum_max": None
+        }
+
+        if order == 0:
+            constraints["coef_channel_minmax"] = [[None, None]]
+        elif order == 1:
+            constraints["coef_channel_minmax"] = [[None, None] for _ in range(4)]
+        elif order == 2:
+            constraints["coef_channel_minmax"] = [[None, None] for _ in range(9)]
+
+    return constraints
+
+
+def restrict_sph_constraints(bounds, order):
+    """ Select bounds according to the order specified
+
+    Args:
+        bounds (list): 2D list (n_channels, 2) containing the min and max currents for multiple spherical harmonics
+                       orders
+        order (int): Maximum order of spherical harmonics
+
+    Returns:
+        list: 2D list with the bounds of order 0 to the specified order
+    """
+
+    if order == 0:
+        # f0 --> [1]
+        minmax_out = bounds[:1]
+    elif order == 1:
+        # f0, ch1, ch2, ch3 -- > [4]
+        minmax_out = bounds[:4]
+    elif order == 2:
+        # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
+        minmax_out = bounds[:9]
+    else:
+        raise NotImplementedError("Order must be between 0 and 2")
+
+    return minmax_out
