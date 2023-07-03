@@ -985,9 +985,10 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
         for i_channel in range(len(bounds)):
             bound_0 = bounds[i_channel, 0]
             bound_1 = bounds[i_channel, 1]
-            if bound_0 > bound_1:
-                bounds[i_channel, 0] = bound_1
-                bounds[i_channel, 1] = bound_0
+            if bound_0 is not None and bound_1 is not None:
+                if bound_0 > bound_1:
+                    bounds[i_channel, 0] = bound_1
+                    bounds[i_channel, 1] = bound_0
         constraints['coef_channel_minmax'][1:] = bounds.tolist()
 
     return constraints

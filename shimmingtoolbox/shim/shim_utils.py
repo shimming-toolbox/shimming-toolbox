@@ -219,9 +219,16 @@ def get_scanner_shim_settings(bids_json_dict):
 
     # get_shim_orders
     if bids_json_dict.get('ShimSetting'):
-        scanner_shim['order1'] = bids_json_dict.get('ShimSetting')[:3]
-        scanner_shim['order2'] = bids_json_dict.get('ShimSetting')[3:]
-        scanner_shim['has_valid_settings'] = True
+        n_shim_values = len(bids_json_dict.get('ShimSetting'))
+        if n_shim_values == 3:
+            scanner_shim['order1'] = bids_json_dict.get('ShimSetting')
+            scanner_shim['has_valid_settings'] = True
+        elif n_shim_values == 8:
+            scanner_shim['order2'] = bids_json_dict.get('ShimSetting')[3:]
+            scanner_shim['order1'] = bids_json_dict.get('ShimSetting')[:3]
+            scanner_shim['has_valid_settings'] = True
+        else:
+            logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
     else:
         logger.warning("ShimSetting tag is not available")
 
