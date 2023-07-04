@@ -1469,6 +1469,244 @@ def dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria
 
     return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
+def realtime_dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
+                     opt_criteria, slices, slice_factor, coils, dilation_kernel_size, scanner_coil_order,
+                     fname_sph_constr, fatsat, path_output, o_format_coil, o_format_sph, output_value_format,
+                     reg_factor, verbose):
+    """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
+    the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
+    order/size of the slices.
+
+    Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
+    """
+
+    # Input can be a string
+    scanner_coil_order = int(scanner_coil_order)
+
+    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
+    # delta.
+    if o_format_sph == 'gradient':
+        if output_value_format == 'absolute':
+            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                             f"{o_format_sph}")
+        if scanner_coil_order != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+                             f"{o_format_sph}")
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(path_output)
+
+    # Load the fieldmap
+    nii_fmap_orig = nib.load(fname_fmap)
+
+    # Make sure the fieldmap has the appropriate dimensions
+    if nii_fmap_orig.get_fdata().ndim != 4:
+        raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
+
+    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
+    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
+    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
+    # for each dimension This is usually useful in the through plane direction where we could have less slices.
+    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
+    extending = False
+    for i_axis in range(3):
+        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            extending = True
+            break
+
+    if extending:
+        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+    else:
+        nii_fmap = copy.deepcopy(nii_fmap_orig)
+
+    # Load the anat
+    nii_anat = nib.load(fname_anat)
+    dim_info = nii_anat.header.get_dim_info()
+    if dim_info[2] != 2:
+        # Slice must be the 3rd dimension of the file
+        # TODO: Reorient nifti so that the slice is the 3rd dim
+        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
+
+    # Load anat json
+    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_anat_json) as json_file:
+        json_anat_data = json.load(json_file)
+
+    # Load static mask
+    if fname_mask_anat_static is not None:
+        nii_mask_anat_static = nib.load(fname_mask_anat_static)
+    else:
+        # If no mask is provided, shim the whole anat volume
+        nii_mask_anat_static = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine,
+                                               header=nii_anat.header)
+
+    # Load riro mask
+    if fname_mask_anat_riro is not None:
+        nii_mask_anat_riro = nib.load(fname_mask_anat_riro)
+    else:
+        # If no mask is provided, shim the whole anat volume
+        nii_mask_anat_riro = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine,
+                                             header=nii_anat.header)
+
+    # Open json of the fmap
+    fname_json = fname_fmap.split('.nii')[0] + '.json'
+    # Read from json file
+    if os.path.isfile(fname_json):
+        json_fm_data = json.load(open(fname_json))
+    else:
+        raise OSError("Missing fieldmap json file")
+
+    # Get the initial coefficients from the json file (Tx + 1st + 2nd order shim)
+    json_coefs = _get_current_shim_settings(json_fm_data)
+    converted_coefs = convert_to_mp(json_coefs[1:], json_fm_data['ManufacturersModelName'])
+    initial_coefs = [json_coefs[0]] + converted_coefs
+
+    # Load the coils
+    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
+
+    if logger.level <= getattr(logging, 'DEBUG'):
+        # Save inputs
+        list_fname = [fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro]
+        _save_nii_to_new_dir(list_fname, path_output)
+
+    # Get the shim slice ordering
+    n_slices = nii_anat.shape[2]
+    if slices == 'auto':
+        list_slices = parse_slices(fname_anat)
+    else:
+        list_slices = define_slices(n_slices, slice_factor, slices)
+    logger.info(f"The slices to shim are: {list_slices}")
+
+    # Load PMU
+    pmu = PmuResp(fname_resp)
+    # 1 ) Create the real time pmu sequencer object
+    sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
+                                                nii_mask_anat_riro,
+                                                list_slices, pmu, list_coils,
+                                                method=method,
+                                                opt_criteria=opt_criteria,
+                                                mask_dilation_kernel='sphere',
+                                                mask_dilation_kernel_size=dilation_kernel_size,
+                                                reg_factor=reg_factor,
+                                                path_output=path_output)
+    # 2) Launch the sequencer
+    out = sequencer.shim()
+    coefs_static, coefs_riro, mean_p, p_rms = out
+
+    # Output
+    # Load output options
+    options = _load_output_options(json_anat_data, fatsat)
+
+    list_fname_output = []
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
+
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
+        n_channels = coil.dim[3]
+        start_channel = end_channel
+        end_channel = start_channel + n_channels
+
+        # Select the coefficients for a coil
+        coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
+        coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
+
+        # If it's a scanner
+        if type(coil) == ScannerCoil:
+            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS
+            # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
+            # Therefore, we can only check for the o_format_sph.
+            if o_format_sph == 'gradient':
+                logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
+
+                coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                    coefs_coil_static[:, 1],
+                    coefs_coil_static[:, 2],
+                    coefs_coil_static[:, 3],
+                    fname_anat)
+                coefs_coil_static[:, 1] = coefs_st_freq
+                coefs_coil_static[:, 2] = coefs_st_phase
+                coefs_coil_static[:, 3] = coefs_st_slice
+
+                coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                    coefs_coil_riro[:, 1],
+                    coefs_coil_riro[:, 2],
+                    coefs_coil_riro[:, 3],
+                    fname_anat)
+                coefs_coil_riro[:, 1] = coefs_riro_freq
+                coefs_coil_riro[:, 2] = coefs_riro_phase
+                coefs_coil_riro[:, 3] = coefs_riro_slice
+
+                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "Gradient CS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units)
+
+            else:
+                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
+
+                # Convert coefficients from RAS to the shim CS of the manufacturer
+                manufacturer = json_anat_data['Manufacturer']
+                for i_shim in range(coefs_coil_static.shape[0]):
+                    # Convert coefficient
+                    coefs_coil_static[i_shim, 1:] = phys_to_shim_cs(coefs_coil_static[i_shim, 1:], manufacturer)
+                    coefs_coil_riro[i_shim, 1:] = phys_to_shim_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
+
+                # Convert bounds
+                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
+
+                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                # units = "ShimCS [mT/m]"
+                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
+                #             bounds=bounds_shim_cs)
+                # If the output format is absolute, add the initial coefs
+                if output_value_format == 'absolute':
+                    for i_channel in range(n_channels):
+                        # abs_coef = delta + initial
+                        coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
+                        # riro does not change
+
+                    list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
+                                                               list_slices, path_output, o_format_sph, options, i_coil,
+                                                               default_st_coefs=initial_coefs)
+                    continue
+
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_sph, options, i_coil)
+
+        else:  # Custom coil
+            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                       path_output, o_format_coil, options, i_coil)
+
+    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(f"Plotting figure(s)")
+    metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
+    logger.info(f"Plotting Currents")
+    # Plot the coefs after outputting the currents to the text file
+    end_channel = 0
+    for i_coil, coil in enumerate(list_coils):
+        # Figure out the start and end channels for a coil to be able to select it from the coefs
+        n_channels = coil.dim[3]
+        start_channel = end_channel
+        end_channel = start_channel + n_channels
+
+        if type(coil) != ScannerCoil:
+            # Select the coefficients for a coil
+            coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
+            coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
+            # Plot a figure of the coefficients
+            _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                        pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
+                        bounds=coil.coef_channel_minmax)
+
+    logger.info(f"Finished plotting figure(s)")
+    return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)

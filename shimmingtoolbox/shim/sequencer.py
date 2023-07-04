@@ -446,8 +446,9 @@ class ShimSequencer(Sequencer):
             metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask_full_binary, metric='mean')
             metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask_full_binary, metric='mean')
             metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask_full_binary, metric='mean')
-
             return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+
+
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
@@ -1282,6 +1283,18 @@ class RealTimeSequencer(Sequencer):
             nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nii_fieldmap.affine,
                                                header=self.nii_fieldmap.header)
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
+        
+        shimmed_masked = np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool))
+        unshimmed = np.mean(unshimmed, axis=3)
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask_full_binary, metric='std')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask_full_binary, metric='std')
+        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask_full_binary, metric='mean')
+        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask_full_binary, metric='mean')
+        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask_full_binary, metric='mean')
+        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask_full_binary, metric='mean')
+        return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+
+
 
     def plot_currents(self, static, riro=None):
         """
@@ -1310,6 +1323,7 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
+    
     def plot_static_riro(self, masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                          shimmed_static, shimmed_static_riro, i_t=0, i_slice=0, i_shim=0):
         """
