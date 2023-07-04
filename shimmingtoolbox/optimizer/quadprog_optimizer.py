@@ -262,9 +262,6 @@ class QuadProgOpt(Optimizer):
 
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, self.ineq_matrix.T, -self.ineq_vector[:, 0])[0]
 
-        if currents == 'None':
-            raise TypeError(" The optimization didn't succeed, please check your parameters")
-
         return currents[:n]
 
 
@@ -390,10 +387,8 @@ class PmuQuadProgOpt(QuadProgOpt):
         cost_matrix = 2 * cost_matrix
         cost_vector = np.zeros(2 * n)
         cost_vector[0: n] = b
+        # We need to calculate the constraints at each iteration
         ineq_matrix, ineq_vector = self._get_linear_inequality_matrices_rt()
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
-
-        if currents == 'None':
-            raise TypeError(" The optimization didn't succeed, please check your parameters")
 
         return currents[: n]
