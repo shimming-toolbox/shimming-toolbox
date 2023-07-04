@@ -130,7 +130,8 @@ class TestSequencer(object):
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
-    def test_shim_sequencer_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+
+    def test_shim_sequencer_quad_prog(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
         sequencer_test = ShimSequencer(nii_fieldmap, nii_anat, nii_mask, slices, [sph_coil], method='quad_prog')
@@ -579,7 +580,7 @@ class TestShimRTpmuSimData(object):
 
         assert np.all(currents_static.shape == (20, 3))
 
-    def test_shim_sequencer_rt_larger_coil(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+    def test_shim_sequencer_rt_qp_larger_coil(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                            nii_mask_riro, slices, pmu, coil):
 
         nii_fieldmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[:, :, :1, :], nii_fieldmap.affine,
