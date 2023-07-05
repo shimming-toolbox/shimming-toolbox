@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import time
 
 import numpy as np
 import logging
@@ -72,8 +71,8 @@ class QuadProgOpt(Optimizer):
 
     def _get_linear_inequality_matrices(self):
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
+        This functions returns the linear inequlity matrix and vector, that will be used in the optimization,
+        often called : g and h, such as g @ x < h, to see all details please see the PR #458
 
         Returns:
             (tuple) : tuple containing:
@@ -249,19 +248,21 @@ class QuadProgOpt(Optimizer):
         """
 
         n = len(currents_0)
-        initial_guess = np.zeros(2 * n)
-        initial_guess[:n] = currents_0
+        
+        # a,b and inv factor are the same as in the master branch, and so I kept theses names
         inv_factor = 1 / (len(unshimmed_vec) * factor)
         a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
         b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        epsilon = 1e-6
+        epsilon = 1e-6 # This is used to have a positive definite cost matrix
+        
         cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
-        cost_matrix = 2 * cost_matrix
+        cost_matrix = 2 * cost_matrix # We need to multiply by two to have the good definition of the problem
         cost_vector = np.zeros(2 * n)
         cost_vector[0: n] = b
 
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, self.ineq_matrix.T, -self.ineq_vector[:, 0])[0]
-
+        
+        # Only the first half of currents contains the real currents, the other half is to check the constraints
         return currents[:n]
 
 
@@ -293,9 +294,10 @@ class PmuQuadProgOpt(QuadProgOpt):
     def _get_linear_inequality_matrices_rt(self):
 
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
-        Redefined from QuadProgo to match the new bounds
+        This functions returns the linear inequlity matrix and vector, that will be used in the optimization,
+        often called : g and h, such as g @ x < h, to see all details please see the PR #458
+        
+        Redefined from QuadProg to match the new bounds
 
         Returns:
             (tuple) : tuple containing:
@@ -376,19 +378,22 @@ class PmuQuadProgOpt(QuadProgOpt):
         """
 
         n = len(currents_0)
-
-        initial_guess = np.zeros(2 * n)
-        initial_guess[:n] = currents_0
+        
+        # a,b and inv factor are the same as in the master branch, and so I kept theses names
         inv_factor = 1 / (len(unshimmed_vec) * factor)
         a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
         b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        epsilon = 1e-6
+        epsilon = 1e-6 # This is used to have a positive definite cost matrix
+        
         cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
         cost_matrix = 2 * cost_matrix
         cost_vector = np.zeros(2 * n)
         cost_vector[0: n] = b
+        
         # We need to calculate the constraints at each iteration
         ineq_matrix, ineq_vector = self._get_linear_inequality_matrices_rt()
+        
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
-
+        
+        # Only the first half of currents contains the real currents, the other half is to check the constraints
         return currents[: n]
