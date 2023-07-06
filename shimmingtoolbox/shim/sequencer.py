@@ -1462,7 +1462,7 @@ def new_bounds_from_currents(currents, old_bounds):
     "old_coef + next_bound < old_bound".
 
     Args:
-        currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
+        currents (np.ndarray): 2D array (n_shims x n_channels).
         old_bounds (list): 2D list (n_channels, 2) containing (min, max) containing the merged bounds of the previous
                            optimization.
     Returns:

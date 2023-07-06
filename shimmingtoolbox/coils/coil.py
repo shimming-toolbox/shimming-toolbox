@@ -172,11 +172,11 @@ def get_scanner_constraints(manufacturers_model_name, order=2):
             for _ in range(3):
                 constraints["coef_channel_minmax"].append([-2300, 2300])
         if order >= 2:
-            constraints["coef_channel_minmax"].append([-4959.01, 4959.01])
-            constraints["coef_channel_minmax"].append([-3551.29, 3551.29])
-            constraints["coef_channel_minmax"].append([-3503.299, 3503.299])
-            constraints["coef_channel_minmax"].append([-3551.29, 3551.29])
-            constraints["coef_channel_minmax"].append([-3487.302, 3487.302])
+            constraints["coef_channel_minmax"].extend([[-4959.01, 4959.01],
+                                                       [-3551.29, 3551.29],
+                                                       [-3503.299, 3503.299],
+                                                       [-3551.29, 3551.29],
+                                                       [-3487.302, 3487.302]])
 
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "

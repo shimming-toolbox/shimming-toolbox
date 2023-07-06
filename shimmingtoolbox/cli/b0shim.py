@@ -950,17 +950,23 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
                     logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
                                    f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
+    # Set the initial coefficients to 0
     if order == 0:
+        # Order 0 has 1 coefficient (f0)
         initial_coefs = [0]
     elif order == 1:
+        # Order 1 has 3 more coefficients than order 0 (f0, x, y, z)
         initial_coefs = [0] * 4
     elif order == 2:
+        # Order 2 has 5 more coefficients than order 1 (f0, X, Y, Z, Z2, ZX, ZY, X2-Y2, XY)
         initial_coefs = [0] * 9
     else:
         initial_coefs = None
 
+    # Restrict the constraints to the provided order
     constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], order)
 
+    # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
 
         if scanner_shim_settings['f0'] is not None and order >= 0:
@@ -970,9 +976,10 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
         if scanner_shim_settings['order2'] is not None and order >= 2:
             initial_coefs[4:9] = scanner_shim_settings['order2']
 
+        # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
 
-    # Set the bounds to what they should be by taking into account that the fieldmap was acquired using some
+    # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
     constraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                   constraints['coef_channel_minmax']
