@@ -82,13 +82,13 @@ class Sequencer(object):
         self.path_output = path_output
         self.optimizer = None
 
-    def optimize(self, resampled_mask):
+    def optimize(self, masks_fmap):
         """
         Optimization of the currents for each shim group. Wraps :meth:`shimmingtoolbox.shim.sequencer.Sequencer.opt`.
 
         Args:
-            resampled_mask (np.ndarray): 3D anat mask used for the optimizer to shim in the region of interest.
-                                             (only consider voxels with non-zero values)
+            masks_fmap (np.ndarray): 3D fieldmap mask used for the optimizer to shim in the region
+                                     of interest (only consider voxels with non-zero values)
         Returns:
                 np.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
@@ -97,12 +97,12 @@ class Sequencer(object):
         coefs = []
         for i in range(n_shims):
             # If there is nothing to shim in this shim group
-            if np.all(resampled_mask[..., i] == 0):
+            if np.all(masks_fmap[..., i] == 0):
                 coefs.append(np.zeros(self.optimizer.merged_coils.shape[-1]))
 
             # Otherwise optimize
             else:
-                coefs.append(self.optimizer.optimize(resampled_mask[..., i]))
+                coefs.append(self.optimizer.optimize(masks_fmap[..., i]))
 
         return np.array(coefs)
 
@@ -316,7 +316,7 @@ class ShimSequencer(Sequencer):
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
-            resampled_mask = np.array([dilated_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap_dilated = np.array([dilated_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
             masks_fmap = np.array([mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
         else:
@@ -327,10 +327,10 @@ class ShimSequencer(Sequencer):
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
-            resampled_mask = np.array([results_mask[it][0].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
-            masks_fmap = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap_dilated = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap = np.array([results_mask[it][0].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
-        return resampled_mask, masks_fmap
+        return masks_fmap_dilated, masks_fmap
 
     def shim(self):
         """
@@ -343,10 +343,10 @@ class ShimSequencer(Sequencer):
         self.select_optimizer()
 
         # Get both resampled masks that will be used in the optimization and in the evaluation of the shim
-        resampled_mask, self.masks_fmap = self.get_resampled_masks()
+        masks_fmap_dilated, self.masks_fmap = self.get_resampled_masks()
 
         # Optimize and get the coefficients
-        coefs = self.optimize(resampled_mask)
+        coefs = self.optimize(masks_fmap_dilated)
         return coefs
 
     def select_optimizer(self):
