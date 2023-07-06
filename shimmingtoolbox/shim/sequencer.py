@@ -82,12 +82,12 @@ class Sequencer(object):
         self.path_output = path_output
         self.optimizer = None
 
-    def optimize(self, masks_fmap_dilated):
+    def optimize(self, masks_fmap):
         """
         Optimization of the currents for each shim group. Wraps :meth:`shimmingtoolbox.shim.sequencer.Sequencer.opt`.
 
         Args:
-            masks_fmap_dilated (np.ndarray): 3D fieldmap mask used for the optimizer to shim in the region
+            masks_fmap (np.ndarray): 3D fieldmap mask used for the optimizer to shim in the region
                                              of interest (only consider voxels with non-zero values)
         Returns:
                 np.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
@@ -97,12 +97,12 @@ class Sequencer(object):
         coefs = []
         for i in range(n_shims):
             # If there is nothing to shim in this shim group
-            if np.all(masks_fmap_dilated[..., i] == 0):
+            if np.all(masks_fmap[..., i] == 0):
                 coefs.append(np.zeros(self.optimizer.merged_coils.shape[-1]))
 
             # Otherwise optimize
             else:
-                coefs.append(self.optimizer.optimize(masks_fmap_dilated[..., i]))
+                coefs.append(self.optimizer.optimize(masks_fmap[..., i]))
 
         return np.array(coefs)
 
