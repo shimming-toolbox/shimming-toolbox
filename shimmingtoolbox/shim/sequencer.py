@@ -88,7 +88,7 @@ class Sequencer(object):
 
         Args:
             masks_fmap (np.ndarray): 3D fieldmap mask used for the optimizer to shim in the region
-                                             of interest (only consider voxels with non-zero values)
+                                     of interest (only consider voxels with non-zero values)
         Returns:
                 np.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
