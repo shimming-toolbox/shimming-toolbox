@@ -3,7 +3,6 @@
 
 import copy
 import math
-
 import numpy as np
 from joblib import delayed, Parallel
 from typing import List
@@ -39,6 +38,7 @@ supported_optimizers = {
     'quad_prog_rt': PmuQuadProgOpt,
     'pseudo_inverse': Optimizer
 }
+
 
 class Sequencer(object):
     """
