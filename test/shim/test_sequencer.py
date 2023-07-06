@@ -483,7 +483,7 @@ class TestShimRTpmuSimData(object):
                 assert sum_shimmed_static_riro <= sum_unshimmed
 
     
-    def test_shim_sequencer_rt_qp_larger_coil(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+    def test_shim_sequencer_rt_larger_coil(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                            nii_mask_riro, slices, pmu, coil):
 
         nii_fieldmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[:, :, :1, :], nii_fieldmap.affine,
