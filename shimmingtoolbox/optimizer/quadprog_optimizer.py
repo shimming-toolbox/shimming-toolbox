@@ -22,7 +22,7 @@ class QuadProgOpt(Optimizer):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
 
         Attributes:
-            _initial_guess_method (string) : String indicating hoz to find the first guess for the optimization
+            _initial_guess_method (string) : String indicating how to find the first guess for the optimization
             initial_coefs (np.ndarray): Initial guess that will be used in the optimization
             reg_vector (np.ndarray) : Vector used to make the regulatization in the optimization
             ineq_matrix (np.ndarray) : Matrix used in the quadratic optimization to apply the constraints
@@ -243,7 +243,7 @@ class QuadProgOpt(Optimizer):
             currents_0 (numpy.ndarray) : Initial guess for the function
 
         Returns:
-            np.ndarray : Vector of currents that make the better shimming
+            np.ndarray : Vector of currents that make the best shimming
 
         """
 
