@@ -1251,7 +1251,8 @@ class RealTimeSequencer(Sequencer):
         
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # Plot before vs after shimming averaged on time
-            shimmed_mask_avg = np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool))
+            shimmed_mask_avg = np.zeros(mask_full_binary.shape)
+            np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
             self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
             
             # Plot STD over time before and after shimming
@@ -1540,18 +1541,12 @@ class RealTimeSequencer(Sequencer):
         sum_mask_fmap_cs =  np.sum(mask_fmap_cs, axis=3)
         mask_extended = np.repeat(mask[..., np.newaxis], masked_shim_static_riro.shape[-2], axis=-1)
         
+        # Transpose is used to cater to numpy division order 
+        # (3, 2, 4) / (3, 2) Does not work
+        # (4, 2, 3) / (2, 3) Does work
+        #* Using out parameter in np.divide() prevents inconsistent results
         shimmed_masked = np.zeros(mask_extended.shape)
-        for i in range(masked_shim_static_riro.shape[-2]):
-            shimmed_masked[..., i] = np.divide(np.sum(masked_shim_static_riro[..., i, :], axis=-1), sum_mask_fmap_cs, where=mask.astype(bool))
-        shimmed_masked[mask_extended == 0] = 0
-        
-        shimmed_mask_valid = np.mean(shimmed_masked, axis=-1)
-        shimmed_mask_avg = np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), sum_mask_fmap_cs, where=mask.astype(bool))
-
-        # Should be 0
-        diff = np.sum(np.abs(shimmed_mask_valid - shimmed_mask_avg))
-        # Make sure calculations are good
-        assert diff <= 1e-10, "Calculated shimmed masked encountered an issue, please run the script again"
+        np.divide(np.sum(masked_shim_static_riro, axis=-1).T, sum_mask_fmap_cs.T, where=mask.T.astype(bool), out=shimmed_masked.T)
 
         std_shimmed_masked = np.std(shimmed_masked, axis=-1, dtype=np.float64)
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
@@ -1601,7 +1596,6 @@ class RealTimeSequencer(Sequencer):
         fig.subplots_adjust(top=0.85)
 
         # Save
-        print("---------------------------------------------------------------- \n SAVING")
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
