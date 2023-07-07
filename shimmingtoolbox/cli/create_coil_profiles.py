@@ -10,7 +10,7 @@ import numpy as np
 import pathlib
 import tempfile
 
-from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles
+from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, generate_coil_bfield, get_wire_pattern
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
 from shimmingtoolbox.utils import create_output_dir, save_nii_json, set_all_loggers
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
@@ -20,6 +20,10 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@click.group(context_settings=CONTEXT_SETTINGS,
+             help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_profiles xxxxx")
+def coil_profiles_cli():
+    pass
 
 @click.command(
     context_settings=CONTEXT_SETTINGS,
@@ -46,7 +50,7 @@ logger = logging.getLogger(__name__)
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
+def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
                              fname_output, verbose):
     """ Create B0 coil profiles from acquisitions defined in the input json file. The output is in Hz/<current> where
         current depends on the value in the configuration file"""
@@ -291,6 +295,81 @@ def create_coil_profiles_cli(fname_json, path_relative, autoscale, unwrapper, th
     logger.info(f"Filename of the coil config file is: {fname_coil_config}")
 
 
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+)
+@click.option('-i', '--input', 'fname_txt', type=click.Path(exists=True), required=True,
+              help="Input filename of wires' geometry txt file. "
+                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials.html>`_ for more "
+                   "details.")
+@click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
+              help="Static B0 fieldmap on which to calculate coil profiles. Only FOV and affine are used")
+@click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new_coil",
+              help="Name of the coil. If not provided, \"new_coil\" will be used")
+@click.option('--min', 'min_current', required=False, type=click.FLOAT, default=-1,
+              help="The minimum current in amps going through each channel. Defaulted to -1 A")
+@click.option('--max', 'max_current', required=False, type=click.FLOAT, default=1,
+              help="The maximum current in amps going through each channel. Defaulted to 1 A")
+@click.option('--max_sum', 'max_current_sum', required=False, type=click.FLOAT, default=None,
+              help="The maximum sum of currents in amps going through all loops. Defaulted to the number of channel")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
+              default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
+              help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def from_CAD(fname_txt, fname_fmap, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
+    """ Create B0 coil profiles from CAD wire geometries."""
+        
+    create_output_dir(fname_output)
+    
+    nif = nib.load(fname_fmap)
+    GAMMA = 42.576E6 # in Hz/Tesla
+    pmc = np.loadtxt('/Users/arnaud/Documents/MSC/sim_outputs/scripts/acdc7t.pmcn')
+    pmc2 = pmc.copy()
+    pmc2[:, 1:3] *= -1
+    pmc3 = pmc2.copy()
+    pmc3[:, 1:4] += np.array([[-6.8, -70, -20]]) 
+    Wires = get_wire_pattern(pmc3)
+
+    transform = nif.affine[:-1, :]
+    nb_channels = len(Wires)
+    FOV_shape = nif.header.get_data_shape()
+    xx = np.arange(FOV_shape[0])
+    yy = np.arange(FOV_shape[1])
+    zz = np.arange(FOV_shape[2])
+
+    X, Y, Z = np.meshgrid(xx, yy, zz, indexing='ij') 
+    voxel_coords = np.array([X.ravel(order='F'), Y.ravel(order='F'), Z.ravel(order='F')])
+    voxel_coords = np.vstack((voxel_coords, np.ones(voxel_coords.shape[1])))
+    world_coords = transform @ voxel_coords
+    gridSize = X.shape
+
+    coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(Wires)))
+
+    for iCh in range(len(Wires)):
+
+        Bz = generate_coil_bfield(Wires[iCh], world_coords.T, gridSize)
+        coil_profiles[:, :, :, iCh] = Bz
+
+    coil_profiles *= GAMMA
+    affine = nif.affine
+    header = nif.header
+    nii = nib.Nifti1Image(coil_profiles, affine=affine, header=header)
+    nib.save(nii, os.path.join(fname_output, "coil_profiles.nii.gz"))
+    
+    if max_current_sum is None:
+        max_current_sum = nb_channels
+    coef_channel_minmax = [[min_current, max_current]] * nb_channels
+    config_coil = {
+        'name': coil_name,
+        'coef_channel_minmax': coef_channel_minmax,
+        'coef_sum_max': max_current_sum,
+        'Units': "A"
+    }
+    fname_coil_config = os.path.join(fname_output, coil_name + '_config.json')
+    with open(fname_coil_config, mode='w') as f:
+        json.dump(config_coil, f, indent=4)
+
+
 def _concat_and_save_nii(list_fnames_nii, fname_output):
     res = []
     for _, fname in enumerate(list_fnames_nii):
@@ -306,3 +385,7 @@ def _concat_and_save_nii(list_fnames_nii, fname_output):
     array_4d = np.moveaxis(np.array(res), 0, 3)
     nii_4d = nib.Nifti1Image(array_4d, nii.affine, header=nii.header)
     save_nii_json(nii_4d, json_data, fname_output)
+
+
+coil_profiles_cli.add_command(from_field_maps)
+coil_profiles_cli.add_command(from_CAD)

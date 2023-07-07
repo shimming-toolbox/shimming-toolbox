@@ -30,7 +30,7 @@ setup(
             "st_image=shimmingtoolbox.cli.image:image_cli",
             "st_maths=shimmingtoolbox.cli.maths:maths_cli",
             "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli",
-            "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:create_coil_profiles_cli",
+            "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:coil_profiles_cli",
             "st_sort_dicoms=shimmingtoolbox.cli.sort_dicoms:sort_dicoms"
         ]
     },

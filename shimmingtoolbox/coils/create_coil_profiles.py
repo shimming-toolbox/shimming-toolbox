@@ -8,7 +8,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def create_coil_profiles(fnames_fmaps, list_currents):
     """ Create coil profiles from fieldmaps
 
@@ -60,3 +59,89 @@ def create_coil_profiles(fnames_fmaps, list_currents):
         # static_offset = reg.intercept_.reshape(fmaps.shape[:-1])
 
     return profiles
+
+
+def generate_coil_bfield(wire, XYZ, gridsize):
+    """ Generates Bz field in the FOV
+    Args:
+        wire (list): 1D list of n_segments dictionnairies with start and stop point of the segment
+        XYZ (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. 
+                        Represents the (x, y, z) coordinates in mm of each point in the FOV
+        gridsize (tuple): Shape of the FOV
+
+    Returns:
+        numpy.ndarray: Bz field shaped back to gridsize
+    """
+    nPositions = XYZ.shape[0]
+    fz = np.zeros((nPositions, 1))
+    nSegments = len(wire)
+    
+    def integral(p, q, a, b, c):
+        term1 = q * (2 * (2 * a + b) / (4 * a * c - b**2) / np.sqrt(a + b + c) - 2 * b / (4 * a * c - b**2) / np.sqrt(c))
+        term2 = p * (2 * (b + 2 * c) / (b**2 - 4 * a * c) / np.sqrt(a + b + c) - 4 * c / (b**2 - 4 * a * c) / np.sqrt(c))
+        output = term1 + term2
+        return output
+
+    for iSegment in range(nSegments):
+        if 'weight' in wire[0]:
+            w = wire[iSegment]['weight']
+        else:
+            w = 1.0
+        
+        a = np.tile(np.linalg.norm(wire[iSegment]['start'] - wire[iSegment]['stop'])**2, (nPositions, 1))
+        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (nPositions, 1)) * (np.tile(wire[iSegment]['start'], (nPositions, 1)) - XYZ), axis=1, keepdims=True)
+        c = np.sum((np.tile(wire[iSegment]['start'], (nPositions, 1)) - XYZ)**2, axis=1, keepdims=True)
+        
+        s1 = np.tile(wire[iSegment]['start'], (nPositions, 1))
+        s2 = np.tile(wire[iSegment]['stop'], (nPositions, 1))
+        
+        pz = (s2[:,0] - s1[:,0]) * (s2[:,1] - s1[:,1]) - (s2[:,1] - s1[:,1]) * (s2[:,0] - s1[:,0])
+        qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - XYZ[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - XYZ[:,0])
+        pz = np.reshape(pz, (nPositions, 1))
+        qz = np.reshape(qz, (nPositions, 1))
+
+        fz += integral(pz, qz, a, b, c) * w
+    
+    Bz = np.reshape(fz, gridsize, order='F') / 1e4
+    
+    return Bz
+
+
+def get_wire_pattern(pumcinFile):
+    """ Transform the pumcin file to a usable format
+    Args:
+        pumcinFile (np.array): 2D array of shape (n_points, 5)
+        
+    Returns:
+        list: 1D list of wires (channels) with their coordinates formatted 
+              in n_segments dictionnaries with start and stop coordinates of each segment
+    """
+    nPoints = pumcinFile.shape[0]
+    wireStartPoint = pumcinFile[0, 1:5]
+    iChannel = -1
+    
+    tolerance = 0.001  # [units: mm]
+    
+    Wires = []
+    
+    for iPoint in range(nPoints):
+        if pumcinFile[iPoint, 4] == 0:
+            wireStartPoint = pumcinFile[iPoint, 1:4]
+            iChannel += 1
+            iSegment = 0
+            Wires.append([])
+            Wires[iChannel].append({})
+            Wires[iChannel][iSegment]['start'] = wireStartPoint
+        else:
+            iSegment += 1
+            # Wires[iChannel].append({})
+            Wires[iChannel][iSegment - 1]['stop'] = pumcinFile[iPoint, 1:4]
+            
+            if np.linalg.norm(pumcinFile[iPoint, 1:4] - wireStartPoint) < tolerance:
+                nSegmentsPerChannel = iSegment - 1
+            else:
+                Wires[iChannel].append({})
+                Wires[iChannel][iSegment]['start'] = pumcinFile[iPoint, 1:4]
+    
+    return Wires
+
