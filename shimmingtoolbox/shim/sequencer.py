@@ -1083,7 +1083,11 @@ class RealTimeSequencer(Sequencer):
                                                                         reg_factor=self.reg_factor)
 
             else:
-                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                if pmu is None:
+                    self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                else:
+                    self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine)
+
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
 
