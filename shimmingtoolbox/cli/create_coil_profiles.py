@@ -304,6 +304,8 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
                    "details.")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap on which to calculate coil profiles. Only FOV and affine are used")
+@click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0,0,0),
+              help="XYZ offset: The difference in the isocenter position of the coil compared to the field map's isocenter. \n Defauled to (0,0,0)")
 @click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new_coil",
               help="Name of the coil. If not provided, \"new_coil\" will be used")
 @click.option('--min', 'min_current', required=False, type=click.FLOAT, default=-1,
@@ -316,7 +318,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def from_CAD(fname_txt, fname_fmap, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
+def from_CAD(fname_txt, fname_fmap, offset, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
     """ Create B0 coil profiles from CAD wire geometries."""
         
     create_output_dir(fname_output)
@@ -325,9 +327,9 @@ def from_CAD(fname_txt, fname_fmap, coil_name, min_current, max_current, max_cur
     GAMMA = 42.576E6 # in Hz/Tesla
     pmc = np.loadtxt('/Users/arnaud/Documents/MSC/sim_outputs/scripts/acdc7t.pmcn')
     pmc2 = pmc.copy()
-    pmc2[:, 1:3] *= -1
+    # pmc2[:, 1:3] *= -1
     pmc3 = pmc2.copy()
-    pmc3[:, 1:4] += np.array([[-6.8, -70, -20]]) 
+    pmc3[:, 1:4] += np.array([[offset[0], offset[1], offset[2]]]) 
     Wires = get_wire_pattern(pmc3)
 
     transform = nif.affine[:-1, :]
@@ -346,7 +348,6 @@ def from_CAD(fname_txt, fname_fmap, coil_name, min_current, max_current, max_cur
     coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(Wires)))
 
     for iCh in range(len(Wires)):
-
         Bz = generate_coil_bfield(Wires[iCh], world_coords.T, gridSize)
         coil_profiles[:, :, :, iCh] = Bz
 
