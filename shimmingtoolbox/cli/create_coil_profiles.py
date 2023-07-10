@@ -53,7 +53,7 @@ def coil_profiles_cli():
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
                              fname_output, verbose):
-    """ Create B0 coil profiles from acquisitions defined in the input json file. The output is in Hz/<current> where
+    """ Create \u0394B\u2080 coil profiles from acquisitions defined in the input json file. The output is in Hz/<current> where
         current depends on the value in the configuration file"""
 
     # Set logger level
@@ -324,7 +324,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def from_CAD(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
-    """ Create B0 coil profiles from CAD wire geometries."""
+    """ Testing change Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
     assert min_current < max_current, f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})"
     
