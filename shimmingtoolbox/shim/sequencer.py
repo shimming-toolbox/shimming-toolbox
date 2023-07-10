@@ -1239,25 +1239,25 @@ class RealTimeSequencer(Sequencer):
         shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
         shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
         unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
-
-        # plot results
-        i_slice = 0
-        i_shim = 0
-        i_t = 0
-        while np.all(masked_unshimmed[..., i_slice, i_t, i_shim] == np.zeros(masked_unshimmed.shape[:2])):
-            i_shim += 1
-            if i_shim >= n_shim - 1:
-                break
             
-        # Plot before vs after shimming averaged on time
-        shimmed_mask_avg = np.zeros(mask_full_binary.shape)
-        np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-        self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
-        
-        # Plot STD over time before and after shimming
-        self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
+        if self.path_output is not None:    
+            # Plot before vs after shimming averaged on time
+            shimmed_mask_avg = np.zeros(mask_full_binary.shape)
+            np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
+            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
+            
+            # Plot STD over time before and after shimming
+            self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
         
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:            
+            # plot results
+            i_slice = 0
+            i_shim = 0
+            i_t = 0
+            while np.all(masked_unshimmed[..., i_slice, i_t, i_shim] == np.zeros(masked_unshimmed.shape[:2])):
+                i_shim += 1
+                if i_shim >= n_shim - 1:
+                    break
             self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                                   shimmed_static,
                                   shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
