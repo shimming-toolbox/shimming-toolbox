@@ -1248,16 +1248,16 @@ class RealTimeSequencer(Sequencer):
             i_shim += 1
             if i_shim >= n_shim - 1:
                 break
+            
+        # Plot before vs after shimming averaged on time
+        shimmed_mask_avg = np.zeros(mask_full_binary.shape)
+        np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
+        self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
         
-        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-            # Plot before vs after shimming averaged on time
-            shimmed_mask_avg = np.zeros(mask_full_binary.shape)
-            np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
-            
-            # Plot STD over time before and after shimming
-            self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
-            
+        # Plot STD over time before and after shimming
+        self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
+        
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:            
             self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
                                   shimmed_static,
                                   shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
