@@ -102,7 +102,7 @@
         },
         {
             "dataType": "anat",
-            "modalityLabel": "mp2rage_inv1",
+            "modalityLabel": "inv-1_MP2RAGE",
             "criteria": {
                 "SequenceName": "*tfl3d1_16ns",
                 "ProtocolName": "*mp2rage*",
@@ -112,7 +112,7 @@
         },
         {
             "dataType": "anat",
-            "modalityLabel": "mp2rage_inv2",
+            "modalityLabel": "inv-2_MP2RAGE",
             "criteria": {
                 "SequenceName": "*tfl3d1_16ns",
                 "ProtocolName": "*mp2rage*",
@@ -122,7 +122,7 @@
         },
         {
             "dataType": "anat",
-            "modalityLabel": "mp2rage_uni",
+            "modalityLabel": "UNIT1",
             "criteria": {
                 "SequenceName": "*tfl3d1_16ns",
                 "ProtocolName": "*mp2rage*",
