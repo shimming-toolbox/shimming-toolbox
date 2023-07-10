@@ -9,6 +9,7 @@ import nibabel as nib
 import numpy as np
 import pathlib
 import tempfile
+import re
 
 from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, generate_coil_bfield, get_wire_pattern
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
@@ -299,64 +300,73 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option('-i', '--input', 'fname_txt', type=click.Path(exists=True), required=True,
-              help="Input filename of wires' geometry txt file. "
+              help="Input filename of wires' geometry text file. "
                    "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials.html>`_ for more "
                    "details.")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
-              help="Static B0 fieldmap on which to calculate coil profiles. Only FOV and affine are used")
+              help="Static \u0394B\u2080 fieldmap on which to calculate coil profiles. Only FOV and affine are used.")
 @click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0,0,0),
-              help="XYZ offset: The difference in the isocenter position of the coil compared to the field map's isocenter. \n Defauled to (0,0,0)")
+              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm). \n Defaulted to (0,0,0).")
+@click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1,1,1),
+              help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). Defaulted to 1 1 1.")
+@click.option('--software', type=click.Choice(['AutoCAD']), default='AutoCAD', 
+              help=f"Software from which the geometries were extracted.")
 @click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new_coil",
-              help="Name of the coil. If not provided, \"new_coil\" will be used")
+              help="Name of the coil. If not provided, \"new_coil\" will be used.")
 @click.option('--min', 'min_current', required=False, type=click.FLOAT, default=-1,
-              help="The minimum current in amps going through each channel. Defaulted to -1 A")
+              help="The minimum current in amps going through each channel. Defaulted to -1 A.")
 @click.option('--max', 'max_current', required=False, type=click.FLOAT, default=1,
-              help="The maximum current in amps going through each channel. Defaulted to 1 A")
+              help="The maximum current in amps going through each channel. Defaulted to 1 A.")
 @click.option('--max_sum', 'max_current_sum', required=False, type=click.FLOAT, default=None,
-              help="The maximum sum of currents in amps going through all loops. Defaulted to the number of channel")
+              help="The maximum sum of currents in amps going through all loops. Defaulted to the number of channel.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def from_CAD(fname_txt, fname_fmap, offset, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
+def from_CAD(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
     """ Create B0 coil profiles from CAD wire geometries."""
-        
+    # Assert inputs
+    assert min_current < max_current, f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})"
+    
+    # Set logger level
+    set_all_loggers(verbose)
+    
+    # create the output folder     
     create_output_dir(fname_output)
     
-    nif = nib.load(fname_fmap)
+    # Set variables
     GAMMA = 42.576E6 # in Hz/Tesla
-    pmc = np.loadtxt('/Users/arnaud/Documents/MSC/sim_outputs/scripts/acdc7t.pmcn')
-    pmc2 = pmc.copy()
-    # pmc2[:, 1:3] *= -1
-    pmc3 = pmc2.copy()
-    pmc3[:, 1:4] += np.array([[offset[0], offset[1], offset[2]]]) 
-    Wires = get_wire_pattern(pmc3)
-
+    nif = nib.load(fname_fmap)
+    pmcn = CAD_to_pumcin(fname_txt, list(dims_to_flip), software)
+    pmcn[:, 1:4] += np.array(list(offset)) 
+    Wires = get_wire_pattern(pmcn)
     transform = nif.affine[:-1, :]
     nb_channels = len(Wires)
+    
+    # Map the position (in mm) of all pixel in the FOV 
     FOV_shape = nif.header.get_data_shape()
     xx = np.arange(FOV_shape[0])
     yy = np.arange(FOV_shape[1])
     zz = np.arange(FOV_shape[2])
-
     X, Y, Z = np.meshgrid(xx, yy, zz, indexing='ij') 
     voxel_coords = np.array([X.ravel(order='F'), Y.ravel(order='F'), Z.ravel(order='F')])
     voxel_coords = np.vstack((voxel_coords, np.ones(voxel_coords.shape[1])))
     world_coords = transform @ voxel_coords
     gridSize = X.shape
 
+    # Generate the coil profiles
     coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(Wires)))
-
     for iCh in range(len(Wires)):
-        Bz = generate_coil_bfield(Wires[iCh], world_coords.T, gridSize)
-        coil_profiles[:, :, :, iCh] = Bz
-
+        coil_profiles[:, :, :, iCh] = generate_coil_bfield(Wires[iCh], world_coords.T, gridSize)
     coil_profiles *= GAMMA
+    
+    # Save the coil profiles
     affine = nif.affine
     header = nif.header
     nii = nib.Nifti1Image(coil_profiles, affine=affine, header=header)
-    nib.save(nii, os.path.join(fname_output, "coil_profiles.nii.gz"))
+    nib.save(nii, os.path.join(fname_output, coil_name + "_coil_profiles.nii.gz"))
     
+    # Create the coil profiles json file
     if max_current_sum is None:
         max_current_sum = nb_channels
     coef_channel_minmax = [[min_current, max_current]] * nb_channels
@@ -366,11 +376,67 @@ def from_CAD(fname_txt, fname_fmap, offset, coil_name, min_current, max_current,
         'coef_sum_max': max_current_sum,
         'Units': "A"
     }
+    
+    # Save the coil profiles json file
     fname_coil_config = os.path.join(fname_output, coil_name + '_config.json')
     with open(fname_coil_config, mode='w') as f:
         json.dump(config_coil, f, indent=4)
 
 
+def CAD_to_pumcin(fname_txt, dimsToFlip, software):
+    # Only available txt format at the moment
+    assert software == "AutoCAD", "AutoCAD is the only available format at the moment"
+    # TODO: Implement other software formats (SolidWorks, etc)
+    
+    loadDir, fileExt = os.path.split(fname_txt)
+    name, ext = os.path.splitext(fileExt)
+    if not loadDir:
+        loadDir = './'
+    assert ext == '.txt', "Geometries should be a txt file"
+    with open(fname_txt, 'r') as fid:
+        lines = fid.readlines()
+
+    XYZ = []
+    for line in lines:
+        matches = re.findall(r"[-+]?\d*\.\d+|\d+", line)
+        if len(matches) >= 3:
+            values = [float(match) for match in matches[:3]]
+            XYZ.append(values)
+    
+    XYZ = np.array(XYZ)
+    XYZW = np.hstack((XYZ, np.ones((XYZ.shape[0], 1))))
+    XYZW[:, 0:3] = XYZW[:, 0:3] * np.array(dimsToFlip)
+    XYZW[0, 3] = 0
+    
+    nPoints = XYZW.shape[0]
+    iCoil = 0
+    iCoilStart = [1]
+    iCoilEnd = []
+    TOLERANCE = 0.001
+    
+    iPoint = 0
+    startPoint = XYZW[iPoint, 0:3].reshape(1, 3)
+    
+    while iPoint < nPoints:
+        iPoint += 1
+        distanceToStartPoint = np.linalg.norm(XYZW[iPoint, 0:3] - startPoint[iCoil, :])
+        
+        if distanceToStartPoint < TOLERANCE:
+            iCoilEnd.append(iPoint)
+            iCoil += 1
+            iPoint += 1
+            iCoilStart.append(iPoint)
+            if iPoint < nPoints:
+                startPoint = np.vstack((startPoint, XYZW[iPoint, 0:3].reshape(1, 3)))
+                XYZW[iPoint, 3] = 0
+        else:
+            XYZW[iPoint, 3] = 1
+    
+    IXYZW = np.hstack((np.arange(XYZW.shape[0])[..., None], XYZW))
+    
+    return IXYZW
+ 
+    
 def _concat_and_save_nii(list_fnames_nii, fname_output):
     res = []
     for _, fname in enumerate(list_fnames_nii):
