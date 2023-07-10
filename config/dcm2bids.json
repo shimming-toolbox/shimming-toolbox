@@ -101,6 +101,35 @@
             }
         },
         {
+            "dataType": "anat",
+            "modalityLabel": "mp2rage_inv1",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "SeriesDescription": "*_INV1",
+                "ImageType": ["*", "*", "M", "*", "NORM"]
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "mp2rage_inv2",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "SeriesDescription": "*_INV2",
+                "ImageType": ["*", "*", "M", "*", "NORM"]
+            }
+        },
+        {
+            "dataType": "anat",
+            "modalityLabel": "mp2rage_uni",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "ImageType": ["*", "*", "M", "*", "UNI"]
+            }
+        },
+        {
             "dataType": "fmap",
             "modalityLabel": "magnitude1",
             "criteria": {
