@@ -9,7 +9,7 @@ import pathlib
 import pytest
 import tempfile
 
-from shimmingtoolbox.cli.create_coil_profiles import create_coil_profiles_cli
+from shimmingtoolbox.cli.create_coil_profiles import coil_profiles_cli
 from shimmingtoolbox import __dir_testing__
 
 coil_profile_config = {
@@ -62,8 +62,9 @@ def test_create_coil_profiles():
             json.dump(config, f, ensure_ascii=False, indent=4)
         fname_output = os.path.join(tmp, 'profile.nii.gz')
 
-        res = runner.invoke(create_coil_profiles_cli,
-                            ['-i', fname_config,
+        res = runner.invoke(coil_profiles_cli,
+                            ['from-field-maps',
+                             '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
@@ -87,8 +88,9 @@ def test_create_coil_profiles_dead_channel1():
             json.dump(config, f, ensure_ascii=False, indent=4)
         fname_output = os.path.join(tmp, 'profile.nii.gz')
 
-        res = runner.invoke(create_coil_profiles_cli,
-                            ['-i', fname_config,
+        res = runner.invoke(coil_profiles_cli,
+                            ['from-field-maps',
+                             '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
@@ -114,8 +116,9 @@ def test_create_coil_profiles_dead_channel2():
             json.dump(config, f, ensure_ascii=False, indent=4)
         fname_output = os.path.join(tmp, 'profile.nii.gz')
 
-        res = runner.invoke(create_coil_profiles_cli,
-                            ['-i', fname_config,
+        res = runner.invoke(coil_profiles_cli,
+                            ['from-field-maps',
+                             '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
@@ -139,8 +142,9 @@ def test_create_coil_profiles_no_channel():
                 json.dump(config, f, ensure_ascii=False, indent=4)
             fname_output = os.path.join(tmp, 'profile.nii.gz')
 
-            runner.invoke(create_coil_profiles_cli,
-                          ['-i', fname_config,
+            runner.invoke(coil_profiles_cli,
+                          ['from-field-maps',
+                           '-i', fname_config,
                            '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
                            '--threshold', '0.4',
                            '-o', fname_output], catch_exceptions=False)
