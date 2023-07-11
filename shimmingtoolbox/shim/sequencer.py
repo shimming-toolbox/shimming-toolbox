@@ -1523,7 +1523,6 @@ class RealTimeSequencer(Sequencer):
         fig.subplots_adjust(top=0.85)
 
         # Save
-        print("---------------------------------------------------------------- \n SAVING")
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
