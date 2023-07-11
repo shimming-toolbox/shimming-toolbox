@@ -323,7 +323,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def from_CAD(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
+def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
     """ Testing change Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
     assert min_current < max_current, f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})"
@@ -455,4 +455,4 @@ def _concat_and_save_nii(list_fnames_nii, fname_output):
 
 
 coil_profiles_cli.add_command(from_field_maps)
-coil_profiles_cli.add_command(from_CAD)
+coil_profiles_cli.add_command(from_cad)
