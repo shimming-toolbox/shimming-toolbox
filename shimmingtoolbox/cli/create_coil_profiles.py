@@ -327,7 +327,6 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     """ Testing change Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
     assert min_current < max_current, f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})"
-    
     # Set logger level
     set_all_loggers(verbose)
     
@@ -403,6 +402,7 @@ def CAD_to_pumcin(fname_txt, dimsToFlip, software):
             values = [float(match) for match in matches[:3]]
             XYZ.append(values)
     
+    assert len(XYZ) > 0, "Data format doesn't match AutoCAD format"
     XYZ = np.array(XYZ)
     XYZW = np.hstack((XYZ, np.ones((XYZ.shape[0], 1))))
     XYZW[:, 0:3] = XYZW[:, 0:3] * np.array(dimsToFlip)

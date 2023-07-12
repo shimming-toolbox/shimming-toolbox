@@ -85,7 +85,7 @@ each current and channel. A linear regression is then performed for each channel
 
 .. code:: bash
 
-    st_create_coil_profiles --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
+    st_create_coil_profiles from-field-maps --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
 
 The coil profiles are in a NIfTI file named "coil_profiles.nii.gz". To visualize them, launch FSLeyes with the following command:
 
@@ -100,6 +100,6 @@ ______________________________
 
 When creating your own custom coil using the commands above, keep in mind the following:
 
-* :ref:`st_create_coil_profiles` will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command :ref:`st_create_coil_profiles`.
+* :ref:`st_create_coil_profiles from-field-maps` will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command :ref:`st_create_coil_profiles`.
 
 * The output B0 coil profile is scaled in Hz/<current> where current depends on the value in the configuration file. For example, this tutorial could have use 500 mA instead of 0.5 A. This would have resulted in a coil profile in Hz/mA instead of Hz/A.
