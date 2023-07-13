@@ -7,7 +7,7 @@ the gradient method in a st_shim CLI with the argument being:
 - fieldmap_realtime
 - gradient_realtime
 """
-
+import scipy.signal as sig
 import click
 import copy
 import json
@@ -595,7 +595,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
-
+    nii_fmap_orig = nib.Nifti1Image(sig.medfilt(nii_fmap_orig.get_fdata(), 3), nii_fmap_orig.affine, nii_fmap_orig.header)
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fmap_orig.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
@@ -1502,7 +1502,6 @@ def realtime_dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fnam
 
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
-
     # Make sure the fieldmap has the appropriate dimensions
     if nii_fmap_orig.get_fdata().ndim != 4:
         raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
@@ -1689,23 +1688,23 @@ def realtime_dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fnam
     metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
     logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
-        # Figure out the start and end channels for a coil to be able to select it from the coefs
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
+    # end_channel = 0
+    # for i_coil, coil in enumerate(list_coils):
+    #     # Figure out the start and end channels for a coil to be able to select it from the coefs
+    #     n_channels = coil.dim[3]
+    #     start_channel = end_channel
+    #     end_channel = start_channel + n_channels
 
-        if type(coil) != ScannerCoil:
-            # Select the coefficients for a coil
-            coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
-            coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
-            # Plot a figure of the coefficients
-            # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
-                        # pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
-                        # bounds=coil.coef_channel_minmax)
+    #     if type(coil) != ScannerCoil:
+    #         # Select the coefficients for a coil
+    #         coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
+    #         coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
+    #         # Plot a figure of the coefficients
+    #         _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+    #                     pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
+    #                     bounds=coil.coef_channel_minmax)
 
-    logger.info(f"Finished plotting figure(s)")
+    # logger.info(f"Finished plotting figure(s)")
     return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
 b0shim_cli.add_command(gradient_realtime)
