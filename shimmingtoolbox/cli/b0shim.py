@@ -1701,9 +1701,9 @@ def realtime_dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fnam
             coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
             coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
             # Plot a figure of the coefficients
-            _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
-                        pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
-                        bounds=coil.coef_channel_minmax)
+            # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                        # pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
+                        # bounds=coil.coef_channel_minmax)
 
     logger.info(f"Finished plotting figure(s)")
     return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
