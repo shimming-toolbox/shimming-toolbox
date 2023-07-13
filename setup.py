@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=["docs"]),
     install_requires=[
         "click",
-        "dcm2bids==2.1.4",
+        "dcm2bids>=2.1.7",
         'importlib-metadata ~= 4.0 ; python_version < "3.8"',
         "numpy>=1.21",
         "phantominator~=0.6.4",
@@ -45,7 +45,7 @@ setup(
         "requests",
         "scipy>=1.7",
         "tqdm",
-        "matplotlib~=3.3.4",
+        "matplotlib>=3.5",
         "psutil~=5.7.3",
         "pydicom",
         "pytest>=6.2.5",
