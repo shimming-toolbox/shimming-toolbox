@@ -67,10 +67,10 @@ def b0shim_cli():
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
-                                                                 ]), required=False,
-              default='least_squares', show_default=True,
-              help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog']),
+              required=False, default='quad_prog', show_default=True,
+              help="Method used by the optimizer. LS, and QP will respect the constraints,"
+                  "PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
@@ -509,9 +509,11 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse']), required=False,
-              default='least_squares', show_default=True,
-              help="Method used by the optimizer. LS will respect the constraints, PS will not respect the constraints")
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
+                                                                 'quad_prog']), required=False,
+              default='quad_prog', show_default=True,
+              help="Method used by the optimizer. LS and QP will respect the constraints,"
+                   "PS will not respect the constraints")
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
