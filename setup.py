@@ -46,7 +46,7 @@ setup(
         "scipy>=1.7",
         "tqdm",
         "matplotlib>=3.5",
-        "psutil~=5.7.3",
+        "psutil>=5.8.0",
         "pydicom",
         "pytest>=6.2.5",
         "pytest-cov~=2.5.1",
