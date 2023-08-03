@@ -22,9 +22,9 @@ class Optimizer(object):
 
     Attributes:
         coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-        unshimmed (numpy.ndarray): 3d array of unshimmed volume
-        unshimmed_affine (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
-        merged_coils (numpy.ndarray): 4d array containing all coil profiles resampled onto the target unshimmed array
+        unshimmed (np.ndarray): 3d array of unshimmed volume
+        unshimmed_affine (np.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+        merged_coils (np.ndarray): 4d array containing all coil profiles resampled onto the target unshimmed array
                                       concatenated on the 4th dimension. See self.merge_coils() for more details
         merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
                               bound for merged_coils[..., 3]
@@ -36,8 +36,8 @@ class Optimizer(object):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
         # Logging
         self.logger = logging.getLogger()
@@ -55,8 +55,8 @@ class Optimizer(object):
         Set the unshimmed array to a new array. Resamples coil profiles accordingly.
 
         Args:
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine: (numpy.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine: (np.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
         """
         # Check dimensions of unshimmed map
         if unshimmed.ndim != 3:
@@ -89,29 +89,48 @@ class Optimizer(object):
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
                                   unshimmed
 
         Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+            np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
-        # Check for sizing errors
-        self._check_sizing(mask)
-
-        # Optimize
-        mask_vec = mask.reshape((-1,))
-
-        # Simple pseudo-inverse optimization
-        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        coil_mat = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                              (self.merged_coils.shape[3], -1)).T[mask_vec != 0, :]  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]  # mV'
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
         output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
 
         return output
+
+    def get_coil_mat_and_unshimmed(self, mask):
+        """
+        Returns the coil matrix, and the unshimmed vector used for the optimization
+        Args:
+            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                                  unshimmed
+        Returns:
+            (tuple) : tuple containing:
+            * np.ndarray: 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            * np.ndarray: 1D flattened array (point) of the masked unshimmed map
+
+        """
+
+        # Check for sizing errors
+        self._check_sizing(mask)
+        # Define coil profiles
+        n_channels = self.merged_coils.shape[3]
+        mask_vec = mask.reshape((-1,))
+        # # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
+        # #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
+        merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
+                                           (n_channels, -1))
+        masked_points_indices = np.where(mask_vec != 0)
+
+        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
+
+        return coil_mat, unshimmed_vec
 
     def merge_coils(self, unshimmed, affine):
         """
@@ -119,8 +138,8 @@ class Optimizer(object):
         unshimmed image. Bounds are also concatenated and returned.
 
         Args:
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
         """
 
         coil_profiles_list = []
@@ -168,7 +187,7 @@ class Optimizer(object):
         Helper function to check array sizing
 
         Args:
-            mask (numpy.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
                                   unshimmed
         """
 

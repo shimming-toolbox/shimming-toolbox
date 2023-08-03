@@ -3,9 +3,7 @@
 
 import numpy as np
 import logging
-
 from typing import List
-
 
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
@@ -19,9 +17,9 @@ class OptimizerUtils(Optimizer):
     """ Optimizer object that stores different useful functions and parameter for different optimization
 
         Attributes:
-            initial_guess_method (string) : String indicating hoz to find the first guess for the optimization
+            initial_guess_method (string) : String indicating how to find the first guess for the optimization
             initial_coefs (np.ndarray): Initial guess that will be used in the optimization
-            reg_vector (np.ndarray) : Vector used to make the regulatization in the optimization
+            reg_vector (np.ndarray) : Vector used to make the regularization in the optimization
 
     """
 
@@ -31,8 +29,8 @@ class OptimizerUtils(Optimizer):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -40,9 +38,6 @@ class OptimizerUtils(Optimizer):
         super().__init__(coils, unshimmed, affine)
         self.initial_guess_method = initial_guess_method
         self.initial_coefs = None
-        if reg_factor < 0:
-            raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
-                            f" If you want to keep this reg_factor please use lsq_optimizer")
         reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
         self.reg_vector = reg_factor / (len(reg_factor_channel) * reg_factor_channel)
 
@@ -115,39 +110,21 @@ class OptimizerUtils(Optimizer):
 
         return current_0
 
-    def get_optimization_parameters(self, mask):
-        # Check for sizing errors
-        self._check_sizing(mask)
-        # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
-        mask_vec = mask.reshape((-1,))
-        # # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        # #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                                           (n_channels, -1))
-        masked_points_indices = np.where(mask_vec != 0)
-
-        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
-
-        # Set up output currents
-        currents_0 = self.get_initial_guess()
-
-        return coil_mat, unshimmed_vec, currents_0
-
     def optimize(self, mask):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+            mask (np.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
 
         Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+            np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
 
-        coil_mat, unshimmed_vec, currents_0 = self.get_optimization_parameters(mask)
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        # Set up output currents
+        currents_0 = self.get_initial_guess()
         # If what to shim is already 0s
         if np.all(unshimmed_vec == 0):
             return np.zeros(np.shape(currents_0))

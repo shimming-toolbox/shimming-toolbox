@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import logging
 import numpy as np
 import scipy.optimize as opt
-from typing import List
 import warnings
+from typing import List
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
@@ -13,7 +14,7 @@ from shimmingtoolbox.coils.coil import Coil
 ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'std']
 
-import logging
+
 
 
 logger = logging.getLogger(__name__)
@@ -32,8 +33,8 @@ class LsqOptimizer(OptimizerUtils):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
@@ -63,9 +64,9 @@ class LsqOptimizer(OptimizerUtils):
         """ Objective function to minimize the mean absolute error (MAE)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
@@ -81,9 +82,9 @@ class LsqOptimizer(OptimizerUtils):
         """ Objective function to minimize the mean squared error (MSE)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            a (numpy.ndarray): 2D array used for the optimization
-            b (numpy.ndarray): 1D flattened array used for the optimization
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array used for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
             c (float) : Float used for the optimization
 
         Returns:
@@ -109,9 +110,9 @@ class LsqOptimizer(OptimizerUtils):
         """ Objective function to find the initial guess for the mean squared error (MSE) optimization
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
@@ -126,9 +127,9 @@ class LsqOptimizer(OptimizerUtils):
         """ Objective function to minimize the standard deviation (STD)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
@@ -151,13 +152,13 @@ class LsqOptimizer(OptimizerUtils):
         This jacobian come from the new version of the residuals mse that was implemented with the PR#451
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            a (numpy.ndarray): 2D array using for the optimization
-            b (numpy.ndarray): 1D flattened array used for the optimization
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array using for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
             c (float) : Float used for the optimization but not used here
 
         Returns:
-            jacobian (numpy.ndarray) : 1D array of the gradient of the mse function to minimize
+            jacobian (np.ndarray) : 1D array of the gradient of the mse function to minimize
         """
         return 2 * a @ coef + b
 
@@ -255,8 +256,8 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.

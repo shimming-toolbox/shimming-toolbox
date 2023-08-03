@@ -4,7 +4,6 @@
 import numpy as np
 import logging
 import quadprog
-
 from typing import List
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
@@ -27,8 +26,8 @@ class QuadProgOpt(OptimizerUtils):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -41,8 +40,8 @@ class QuadProgOpt(OptimizerUtils):
 
     def _get_linear_inequality_matrices(self):
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
+        This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
+        g @ x < h, to see all details please see the PR 458
 
         Returns:
             (tuple) : tuple containing:
@@ -97,9 +96,9 @@ class QuadProgOpt(OptimizerUtils):
         """ Objective function to find the stability factor for the quadratic optimization
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
@@ -115,12 +114,12 @@ class QuadProgOpt(OptimizerUtils):
         """
         Returns the currents needed for the shimming, redefined from super because of the constraints
         Args:
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
-            currents_0 (numpy.ndarray) : Initial guess for the function
+            currents_0 (np.ndarray) : Initial guess for the function
 
         Returns:
             np.ndarray : Vector of currents that make the better shimming
@@ -134,12 +133,28 @@ class QuadProgOpt(OptimizerUtils):
 
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
 
-        if currents == 'None':
+        if type(currents) == str:
             raise TypeError(" The optimization didn't succeed, please check your parameters")
 
         return currents[: len(currents_0)]
 
     def get_cost_matrices(self, currents_0, unshimmed_vec, coil_mat, factor):
+        """
+        Returns the cost matrix and the cost vector to minimize 1/2 x.T @ cost_matrix @ x - cost_vector.T @ x
+        Args:
+            currents_0 (np.ndarray) : Initial guess for the function
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vector)
+            factor (float): Divide the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            (tuple) : tuple containing:
+            * np.ndarray: 2D Cost matrix
+            * np.ndarray: Cost vector
+
+        """
 
         n = len(currents_0)
 
@@ -172,8 +187,8 @@ class PmuQuadProgOpt(QuadProgOpt):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
@@ -184,8 +199,8 @@ class PmuQuadProgOpt(QuadProgOpt):
     def _get_linear_inequality_matrices(self):
 
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR XX
+        This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
+        g @ x < h, to see all details please see the PR 458
         Redefined from QuadProg to match the new bounds
 
         Returns:
