@@ -7,8 +7,7 @@ import quadprog
 
 from typing import List
 
-
-from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
@@ -16,20 +15,13 @@ ListCoil = List[Coil]
 logger = logging.getLogger(__name__)
 
 
-class QuadProgOpt(Optimizer):
+class QuadProgOpt(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
-        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
+        Use optimize(args) to optimize a given mask. The algorithm uses a quadprog solver to find the best shim.
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
-
-        Attributes:
-            _initial_guess_method (string) : String indicating how to find the first guess for the optimization
-            initial_coefs (np.ndarray): Initial guess that will be used in the optimization
-            reg_vector (np.ndarray) : Vector used to make the regulatization in the optimization
-            ineq_matrix (np.ndarray) : Matrix used in the quadratic optimization to apply the constraints
-            ineq_vector (np.ndarray) : Vector used in the quadratic optimization to represent the constraints
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0):
+    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, initial_guess_method='mean'):
         """
         Initializes coils according to input list of Coil
 
@@ -40,39 +32,17 @@ class QuadProgOpt(Optimizer):
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
+            initial_guess_method (str): method to find the initial guess
         """
-        super().__init__(coils, unshimmed, affine)
-        self._initial_guess_method = 'mean'
-        self.initial_coefs = None
         if reg_factor < 0:
             raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
                             f" If you want to keep this reg_factor please use lsq_optimizer")
-        reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
-        self.reg_vector = reg_factor / (len(reg_factor_channel) * reg_factor_channel)
-        self.ineq_matrix, self.ineq_vector = self._get_linear_inequality_matrices()
-
-    @property
-    def initial_guess_method(self):
-        return self._initial_guess_method
-
-    @initial_guess_method.setter
-    def initial_guess_method(self, method, coefs=None):
-        allowed_methods = ['mean', 'zeros', 'set']
-        if method not in allowed_methods:
-            raise ValueError(f"Initial_guess_method not supported. Supported methods are: {allowed_methods}")
-
-        if method == 'set':
-            if coefs is not None:
-                self.initial_coefs = coefs
-            else:
-                raise ValueError(f"There are no coefficients to set")
-
-        self._initial_guess_method = method
+        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
     def _get_linear_inequality_matrices(self):
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization,
-        often called : g and h, such as g @ x < h, to see all details please see the PR #458
+        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
+        g @ x < h, to see all details please see the PR XX
 
         Returns:
             (tuple) : tuple containing:
@@ -123,45 +93,6 @@ class QuadProgOpt(Optimizer):
             # dim(h) = (6n +n_coils, 1)
         return g, h
 
-    def get_initial_guess(self):
-        """ Calculates the initial guess according to the `self.initial_guess_method`
-
-        Returns:
-            np.ndarray: 1d array (n_channels) containing the initial guess for the optimization
-        """
-
-        allowed_guess_method = {
-            'mean': self._initial_guess_mean_bounds,
-            'zeros': self._initial_guess_zeros,
-            'set': self._initial_guess_set
-        }
-
-        initial_guess = allowed_guess_method[self.initial_guess_method]()
-
-        return initial_guess
-
-    def _initial_guess_set(self):
-        return self.initial_coefs
-
-    def _initial_guess_mean_bounds(self):
-        """
-        Calculates the initial guess from the bounds, sets it to the mean of the bounds
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
-
-        """
-        current_0 = []
-        for bounds in self.merged_bounds:
-            avg = np.mean(bounds)
-
-            if np.isnan(avg):
-                current_0.append(0)
-            else:
-                current_0.append(avg)
-
-        return np.array(current_0)
-
     def get_stability_factor(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to find the stability factor for the quadratic optimization
 
@@ -179,61 +110,10 @@ class QuadProgOpt(Optimizer):
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
-    def _initial_guess_zeros(self):
-        """
-        Return a numpy array with zeros.
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
 
         """
-        current_0 = np.zeros(len(self.merged_bounds))
-
-        return current_0
-
-    def optimize(self, mask):
-        """
-        Optimize unshimmed volume by varying current to each channel
-
-        Args:
-            mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
-
-        Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
-                           The shape of the array returned has shape corresponding to the total number of channels
-        """
-
-        # Check for sizing errors
-        self._check_sizing(mask)
-        # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
-        mask_vec = mask.reshape((-1,))
-        # # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        # #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                                           (n_channels, -1))
-        masked_points_indices = np.where(mask_vec != 0)
-
-        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
-
-        # Set up output currents
-        currents_0 = self.get_initial_guess()
-        # If what to shim is already 0s
-        if np.all(unshimmed_vec == 0):
-            return np.zeros(np.shape(currents_0))
-
-        stability_factor = self.get_stability_factor(self._initial_guess_zeros(), unshimmed_vec,
-                                                     np.zeros_like(coil_mat),
-                                                     factor=1)
-
-        currents = self.get_currents(unshimmed_vec, coil_mat, stability_factor, currents_0)
-
-        return currents
-
-    def get_currents(self, unshimmed_vec, coil_mat, factor, currents_0):
-        """
-        Returns the currents needed for the shimming
+        Returns the currents needed for the shimming, redefined from super because of the constraints
         Args:
             unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
             coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
@@ -243,27 +123,38 @@ class QuadProgOpt(Optimizer):
             currents_0 (numpy.ndarray) : Initial guess for the function
 
         Returns:
-            np.ndarray : Vector of currents that make the best shimming
+            np.ndarray : Vector of currents that make the better shimming
 
         """
+        stability_factor = self.get_stability_factor(self._initial_guess_zeros(), unshimmed_vec,
+                                                     np.zeros_like(coil_mat),
+                                                     factor=1)
+        cost_matrix, cost_vector = self.get_cost_matrices(currents_0, unshimmed_vec, coil_mat, stability_factor)
+        ineq_matrix, ineq_vector = self._get_linear_inequality_matrices()
+
+        currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
+
+        if currents == 'None':
+            raise TypeError(" The optimization didn't succeed, please check your parameters")
+
+        return currents[: len(currents_0)]
+
+    def get_cost_matrices(self, currents_0, unshimmed_vec, coil_mat, factor):
 
         n = len(currents_0)
-        
-        # a,b and inv factor are the same as in the master branch, and so I kept theses names
+
+        initial_guess = np.zeros(2 * n)
+        initial_guess[:n] = currents_0
         inv_factor = 1 / (len(unshimmed_vec) * factor)
         a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
         b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        epsilon = 1e-6 # This is used to have a positive definite cost matrix
-        
+        epsilon = 1e-6
         cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
-        cost_matrix = 2 * cost_matrix # We need to multiply by two to have the good definition of the problem
+        cost_matrix = 2 * cost_matrix
         cost_vector = np.zeros(2 * n)
         cost_vector[0: n] = b
 
-        currents = quadprog.solve_qp(cost_matrix, -cost_vector, self.ineq_matrix.T, -self.ineq_vector[:, 0])[0]
-        
-        # Only the first half of currents contains the real currents, the other half is to check the constraints
-        return currents[:n]
+        return cost_matrix, cost_vector
 
 
 class PmuQuadProgOpt(QuadProgOpt):
@@ -271,8 +162,8 @@ class PmuQuadProgOpt(QuadProgOpt):
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
             Unshimmed must be in units: [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
-            This optimizer bounds the riro results to the coil bounds by taking the range of pressure that can be reached
-            by the PMU.
+            This optimizer bounds the riro results to the coil bounds by taking the range of pressure that can be
+            reached by the PMU.
         """
 
     def __init__(self, coils, unshimmed, affine, pmu: PmuResp, reg_factor=0):
@@ -286,17 +177,15 @@ class PmuQuadProgOpt(QuadProgOpt):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, reg_factor=reg_factor)
+        super().__init__(coils, unshimmed, affine, reg_factor=reg_factor, initial_guess_method='zeros')
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
-        self.initial_guess_method = 'zeros'
 
-    def _get_linear_inequality_matrices_rt(self):
+    def _get_linear_inequality_matrices(self):
 
         """
-        This functions returns the linear inequlity matrix and vector, that will be used in the optimization,
-        often called : g and h, such as g @ x < h, to see all details please see the PR #458
-        
+        This functions returns the linear inequlity matrix and vector, that will be used in the optimization, such as
+        g @ x < h, to see all details please see the PR XX
         Redefined from QuadProg to match the new bounds
 
         Returns:
@@ -360,40 +249,3 @@ class PmuQuadProgOpt(QuadProgOpt):
             # dim(h) = (8n +n_coils, 1)
 
         return g, h
-
-    def get_currents(self, unshimmed_vec, coil_mat, factor, currents_0):
-        """
-        Returns the currents needed for the shimming
-        Args:
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
-            currents_0 (numpy.ndarray) : Initial guess for the function
-
-        Returns:
-            np.ndarray : Vector of currents that make the better shimming
-
-        """
-
-        n = len(currents_0)
-        
-        # a,b and inv factor are the same as in the master branch, and so I kept theses names
-        inv_factor = 1 / (len(unshimmed_vec) * factor)
-        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
-        b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        epsilon = 1e-6 # This is used to have a positive definite cost matrix
-        
-        cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
-        cost_matrix = 2 * cost_matrix
-        cost_vector = np.zeros(2 * n)
-        cost_vector[0: n] = b
-        
-        # We need to calculate the constraints at each iteration
-        ineq_matrix, ineq_vector = self._get_linear_inequality_matrices_rt()
-        
-        currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
-        
-        # Only the first half of currents contains the real currents, the other half is to check the constraints
-        return currents[: n]
