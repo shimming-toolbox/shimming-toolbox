@@ -103,18 +103,19 @@ class Optimizer(object):
         return output
 
     def get_coil_mat_and_unshimmed(self, mask):
-    """
-    Returns the coil matrix, and the unshimmed vector used for the optimization
-    Args:
-        mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
-                          unshimmed
-    Returns:
-        (tuple) : tuple containing:
-            * np.ndarray: 2D flattened array (point, channel) of masked coils
-                          (axis 0 must align with unshimmed_vec)
-            * np.ndarray: 1D flattened array (point) of the masked unshimmed map
+        """
+        Returns the coil matrix, and the unshimmed vector used for the optimization
+        
+        Args:
+            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
+                              unshimmed
+        Returns:
+            (tuple) : tuple containing:
+                * np.ndarray: 2D flattened array (point, channel) of masked coils
+                              (axis 0 must align with unshimmed_vec)
+                * np.ndarray: 1D flattened array (point) of the masked unshimmed map
             
-    """
+        """
         # Check for sizing errors
         self._check_sizing(mask)
         # Define coil profiles
