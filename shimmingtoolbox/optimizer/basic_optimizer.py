@@ -110,9 +110,9 @@ class Optimizer(object):
                                   unshimmed
         Returns:
             (tuple) : tuple containing:
-            * np.ndarray: 2D flattened array (point, channel) of masked coils
+                * np.ndarray: 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
-            * np.ndarray: 1D flattened array (point) of the masked unshimmed map
+                * np.ndarray: 1D flattened array (point) of the masked unshimmed map
 
         """
 
