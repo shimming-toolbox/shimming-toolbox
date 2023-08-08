@@ -429,7 +429,7 @@ class ShimSequencer(Sequencer):
             # TODO: Add units if possible
             # TODO: Add in anat space?
             # Figure that shows unshimmed vs shimmed for each slice
-            self.plot_full_mask(unshimmed, shimmed_masked, mask_full_binary)
+            metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = self.plot_full_mask(unshimmed, shimmed_masked, mask_full_binary)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -447,6 +447,8 @@ class ShimSequencer(Sequencer):
                 fname_correction = os.path.join(self.path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
                 nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
+                
+        return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
@@ -634,6 +636,8 @@ class ShimSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
+        
+        return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
     def plot_partial_mask(self, unshimmed, shimmed):
         """
@@ -1271,7 +1275,7 @@ class RealTimeSequencer(Sequencer):
             # Plot before vs after shimming averaged on time
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
+            metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
             
             # Plot STD over time before and after shimming
             self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
@@ -1302,7 +1306,10 @@ class RealTimeSequencer(Sequencer):
             nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nii_fieldmap.affine,
                                                header=self.nii_fieldmap.header)
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
-
+        
+        return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+    
+    
     def plot_currents(self, static, riro=None):
         """
         Plot evolution of currents through shim groups
@@ -1552,7 +1559,8 @@ class RealTimeSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
-
+        return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+        
     def plot_full_time_std(self, unshimmed, masked_shim_static_riro, mask_fmap_cs, mask):
         """
         Plot and save the std heatmap over time

@@ -1703,14 +1703,11 @@ def multi_dynamic_no_cli(fname_fmap_avg, fname_fmap, fname_anat, fname_mask_anat
     metric_unshimmed_std = np.zeros(nii_fmap_rt.shape[-1])
     metric_shimmed_absmean = np.zeros(nii_fmap_rt.shape[-1])
     metric_unshimmed_absmean = np.zeros(nii_fmap_rt.shape[-1])
-    print(metric_shimmed_mean[3])
     for i in range(nii_fmap_rt.shape[-1]):
         nii_temp = nii_fmap_rt.get_fdata()[..., i]
         nii_temp = nib.Nifti1Image(nii_temp, nii_fmap_orig.affine, nii_fmap_orig.header)
         sequencer.nii_fieldmap, sequencer.nii_fieldmap_orig, sequencer.fmap_is_extended = sequencer.get_fieldmap(nii_temp)
-        # metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = sequencer.eval(coefs)
-        test = sequencer.eval(coefs)
-        print(test)
+        metric_shimmed_mean[i], metric_unshimmed_mean[i], metric_shimmed_std[i], metric_unshimmed_std[i], metric_shimmed_absmean[i], metric_unshimmed_absmean[i] = sequencer.eval(coefs)
     
     logger.info(f" Plotting currents")
 
