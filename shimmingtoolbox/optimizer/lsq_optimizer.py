@@ -152,7 +152,7 @@ class LsqOptimizer(OptimizerUtils):
             c (float) : Float used for the optimization but not used here
 
         Returns:
-            jacobian (np.ndarray) : 1D array of the gradient of the mse function to minimize
+            np.ndarray : 1D array of the gradient of the mse function to minimize
         """
         return 2 * a @ coef + b
 

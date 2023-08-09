@@ -43,8 +43,8 @@ class QuadProgOpt(OptimizerUtils):
 
         Returns:
             (tuple) : tuple containing:
-            * np.ndarray: linear inequality matrix
-            * np.ndarray: linear inequality vector
+                * np.ndarray: linear inequality matrix
+                * np.ndarray: linear inequality vector
 
         """
         n = len(self.reg_vector)
@@ -108,9 +108,8 @@ class QuadProgOpt(OptimizerUtils):
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
-
         """
-        Returns the currents needed for the shimming, redefined from super because of the constraints
+        Returns the currents needed for the shimming, redefined from basic_optimizer because of the constraints
         Args:
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
             coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
@@ -139,6 +138,7 @@ class QuadProgOpt(OptimizerUtils):
     def get_cost_matrices(self, currents_0, unshimmed_vec, coil_mat, factor):
         """
         Returns the cost matrix and the cost vector to minimize 1/2 x.T @ cost_matrix @ x - cost_vector.T @ x
+
         Args:
             currents_0 (np.ndarray) : Initial guess for the function
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
@@ -149,8 +149,8 @@ class QuadProgOpt(OptimizerUtils):
 
         Returns:
             (tuple) : tuple containing:
-            * np.ndarray: 2D Cost matrix
-            * np.ndarray: Cost vector
+                * np.ndarray: 2D Cost matrix
+                * np.ndarray: Cost vector
 
         """
 
@@ -199,12 +199,12 @@ class PmuQuadProgOpt(QuadProgOpt):
         """
         This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
         g @ x < h, to see all details please see the PR 458
-        Redefined from QuadProg to match the new bounds
+        Redefined from QuadProg to match the new bounds and constraints
 
         Returns:
             (tuple) : tuple containing:
-            * np.ndarray: linear inequality matrix
-            * np.ndarray: linear inequality vector
+                * np.ndarray: linear inequality matrix
+                * np.ndarray: linear inequality vector
 
         """
         n_coils = len(self.coils)

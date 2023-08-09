@@ -296,8 +296,8 @@ class ShimSequencer(Sequencer):
 
         Returns:
             (tuple) : tuple containing:
-            * nib.Nifti1Image: Mask resampled and dilated on the fieldmap for the optimization
-            * nib.Nifti1Image: Mask resampled on the original fieldmap.
+                * nib.Nifti1Image: Mask resampled and dilated on the fieldmap for the optimization
+                * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
         nii_mask_anat = self.nii_mask_anat
