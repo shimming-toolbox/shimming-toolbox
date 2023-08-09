@@ -37,7 +37,7 @@ setup(
     packages=find_packages(exclude=["docs"]),
     install_requires=[
         "click",
-        "dcm2bids>=2.1.7",
+        "dcm2bids>=3.0.1",
         'importlib-metadata ~= 4.0 ; python_version < "3.8"',
         "numpy>=1.21",
         "phantominator~=0.6.4",
@@ -57,7 +57,7 @@ setup(
         "joblib",
     ],
     extras_require={
-        'docs': ["sphinx>=1.6", "sphinx_rtd_theme>=0.2.4", "sphinx-click"],
+        'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],
         'dev': ["pre-commit>=2.10.0"]
     },
 )
