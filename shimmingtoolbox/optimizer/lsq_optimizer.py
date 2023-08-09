@@ -52,6 +52,7 @@ class LsqOptimizer(OptimizerUtils):
             self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
+
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
@@ -257,7 +258,7 @@ class PmuLsqOptimizer(LsqOptimizer):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor )
+        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
 
