@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import logging
 import numpy as np
 import scipy.optimize as opt
 import warnings
@@ -13,11 +12,6 @@ from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'std']
-
-
-
-
-logger = logging.getLogger(__name__)
 
 
 class LsqOptimizer(OptimizerUtils):
@@ -367,7 +361,6 @@ class PmuLsqOptimizer(LsqOptimizer):
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
                                        options={'maxiter': 500})
-
 
         else:
             currents_sp = opt.minimize(self._criteria_func, currents_0,

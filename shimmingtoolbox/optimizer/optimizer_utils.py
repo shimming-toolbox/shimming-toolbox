@@ -2,14 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import logging
 from typing import List
 
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-logger = logging.getLogger(__name__)
 
 
 class OptimizerUtils(Optimizer):

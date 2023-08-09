@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import logging
 import quadprog
 from typing import List
 
@@ -11,7 +10,6 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-logger = logging.getLogger(__name__)
 
 
 class QuadProgOpt(OptimizerUtils):
