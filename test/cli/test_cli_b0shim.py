@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-import copy
 
+import copy
 import pytest
 from click.testing import CliRunner
 import tempfile
@@ -15,7 +15,7 @@ from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 

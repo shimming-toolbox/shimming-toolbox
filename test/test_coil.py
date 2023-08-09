@@ -2,11 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import pytest
 import json
 
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox import __dir_config_scanner_constraints__
 
 
