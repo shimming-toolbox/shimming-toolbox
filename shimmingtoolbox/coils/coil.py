@@ -5,7 +5,7 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 logger = logging.getLogger(__name__)
@@ -117,7 +117,7 @@ class Coil(object):
 
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
-    def __init__(self, coord_system, dim_volume, affine, constraints, order):
+    def __init__(self, coord_system, dim_volume, affine, constraints, order, manufacturer=None):
 
         self.order = order
         self.coord_system = coord_system
@@ -125,24 +125,32 @@ class ScannerCoil(Coil):
 
         # Create the spherical harmonics with the correct order, dim and affine
         # Todo: add coord system
-        sph_coil_profile = self._create_coil_profile(dim_volume)
+        sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
         constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.order)
 
         super().__init__(sph_coil_profile, affine, constraints)
 
-    def _create_coil_profile(self, dim):
+    def _create_coil_profile(self, dim, manufacturer=None):
         # Define profile for Tx (constant volume)
         profile_order_0 = -np.ones(dim)
 
-        # define the coil profiles
+        # Create spherical harmonics coil profiles
         if self.order == 0:
             # f0 --> [1]
             sph_coil_profile = profile_order_0[..., np.newaxis]
         else:
             # f0, orders
             mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
-            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+            if manufacturer == 'Siemens':
+                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+            elif manufacturer == 'GE':
+                profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+            else:
+                logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
+                               f"0, 1 and 2 respectively")
+                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+
             sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
         return sph_coil_profile

@@ -911,7 +911,8 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, order, manufacturer)
 
         # Create a ScannerCoil object
-        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, order)
+        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, order,
+                                   manufacturer=manufacturer)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
