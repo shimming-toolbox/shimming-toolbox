@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
+import copy
 import os
 import pytest
 import math
@@ -156,7 +157,7 @@ def test_correct_2pi_offset():
 
     # Add 2pi to one timepoint
     mask = threshold(mag)
-    fmap_rad_with_offset = fmap
+    fmap_rad_with_offset = copy.deepcopy(fmap)
     fmap_rad_with_offset[..., 2] += mask[..., 2] * 2 * np.pi
 
     fmap_corrected = correct_2pi_offset(fmap, mag, mask, validity_threshold=0.2)

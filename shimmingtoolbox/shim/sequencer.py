@@ -1609,8 +1609,8 @@ def new_bounds_from_currents(currents, old_bounds):
     "old_coef + next_bound < old_bound".
 
     Args:
-        currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
-        old_bounds (list): 1d list (n_channels) of tuples (min, max) containing the merged bounds of the previous
+        currents (np.ndarray): 2D array (n_shims x n_channels).
+        old_bounds (list): 2D list (n_channels, 2) containing (min, max) containing the merged bounds of the previous
                            optimization.
     Returns:
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
@@ -1620,8 +1620,16 @@ def new_bounds_from_currents(currents, old_bounds):
     for i_shim in range(currents.shape[0]):
         shim_bound = []
         for i_channel in range(len(old_bounds)):
-            a_bound = old_bounds[i_channel] - currents[i_shim, i_channel]
-            shim_bound.append(tuple(a_bound))
+            if old_bounds[i_channel] == [None, None]:
+                a_bound = old_bounds[i_channel]
+            elif old_bounds[i_channel][0] is None:
+                a_bound = [None, old_bounds[i_channel][1] - currents[i_shim, i_channel]]
+            elif old_bounds[i_channel][1] is None:
+                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel], None]
+            else:
+                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel],
+                           old_bounds[i_channel][1] - currents[i_shim, i_channel]]
+            shim_bound.append(a_bound)
         new_bounds.append(shim_bound)
 
     return new_bounds
