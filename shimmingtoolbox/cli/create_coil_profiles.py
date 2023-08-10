@@ -311,8 +311,8 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). Defaulted to 1 1 1.")
 @click.option('--software', type=click.Choice(['AutoCAD']), default='AutoCAD', 
               help=f"Software from which the geometries were extracted.")
-@click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new_coil",
-              help="Name of the coil. If not provided, \"new_coil\" will be used.")
+@click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new",
+              help="Name of the coil. If not provided, \"new\" will be used.")
 @click.option('--min', 'min_current', required=False, type=click.FLOAT, default=-1,
               help="The minimum current in amps going through each channel. Defaulted to -1 A.")
 @click.option('--max', 'max_current', required=False, type=click.FLOAT, default=1,
@@ -377,7 +377,7 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     }
     
     # Save the coil profiles json file
-    fname_coil_config = os.path.join(fname_output, coil_name + '_config.json')
+    fname_coil_config = os.path.join(fname_output, coil_name + '_coil_config.json')
     with open(fname_coil_config, mode='w') as f:
         json.dump(config_coil, f, indent=4)
 
