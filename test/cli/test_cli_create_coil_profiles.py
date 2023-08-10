@@ -163,14 +163,14 @@ def test_create_coil_profiles_from_cad():
         header = pickle.load(outp)
     ref_FOV_shape = header["dim"][1:4]
     affine_test = np.array([header["srow_x"], header["srow_y"], header["srow_z"], [0, 0, 0, 1]])
-    
+
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         fm = nib.Nifti1Image(np.zeros(ref_FOV_shape), affine=affine_test, header=header)
         nib.save(fm, os.path.join(tmp, 'field_map_ref.nii.gz'))
         fname_fmap = os.path.join(tmp, 'field_map_ref.nii.gz')
         fname_output = os.path.join(tmp, 'results')
         coil_name = "NP15ch"
-        
+
         res = runner.invoke(coil_profiles_cli,
                             f'from-cad -i {fname_txt} '
                             f'--fmap {fname_fmap} '
@@ -178,19 +178,19 @@ def test_create_coil_profiles_from_cad():
                             f'--offset 0 -111 -47 '
                             f'-o {fname_output} ',
                             catch_exceptions=False)
-    
+
         fname_cp = os.path.join(fname_output, coil_name + '_coil_profiles.nii.gz')
         assert os.path.isfile(fname_cp)
 
         fname_config = os.path.join(fname_output, coil_name + '_coil_config.json')
         assert os.path.isfile(fname_config)
-        
+
         nii_test = nib.load(fname_cp)
         nii_ref = nib.load(fname_ref_coil_profiles)
         assert are_niis_equal(nii_test, nii_ref)
-        
+
         with open(fname_config, 'rb') as f:
             config_test = json.load(f)
         assert are_jsons_equal(config_test, ref_config)
-        
+
         assert res.exit_code == 0
