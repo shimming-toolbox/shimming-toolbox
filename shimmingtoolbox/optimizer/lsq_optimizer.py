@@ -6,7 +6,6 @@ import scipy.optimize as opt
 from typing import List
 import warnings
 
-
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
