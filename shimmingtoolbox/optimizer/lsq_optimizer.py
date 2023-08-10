@@ -196,11 +196,11 @@ class LsqOptimizer(OptimizerUtils):
         else:
 
             currents_sp = opt.minimize(self._initial_guess_mse, currents_0,
-                                        args=(unshimmed_vec, coil_mat, factor),
-                                        method='SLSQP',
-                                        bounds=self.merged_bounds,
-                                        constraints=tuple(scipy_constraints),
-                                        options={'maxiter': 1000})
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       options={'maxiter': 1000})
 
         return currents_sp
 
