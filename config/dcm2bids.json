@@ -2,45 +2,45 @@
     "searchMethod": "fnmatch",
     "descriptions": [
         {
-            "dataType": "anat",
-            "modalityLabel": "T1w",
+            "datatype": "anat",
+            "suffix": "T1w",
             "criteria": {
                 "SeriesDescription": "*T1W_3D*"
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "T2w",
+            "datatype": "anat",
+            "suffix": "T2w",
             "criteria": {
                 "SidecarFilename": "007*",
                 "EchoTime": 0.1
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "PD",
+            "datatype": "anat",
+            "suffix": "PD",
             "criteria": {
                 "SeriesDescription": "*TSE*",
                 "EchoTime": 0.008
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "FLAIR",
+            "datatype": "anat",
+            "suffix": "FLAIR",
             "criteria": {
                 "SeriesDescription": "*FLAIR*"
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "SWI",
+            "datatype": "anat",
+            "suffix": "SWI",
             "criteria": {
                 "SeriesDescription": "*SWI*"
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_e1",
+            "datatype": "anat",
+            "suffix": "unshimmed_e1",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "M", "*"],
@@ -48,8 +48,8 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_e2",
+            "datatype": "anat",
+            "suffix": "unshimmed_e2",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "M", "*"],
@@ -57,8 +57,8 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_e3",
+            "datatype": "anat",
+            "suffix": "unshimmed_e3",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "M", "*"],
@@ -66,8 +66,8 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_phase_e1",
+            "datatype": "anat",
+            "suffix": "unshimmed_phase_e1",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "P", "*", "*"],
@@ -75,8 +75,8 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_phase_e2",
+            "datatype": "anat",
+            "suffix": "unshimmed_phase_e2",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "P", "*", "*"],
@@ -84,8 +84,8 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "unshimmed_phase_e3",
+            "datatype": "anat",
+            "suffix": "unshimmed_phase_e3",
             "criteria": {
                 "SeriesDescription": "*gre*realtime*",
                 "ImageType": ["*", "*", "P", "*", "*"],
@@ -93,16 +93,45 @@
             }
         },
         {
-            "dataType": "anat",
-            "modalityLabel": "epi",
+            "datatype": "anat",
+            "suffix": "epi",
             "criteria": {
                 "SequenceName": "*epfid2d*",
                 "ImageType": ["*", "*", "M", "*", "*"]
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
+            "datatype": "anat",
+            "suffix": "inv-1_MP2RAGE",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "SeriesDescription": "*_INV1",
+                "ImageType": ["*", "*", "M", "*", "NORM"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "inv-2_MP2RAGE",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "SeriesDescription": "*_INV2",
+                "ImageType": ["*", "*", "M", "*", "NORM"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "UNIT1",
+            "criteria": {
+                "SequenceName": "*tfl3d1_16ns",
+                "ProtocolName": "*mp2rage*",
+                "ImageType": ["*", "*", "M", "*", "UNI"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude1",
             "criteria": {
                 "SequenceName": "fm2d2",
                 "ImageType": ["*", "*", "M", "*"],
@@ -110,8 +139,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
+            "datatype": "fmap",
+            "suffix": "magnitude2",
             "criteria": {
                 "SequenceName": "fm2d2",
                 "ImageType": ["*", "*", "M", "*"],
@@ -119,8 +148,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
+            "datatype": "fmap",
+            "suffix": "phase1",
             "criteria": {
                 "SequenceName": "fm2d2",
                 "ImageType": ["*", "*", "P", "*", "*"],
@@ -128,8 +157,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
+            "datatype": "fmap",
+            "suffix": "phase2",
             "criteria": {
                 "SequenceName": "fm2d2",
                 "ImageType": ["*", "*", "P", "*", "*"],
@@ -137,116 +166,116 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
+            "datatype": "fmap",
+            "suffix": "magnitude1",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "1"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
+            "datatype": "fmap",
+            "suffix": "magnitude2",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "2"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude3",
+            "datatype": "fmap",
+            "suffix": "magnitude3",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "3"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude4",
+            "datatype": "fmap",
+            "suffix": "magnitude4",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "4"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude5",
+            "datatype": "fmap",
+            "suffix": "magnitude5",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "5"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude6",
+            "datatype": "fmap",
+            "suffix": "magnitude6",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "6"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
+            "datatype": "fmap",
+            "suffix": "phase1",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "1"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
+            "datatype": "fmap",
+            "suffix": "phase2",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "2"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase3",
+            "datatype": "fmap",
+            "suffix": "phase3",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "3"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase4",
+            "datatype": "fmap",
+            "suffix": "phase4",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "4"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase5",
+            "datatype": "fmap",
+            "suffix": "phase5",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "5"
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase6",
+            "datatype": "fmap",
+            "suffix": "phase6",
             "criteria": {
-                "SequenceName": "*fl2d[2-6]",
+                "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "6"
             }
         },
                 {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude1",
+            "datatype": "fmap",
+            "suffix": "magnitude1",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -254,8 +283,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude2",
+            "datatype": "fmap",
+            "suffix": "magnitude2",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -263,8 +292,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude3",
+            "datatype": "fmap",
+            "suffix": "magnitude3",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -272,8 +301,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude4",
+            "datatype": "fmap",
+            "suffix": "magnitude4",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -281,8 +310,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude5",
+            "datatype": "fmap",
+            "suffix": "magnitude5",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -290,8 +319,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "magnitude6",
+            "datatype": "fmap",
+            "suffix": "magnitude6",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "M", "*", "*", "*"],
@@ -299,8 +328,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase1",
+            "datatype": "fmap",
+            "suffix": "phase1",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -308,8 +337,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase2",
+            "datatype": "fmap",
+            "suffix": "phase2",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -317,8 +346,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase3",
+            "datatype": "fmap",
+            "suffix": "phase3",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -326,8 +355,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase4",
+            "datatype": "fmap",
+            "suffix": "phase4",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -335,8 +364,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase5",
+            "datatype": "fmap",
+            "suffix": "phase5",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -344,8 +373,8 @@
             }
         },
         {
-            "dataType": "fmap",
-            "modalityLabel": "phase6",
+            "datatype": "fmap",
+            "suffix": "phase6",
             "criteria": {
                 "SequenceName": "*fl2d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*", "*"],
@@ -353,31 +382,65 @@
             }
         },
         {
-            "dataType": "func",
-            "modalityLabel": "bold",
+            "datatype": "func",
+            "suffix": "bold",
             "criteria": {
                 "SeriesDescription": "*bold*"
             }
         },
         {
-            "dataType": "func",
-            "modalityLabel": "task",
+            "datatype": "func",
+            "suffix": "task",
             "criteria": {
                 "SeriesDescription": "*task-p2-s3*"
             }
         },
         {
-            "dataType": "dwi",
-            "modalityLabel": "dwi",
+            "datatype": "dwi",
+            "suffix": "dwi",
             "criteria": {
                 "SeriesDescription": "*DWI*"
             }
         },
         {
-            "dataType": "rfmap",
-            "modalityLabel": "TB1map",
+            "datatype": "rfmap",
+            "suffix": "TB1map",
             "criteria": {
                 "SequenceName": "*tfl2d1_16"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "fieldmap",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ImageType": ["*", "*", "B0 MAP", "B0", "*", "FIELDMAPHZ"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "1",
+                "ImageType": ["*", "*", "M", "*", "M", "*"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "fieldmap",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ImageType": ["*", "*", "T1", "MIXED", "REAL", "FIELDMAPHZ"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "1",
+                "ImageType": ["*", "*", "T1", "MIXED", "FIELDMAPHZ"]
             }
         }
     ]
