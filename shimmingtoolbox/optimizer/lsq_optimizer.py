@@ -55,7 +55,6 @@ class LsqOptimizer(OptimizerUtils):
         else:
             raise ValueError("Optimization criteria not supported")
 
-
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
 
