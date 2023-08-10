@@ -3,8 +3,9 @@
 
 import numpy as np
 import scipy.optimize as opt
-import warnings
 from typing import List
+import warnings
+
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
@@ -35,6 +36,8 @@ class LsqOptimizer(OptimizerUtils):
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
         """
+        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
+
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
@@ -53,7 +56,6 @@ class LsqOptimizer(OptimizerUtils):
         else:
             raise ValueError("Optimization criteria not supported")
 
-        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
@@ -181,10 +183,7 @@ class LsqOptimizer(OptimizerUtils):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         if self.opt_criteria == 'mse':
-            inv_factor = 1 / (len(unshimmed_vec) * factor)
-            a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
-            b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-            c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='SLSQP',
@@ -352,10 +351,8 @@ class PmuLsqOptimizer(LsqOptimizer):
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
         if self.opt_criteria == 'mse':
-            inv_factor = 1 / (len(unshimmed_vec) * factor)
-            a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
-            b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-            c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='SLSQP',

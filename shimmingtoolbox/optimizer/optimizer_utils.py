@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+from abc import abstractmethod
 import numpy as np
 from typing import List
 
@@ -129,3 +130,37 @@ class OptimizerUtils(Optimizer):
         currents = self._get_currents(unshimmed_vec, coil_mat, currents_0)
 
         return currents
+
+    def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
+        """
+        Returns all the quadratic terms used in the lsq_optimizer for the mse method, and for the quadprog optimizer,
+        for more details see PR#451
+
+        Args:
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            (tuple) : tuple containing:
+                * np.ndarray: 2D array using for the optimization
+                * np.ndarray: 1D flattened array used for the optimization
+                * float : Float used for the least squares optimizer
+
+        """
+
+        inv_factor = 1 / (len(unshimmed_vec) * factor)
+        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
+        b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+
+        return a, b, c
+
+    @abstractmethod
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
+        """
+        Abstract method for the _get_currents method used in the child classes
+        """
+        pass

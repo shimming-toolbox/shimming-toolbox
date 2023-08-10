@@ -114,8 +114,6 @@ class QuadProgOpt(OptimizerUtils):
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
             coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
             currents_0 (np.ndarray) : Initial guess for the function
 
         Returns:
@@ -129,9 +127,6 @@ class QuadProgOpt(OptimizerUtils):
         ineq_matrix, ineq_vector = self._get_linear_inequality_matrices()
 
         currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
-
-        if type(currents) == str:
-            raise TypeError(" The optimization didn't succeed, please check your parameters")
 
         return currents[: len(currents_0)]
 
@@ -158,9 +153,7 @@ class QuadProgOpt(OptimizerUtils):
 
         initial_guess = np.zeros(2 * n)
         initial_guess[:n] = currents_0
-        inv_factor = 1 / (len(unshimmed_vec) * factor)
-        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
-        b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        a, b, _ = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
         epsilon = 1e-6
         cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
         cost_matrix = 2 * cost_matrix
