@@ -83,7 +83,10 @@ def check_prelude_installation():
         bool: True if prelude is installed, False if not.
     """
     try:
-        subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if sys.platform != 'win32':
+            subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.check_call(['where', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print_fail()
         print(f"Error {error.returncode}: prelude is not installed or not in your PATH.")
@@ -103,9 +106,12 @@ def check_dcm2niix_installation():
         bool: True if dcm2niix is installed, False if not.
     """
     try:
-        subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL)
+        if sys.platform != 'win32':
+            subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.check_call(['where', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
+        print(error)
         print_fail()
         print(f"Error {error.returncode}: dcm2niix is not installed or not in your PATH.")
         return False
