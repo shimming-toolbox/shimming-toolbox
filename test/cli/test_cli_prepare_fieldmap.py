@@ -157,6 +157,7 @@ def test_cli_prepare_fieldmap_autoscale():
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
+@pytest.mark.prelude
 def test_cli_prepare_fieldmap_wrong_ext():
     runner = CliRunner()
 

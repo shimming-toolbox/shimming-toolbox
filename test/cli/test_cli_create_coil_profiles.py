@@ -51,6 +51,7 @@ coil_profile_config = {
 }
 
 
+@pytest.mark.prelude
 def test_create_coil_profiles():
     runner = CliRunner()
 
@@ -72,6 +73,7 @@ def test_create_coil_profiles():
         assert os.path.isfile(fname_output)
 
 
+@pytest.mark.prelude
 def test_create_coil_profiles_dead_channel1():
     runner = CliRunner()
 
@@ -98,6 +100,7 @@ def test_create_coil_profiles_dead_channel1():
         assert nib.load(fname_output).shape == (128, 76, 10, 2)
 
 
+@pytest.mark.prelude
 def test_create_coil_profiles_dead_channel2():
     runner = CliRunner()
 
