@@ -11,12 +11,14 @@ import pathlib
 import tempfile
 import re
 
-from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, generate_coil_bfield, get_wire_pattern
+from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern
+from shimmingtoolbox.coils.biot_savart import generate_coil_bfield
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
 from shimmingtoolbox.utils import create_output_dir, save_nii_json, set_all_loggers
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+GAMMA = 42.576E6 # in Hz/Tesla
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +33,7 @@ def coil_profiles_cli():
 )
 @click.option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
               help="Input filename of json config file. "
-                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials.html>`_ for more "
+                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ for more "
                    "details.")
 @click.option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
               help="Path to add before each file in the config file. This allows to have relative paths in the config "
@@ -300,16 +302,14 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     context_settings=CONTEXT_SETTINGS,
 )
 @click.option('-i', '--input', 'fname_txt', type=click.Path(exists=True), required=True,
-              help="Input filename of wires' geometry text file. "
-                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials.html>`_ for more "
-                   "details.")
+              help="Input filename of wires' geometry text file. ")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static \u0394B\u2080 fieldmap on which to calculate coil profiles. Only FOV and affine are used.")
 @click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0,0,0),
-              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm). \n Defaulted to (0,0,0).")
+              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm).\nInput should be --offset x y z. Defaulted to 0 0 0")
 @click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1,1,1),
-              help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). Defaulted to 1 1 1.")
-@click.option('--software', type=click.Choice(['AutoCAD']), default='AutoCAD',
+              help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip).\nInput should be --flip x y z. Defaulted to 1 1 1.")
+@click.option('--software', type=click.Choice(['autocad']), default='autocad',
               help=f"Software from which the geometries were extracted.")
 @click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new",
               help="Name of the coil. If not provided, \"new\" will be used.")
@@ -320,13 +320,14 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
 @click.option('--max_sum', 'max_current_sum', required=False, type=click.FLOAT, default=None,
               help="The maximum sum of currents in amps going through all loops. Defaulted to the number of channel.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
-              default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
+              default=os.path.join(os.path.curdir, '.'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
     """ Testing change Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
-    assert min_current < max_current, f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})"
+    if min_current > max_current:
+        raise ValueError(f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})")
     # Set logger level
     set_all_loggers(verbose)
 
@@ -334,19 +335,18 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     create_output_dir(fname_output)
 
     # Set variables
-    GAMMA = 42.576E6 # in Hz/Tesla
-    nif = nib.load(fname_fmap)
-    pmcn = CAD_to_pumcin(fname_txt, list(dims_to_flip), software)
+    nii_fmap = nib.load(fname_fmap)
+    pmcn = cad_to_pumcin(fname_txt, list(dims_to_flip), software)
     pmcn[:, 1:4] += np.array(list(offset))
-    Wires = get_wire_pattern(pmcn)
-    transform = nif.affine[:-1, :]
-    nb_channels = len(Wires)
+    wires = get_wire_pattern(pmcn)
+    transform = nii_fmap.affine[:-1, :]
+    nb_channels = len(wires)
 
     # Map the position (in mm) of all pixel in the FOV
-    FOV_shape = nif.header.get_data_shape()
-    xx = np.arange(FOV_shape[0])
-    yy = np.arange(FOV_shape[1])
-    zz = np.arange(FOV_shape[2])
+    fov_shape = nii_fmap.header.get_data_shape()
+    xx = np.arange(fov_shape[0])
+    yy = np.arange(fov_shape[1])
+    zz = np.arange(fov_shape[2])
     X, Y, Z = np.meshgrid(xx, yy, zz, indexing='ij')
     voxel_coords = np.array([X.ravel(order='F'), Y.ravel(order='F'), Z.ravel(order='F')])
     voxel_coords = np.vstack((voxel_coords, np.ones(voxel_coords.shape[1])))
@@ -354,14 +354,14 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     gridSize = X.shape
 
     # Generate the coil profiles
-    coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(Wires)))
-    for iCh in range(len(Wires)):
-        coil_profiles[:, :, :, iCh] = generate_coil_bfield(Wires[iCh], world_coords.T, gridSize)
+    coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(wires)))
+    for iCh in range(len(wires)):
+        coil_profiles[:, :, :, iCh] = generate_coil_bfield(wires[iCh], world_coords.T, gridSize)
     coil_profiles *= GAMMA
 
     # Save the coil profiles
-    affine = nif.affine
-    header = nif.header
+    affine = nii_fmap.affine
+    header = nii_fmap.header
     nii = nib.Nifti1Image(coil_profiles, affine=affine, header=header)
     nib.save(nii, os.path.join(fname_output, coil_name + "_coil_profiles.nii.gz"))
 
@@ -382,9 +382,9 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
         json.dump(config_coil, f, indent=4)
 
 
-def CAD_to_pumcin(fname_txt, dimsToFlip, software):
+def cad_to_pumcin(fname_txt, dimsToFlip, software):
     # Only available txt format at the moment
-    assert software == "AutoCAD", "AutoCAD is the only available format at the moment"
+    assert software == "autocad", "autocad is the only available format at the moment"
     # TODO: Implement other software formats (SolidWorks, etc)
 
     loadDir, fileExt = os.path.split(fname_txt)
