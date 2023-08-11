@@ -24,8 +24,8 @@ Dependencies
 - If you would like to use ``sct_deepseg_sc`` for spinal cord segmentation, you need to install `SCT <https://spinalcordtoolbox.com/>`__.
 
 
-Installation
-------------
+Installation Procedure
+----------------------
 
 .. Note::
 
