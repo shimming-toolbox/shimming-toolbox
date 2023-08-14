@@ -51,10 +51,6 @@ mkdir "%ST_DIR%\%BIN_DIR%"
 for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\st_*.*") do (
 	copy "%%f" "%ST_DIR%\%BIN_DIR%" || goto error
 )
-REM Add dcm2bids in the launchers (not currently accessible if not in the path)
-for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\dcm2bids*") do (
-	copy "%%f" "%ST_DIR%\%BIN_DIR%" || goto error
-)
 
 REM Add scripts to the User's path
 for /F "skip=2 tokens=2,*" %%A in ('reg.exe query "HKEY_CURRENT_USER\Environment" /v path') do set "OLD_PATH=%%B"
