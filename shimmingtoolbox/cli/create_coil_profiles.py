@@ -324,7 +324,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
-    """ Testing change Create \u0394B\u2080 coil profiles from CAD wire geometries."""
+    """Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
     if min_current > max_current:
         raise ValueError(f"Minimum current should be smaller than maximum current ({min_current} >= {max_current})")
@@ -347,11 +347,11 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     xx = np.arange(fov_shape[0])
     yy = np.arange(fov_shape[1])
     zz = np.arange(fov_shape[2])
-    X, Y, Z = np.meshgrid(xx, yy, zz, indexing='ij')
-    voxel_coords = np.array([X.ravel(order='F'), Y.ravel(order='F'), Z.ravel(order='F')])
+    x, y, z = np.meshgrid(xx, yy, zz, indexing='ij')
+    voxel_coords = np.array([x.ravel(order='F'), y.ravel(order='F'), z.ravel(order='F')])
     voxel_coords = np.vstack((voxel_coords, np.ones(voxel_coords.shape[1])))
     world_coords = transform @ voxel_coords
-    gridSize = X.shape
+    gridSize = x.shape
 
     # Generate the coil profiles
     coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(wires)))
@@ -383,43 +383,47 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
 
 
 def cad_to_pumcin(fname_txt, dimsToFlip, software):
+    """Transforms CAD format to PUMCIN format"""
     # Only available txt format at the moment
-    assert software == "autocad", "autocad is the only available format at the moment"
+    if software != "autocad":
+        raise ValueError("'autocad' is the only available format at the moment")
     # TODO: Implement other software formats (SolidWorks, etc)
 
-    loadDir, fileExt = os.path.split(fname_txt)
-    name, ext = os.path.splitext(fileExt)
-    if not loadDir:
-        loadDir = './'
-    assert ext == '.txt', "Geometries should be a txt file"
+    _, file_ext = os.path.split(fname_txt)
+    _, ext = os.path.splitext(file_ext)
+
+    if ext != '.txt':
+        raise TypeError("Geometries should be a txt file")
     with open(fname_txt, 'r') as fid:
         lines = fid.readlines()
 
-    XYZ = []
+    xyz = []
     for line in lines:
         matches = re.findall(r"[-+]?\d*\.\d+|\d+", line)
         if len(matches) >= 3:
             values = [float(match) for match in matches[:3]]
-            XYZ.append(values)
+            xyz.append(values)
 
-    assert len(XYZ) > 0, "Data format doesn't match AutoCAD format"
-    XYZ = np.array(XYZ)
-    XYZW = np.hstack((XYZ, np.ones((XYZ.shape[0], 1))))
-    XYZW[:, 0:3] = XYZW[:, 0:3] * np.array(dimsToFlip)
-    XYZW[0, 3] = 0
+    if len(xyz) <= 0:
+        raise TypeError("Data format doesn't match AutoCAD format")
 
-    nPoints = XYZW.shape[0]
+    xyz = np.array(xyz)
+    xyzw = np.hstack((xyz, np.ones((xyz.shape[0], 1))))
+    xyzw[:, 0:3] = xyzw[:, 0:3] * np.array(dimsToFlip)
+    xyzw[0, 3] = 0
+
+    nPoints = xyzw.shape[0]
     iCoil = 0
     iCoilStart = [1]
     iCoilEnd = []
     TOLERANCE = 0.001
 
     iPoint = 0
-    startPoint = XYZW[iPoint, 0:3].reshape(1, 3)
+    startPoint = xyzw[iPoint, 0:3].reshape(1, 3)
 
     while iPoint < nPoints:
         iPoint += 1
-        distanceToStartPoint = np.linalg.norm(XYZW[iPoint, 0:3] - startPoint[iCoil, :])
+        distanceToStartPoint = np.linalg.norm(xyzw[iPoint, 0:3] - startPoint[iCoil, :])
 
         if distanceToStartPoint < TOLERANCE:
             iCoilEnd.append(iPoint)
@@ -427,12 +431,12 @@ def cad_to_pumcin(fname_txt, dimsToFlip, software):
             iPoint += 1
             iCoilStart.append(iPoint)
             if iPoint < nPoints:
-                startPoint = np.vstack((startPoint, XYZW[iPoint, 0:3].reshape(1, 3)))
-                XYZW[iPoint, 3] = 0
+                startPoint = np.vstack((startPoint, xyzw[iPoint, 0:3].reshape(1, 3)))
+                xyzw[iPoint, 3] = 0
         else:
-            XYZW[iPoint, 3] = 1
+            xyzw[iPoint, 3] = 1
 
-    IXYZW = np.hstack((np.arange(XYZW.shape[0])[..., None], XYZW))
+    IXYZW = np.hstack((np.arange(xyzw.shape[0])[..., None], xyzw))
 
     return IXYZW
 

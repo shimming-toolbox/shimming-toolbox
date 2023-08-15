@@ -120,7 +120,7 @@ def _z_field(l, dl, r):
     return b_per_i[2]  # [T/A]
 
 
-def generate_coil_bfield(wire, XYZ, gridsize):
+def generate_coil_bfield(wire, xyz, gridsize):
     """Generates Bz field in the FOV
     Args:
         wire (list): 1D list of n_segments dictionnairies with start and stop point of the segment
@@ -130,7 +130,7 @@ def generate_coil_bfield(wire, XYZ, gridsize):
     Returns:
         numpy.ndarray: Bz field shaped back to gridsize
     """
-    nPositions = XYZ.shape[0]
+    nPositions = xyz.shape[0]
     fz = np.zeros((nPositions, 1))
     nSegments = len(wire)
 
@@ -147,14 +147,14 @@ def generate_coil_bfield(wire, XYZ, gridsize):
             w = 1.0
 
         a = np.tile(np.linalg.norm(wire[iSegment]['start'] - wire[iSegment]['stop'])**2, (nPositions, 1))
-        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (nPositions, 1)) * (np.tile(wire[iSegment]['start'], (nPositions, 1)) - XYZ), axis=1, keepdims=True)
-        c = np.sum((np.tile(wire[iSegment]['start'], (nPositions, 1)) - XYZ)**2, axis=1, keepdims=True)
+        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (nPositions, 1)) * (np.tile(wire[iSegment]['start'], (nPositions, 1)) - xyz), axis=1, keepdims=True)
+        c = np.sum((np.tile(wire[iSegment]['start'], (nPositions, 1)) - xyz)**2, axis=1, keepdims=True)
 
         s1 = np.tile(wire[iSegment]['start'], (nPositions, 1))
         s2 = np.tile(wire[iSegment]['stop'], (nPositions, 1))
 
         pz = (s2[:,0] - s1[:,0]) * (s2[:,1] - s1[:,1]) - (s2[:,1] - s1[:,1]) * (s2[:,0] - s1[:,0])
-        qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - XYZ[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - XYZ[:,0])
+        qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - xyz[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - xyz[:,0])
         pz = np.reshape(pz, (nPositions, 1))
         qz = np.reshape(qz, (nPositions, 1))
 
