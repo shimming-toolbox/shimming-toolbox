@@ -85,7 +85,7 @@ each current and channel. A linear regression is then performed for each channel
 
 .. code:: bash
 
-    cli_reference/cli:from-field-maps from-field-maps --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
+    st_create_coil_profiles from-field-maps --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
 
 The coil profiles are in a NIfTI file named "coil_profiles.nii.gz". To visualize them, launch FSLeyes with the following command:
 
