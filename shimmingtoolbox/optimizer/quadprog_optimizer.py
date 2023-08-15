@@ -72,22 +72,18 @@ class QuadProgOpt(OptimizerUtils):
         # We create both array, but if there is no sum constraints, then there is no need to add this constraints
         if np.all(sum_constraints == 0):
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)],
-                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])],
-                          [np.zeros([n, n]), -np.eye(n)],
-                          [np.zeros([n, n]), np.eye(n)]])
-            # dim(g) = (6n, 2n)
+                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (4n, 2n)
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])],
-                          [-lb], [ub], [np.zeros([n, 1])], [np.abs(ub) * np.ones([n, 1])]])
-            # dim(h) = (6n, 1)
+                          [-lb], [ub]])
+            # dim(h) = (4n, 1)
         else:
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
-                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])],
-                          [np.zeros([n, n]), -np.eye(n)],
-                          [np.zeros([n, n]), np.eye(n)]])
-            # dim(g) = (6n +n_coils, 2n)
+                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (4n +n_coils, 2n)
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [ub], [np.zeros([n, 1])], [np.max(sum_constraints) * np.ones([n, 1])]])
-            # dim(h) = (6n +n_coils, 1)
+                          [-lb], [ub]])
+            # dim(h) = (4n +n_coils, 1)
         return g, h
 
     def get_stability_factor(self, coef, unshimmed_vec, coil_mat, factor):
@@ -231,27 +227,23 @@ class PmuQuadProgOpt(QuadProgOpt):
                           [- delta_pressure * - np.eye(n), np.zeros([n, n])],
                           [delta_pressure * - np.eye(n), np.zeros([n, n])],
                           [delta_pressure * np.eye(n), np.zeros([n, n])],
-                          [- delta_pressure * np.eye(n), np.zeros([n, n])],
-                          [np.zeros([n, n]), -np.eye(n)],
-                          [np.zeros([n, n]), np.eye(n)]])
-            # dim(g) = (8n, 2n)
+                          [- delta_pressure * np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (6n, 2n)
 
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])],
-                          [-lb], [-lb], [ub], [ub], [np.zeros([n, 1])], [np.abs(ub) * np.ones([n, 1])]])
+                          [-lb], [-lb], [ub], [ub]])
 
-            # dim(h) = (8n, 1)
+            # dim(h) = (6n, 1)
         else:
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
                           [- delta_pressure * - np.eye(n), np.zeros([n, n])],
                           [delta_pressure * - np.eye(n), np.zeros([n, n])],
                           [delta_pressure * np.eye(n), np.zeros([n, n])],
-                          [- delta_pressure * np.eye(n), np.zeros([n, n])],
-                          [np.zeros([n, n]), -np.eye(n)],
-                          [np.zeros([n, n]), np.eye(n)]])
-            # dim(g) = (8n +n_coils, 2n)
+                          [- delta_pressure * np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (6n +n_coils, 2n)
 
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [-lb], [ub], [ub], [np.zeros([n, 1])], [np.max(sum_constraints) * np.ones([n, 1])]])
-            # dim(h) = (8n +n_coils, 1)
+                          [-lb], [-lb], [ub], [ub]])
+            # dim(h) = (6n +n_coils, 1)
 
         return g, h
