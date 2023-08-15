@@ -24,8 +24,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 )
 @click.argument('phase', nargs=-1, type=click.Path(exists=True), required=True)
 @click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=True, help="Input path of mag nifti file")
-@click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
-              help="Algorithm for unwrapping")
+@click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude', show_default=True,
+              help="Algorithm for unwrapping. skimage is installed by default, prelude requires FSL to be installed.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT),
               show_default=True, help="Output filename for the fieldmap, supported types : '.nii', '.nii.gz'")
 @click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
