@@ -216,16 +216,8 @@ def test_resample_from_to_5d():
     """Test resample_from_to with 5d input. Should return an error."""
     nii_fieldmap_5d = nib.Nifti1Image(np.expand_dims(nii_fieldmap.get_fdata(), -1), nii_fieldmap.affine)
 
-    # This should return an error
-    try:
+    with pytest.raises(NotImplementedError, match="Dimensions of input can only be 2D, 3D or 4D"):
         resample_from_to(nii_fieldmap_5d, nii_anat, mode='nearest')
-    except NotImplementedError:
-        # If an exception occurs, this is the desired behaviour
-        return 0
-
-    # If there isn't an error, then there is a problem
-    print('\nWrong dimensions but does not throw an error.')
-    assert False
 
 
 def test_get_main_orientation_tra():
