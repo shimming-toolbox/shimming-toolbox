@@ -78,3 +78,15 @@ class TestUnwrapPhase(object):
 
         with pytest.raises(ValueError, match="Shape of input phase is not supported."):
             unwrap_phase(nii, mag=self.mag)
+
+    def test_unwrap_phase_skimage(self):
+        """Test prelude with '3d' input data."""
+        phase = self.nii_phase.get_fdata()[..., 0]
+        nii = nib.Nifti1Image(phase, self.nii_phase.affine, header=self.nii_phase.header)
+        mag = self.mag[..., 0]
+
+        unwrapped_skimage = unwrap_phase(nii, unwrapper='skimage', mag=mag, threshold=100)
+
+        assert unwrapped_skimage.shape == phase.shape
+        assert np.allclose(unwrapped_skimage[29, 60:65, 0],
+                           [0.11891254, 0.15727143, 0.13272174, 0.16187449, 0.14959965])

@@ -196,3 +196,17 @@ def test_cli_prepare_fieldmap_savemask():
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output_mask)
+
+
+def test_cli_prepare_fieldmap_skimage():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output',
+                                                      fname_output, '--unwrapper', 'skimage'], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
