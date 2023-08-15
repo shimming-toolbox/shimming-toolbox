@@ -15,7 +15,7 @@ from shimmingtoolbox.shim.realtime_shim import realtime_shim
 
 
 class TestRealtimeShim(object):
-    def setup(self):
+    def setup_method(self):
         # Fieldmap
         fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
         nii_fieldmap = nib.load(fname_fieldmap)

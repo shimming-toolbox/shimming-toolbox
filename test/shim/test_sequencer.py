@@ -761,7 +761,7 @@ class TestDefineSlices(object):
 
 
 class TestParseSlices(object):
-    def setup(self):
+    def setup_method(self):
         fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
 
         # Open json
@@ -809,7 +809,7 @@ class TestParseSlices(object):
 class TestMaxintensity():
     """ We are using a 4d fieldmap as input just for testing. """
 
-    def setup(self):
+    def setup_method(self):
         fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
         self.nii_input = nib.load(fname_input)
 

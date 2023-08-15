@@ -11,7 +11,7 @@ from examples.general_demo import general_demo
 @pytest.mark.prelude
 class TestCore(object):
 
-    def setup(self):
+    def setup_method(self):
         # Get the directory where this current file is saved
         self.test_path = Path(__file__).resolve().parent
 

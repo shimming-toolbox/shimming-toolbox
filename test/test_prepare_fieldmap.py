@@ -14,9 +14,10 @@ from shimmingtoolbox.prepare_fieldmap import correct_2pi_offset
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.load_nifti import read_nii
 
+
 @pytest.mark.prelude
 class TestPrepareFieldmap(object):
-    def setup(self):
+    def setup_method(self):
         fname_phase = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
         nii_phase = nib.load(fname_phase)
         phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]
