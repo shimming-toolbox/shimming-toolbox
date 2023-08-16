@@ -23,6 +23,7 @@ GAMMA = 42.576E6 # in Hz/Tesla
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_profiles xxxxx")
 def coil_profiles_cli():
