@@ -45,8 +45,9 @@ Coil Profile Generation
 
 .. _st_create_coil_profiles:
 
-.. click:: shimmingtoolbox.cli.create_coil_profiles:create_coil_profiles_cli
+.. click:: shimmingtoolbox.cli.create_coil_profiles:coil_profiles_cli
    :prog: st_create_coil_profiles
+   :nested: full
 
 Image manipulation
 ------------------

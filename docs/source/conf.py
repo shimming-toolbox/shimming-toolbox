@@ -33,8 +33,9 @@ author = "NeuroPoly Lab, Polytechnique Montreal"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.githubpages", "sphinx.ext.napoleon", "sphinx_click.ext"]
+extensions = ["sphinx.ext.githubpages", "sphinx.ext.napoleon", "sphinx_click.ext", "sphinx.ext.autosectionlabel"]
 
+autosectionlabel_prefix_document = True
 # Autodoc configuration
 autodoc_mock_imports = [
     "click",

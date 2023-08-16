@@ -14,7 +14,7 @@
    :hidden:
    :caption: User Section
 
-   user_section/installation.rst
+   user_section/install.rst
    user_section/tutorials.rst
    cli_reference/cli.rst
    user_section/help.rst
