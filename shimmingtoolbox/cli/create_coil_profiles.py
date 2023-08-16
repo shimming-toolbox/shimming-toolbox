@@ -33,8 +33,8 @@ def coil_profiles_cli():
 )
 @click.option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
               help="Input filename of json config file. "
-                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ for more "
-                   "details.")
+                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ "
+                   "for more details.")
 @click.option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
               help="Path to add before each file in the config file. This allows to have relative paths in the config "
                    "file. If this option is not specified, absolute paths must be provided in the config file.")
@@ -306,9 +306,11 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static \u0394B\u2080 fieldmap on which to calculate coil profiles. Only FOV and affine are used.")
 @click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0,0,0),
-              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm).\nInput should be --offset x y z. Defaulted to 0 0 0")
+              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm). "
+                   "Input should be --offset x y z. Defaulted to 0 0 0")
 @click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1,1,1),
-              help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip).\nInput should be --flip x y z. Defaulted to 1 1 1.")
+              help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). "
+              "Input should be --flip x y z. Defaulted to 1 1 1.")
 @click.option('--software', type=click.Choice(['autocad']), default='autocad',
               help=f"Software from which the geometries were extracted.")
 @click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new",
