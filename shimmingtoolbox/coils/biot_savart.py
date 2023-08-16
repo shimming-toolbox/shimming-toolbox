@@ -122,10 +122,11 @@ def _z_field(l, dl, r):
 
 def generate_coil_bfield(wire, xyz, grid_size):
     """Generates Bz field in the FOV
+
     Args:
         wire (list): 1D list of n_segments dictionaries with start and stop point of the segment
         xyz (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. Represents
-                         the (x, y, z) coordinates in mm of each point in the FOV
+                            the (x, y, z) coordinates in mm of each point in the FOV
         grid_size (tuple): Shape of the FOV
 
     Returns:
