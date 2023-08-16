@@ -161,11 +161,11 @@ def test_create_coil_profiles_from_cad():
         ref_config = json.load(f)
     with open(os.path.join(__dir_testing__, 'ds_coil', 'header_test.pkl'), 'rb') as outp:
         header = pickle.load(outp)
-    ref_FOV_shape = header["dim"][1:4]
+    ref_fov_shape = header["dim"][1:4]
     affine_test = np.array([header["srow_x"], header["srow_y"], header["srow_z"], [0, 0, 0, 1]])
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        fm = nib.Nifti1Image(np.zeros(ref_FOV_shape), affine=affine_test, header=header)
+        fm = nib.Nifti1Image(np.zeros(ref_fov_shape), affine=affine_test, header=header)
         nib.save(fm, os.path.join(tmp, 'field_map_ref.nii.gz'))
         fname_fmap = os.path.join(tmp, 'field_map_ref.nii.gz')
         fname_output = os.path.join(tmp, 'results')
@@ -178,6 +178,8 @@ def test_create_coil_profiles_from_cad():
                             f'--offset 0 -111 -47 '
                             f'-o {fname_output} ',
                             catch_exceptions=False)
+
+        assert res.exit_code == 0
 
         fname_cp = os.path.join(fname_output, coil_name + '_coil_profiles.nii.gz')
         assert os.path.isfile(fname_cp)
@@ -192,5 +194,3 @@ def test_create_coil_profiles_from_cad():
         with open(fname_config, 'rb') as f:
             config_test = json.load(f)
         assert are_jsons_equal(config_test, ref_config)
-
-        assert res.exit_code == 0

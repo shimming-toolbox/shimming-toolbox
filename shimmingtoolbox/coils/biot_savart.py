@@ -120,46 +120,50 @@ def _z_field(l, dl, r):
     return b_per_i[2]  # [T/A]
 
 
-def generate_coil_bfield(wire, xyz, gridsize):
+def generate_coil_bfield(wire, xyz, grid_size):
     """Generates Bz field in the FOV
     Args:
-        wire (list): 1D list of n_segments dictionnairies with start and stop point of the segment
-        XYZ (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. Represents the (x, y, z) coordinates in mm of each point in the FOV
-        gridsize (tuple): Shape of the FOV
+        wire (list): 1D list of n_segments dictionaries with start and stop point of the segment
+        xyz (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. Represents
+                        the (x, y, z) coordinates in mm of each point in the FOV
+        grid_size (tuple): Shape of the FOV
 
     Returns:
-        numpy.ndarray: Bz field shaped back to gridsize
+        numpy.ndarray: Bz field shaped back to grid_size
     """
-    nPositions = xyz.shape[0]
-    fz = np.zeros((nPositions, 1))
-    nSegments = len(wire)
+    n_positions = xyz.shape[0]
+    fz = np.zeros((n_positions, 1))
+    n_segments = len(wire)
 
     def integral(p, q, a, b, c):
-        term1 = q * (2 * (2 * a + b) / (4 * a * c - b**2) / np.sqrt(a + b + c) - 2 * b / (4 * a * c - b**2) / np.sqrt(c))
-        term2 = p * (2 * (b + 2 * c) / (b**2 - 4 * a * c) / np.sqrt(a + b + c) - 4 * c / (b**2 - 4 * a * c) / np.sqrt(c))
+        term1 = q * (2 * (2 * a + b) / (4 * a * c - b**2) / np.sqrt(a + b + c) - 2 * b / (4 * a * c - b**2) /
+                     np.sqrt(c))
+        term2 = p * (2 * (b + 2 * c) / (b**2 - 4 * a * c) / np.sqrt(a + b + c) - 4 * c / (b**2 - 4 * a * c) /
+                     np.sqrt(c))
         output = term1 + term2
         return output
 
-    for iSegment in range(nSegments):
+    for iSegment in range(n_segments):
         if 'weight' in wire[0]:
             w = wire[iSegment]['weight']
         else:
             w = 1.0
 
-        a = np.tile(np.linalg.norm(wire[iSegment]['start'] - wire[iSegment]['stop'])**2, (nPositions, 1))
-        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (nPositions, 1)) * (np.tile(wire[iSegment]['start'], (nPositions, 1)) - xyz), axis=1, keepdims=True)
-        c = np.sum((np.tile(wire[iSegment]['start'], (nPositions, 1)) - xyz)**2, axis=1, keepdims=True)
+        a = np.tile(np.linalg.norm(wire[iSegment]['start'] - wire[iSegment]['stop'])**2, (n_positions, 1))
+        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (n_positions, 1)) *
+                       (np.tile(wire[iSegment]['start'], (n_positions, 1)) - xyz), axis=1, keepdims=True)
+        c = np.sum((np.tile(wire[iSegment]['start'], (n_positions, 1)) - xyz)**2, axis=1, keepdims=True)
 
-        s1 = np.tile(wire[iSegment]['start'], (nPositions, 1))
-        s2 = np.tile(wire[iSegment]['stop'], (nPositions, 1))
+        s1 = np.tile(wire[iSegment]['start'], (n_positions, 1))
+        s2 = np.tile(wire[iSegment]['stop'], (n_positions, 1))
 
         pz = (s2[:,0] - s1[:,0]) * (s2[:,1] - s1[:,1]) - (s2[:,1] - s1[:,1]) * (s2[:,0] - s1[:,0])
         qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - xyz[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - xyz[:,0])
-        pz = np.reshape(pz, (nPositions, 1))
-        qz = np.reshape(qz, (nPositions, 1))
+        pz = np.reshape(pz, (n_positions, 1))
+        qz = np.reshape(qz, (n_positions, 1))
 
         fz += integral(pz, qz, a, b, c) * w
 
-    Bz = np.reshape(fz, gridsize, order='F') / 1e4
+    bz = np.reshape(fz, grid_size, order='F') / 1e4
 
-    return Bz
+    return bz

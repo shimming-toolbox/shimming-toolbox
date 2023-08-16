@@ -306,10 +306,10 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               help="Input filename of wires' geometry text file. ")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static \u0394B\u2080 fieldmap on which to calculate coil profiles. Only FOV and affine are used.")
-@click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0,0,0),
-              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter position (in mm). "
-                   "Input should be --offset x y z. Defaulted to 0 0 0")
-@click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1,1,1),
+@click.option('--offset', 'offset', required=False, type=(float, float, float), default=(0, 0, 0),
+              help="XYZ offset: The difference between the coil’s isocenter position and the field map's isocenter"
+                   "position (in mm). Input should be --offset x y z. Defaulted to 0 0 0")
+@click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1, 1, 1),
               help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). "
               "Input should be --flip x y z. Defaulted to 1 1 1.")
 @click.option('--software', type=click.Choice(['autocad']), default='autocad',
@@ -326,7 +326,8 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
               default=os.path.join(os.path.curdir, '.'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current, max_current_sum, fname_output, verbose):
+def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current,
+             max_current_sum, fname_output, verbose):
     """Create \u0394B\u2080 coil profiles from CAD wire geometries."""
     # Assert inputs
     if min_current > max_current:
@@ -354,12 +355,12 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     voxel_coords = np.array([x.ravel(order='F'), y.ravel(order='F'), z.ravel(order='F')])
     voxel_coords = np.vstack((voxel_coords, np.ones(voxel_coords.shape[1])))
     world_coords = transform @ voxel_coords
-    gridSize = x.shape
+    grid_size = x.shape
 
     # Generate the coil profiles
-    coil_profiles = np.zeros((gridSize[0], gridSize[1], gridSize[2], len(wires)))
+    coil_profiles = np.zeros((grid_size[0], grid_size[1], grid_size[2], len(wires)))
     for iCh in range(len(wires)):
-        coil_profiles[:, :, :, iCh] = generate_coil_bfield(wires[iCh], world_coords.T, gridSize)
+        coil_profiles[:, :, :, iCh] = generate_coil_bfield(wires[iCh], world_coords.T, grid_size)
     coil_profiles *= GAMMA
 
     # Save the coil profiles
@@ -385,7 +386,7 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
         json.dump(config_coil, f, indent=4)
 
 
-def cad_to_pumcin(fname_txt, dimsToFlip, software):
+def cad_to_pumcin(fname_txt, dims_to_flip, software):
     """Transforms CAD format to PUMCIN format"""
     # Only available txt format at the moment
     if software != "autocad":
@@ -412,36 +413,36 @@ def cad_to_pumcin(fname_txt, dimsToFlip, software):
 
     xyz = np.array(xyz)
     xyzw = np.hstack((xyz, np.ones((xyz.shape[0], 1))))
-    xyzw[:, 0:3] = xyzw[:, 0:3] * np.array(dimsToFlip)
+    xyzw[:, 0:3] = xyzw[:, 0:3] * np.array(dims_to_flip)
     xyzw[0, 3] = 0
 
-    nPoints = xyzw.shape[0]
-    iCoil = 0
-    iCoilStart = [1]
-    iCoilEnd = []
+    n_points = xyzw.shape[0]
+    i_coil = 0
+    i_coil_start = [1]
+    i_coil_end = []
     TOLERANCE = 0.001
 
-    iPoint = 0
-    startPoint = xyzw[iPoint, 0:3].reshape(1, 3)
+    i_point = 0
+    start_point = xyzw[i_point, 0:3].reshape(1, 3)
 
-    while iPoint < nPoints:
-        iPoint += 1
-        distanceToStartPoint = np.linalg.norm(xyzw[iPoint, 0:3] - startPoint[iCoil, :])
+    while i_point < n_points:
+        i_point += 1
+        distance_to_start_point = np.linalg.norm(xyzw[i_point, 0:3] - start_point[i_coil, :])
 
-        if distanceToStartPoint < TOLERANCE:
-            iCoilEnd.append(iPoint)
-            iCoil += 1
-            iPoint += 1
-            iCoilStart.append(iPoint)
-            if iPoint < nPoints:
-                startPoint = np.vstack((startPoint, xyzw[iPoint, 0:3].reshape(1, 3)))
-                xyzw[iPoint, 3] = 0
+        if distance_to_start_point < TOLERANCE:
+            i_coil_end.append(i_point)
+            i_coil += 1
+            i_point += 1
+            i_coil_start.append(i_point)
+            if i_point < n_points:
+                start_point = np.vstack((start_point, xyzw[i_point, 0:3].reshape(1, 3)))
+                xyzw[i_point, 3] = 0
         else:
-            xyzw[iPoint, 3] = 1
+            xyzw[i_point, 3] = 1
 
-    IXYZW = np.hstack((np.arange(xyzw.shape[0])[..., None], xyzw))
+    ixyzw = np.hstack((np.arange(xyzw.shape[0])[..., None], xyzw))
 
-    return IXYZW
+    return ixyzw
 
 
 def _concat_and_save_nii(list_fnames_nii, fname_output):
