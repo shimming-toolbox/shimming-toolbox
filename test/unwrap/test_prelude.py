@@ -12,7 +12,7 @@ nii_phase_e1, nii_phase_e2, mag_e1, mag_e2 = get_phases_mags()
 
 
 @pytest.mark.prelude
-# @pytest.mark.usefixtures("test_prelude_installation")
+@pytest.mark.usefixtures("test_prelude_installation")
 class TestPrelude(object):
 
     def test_default_works(self):
