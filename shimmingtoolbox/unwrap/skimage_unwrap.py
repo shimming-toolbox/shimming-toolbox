@@ -21,7 +21,7 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
     Args:
         nii_wrapped_phase (nib.Nifti1Image): 2D or 3D radian numpy array to perform phase unwrapping. (2 pi interval)
         mag (numpy.ndarray): 2D or 3D magnitude numpy array corresponding to the phase array
-        mask (numpy.ndarray, optional): numpy array of booleans with shape of `complex_array` to mask during phase
+        mask (numpy.ndarray): numpy array of booleans with shape of `complex_array` to mask during phase
                                         unwrapping
         threshold: Threshold value for automatic mask generation (Use either mask or threshold, not both)
         fname_save_mask (str): Filename of the mask calculated by the unwrapper
@@ -35,7 +35,7 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
     if wrapped_phase.ndim not in [2, 3]:
         raise ValueError("Wrapped_phase must be 2d or 3d")
 
-    # Use the mask or create it if a threshold and a mag are provided
+    # Use the mask or create a mask if a threshold and a mag are provided
     if mask is not None:
         if mask.shape != wrapped_phase.shape:
             raise ValueError("Mask must be the same shape as wrapped_phase")
@@ -49,16 +49,19 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
         else:
             raise ValueError("Threshold must be specified if a mag is provided")
     else:
-        logger.warning("No mask or mag provided. Unwrapping the whole image.")
+        logger.warning("No mask or mag provided. Unwrapping the whole image, verify for residual wraps.")
         unwrap_mask = np.ones_like(wrapped_phase, dtype=bool)
 
+    # Save the mask if a filename is provided
     if fname_save_mask is not None:
         nii_mask = nib.Nifti1Image(unwrap_mask, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
         nib.save(nii_mask, fname_save_mask)
 
+    # Unwrap the phase
     ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask)
-    ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase)
+    ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
 
+    # Fill the masked values with 0
     unwrapped_phase = ma_unwrapped_phase.filled(0)
 
     return unwrapped_phase

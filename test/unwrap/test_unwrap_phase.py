@@ -80,10 +80,9 @@ class TestUnwrapPhase(object):
             unwrap_phase(nii, mag=self.mag)
 
     def test_unwrap_phase_skimage(self):
-        """Test prelude with '3d' input data."""
-        phase = self.nii_phase.get_fdata()[..., 0]
+        phase = self.nii_phase.get_fdata()[..., 0, :]
         nii = nib.Nifti1Image(phase, self.nii_phase.affine, header=self.nii_phase.header)
-        mag = self.mag[..., 0]
+        mag = self.mag[..., 0, :]
 
         unwrapped_skimage = unwrap_phase(nii, unwrapper='skimage', mag=mag, threshold=100)
 
