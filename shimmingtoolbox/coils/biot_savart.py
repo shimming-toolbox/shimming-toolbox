@@ -125,7 +125,7 @@ def generate_coil_bfield(wire, xyz, grid_size):
     Args:
         wire (list): 1D list of n_segments dictionaries with start and stop point of the segment
         xyz (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. Represents
-                        the (x, y, z) coordinates in mm of each point in the FOV
+                         the (x, y, z) coordinates in mm of each point in the FOV
         grid_size (tuple): Shape of the FOV
 
     Returns:
@@ -143,19 +143,19 @@ def generate_coil_bfield(wire, xyz, grid_size):
         output = term1 + term2
         return output
 
-    for iSegment in range(n_segments):
+    for i_segment in range(n_segments):
         if 'weight' in wire[0]:
-            w = wire[iSegment]['weight']
+            w = wire[i_segment]['weight']
         else:
             w = 1.0
 
-        a = np.tile(np.linalg.norm(wire[iSegment]['start'] - wire[iSegment]['stop'])**2, (n_positions, 1))
-        b = 2 * np.sum(np.tile(wire[iSegment]['stop'] - wire[iSegment]['start'], (n_positions, 1)) *
-                       (np.tile(wire[iSegment]['start'], (n_positions, 1)) - xyz), axis=1, keepdims=True)
-        c = np.sum((np.tile(wire[iSegment]['start'], (n_positions, 1)) - xyz)**2, axis=1, keepdims=True)
+        a = np.tile(np.linalg.norm(wire[i_segment]['start'] - wire[i_segment]['stop'])**2, (n_positions, 1))
+        b = 2 * np.sum(np.tile(wire[i_segment]['stop'] - wire[i_segment]['start'], (n_positions, 1)) *
+                       (np.tile(wire[i_segment]['start'], (n_positions, 1)) - xyz), axis=1, keepdims=True)
+        c = np.sum((np.tile(wire[i_segment]['start'], (n_positions, 1)) - xyz)**2, axis=1, keepdims=True)
 
-        s1 = np.tile(wire[iSegment]['start'], (n_positions, 1))
-        s2 = np.tile(wire[iSegment]['stop'], (n_positions, 1))
+        s1 = np.tile(wire[i_segment]['start'], (n_positions, 1))
+        s2 = np.tile(wire[i_segment]['stop'], (n_positions, 1))
 
         pz = (s2[:,0] - s1[:,0]) * (s2[:,1] - s1[:,1]) - (s2[:,1] - s1[:,1]) * (s2[:,0] - s1[:,0])
         qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - xyz[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - xyz[:,0])
