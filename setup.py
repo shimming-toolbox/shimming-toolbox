@@ -55,6 +55,7 @@ setup(
         "dataclasses",
         "raven",
         "joblib",
+        "quadprog",
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],
