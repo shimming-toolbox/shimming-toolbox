@@ -192,7 +192,7 @@ class LsqOptimizer(OptimizerUtils):
 
         else:
 
-            currents_sp = opt.minimize(self._initial_guess_mse, currents_0,
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='SLSQP',
                                        bounds=self.merged_bounds,

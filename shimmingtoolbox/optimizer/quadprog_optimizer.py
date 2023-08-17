@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import logging
 import numpy as np
 import quadprog
 from typing import List
@@ -10,6 +11,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
+logger = logging.getLogger(__name__)
 
 
 class QuadProgOpt(OptimizerUtils):
@@ -98,7 +100,7 @@ class QuadProgOpt(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for quad_prog optimization
         """
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
@@ -116,15 +118,24 @@ class QuadProgOpt(OptimizerUtils):
             np.ndarray : Vector of currents that make the better shimming
 
         """
+        # This allows to scale the output for the minimize function to avoid positive directional linesearch
         stability_factor = self.get_stability_factor(self._initial_guess_zeros(), unshimmed_vec,
                                                      np.zeros_like(coil_mat),
                                                      factor=1)
+        # We want to minimize 1/2 x.T @ cost_matrix @ x - cost_vector.T @ x
         cost_matrix, cost_vector = self.get_cost_matrices(currents_0, unshimmed_vec, coil_mat, stability_factor)
+        # We want to get the linear inequality matrix and vector, such as g @ x < h
         ineq_matrix, ineq_vector = self._get_linear_inequality_matrices()
 
-        currents = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])[0]
+        # We use the quadprog solver to solve the quadratic optimization problem
+        opt_result = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])
+        currents = opt_result[0]
 
-        return currents[: len(currents_0)]
+        if logger.level <= getattr(logging, 'DEBUG'):
+            n_iter = opt_result[3][0]
+            logger.debug(f"Number of iterations for quadprog: {n_iter}")
+
+        return currents[:len(currents_0)]
 
     def get_cost_matrices(self, currents_0, unshimmed_vec, coil_mat, factor):
         """
