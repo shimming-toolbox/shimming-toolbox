@@ -53,7 +53,7 @@ class QuadProgOpt(OptimizerUtils):
         sum_constraints = np.zeros([n_coils, 1])
         g_bis = np.zeros([n_coils, 2 * n])
 
-        # First we want to create the part to verify that the sum of the currents doesn't get above a limit
+        # First we want to create the part to verify that the sum of the currents don't get above a limit
         start_index = n
         for i_coil in range(n_coils):
             coil = self.coils[i_coil]
@@ -69,7 +69,7 @@ class QuadProgOpt(OptimizerUtils):
         ub = np.zeros([n, 1])
         ub[:, 0] = np.array([x[1] for x in self.merged_bounds])
 
-        # We create both array, but if there is no sum constraints, then there is no need to add this constraints
+        # We create both arrays, but if there is no sum constraints, then there is no need to add this constraint
         if np.all(sum_constraints == 0):
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)],
                           [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
