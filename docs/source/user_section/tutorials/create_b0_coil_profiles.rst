@@ -10,7 +10,7 @@ linear regression between the field maps and the current yields the coil profile
 In this tutorial, we will be characterising an 8 channel coil that was acquired with a dual echo field mapping sequence at 2
 different currents for each channel (-0.5 amps and 0.5 amps). We will start by processing the DICOMs into NIfTI files, we will then fill the
 configuration file containing the necessary information to correctly and accurately process the coil profiles. The last
-step consists in running :ref:`st_create_coil_profiles` on the command line to calculate the coil profiles.
+step consists in running :ref:`cli_reference/cli:from-field-maps` on the command line to calculate the coil profiles.
 
 .. Note::
 
@@ -42,7 +42,7 @@ The first step is to convert the DICOMs into NIfTI files. To do so, we first nee
 
     st_sort_dicoms -i ./dicoms -o ./dicoms_sorted
 
-The command :ref:`st_create_coil_profiles` requires the different phase, magnitude, echoes and currents to be separated
+The command :ref:`cli_reference/cli:from-field-maps` requires the different phase, magnitude, echoes and currents to be separated
 in different NIfTI files. A helper script was downloaded with the dataset named: `batch_dicom_to_nifti.sh` that will
 process each folder of DICOMs into NIfTI files sorted by the folder names of the input. This script can be used with other datasets.
 You will need to give executable permission to the script beforehand.
@@ -55,7 +55,7 @@ You will need to give executable permission to the script beforehand.
 Config file
 ___________
 
-The configuration file allows :ref:`st_create_coil_profiles` to know the number of channels, the path to the different
+The configuration file allows :ref:`cli_reference/cli:from-field-maps` to know the number of channels, the path to the different
 NIfTI folders, the current used for each channel and other information that will allow to generate the config file
 required for B0 shimming (:ref:`st_b0shimming`). The configuration file for this dataset is already filled in as:
 `configuration_file.json`. The following describes the different arguments required in the JSON file:
@@ -85,7 +85,7 @@ each current and channel. A linear regression is then performed for each channel
 
 .. code:: bash
 
-    st_create_coil_profiles --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
+    st_create_coil_profiles from-field-maps --input "demo_config_coil_profile.json" --unwrapper "prelude" --threshold 0.03 --output "coil_profiles.nii.gz" --relative-path .
 
 The coil profiles are in a NIfTI file named "coil_profiles.nii.gz". To visualize them, launch FSLeyes with the following command:
 
@@ -100,6 +100,6 @@ ______________________________
 
 When creating your own custom coil using the commands above, keep in mind the following:
 
-* :ref:`st_create_coil_profiles` will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command :ref:`st_create_coil_profiles`.
+* :ref:`cli_reference/cli:from-field-maps` will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command :ref:`cli_reference/cli:from-field-maps`.
 
 * The output B0 coil profile is scaled in Hz/<current> where current depends on the value in the configuration file. For example, this tutorial could have use 500 mA instead of 0.5 A. This would have resulted in a coil profile in Hz/mA instead of Hz/A.
