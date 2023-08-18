@@ -174,14 +174,15 @@ def test_create_coil_profiles_from_cad():
         fname_output = os.path.join(tmp, 'results')
         coil_name = "NP15ch"
 
-        res = runner.invoke(coil_profiles_cli,
-                            f'from-cad -i {fname_txt} '
-                            f'--fmap {fname_fmap} '
-                            f'--coil_name {coil_name} '
-                            f'--offset 0 -111 -47 '
-                            f'-o {fname_output} ',
+        res = runner.invoke(coil_profiles_cli,['from-cad',
+                            '-i', fname_txt,
+                            '--fmap', fname_fmap,
+                            '--coil_name', coil_name,
+                            '--offset', '0', '-111', '-47',
+                            '-o', fname_output],
                             catch_exceptions=False)
-
+        print(fname_txt)
+        print(res.output)
         assert res.exit_code == 0
 
         fname_cp = os.path.join(fname_output, coil_name + '_coil_profiles.nii.gz')
