@@ -17,6 +17,7 @@ import json
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -33,6 +34,8 @@ logger = logging.getLogger(__name__)
 supported_optimizers = {
     'least_squares_rt': PmuLsqOptimizer,
     'least_squares': LsqOptimizer,
+    'quad_prog': QuadProgOpt,
+    'quad_prog_rt': PmuQuadProgOpt,
     'pseudo_inverse': Optimizer
 }
 
@@ -123,8 +126,9 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
-                      implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+                      Note: refer to their specific implementation to know limits of the methods
+                      in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation.
         nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
@@ -152,8 +156,9 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
-                          implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+                          Note: refer to their specific implementation to know limits of the methods
+                          in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
@@ -291,8 +296,8 @@ class ShimSequencer(Sequencer):
 
         Returns:
             (tuple) : tuple containing:
-            * nib.Nifti1Image: Mask resampled and dilated on the fieldmap for the optimization
-            * nib.Nifti1Image: Mask resampled on the original fieldmap.
+                * nib.Nifti1Image: Mask resampled and dilated on the fieldmap for the optimization
+                * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
         nii_mask_anat = self.nii_mask_anat
@@ -363,6 +368,9 @@ class ShimSequencer(Sequencer):
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor)
+            elif self.method == 'quad_prog':
+                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
+                                                              self.nii_fieldmap.affine, reg_factor=self.reg_factor)
             else:
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine)
@@ -759,8 +767,9 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
-                          implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+                          Note: refer to their specific implementation to know limits of the methods
+                          in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
@@ -808,8 +817,9 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse'. Note: refer to their specific
-                          implementation to know limits of the methods in: :mod:`shimmingtoolbox.optimizer`
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+                          Note: refer to their specific implementation to know limits of the methods
+                          in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
@@ -1031,6 +1041,8 @@ class RealTimeSequencer(Sequencer):
         self.select_optimizer(static, affine_fieldmap)
         if self.method == 'least_squares':
             self.method = 'least_squares_rt'
+        if self.method == 'quad_prog':
+            self.method = 'quad_prog_rt'
         self.select_optimizer(riro, affine_fieldmap, self.pmu)
 
         # Create both resampled masks used for the optimization
@@ -1071,6 +1083,9 @@ class RealTimeSequencer(Sequencer):
             if self.method == 'least_squares':
                 self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine, self.opt_criteria,
                                                                    reg_factor=self.reg_factor)
+            elif self.method == 'quad_prog':
+                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine,
+                                                                   reg_factor=self.reg_factor)
 
             elif self.method == 'least_squares_rt':
                 # Make sure pmu is defined
@@ -1080,6 +1095,14 @@ class RealTimeSequencer(Sequencer):
                 # Add pmu to the realtime optimizer(s)
                 self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine,
                                                                         self.opt_criteria, pmu,
+                                                                        reg_factor=self.reg_factor)
+            elif self.method == 'quad_prog_rt':
+                # Make sure pmu is defined
+                if pmu is None:
+                    raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
+
+                # Add pmu to the realtime optimizer(s)
+                self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine, pmu,
                                                                         reg_factor=self.reg_factor)
 
             else:
@@ -1243,17 +1266,17 @@ class RealTimeSequencer(Sequencer):
         shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
         shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
         unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
-            
-        if self.path_output is not None:    
+
+        if self.path_output is not None:
             # Plot before vs after shimming averaged on time
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
             self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
-            
+
             # Plot STD over time before and after shimming
             self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
-        
-        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:            
+
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # plot results
             i_slice = 0
             i_shim = 0
@@ -1470,7 +1493,7 @@ class RealTimeSequencer(Sequencer):
                      f"\nstatic_shim_static_riro: {static_shim_static_riro}"
                      f"\nstatic_shim_riro: {static_shim_riro}"
                      f"\nstatic_unshimmed: {static_unshimmed}")
-    
+
     def plot_full_mask(self, unshimmed, shimmed_masked, mask):
         """
         Plot and save the static full mask
@@ -1481,11 +1504,11 @@ class RealTimeSequencer(Sequencer):
             mask (np.ndarray): Binary mask in the fieldmap space
         """
         # Plot
-     
+
         mt_unshimmed = montage(unshimmed)
         mt_unshimmed_masked = montage(unshimmed * mask)
         mt_shimmed_masked = montage(shimmed_masked)
-        
+
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
@@ -1543,8 +1566,8 @@ class RealTimeSequencer(Sequencer):
         # Transform shimmed field map to shape (x, y, z, time)
         sum_mask_fmap_cs =  np.sum(mask_fmap_cs, axis=3)
         mask_extended = np.repeat(mask[..., np.newaxis], masked_shim_static_riro.shape[-2], axis=-1)
-        
-        # Transpose is used to cater to numpy division order 
+
+        # Transpose is used to cater to numpy division order
         # (3, 2, 4) / (3, 2) Does not work
         # (4, 2, 3) / (2, 3) Does work
         #* Using out parameter in np.divide() prevents inconsistent results
@@ -1553,12 +1576,12 @@ class RealTimeSequencer(Sequencer):
 
         std_shimmed_masked = np.std(shimmed_masked, axis=-1, dtype=np.float64)
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
-        
-        ## Plot 
+
+        ## Plot
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
         mt_unshimmed_masked = montage(std_unshimmed * mask)
         mt_shimmed_masked = montage(std_shimmed_masked)
-        
+
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
 

@@ -118,3 +118,53 @@ def _z_field(l, dl, r):
         return np.nan
     b_per_i = MU0 / (4 * np.pi) * np.cross(dl, rp) / rp_norm ** 3
     return b_per_i[2]  # [T/A]
+
+
+def generate_coil_bfield(wire, xyz, grid_size):
+    """Generates Bz field in the FOV
+
+    Args:
+        wire (list): 1D list of n_segments dictionaries with start and stop point of the segment
+        xyz (np.array): 2D array shape (n_points, 3) where n_points is the number of points in the whole FOV. Represents
+                            the (x, y, z) coordinates in mm of each point in the FOV
+        grid_size (tuple): Shape of the FOV
+
+    Returns:
+        numpy.ndarray: Bz field shaped back to grid_size
+    """
+    n_positions = xyz.shape[0]
+    fz = np.zeros((n_positions, 1))
+    n_segments = len(wire)
+
+    def integral(p, q, a, b, c):
+        term1 = q * (2 * (2 * a + b) / (4 * a * c - b**2) / np.sqrt(a + b + c) - 2 * b / (4 * a * c - b**2) /
+                     np.sqrt(c))
+        term2 = p * (2 * (b + 2 * c) / (b**2 - 4 * a * c) / np.sqrt(a + b + c) - 4 * c / (b**2 - 4 * a * c) /
+                     np.sqrt(c))
+        output = term1 + term2
+        return output
+
+    for i_segment in range(n_segments):
+        if 'weight' in wire[0]:
+            w = wire[i_segment]['weight']
+        else:
+            w = 1.0
+
+        a = np.tile(np.linalg.norm(wire[i_segment]['start'] - wire[i_segment]['stop'])**2, (n_positions, 1))
+        b = 2 * np.sum(np.tile(wire[i_segment]['stop'] - wire[i_segment]['start'], (n_positions, 1)) *
+                       (np.tile(wire[i_segment]['start'], (n_positions, 1)) - xyz), axis=1, keepdims=True)
+        c = np.sum((np.tile(wire[i_segment]['start'], (n_positions, 1)) - xyz)**2, axis=1, keepdims=True)
+
+        s1 = np.tile(wire[i_segment]['start'], (n_positions, 1))
+        s2 = np.tile(wire[i_segment]['stop'], (n_positions, 1))
+
+        pz = (s2[:,0] - s1[:,0]) * (s2[:,1] - s1[:,1]) - (s2[:,1] - s1[:,1]) * (s2[:,0] - s1[:,0])
+        qz = (s2[:,0] - s1[:,0]) * (s1[:,1] - xyz[:,1]) - (s2[:,1] - s1[:,1]) * (s1[:,0] - xyz[:,0])
+        pz = np.reshape(pz, (n_positions, 1))
+        qz = np.reshape(qz, (n_positions, 1))
+
+        fz += integral(pz, qz, a, b, c) * w
+
+    bz = np.reshape(fz, grid_size, order='F') / 1e4
+
+    return bz

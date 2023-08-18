@@ -29,7 +29,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
                                The values must range from [-pi to pi].
         echo_times (list): List of echo times in seconds for each echo. The number of echotimes must match the number of
                            echoes. It input is a phasediff (1 phase), input 2 echotimes.
-        unwrapper (str): Unwrapper to use for phase unwrapping. Supported: prelude.
+        unwrapper (str): Unwrapper to use for phase unwrapping. Supported: ``prelude``, ``skimage``.
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
         mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
         threshold: Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower

@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import logging
 
 logger = logging.getLogger(__name__)
-
+TOLERANCE = 0.001
 
 def create_coil_profiles(fnames_fmaps, list_currents):
     """ Create coil profiles from fieldmaps
@@ -60,3 +60,42 @@ def create_coil_profiles(fnames_fmaps, list_currents):
         # static_offset = reg.intercept_.reshape(fmaps.shape[:-1])
 
     return profiles
+
+
+def get_wire_pattern(pumcinFile):
+    """ Transform the pumcin file to a usable format
+    Args:
+        pumcinFile (np.array): 2D array of shape (n_points, 5)
+
+    Returns:
+        list: 1D list of wires (channels) with their coordinates formatted
+              in n_segments dictionnaries with start and stop coordinates of each segment
+    """
+    nPoints = pumcinFile.shape[0]
+    wireStartPoint = pumcinFile[0, 1:5]
+    iChannel = -1
+
+      # [units: mm]
+
+    wires = []
+
+    for iPoint in range(nPoints):
+        if pumcinFile[iPoint, 4] == 0:
+            wireStartPoint = pumcinFile[iPoint, 1:4]
+            iChannel += 1
+            iSegment = 0
+            wires.append([])
+            wires[iChannel].append({})
+            wires[iChannel][iSegment]['start'] = wireStartPoint
+        else:
+            iSegment += 1
+            # Wires[iChannel].append({})
+            wires[iChannel][iSegment - 1]['stop'] = pumcinFile[iPoint, 1:4]
+
+            if np.linalg.norm(pumcinFile[iPoint, 1:4] - wireStartPoint) < TOLERANCE:
+                nSegmentsPerChannel = iSegment - 1
+            else:
+                wires[iChannel].append({})
+                wires[iChannel][iSegment]['start'] = pumcinFile[iPoint, 1:4]
+
+    return wires
