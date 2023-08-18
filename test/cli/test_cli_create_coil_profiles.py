@@ -54,7 +54,6 @@ coil_profile_config = {
 }
 
 
-@pytest.mark.prelude
 def test_create_coil_profiles():
     runner = CliRunner()
 
@@ -70,6 +69,7 @@ def test_create_coil_profiles():
                             ['from-field-maps',
                              '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
+                             '--unwrapper', 'skimage',
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
 
@@ -77,7 +77,6 @@ def test_create_coil_profiles():
         assert os.path.isfile(fname_output)
 
 
-@pytest.mark.prelude
 def test_create_coil_profiles_dead_channel1():
     runner = CliRunner()
 
@@ -97,6 +96,7 @@ def test_create_coil_profiles_dead_channel1():
                             ['from-field-maps',
                              '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
+                             '--unwrapper', 'skimage',
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
 
@@ -105,7 +105,6 @@ def test_create_coil_profiles_dead_channel1():
         assert nib.load(fname_output).shape == (128, 76, 10, 2)
 
 
-@pytest.mark.prelude
 def test_create_coil_profiles_dead_channel2():
     runner = CliRunner()
 
@@ -126,6 +125,7 @@ def test_create_coil_profiles_dead_channel2():
                             ['from-field-maps',
                              '-i', fname_config,
                              '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
+                             '--unwrapper', 'skimage',
                              '--threshold', '0.4',
                              '-o', fname_output], catch_exceptions=False)
 

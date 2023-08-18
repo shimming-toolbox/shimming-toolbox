@@ -18,16 +18,18 @@ from shimmingtoolbox.utils import create_output_dir, save_nii_json, set_all_logg
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-GAMMA = 42.576E6 # in Hz/Tesla
+GAMMA = 42.576E6  # in Hz/Tesla
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS,
-             help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_profiles xxxxx")
+             help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_"
+                  "profiles xxxxx")
 def coil_profiles_cli():
     pass
+
 
 @click.command(
     context_settings=CONTEXT_SETTINGS,
@@ -39,7 +41,7 @@ def coil_profiles_cli():
 @click.option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
               help="Path to add before each file in the config file. This allows to have relative paths in the config "
                    "file. If this option is not specified, absolute paths must be provided in the config file.")
-@click.option('--unwrapper', type=click.Choice(['prelude']), default='prelude', show_default=True,
+@click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude', show_default=True,
               help="Algorithm for unwrapping")
 @click.option('--threshold', type=float, required=True,
               help="Threshold for masking. Allowed range: [0, 1] where all scaled values lower than the threshold are "
@@ -55,9 +57,10 @@ def coil_profiles_cli():
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
-                             fname_output, verbose):
-    """ Create \u0394B\u2080 coil profiles from acquisitions defined in the input json file. The output is in Hz/<current> where
-        current depends on the value in the configuration file"""
+                    fname_output, verbose):
+    """ Create \u0394B\u2080 coil profiles from acquisitions defined in the input json file. The output is in
+    Hz/<current> where current depends on the value in the configuration file
+    """
 
     # Set logger level
     set_all_loggers(verbose)
@@ -311,7 +314,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
                    "position (in mm). Input should be --offset x y z. Defaulted to 0 0 0")
 @click.option('--flip', 'dims_to_flip', required=False, type=(float, float, float), default=(1, 1, 1),
               help="Dimensions (XYZ order) to flip in the wires' geometry (1 for no flip, -1 for flip). "
-              "Input should be --flip x y z. Defaulted to 1 1 1.")
+                   "Input should be --flip x y z. Defaulted to 1 1 1.")
 @click.option('--software', type=click.Choice(['autocad']), default='autocad',
               help=f"Software from which the geometries were extracted.")
 @click.option('--coil_name', 'coil_name', required=False, type=click.STRING, default="new",

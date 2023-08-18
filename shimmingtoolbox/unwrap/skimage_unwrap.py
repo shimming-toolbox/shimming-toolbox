@@ -58,7 +58,7 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
         nib.save(nii_mask, fname_save_mask)
 
     # Unwrap the phase
-    ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask)
+    ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask.astype(bool))
     ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
 
     # Fill the masked values with 0
