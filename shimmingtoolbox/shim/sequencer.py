@@ -447,7 +447,7 @@ class ShimSequencer(Sequencer):
                 fname_correction = os.path.join(self.path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
                 nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
-                
+
         return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
@@ -636,7 +636,7 @@ class ShimSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
-        
+
         return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
 
     def plot_partial_mask(self, unshimmed, shimmed):
@@ -795,7 +795,7 @@ class RealTimeSequencer(Sequencer):
             acq_pressures (np.ndarray) : 1D array that contains the acquisitions pressures
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_riro,coils_static,
                  method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
                  reg_factor=0, path_output=None):
         """
@@ -840,7 +840,8 @@ class RealTimeSequencer(Sequencer):
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
         self.json_fmap = json_fmap
         self.pmu = pmu
-        self.coils = coils
+        self.coils_riro = coils_riro
+        self.coils_static = coils_static
         self.method = method
         self.bounds = None
 
@@ -1058,7 +1059,7 @@ class RealTimeSequencer(Sequencer):
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
-        self.bounds = new_bounds_from_currents(coef_static, self.optimizer.merged_bounds)
+        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds, self.coils_static, self.coils_riro)
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(riro_mask_resampled)
@@ -1085,10 +1086,10 @@ class RealTimeSequencer(Sequencer):
         # global supported_optimizers
         if self.method in supported_optimizers:
             if self.method == 'least_squares':
-                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine, self.opt_criteria,
+                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine, self.opt_criteria,
                                                                    reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
-                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine,
+                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
             elif self.method == 'least_squares_rt':
@@ -1097,7 +1098,7 @@ class RealTimeSequencer(Sequencer):
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
-                self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine,
+                self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine,
                                                                         self.opt_criteria, pmu,
                                                                         reg_factor=self.reg_factor)
             elif self.method == 'quad_prog_rt':
@@ -1106,14 +1107,14 @@ class RealTimeSequencer(Sequencer):
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
-                self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine, pmu,
+                self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine, pmu,
                                                                         reg_factor=self.reg_factor)
 
             else:
                 if pmu is None:
-                    self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                    self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine)
                 else:
-                    self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                    self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine)
 
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
@@ -1218,7 +1219,10 @@ class RealTimeSequencer(Sequencer):
                                                             cval=0).get_fdata()), 0, 1)
         for i_shim in range(len(self.slices)):
             # Calculate static correction
-            correction_static = self.optimizer_riro.merged_coils @ coef_static[i_shim]
+            # print(f"coef_static: {self.optimizer.merged_coils[0,0,0]}")
+            # print(f"coef_riro: {self.optimizer_riro.merged_coils[0,0,0]}")
+            correction_static = self.optimizer.merged_coils @ coef_static[i_shim]
+            # correction_static = self.optimizer_riro.merged_coils @ coef_static[i_shim]
 
             # Calculate the riro coil profiles
             riro_profile = self.optimizer_riro.merged_coils @ coef_riro[i_shim]
@@ -1270,17 +1274,17 @@ class RealTimeSequencer(Sequencer):
         shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
         shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
         unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
-            
-        if self.path_output is not None:    
+
+        if self.path_output is not None:
             # Plot before vs after shimming averaged on time
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3), where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
             metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean = self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
-            
+
             # Plot STD over time before and after shimming
             self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
-        
-        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:            
+
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # plot results
             i_slice = 0
             i_shim = 0
@@ -1306,10 +1310,10 @@ class RealTimeSequencer(Sequencer):
             nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nii_fieldmap.affine,
                                                header=self.nii_fieldmap.header)
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
-        
+
         return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
-    
-    
+
+
     def plot_currents(self, static, riro=None):
         """
         Plot evolution of currents through shim groups
@@ -1500,7 +1504,7 @@ class RealTimeSequencer(Sequencer):
                      f"\nstatic_shim_static_riro: {static_shim_static_riro}"
                      f"\nstatic_shim_riro: {static_shim_riro}"
                      f"\nstatic_unshimmed: {static_unshimmed}")
-    
+
     def plot_full_mask(self, unshimmed, shimmed_masked, mask):
         """
         Plot and save the static full mask
@@ -1511,11 +1515,11 @@ class RealTimeSequencer(Sequencer):
             mask (np.ndarray): Binary mask in the fieldmap space
         """
         # Plot
-     
+
         mt_unshimmed = montage(unshimmed)
         mt_unshimmed_masked = montage(unshimmed * mask)
         mt_shimmed_masked = montage(shimmed_masked)
-        
+
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
@@ -1560,7 +1564,7 @@ class RealTimeSequencer(Sequencer):
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
         return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
-        
+
     def plot_full_time_std(self, unshimmed, masked_shim_static_riro, mask_fmap_cs, mask):
         """
         Plot and save the std heatmap over time
@@ -1574,8 +1578,8 @@ class RealTimeSequencer(Sequencer):
         # Transform shimmed field map to shape (x, y, z, time)
         sum_mask_fmap_cs =  np.sum(mask_fmap_cs, axis=3)
         mask_extended = np.repeat(mask[..., np.newaxis], masked_shim_static_riro.shape[-2], axis=-1)
-        
-        # Transpose is used to cater to numpy division order 
+
+        # Transpose is used to cater to numpy division order
         # (3, 2, 4) / (3, 2) Does not work
         # (4, 2, 3) / (2, 3) Does work
         #* Using out parameter in np.divide() prevents inconsistent results
@@ -1584,12 +1588,12 @@ class RealTimeSequencer(Sequencer):
 
         std_shimmed_masked = np.std(shimmed_masked, axis=-1, dtype=np.float64)
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
-        
-        ## Plot 
+
+        ## Plot
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
         mt_unshimmed_masked = montage(std_unshimmed * mask)
         mt_shimmed_masked = montage(std_shimmed_masked)
-        
+
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
 
@@ -1655,6 +1659,37 @@ def new_bounds_from_currents(currents, old_bounds):
             shim_bound.append(tuple(a_bound))
         new_bounds.append(shim_bound)
 
+    return new_bounds
+
+
+def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[], coils_riro=[]):
+    """
+    Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
+    "old_coef + next_bound < old_bound".
+
+    Args:
+        currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
+        old_bounds (list): 1d list (n_channels) of tuples (min, max) containing the merged bounds of the previous
+                           optimization.
+    Returns:
+        list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
+    """
+
+    new_bounds = []
+    if len(coils_static) != 0:
+        print(f"Old bound: {old_bounds}\nCoils static: {len(coils_static)} {coils_static[0].coef_channel_minmax}\nCoils riro: {len(coils_riro)} {coils_riro[0].coef_channel_minmax}\n currents: {len(currents[0])}")
+    if len(coils_static) > len(coils_riro):
+        currents = currents[:, -len(coils_riro[0].coef_channel_minmax):]
+        old_bounds = old_bounds[-len(coils_riro[0].coef_channel_minmax):]
+
+    for i_shim in range(currents.shape[0]):
+        shim_bound = []
+        for i_channel in range(len(old_bounds)):
+            a_bound = old_bounds[i_channel] - currents[i_shim, i_channel]
+            shim_bound.append(tuple(a_bound))
+        new_bounds.append(shim_bound)
+
+    print(f"New bound: {new_bounds}")
     return new_bounds
 
 

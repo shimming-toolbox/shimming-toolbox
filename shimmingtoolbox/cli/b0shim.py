@@ -1233,8 +1233,8 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
         f.write(f"{index_per_slice[n_slices - 1]}")
 
     logger.info(f"Txt file is located here:\n{fname_output}")
-  
-    
+
+
 def dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
             o_format_sph, output_value_format, reg_factor, verbose):
@@ -1478,7 +1478,7 @@ def dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria
 def multi_dynamic_no_cli(fname_fmap_avg, fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
             o_format_sph, output_value_format, reg_factor, verbose):
-    
+
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -1694,7 +1694,7 @@ def multi_dynamic_no_cli(fname_fmap_avg, fname_fmap, fname_anat, fname_mask_anat
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
-    
+
     ######### Cycle through dimensions ################
     nii_fmap_rt = nib.load(fname_fmap)
     metric_shimmed_mean = np.zeros(nii_fmap_rt.shape[-1])
@@ -1708,7 +1708,7 @@ def multi_dynamic_no_cli(fname_fmap_avg, fname_fmap, fname_anat, fname_mask_anat
         nii_temp = nib.Nifti1Image(nii_temp, nii_fmap_orig.affine, nii_fmap_orig.header)
         sequencer.nii_fieldmap, sequencer.nii_fieldmap_orig, sequencer.fmap_is_extended = sequencer.get_fieldmap(nii_temp)
         metric_shimmed_mean[i], metric_unshimmed_mean[i], metric_shimmed_std[i], metric_unshimmed_std[i], metric_shimmed_absmean[i], metric_unshimmed_absmean[i] = sequencer.eval(coefs)
-    
+
     logger.info(f" Plotting currents")
 
     # Plot the coefs after outputting the currents to the text file
@@ -1970,8 +1970,8 @@ def realtime_dynamic_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fnam
 
 
 def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
-                     opt_criteria, slices, slice_factor, coils, dilation_kernel_size, scanner_coil_order,
-                     fname_sph_constr, fatsat, path_output, o_format_coil, o_format_sph, output_value_format,
+                     opt_criteria, slices, slice_factor, coils_riro, coils_static, dilation_kernel_size, scanner_coil_order_riro,
+                     scanner_coil_order_static, fname_sph_constr, fatsat, path_output, o_format_coil, o_format_sph, output_value_format,
                      reg_factor, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
@@ -1982,7 +1982,8 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
     """
 
     # Input can be a string
-    scanner_coil_order = int(scanner_coil_order)
+    scanner_coil_order_riro = int(scanner_coil_order_riro)
+    scanner_coil_order_static = int(scanner_coil_order_static)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
@@ -1990,8 +1991,8 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if scanner_coil_order != 1:
-            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+        if scanner_coil_order_riro != 1 or scanner_coil_order_static != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_riro} for output file format: "
                              f"{o_format_sph}")
 
     # Set logger level
@@ -2065,7 +2066,9 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
     initial_coefs = [json_coefs[0]] + converted_coefs
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, initial_coefs,
+    list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap, initial_coefs,
+                             json_fm_data['Manufacturer'])
+    list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap, initial_coefs,
                              json_fm_data['Manufacturer'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
@@ -2086,7 +2089,7 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
                                                 nii_mask_anat_riro,
-                                                list_slices, pmu, list_coils,
+                                                list_slices, pmu, list_coils_riro,list_coils_static,
                                                 method=method,
                                                 opt_criteria=opt_criteria,
                                                 mask_dilation_kernel='sphere',
@@ -2103,7 +2106,7 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
 
     list_fname_output = []
     end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
+    for i_coil, coil in enumerate(list_coils_riro):
 
         # Figure out the start and end channels for a coil to be able to select it from the coefs
         n_channels = coil.dim[3]
@@ -2206,6 +2209,105 @@ def realtime_coil_no_cli(fname_fmap, fname_anat, fname_mask_anat_static, fname_m
 
     # logger.info(f"Finished plotting figure(s)")
     return metric_shimmed_mean, metric_unshimmed_mean, metric_shimmed_std, metric_unshimmed_std, metric_shimmed_absmean, metric_unshimmed_absmean
+
+def TestShimAllRealTime(order_riro, order_static, experiment, coils_riro, coils_static):
+    shimStd = []
+    shimMean = []
+    shimAbsMean = []
+    unshimStd = []
+    unshimMean = []
+    unshimAbsMean = []
+
+    subDirs = os.listdir(FM_DIR)
+    if '.DS_Store' in subDirs:
+        subDirs.remove('.DS_Store')
+
+    for subDir in subDirs:
+        runs = os.listdir(os.path.join(FM_DIR,subDir))
+        if '.DS_Store' in runs:
+            runs.remove('.DS_Store')
+        for run in runs:
+            if run == "run_1" and subDir == "acdc_154":
+                continue
+            shimmed_mean, unshimmed_mean, shimmed_std, unshimmed_std, shimmed_absmean, unshimmed_absmean = realtime_coil_no_cli(
+                fname_fmap= os.path.join(FM_DIR,subDir,run, "FieldMap.nii.gz"),
+                fname_anat= os.path.join(DATA_DIR,subDir,run, ANAT_PATH),
+                fname_resp = os.path.join(DATA_DIR,subDir,run, RESP_PATH),
+                fname_mask_anat_static=os.path.join(DATA_DIR,subDir,run, MASK_PATH),
+                fname_mask_anat_riro=os.path.join(DATA_DIR,subDir,run, MASK_PATH),
+                dilation_kernel_size=5,
+                opt_criteria="mse",
+                reg_factor=0.1,
+                method="least_squares",
+                slices=experiment,
+                o_format_sph="slicewise-ch",
+                fname_sph_constr="/Users/arnaud/shimming-toolbox/coil_config.json",
+                scanner_coil_order_riro=order_riro,
+                scanner_coil_order_static=order_static,
+                o_format_coil="slicewise-ch",
+                output_value_format="delta",
+                path_output=os.path.join(OUT_DIR, subDir, run),
+                verbose="info",
+                slice_factor=1,
+                coils_riro=coils_riro,
+                coils_static=coils_static,
+                fatsat=None)
+
+            shimAbsMean.append(shimmed_absmean)
+            shimMean.append(shimmed_mean)
+            shimStd.append(shimmed_std)
+
+            unshimAbsMean.append(unshimmed_absmean)
+            unshimMean.append(unshimmed_mean)
+            unshimStd.append(unshimmed_std)
+
+if __name__ == "__main__":
+    DATA_DIR = "/Users/arnaud/Documents/MSC/sim_outputs/rt_shim_nifti_with_seg/"
+    FM_DIR = "/Users/arnaud/Documents/MSC/sim_outputs/FieldMaps/"
+    ANAT_PATH = "rt_shim_nifti/sub-example/anat/sub-example_unshimmed_e1.nii.gz"
+    MASK_PATH = "rt_shim_nifti/sub-example/masking/mgre_averaged_riro_mask.nii.gz"
+    MASK_STATIC_PATH = "rt_shim_nifti/sub-example/masking/mgre_averaged_static_mask.nii.gz"
+    MASK_RIRO_PATH = "rt_shim_nifti/sub-example/masking/mgre_averaged_riro_mask.nii.gz"
+    MASK_DILATED_PATH = "rt_shim_nifti/sub-example/masking/mgre_averaged_riro_mask_dilated.nii.gz"
+    RESP_PATH = "rt_shim_nifti/sourcedata/PMUresp_signal.resp"
+    COIL_PATHS = [("/Users/arnaud/Documents/MSC/sim_outputs/CoilProfiles/NP15ch_coil_profiles.nii.gz", "/Users/arnaud/Documents/MSC/sim_outputs/CoilProfiles/NP15ch_config.json")]
+    COIL_FAKE_PATHS = [("/Users/arnaud/Documents/MSC/sim_outputs/CoilProfiles/NP15ch_coil_profiles.nii.gz", "/Users/arnaud/Documents/MSC/sim_outputs/CoilProfiles/NP15ch_config_fake.json")]
+    OUT_DIR = "/Users/arnaud/Documents/MSC/sim_outputs/results"
+
+    parametersMap = {"static 1st order": {"order": 1, "experiment": "volume", "coils": []},
+                    "static 1-2nd order":{"order": 2, "experiment": "volume", "coils": []},
+                    "static coil + 1st order":{"order": 1, "experiment": "volume", "coils": COIL_PATHS},
+                    "static coil + 1-2nd order":{"order": 2, "experiment": "volume", "coils": COIL_PATHS},
+                    "dynamic 1st order":{"order": 1, "experiment": "auto", "coils":[]},
+                    "dynamic 1-2nd order":{"order": 2, "experiment": "auto", "coils": []},
+                    "dynamic coil + 1st order":{"order": 1, "experiment": "auto", "coils": COIL_PATHS},
+                    "dynamic coil + 1-2nd order":{"order": 2, "experiment": "auto", "coils": COIL_PATHS},
+                    "real-time dynamic 1st order":{"order": 1, "experiment": "auto", "coils": []},
+                    "real-time dynamic 1-2nd order":{"order": 2, "experiment": "auto", "coils": []},
+                    "real-time coil + 1st order":{"order": 1, "experiment": "auto", "coils": COIL_PATHS},
+                    "real-time coil + 1-2nd order":{"order": 2, "experiment": "auto", "coils": COIL_PATHS}}
+                    # "Dynamic coil + real-time 1st order":{"order": 1, "experiment": "auto", "coils": COIL_PATHS},
+                    # "Dynamic coil + real-time 1-2nd order":{"order": 2, "experiment": "auto", "coils": COIL_PATHS}}
+
+    shimmedMetrics = {"static 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "static 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "static coil + 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "static coil + 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "dynamic 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "dynamic 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "dynamic coil + 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "dynamic coil + 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "real-time dynamic 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "real-time dynamic 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "real-time coil + 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "real-time coil + 1-2nd order":{'std': [], 'mean': [], 'absMean': []},
+                    "Dynamic coil + real-time 1st order":{'std': [], 'mean': [], 'absMean': []},
+                    "Dynamic coil + real-time 1-2nd order":{'std': [], 'mean': [], 'absMean': []}}
+
+    for key in parametersMap:
+        if "real-time" in key and "coil" in key:
+            shimmedMetrics[key]["absMean"], shimmedMetrics[key]["mean"], shimmedMetrics[key]["std"] = TestShimAllRealTime(parametersMap[key]["order"], parametersMap[key]["order"], parametersMap[key]["experiment"], [], parametersMap[key]["coils"])
+
 
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
