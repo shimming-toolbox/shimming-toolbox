@@ -56,7 +56,7 @@ ________
 Installation
 ____________
 
-See the `Installing shimming-toolbox <https://shimming-toolbox.org/en/latest/user_section/installation.html>`__ page.
+See the `Installing shimming-toolbox <https://shimming-toolbox.org/en/latest/user_section/install.html>`__ page.
 
 Usage
 _____
