@@ -20,7 +20,7 @@ class TestCore(object):
         if not self.tmp_path.exists():
             self.tmp_path.mkdir()
 
-    def teardown(self):
+    def teardown_method(self):
         # Remove temporary files
         if self.tmp_path.exists():
             shutil.rmtree(self.tmp_path)

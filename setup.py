@@ -49,7 +49,7 @@ setup(
         "psutil>=5.8.0",
         "pydicom",
         "pytest>=6.2.5",
-        "pytest-cov~=2.5.1",
+        "pytest-cov>=2.5.1",
         "scikit-learn>=1.1.2",
         "pillow>=9.0.0",
         "dataclasses",
