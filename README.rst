@@ -75,7 +75,7 @@ _____
 
 .. code-block:: console
 
-  $ st_prepare_fieldmap --help
+  $ st_prepare_fieldmap -h
 
   Usage: st_prepare_fieldmap [OPTIONS] PHASE...
 
@@ -91,18 +91,32 @@ _____
   etc.
 
   Options:
-  --mag PATH                  Input path of mag nifti file  [required]
-  --unwrapper [prelude]       Algorithm for unwrapping  [default: prelude]
-  -o, --output PATH           Output filename for the fieldmap, supported types : '.nii', '.nii.gz'
-  --mask PATH                 Input path for a mask. Mask must be the same
-                              shape as the array of each PHASE input.
-  --threshold FLOAT           Threshold for masking if no mask is provided.
-                              Allowed range: [0, 1] where all scaled values
-                              lower than the threshold are set to 0.
-  --gaussian-filter BOOLEAN   Gaussian filter for B0 map
-  --sigma FLOAT               Standard deviation of gaussian filter. Used for: gaussian_filter
-  -v, --verbose [info|debug]  Be more verbose
-  -h, --help                  Show this message and exit.
+  --mag PATH                     Input path of mag nifti file  [required]
+  --unwrapper [prelude|skimage]  Algorithm for unwrapping. skimage is
+                                 installed by default, prelude requires FSL to
+                                 be installed.  [default: prelude]
+  -o, --output PATH              Output filename for the fieldmap, supported
+                                 types : '.nii', '.nii.gz'  [default:
+                                 ./fieldmap.nii.gz]
+  --autoscale-phase BOOLEAN      Tells whether to auto rescale phase inputs
+                                 according to manufacturer standards. If you
+                                 have non standard data, it would be
+                                 preferable to set this option to False and
+                                 input your phase data from -pi to pi to avoid
+                                 unwanted rescaling  [default: True]
+  --mask PATH                    Input path for a mask. Mask must be the same
+                                 shape as the array of each PHASE input.
+  --threshold FLOAT              Threshold for masking if no mask is provided.
+                                 Allowed range: [0, 1] where all scaled values
+                                 lower than the threshold are set to 0.
+                                 [default: 0.05]
+  --savemask PATH                Filename of the mask calculated by the
+                                 unwrapper
+  --gaussian-filter BOOLEAN      Gaussian filter for B0 map
+  --sigma FLOAT                  Standard deviation of gaussian filter. Used
+                                 for: gaussian_filter
+  -v, --verbose [info|debug]     Be more verbose
+  -h, --help                     Show this message and exit.
 
 .. admonition:: Note
 
