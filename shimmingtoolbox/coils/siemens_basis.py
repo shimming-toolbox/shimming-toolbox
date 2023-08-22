@@ -85,7 +85,7 @@ def _get_scaling_factors():
 
     for i_ch in range(0, n_channels):
         field = sh[:, :, :, i_ch]
-        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
+        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]][0]
 
     return scaling_factors
 

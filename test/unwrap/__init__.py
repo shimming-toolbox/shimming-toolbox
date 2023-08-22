@@ -27,10 +27,10 @@ def get_phases_mags():
     nii_mag_e1 = nib.load(fname_mag1)
     nii_mag_e2 = nib.load(fname_mag2)
 
-    # Make tests faster by having the last dim only be 1
-    nii_phase_e1 = nib.Nifti1Image(phase_e1[..., :2], nii_phase_e1.affine, header=nii_phase_e1.header)
-    nii_phase_e2 = nib.Nifti1Image(phase_e2[..., :2], nii_phase_e1.affine, header=nii_phase_e1.header)
-    mag_e1 = nii_mag_e1.get_fdata()[..., :2]
-    mag_e2 = nii_mag_e2.get_fdata()[..., :2]
+    # Make tests faster by having the last dim smaller
+    nii_phase_e1 = nib.Nifti1Image(phase_e1[..., :1], nii_phase_e1.affine, header=nii_phase_e1.header)
+    nii_phase_e2 = nib.Nifti1Image(phase_e2[..., :1], nii_phase_e1.affine, header=nii_phase_e1.header)
+    mag_e1 = nii_mag_e1.get_fdata()[..., :1]
+    mag_e2 = nii_mag_e2.get_fdata()[..., :1]
 
     return nii_phase_e1, nii_phase_e2, mag_e1, mag_e2

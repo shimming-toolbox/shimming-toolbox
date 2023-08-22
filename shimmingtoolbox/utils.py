@@ -9,16 +9,12 @@ import subprocess
 import logging
 import nibabel as nib
 import json
-from pathlib import Path
 import time
 import functools
 from scipy import ndimage as nd
 import hashlib
 
 logger = logging.getLogger(__name__)
-
-HOME_DIR = str(Path.home())
-PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/bin"
 
 
 def run_subprocess(cmd):
@@ -29,15 +25,11 @@ def run_subprocess(cmd):
     """
     logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
     try:
-        env = os.environ.copy()
-        # Add ST PATH before the rest of the path so that it takes precedence
-        env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
         subprocess.run(
             cmd,
             text=True,
             check=True,
-            env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr

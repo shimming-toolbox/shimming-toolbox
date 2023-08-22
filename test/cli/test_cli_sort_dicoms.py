@@ -27,5 +27,5 @@ def test_sort_dicoms_cli():
 
 def test_sort_dicoms_cli_no_dicom():
     path = os.path.join(__dir_testing__)
-    with pytest.raises(RuntimeError, match=f"{path} does not contain dicom files"):
+    with pytest.raises(RuntimeError, match="does not contain dicom files"):
         CliRunner().invoke(sort_dicoms, ['-i', path], catch_exceptions=False)

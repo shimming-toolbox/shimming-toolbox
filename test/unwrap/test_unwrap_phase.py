@@ -12,7 +12,7 @@ from shimmingtoolbox import __dir_testing__
 
 
 class TestUnwrapPhase(object):
-    def setup(self):
+    def setup_method(self):
         fname_phase = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_phasediff.nii.gz')
         nii_phase = nib.load(fname_phase)
         phase = (nii_phase.get_fdata() * 2 * math.pi / 4095) - math.pi  # [-pi, pi]

@@ -11,7 +11,7 @@ from shimmingtoolbox import __dir_testing__
 
 class TestImageConcat(object):
 
-    def setup(self):
+    def setup_method(self):
         path_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat')
         list_fname = [os.path.join(path_anat, 'sub-realtime_unshimmed_e1.nii.gz'),
                       os.path.join(path_anat, 'sub-realtime_unshimmed_e2.nii.gz'),

@@ -1,11 +1,13 @@
 #!usr/bin/env python3
 # coding: utf-8
 
-import os
 import nibabel as nib
-import json
 import numpy as np
+import json
+import os
 import pathlib
+import pytest
+import re
 import tempfile
 
 from shimmingtoolbox import __dir_testing__
@@ -15,7 +17,7 @@ from shimmingtoolbox.shim.realtime_shim import realtime_shim
 
 
 class TestRealtimeShim(object):
-    def setup(self):
+    def setup_method(self):
         # Fieldmap
         fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
         nii_fieldmap = nib.load(fname_fieldmap)
@@ -110,16 +112,8 @@ class TestRealtimeShim(object):
         fieldmap = self.nii_fieldmap.get_fdata()
         nii_fieldmap_3d = nib.Nifti1Image(fieldmap[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
-        # This should return an error
-        try:
+        with pytest.raises(RuntimeError, match=re.escape("fmap must be 4d (x, y, z, t)")):
             realtime_shim(nii_fieldmap_3d, self.nii_anat, self.pmu, self.json)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nWrong number of dimensions for fieldmap but does not throw an error.")
-        assert False
 
     def test_wrong_dim_anat(self):
         """Wrong number of anat dimensions."""
@@ -127,16 +121,8 @@ class TestRealtimeShim(object):
         anat = self.nii_anat.get_fdata()
         nii_anat_2d = nib.Nifti1Image(anat[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
-        # This should return an error
-        try:
+        with pytest.raises(RuntimeError, match="Anatomical image must be in 3d"):
             realtime_shim(self.nii_fieldmap, nii_anat_2d, self.pmu, self.json)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nWrong number of dimensions for anat but does not throw an error.")
-        assert False
 
     def test_wrong_dim_mask_static(self):
         """Wrong number of static mask dimensions."""
@@ -144,16 +130,8 @@ class TestRealtimeShim(object):
         mask = self.nii_mask_static.get_fdata()
         nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
-        # This should return an error
-        try:
+        with pytest.raises(RuntimeError, match="Mask must have the same shape and affine transformation as anat"):
             realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_static=nii_mask_2d)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nWrong number of dimensions for static mask but does not throw an error.")
-        assert False
 
     def test_wrong_dim_mask_riro(self):
         """Wrong number of riro mask dimensions."""
@@ -161,13 +139,5 @@ class TestRealtimeShim(object):
         mask = self.nii_mask_riro.get_fdata()
         nii_mask_2d = nib.Nifti1Image(mask[..., 0], self.nii_anat.affine, header=self.nii_anat.header)
 
-        # This should return an error
-        try:
+        with pytest.raises(RuntimeError, match="Mask must have the same shape and affine transformation as anat"):
             realtime_shim(self.nii_fieldmap, self.nii_anat, self.pmu, self.json, nii_mask_anat_riro=nii_mask_2d)
-        except RuntimeError:
-            # If an exception occurs, this is the desired behaviour
-            return 0
-
-        # If there isn't an error, then there is a problem
-        print("\nWrong number of dimensions for riro mask but does not throw an error.")
-        assert False

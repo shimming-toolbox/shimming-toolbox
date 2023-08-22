@@ -57,9 +57,17 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
         nii_mask = nib.Nifti1Image(unwrap_mask, nii_wrapped_phase.affine, header=nii_wrapped_phase.header)
         nib.save(nii_mask, fname_save_mask)
 
-    # Unwrap the phase
-    ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask)
-    ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
+    # Mask the wrapped phase
+    ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask.astype(bool))
+
+    if ma_wrapped_phase.ndim == 3 and ma_wrapped_phase.shape[2] == 1:
+        # If the phase is 3D with a single slice, pass the array as 2D and unwrap
+        ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase[:, :, 0], rng=0)
+        # Add the 3rd dimension back
+        ma_unwrapped_phase = ma_unwrapped_phase[:, :, np.newaxis]
+    else:
+        # Normal 3D case: Unwrap the phase
+        ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
 
     # Fill the masked values with 0
     unwrapped_phase = ma_unwrapped_phase.filled(0)
