@@ -62,6 +62,9 @@ Dependencies
 Installation Procedure for Windows
 ----------------------------------
 
+Conda requires an installation path that does not contain spaces. Your username should not contain spaces to avoid this issue.
+If your username contains spaces, you can create a new user account with no spaces in the username or use a different OS.
+
 .. Note::
 
     The installer will install ``Shimming Toolbox`` and ``dcm2niix`` into an isolated environment. It will not interfere if you already have ``dcm2niix`` installed.

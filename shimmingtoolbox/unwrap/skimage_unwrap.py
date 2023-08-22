@@ -60,18 +60,14 @@ def skimage_unwrap(nii_wrapped_phase, mag=None, mask=None, threshold=None, fname
     # Mask the wrapped phase
     ma_wrapped_phase = ma.array(wrapped_phase, mask=~unwrap_mask.astype(bool))
 
-    singleton = False
     if ma_wrapped_phase.ndim == 3 and ma_wrapped_phase.shape[2] == 1:
-        # If the phase is 3D with a single slice, remove the last dimension
-        ma_wrapped_phase = ma_wrapped_phase[:, :, 0]
-        singleton = True
-
-    # Unwrap the masked phase
-    ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
-
-    if singleton:
-        # If the phase was 3D with a single slice, add the last dimension back
+        # If the phase is 3D with a single slice, pass the array as 2D and unwrap
+        ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase[:, :, 0], rng=0)
+        # Add the 3rd dimension back
         ma_unwrapped_phase = ma_unwrapped_phase[:, :, np.newaxis]
+    else:
+        # Normal 3D case: Unwrap the phase
+        ma_unwrapped_phase = unwrap_phase(ma_wrapped_phase, rng=0)
 
     # Fill the masked values with 0
     unwrapped_phase = ma_unwrapped_phase.filled(0)
