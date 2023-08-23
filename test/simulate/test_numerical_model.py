@@ -5,7 +5,7 @@ from phantominator import shepp_logan
 
 
 class TestCore(object):
-    def setup(self):
+    def setup_method(self):
         self.test_filename = "test"
         self.test_filename_nii = "test.nii"
         self.test_filename_mat = "test.mat"

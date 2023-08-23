@@ -7,8 +7,12 @@ import logging
 import nibabel as nib
 
 from shimmingtoolbox.unwrap.prelude import prelude
+from shimmingtoolbox.unwrap.skimage_unwrap import skimage_unwrap
 
 logger = logging.getLogger(__name__)
+
+unwrapper_dict = {'prelude': prelude,
+                  'skimage': skimage_unwrap}
 
 
 def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, threshold=None, fname_save_mask=None):
@@ -18,7 +22,7 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
     Args:
         nii_phase_wrapped (nib.Nifti1Image): 2D, 3D or 4D radian values [-pi to pi] to perform phase unwrapping.
                                              Supported shapes: [x, y], [x, y, z] or [x, y, z, t].
-        unwrapper (str, optional): Unwrapper algorithm name. Possible values: ``prelude``.
+        unwrapper (str, optional): Unwrapper algorithm name. Possible values: ``prelude``, ``skimage``.
         mag (numpy.ndarray): 2D, 3D or 4D magnitude data corresponding to phase data. Shape must be the same as
                      ``phase``.
         mask (numpy.ndarray): numpy array of booleans with shape of ``phase`` to mask during phase unwrapping.
@@ -31,7 +35,7 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
 
     phase = nii_phase_wrapped.get_fdata()
 
-    if unwrapper == 'prelude':
+    if unwrapper in ['prelude', 'skimage']:
         mag2d = None
         mask2d = None
         if phase.ndim == 2:
@@ -46,15 +50,15 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
             nii_2d = nib.Nifti1Image(phase2d, nii_phase_wrapped.affine, header=nii_phase_wrapped.header)
 
             logger.info(f"Unwrapping 1 volume")
-            phase3d_unwrapped = prelude(nii_2d, mag=mag, mask=mask, threshold=threshold,
-                                        fname_save_mask=fname_save_mask)
+            phase3d_unwrapped = unwrapper_dict[unwrapper](nii_2d, mag=mag, mask=mask, threshold=threshold,
+                                                          fname_save_mask=fname_save_mask)
 
             phase_unwrapped = phase3d_unwrapped[..., 0]
 
         elif phase.ndim == 3:
             logger.info("Unwrapping 1 volume")
-            phase_unwrapped = prelude(nii_phase_wrapped, mag=mag, mask=mask, threshold=threshold,
-                                      fname_save_mask=fname_save_mask)
+            phase_unwrapped = unwrapper_dict[unwrapper](nii_phase_wrapped, mag=mag, mask=mask, threshold=threshold,
+                                                        fname_save_mask=fname_save_mask)
 
         elif phase.ndim == 4:
 
@@ -78,10 +82,12 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
 
                 # If it's the first volume, call it using save mask to save the mask only once
                 if i_t == 0:
-                    phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold,
-                                                        fname_save_mask=fname_save_mask)
+                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d, mag=mag_input, mask=mask_input,
+                                                                          threshold=threshold,
+                                                                          fname_save_mask=fname_save_mask)
                 else:
-                    phase_unwrapped[..., i_t] = prelude(nii_4d, mag=mag_input, mask=mask_input, threshold=threshold)
+                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d, mag=mag_input, mask=mask_input,
+                                                                          threshold=threshold)
 
         else:
             raise ValueError("Shape of input phase is not supported.")
