@@ -101,7 +101,7 @@ def ge_basis(x, y, z, orders=(1, 2)):
             - Rescaled:
 
                 - 1 G/cm for *X,Y,Z* gradients (= Hz/mm)
-                - Hz/mm^2 / 1 mA for the 2nd order terms (See details below for for the different channels)
+                - Hz/mm^2 / 1 mA for the 2nd order terms (See details below for the different channels)
 
         The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -185,7 +185,7 @@ def ge_basis(x, y, z, orders=(1, 2)):
             # scaled[..., i_channel] = np.matmul(reordered_spher[..., 3:], orders_to_order2_uT[i_channel - 3, :]) / 10
 
             # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
-            # uT/m^2/A
+            # uT/m^2 / A
             # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/mm^2 / mA
             scaled[..., i_channel] = np.matmul(reordered_spher[..., 3:], orders_to_order2_uT[i_channel - 3, :]) / 1000
 
