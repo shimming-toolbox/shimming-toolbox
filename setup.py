@@ -30,7 +30,7 @@ setup(
             "st_image=shimmingtoolbox.cli.image:image_cli",
             "st_maths=shimmingtoolbox.cli.maths:maths_cli",
             "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli",
-            "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:create_coil_profiles_cli",
+            "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:coil_profiles_cli",
             "st_sort_dicoms=shimmingtoolbox.cli.sort_dicoms:sort_dicoms"
         ]
     },
@@ -46,15 +46,16 @@ setup(
         "scipy>=1.7",
         "tqdm",
         "matplotlib>=3.5",
-        "psutil~=5.7.3",
+        "psutil>=5.8.0",
         "pydicom",
         "pytest>=6.2.5",
-        "pytest-cov~=2.5.1",
+        "pytest-cov>=2.5.1",
         "scikit-learn>=1.1.2",
         "pillow>=9.0.0",
         "dataclasses",
         "raven",
         "joblib",
+        "quadprog",
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],

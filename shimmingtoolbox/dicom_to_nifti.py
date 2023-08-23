@@ -7,9 +7,10 @@ import logging
 import nibabel as nib
 import numpy as np
 import os
-# from dcm2bids.scaffold import scaffold
+from dcm2bids.dcm2bids_gen import Dcm2BidsGen
+from dcm2bids.utils.tools import check_latest
+from dcm2bids import version
 import shutil
-import subprocess
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
@@ -40,17 +41,26 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
         raise FileNotFoundError("No dicom path found")
     if not os.path.exists(fname_config_dcm2bids):
         raise FileNotFoundError("No dcm2bids config file found")
+
+    if os.path.isfile(path_nifti):
+        raise ValueError("Output NIfTI path should be a folder")
+
     create_output_dir(path_nifti)
 
-    # dcm2bids is broken for windows as a python package so using CLI
     # Create bids structure for data
-    run_subprocess(['dcm2bids_scaffold', '-o', path_nifti])
+    logger.info(f"dcm2bids version: {version.__version__}")
+
+    # Create derivatives folder
+    path_derivatives = os.path.join(path_nifti, 'derivatives')
+    if not os.path.exists(path_derivatives):
+        os.makedirs(path_derivatives)
 
     # Copy original dicom files into nifti_path/sourcedata
     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
 
     # Run dcm2bids
-    run_subprocess(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', fname_config_dcm2bids])
+    check_latest('dcm2bids')
+    Dcm2BidsGen(path_dicom, subject_id, fname_config_dcm2bids, path_nifti).run()
 
     # In the special case where a phasediff should be created but the filename is phase instead. Find the file and
     # rename it
@@ -93,43 +103,6 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
                 # TODO: Add handling of other B1+ mapping sequences
 
         logger.info("B1+ NIfTI have been reshuffled and rescaled.")
-
-    # if 'win' in sys.platform:
-    #     # dcm2bids is broken for windows as a python package so using CLI
-    #     # Create bids structure for data
-    #     subprocess.run(['dcm2bids_scaffold', '-o', path_nifti], check=True)
-    #
-    #     #
-    #     # # Copy original dicom files into nifti_path/sourcedata
-    #     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
-    #     #
-    #     # # Call the dcm2bids_helper
-    #     subprocess.run(['dcm2bids_helper', '-d', path_dicom, '-o', path_nifti], check=True)
-    #     #
-    #     # Check if the helper folder has been created
-    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(path_helper):
-    #         raise ValueError('dcm2bids_helper could not create directory helper')
-    #
-    #     # Make sure there is data in nifti_path / tmp_dcm2bids / helper
-    #     helper_file_list = os.listdir(path_helper)
-    #     if not helper_file_list:
-    #         raise ValueError('No data to process')
-    #
-    #     subprocess.run(['dcm2bids', '-d', path_dicom, '-o', path_nifti, '-p', subject_id, '-c', path_config_dcm2bids],
-    #     check=True)
-    # else:
-    #     bids_info = dcm2bids.Dcm2bids([path_dicom], subject_id, path_config_dcm2bids, path_nifti)
-    #     scaffold()
-    #
-    #     path_helper = os.path.join(path_nifti, 'tmp_dcm2bids', 'helper')
-    #     if not os.path.isdir(path_helper):
-    #         raise ValueError('dcm2bids_helper could not create directory helper')
-    #     helper_file_list = os.listdir(path_helper)
-    #     if not helper_file_list:
-    #         raise ValueError('No data to process')
-    #
-    #     bids_info.run()
 
     if remove_tmp:
         shutil.rmtree(os.path.join(path_nifti, 'tmp_dcm2bids'))
