@@ -36,7 +36,7 @@ def test_coil_custom_coil():
 def test_create_scanner_coil_order0():
     sph_contraints = json.load(open(__dir_config_scanner_constraints__))
 
-    scanner_coil = ScannerCoil('ras', (4, 5, 6), np.eye(4), sph_contraints, 0)
+    scanner_coil = ScannerCoil((4, 5, 6), np.eye(4), sph_contraints, 0)
 
     assert scanner_coil.profile[0, 0, 0, 0] == -1.0
 
@@ -44,13 +44,13 @@ def test_create_scanner_coil_order0():
 def test_create_scanner_coil_order1():
     sph_contraints = json.load(open(__dir_config_scanner_constraints__))
 
-    scanner_coil = ScannerCoil('ras', (4, 5, 6), np.eye(4), sph_contraints, 1)
+    scanner_coil = ScannerCoil((4, 5, 6), np.eye(4), sph_contraints, 1)
 
     assert scanner_coil.profile[0, 0, 0, 0] == -1.0
 
 
 def test_create_scanner_coil_order2():
     sph_contraints = json.load(open(__dir_config_scanner_constraints__))
-    scanner_coil = ScannerCoil('ras', (4, 5, 6), np.eye(4), sph_contraints, 2)
+    scanner_coil = ScannerCoil((4, 5, 6), np.eye(4), sph_contraints, 2)
 
     assert scanner_coil.profile[0, 0, 0, 0] == -1.0
