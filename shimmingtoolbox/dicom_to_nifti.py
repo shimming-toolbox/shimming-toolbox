@@ -109,6 +109,9 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
 
 def rename_phasediff(path_nifti, subject_id):
+    # Dcm2bids removes 'sub-' if it is in the subject name, otherwise it would be there twice
+    subject_id = subject_id.split('sub-', maxsplit=1)[-1]
+
     path_fmap = os.path.join(path_nifti, f"sub-{subject_id}", 'fmap')
     if os.path.exists(path_fmap):
         # Make a list of the json files in fmap folder
