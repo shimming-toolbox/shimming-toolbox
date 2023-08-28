@@ -55,8 +55,8 @@ class TestImageConcat(object):
 class TestImageLogicalAnd(object):
     def setup_method(self):
         affine_1 = np.eye(4)
-        self.nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]]), affine=affine_1)
-        self.nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]]), affine=affine_1)
+        self.nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]], dtype=np.uint8), affine=affine_1)
+        self.nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]], dtype=np.uint8), affine=affine_1)
 
         mask_3 = np.ones([8, 8])
         mask_3[0, 0] = 0

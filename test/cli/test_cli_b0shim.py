@@ -56,7 +56,7 @@ def _define_inputs(fmap_dim):
                   center_dim2=int(ny / 2),
                   len_dim1=10, len_dim2=10, len_dim3=nz - 10)
 
-    nii_mask = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+    nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_anat.affine)
 
     return nii_fmap, nii_anat, nii_mask, fm_data, anat_data
 
@@ -1087,7 +1087,7 @@ def test_b0_max_intensity():
                       center_dim1=32,
                       center_dim2=36,
                       len_dim1=10, len_dim2=10, len_dim3=nz)
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii.affine)
+        nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii.affine)
         nib.save(nii_mask, fname_mask)
 
         runner = CliRunner()

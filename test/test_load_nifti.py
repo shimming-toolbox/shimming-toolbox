@@ -18,13 +18,13 @@ from shimmingtoolbox import __dir_testing__
 class TestCore(object):
     _data = np.array([[[1, 2, 3], [4, 5, 6], [7, 8, 9]],
                       [[10, 11, 12], [13, 14, 15], [16, 17, 18]],
-                      [[19, 20, 21], [22, 23, 24], [25, 26, 27]]])
+                      [[19, 20, 21], [22, 23, 24], [25, 26, 27]]], dtype=np.uint8)
     _data_volume = np.array([[[[1, 1], [2, 2], [3, 3]], [[4, 4], [5, 5], [6, 6]], [[7, 7], [8, 8], [9, 9]]],
                              [[[10, 10], [11, 11], [12, 12]], [[13, 13], [14, 14], [15, 15]],
                               [[16, 16], [17, 17], [18, 18]]],
                              [[[19, 19], [20, 20], [21, 21]], [[22, 22], [23, 23], [24, 24]],
-                              [[25, 25], [26, 26], [27, 27]]]])
-    _aff = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]])
+                              [[25, 25], [26, 26], [27, 27]]]], dtype=np.uint8)
+    _aff = np.array([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]], dtype=np.uint8)
     _json_phase = {"Modality": "MR",
                    "ImageComments": "phase",
                    "MagneticFieldStrength": 3,
@@ -151,8 +151,8 @@ class TestCore(object):
         self.data_path_2.mkdir(exist_ok=True)
         self.data_path_volume.mkdir(exist_ok=True)
 
-        dummy_data = nib.nifti1.Nifti1Image(dataobj=self._data, affine=self._aff)
-        dummy_data_volume = nib.nifti1.Nifti1Image(dataobj=self._data_volume, affine=self._aff)
+        dummy_data = nib.Nifti1Image(self._data, affine=self._aff)
+        dummy_data_volume = nib.Nifti1Image(self._data_volume, affine=self._aff)
 
         nib.save(dummy_data, os.path.join(self.data_path, 'dummy.nii'))
         with open(os.path.join(self.data_path, 'dummy.json'), 'w') as json_file:
