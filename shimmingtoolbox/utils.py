@@ -9,15 +9,12 @@ import subprocess
 import logging
 import nibabel as nib
 import json
-from pathlib import Path
 import time
 import functools
 from scipy import ndimage as nd
+import hashlib
 
 logger = logging.getLogger(__name__)
-
-HOME_DIR = str(Path.home())
-PATH_ST_VENV = f"{HOME_DIR}/shimming-toolbox/python/bin"
 
 
 def run_subprocess(cmd):
@@ -28,15 +25,11 @@ def run_subprocess(cmd):
     """
     logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
     try:
-        env = os.environ.copy()
-        # Add ST PATH before the rest of the path so that it takes precedence
-        env["PATH"] = PATH_ST_VENV + ":" + env["PATH"]
 
         subprocess.run(
             cmd,
             text=True,
             check=True,
-            env=env
         )
     except subprocess.CalledProcessError as err:
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
@@ -277,3 +270,16 @@ def fill(data, invalid=None):
 
     ind = nd.distance_transform_edt(invalid, return_distances=False, return_indices=True)
     return data[tuple(ind)]
+
+
+def are_niis_equal(nii1:nib.nifti1.Nifti1Image, nii2:nib.nifti1.Nifti1Image):
+    return hashlib.sha256(nii1.get_fdata().tobytes()).hexdigest() == \
+           hashlib.sha256(nii2.get_fdata().tobytes()).hexdigest() and \
+           hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
+           hashlib.sha256(nii2.affine.tobytes()).hexdigest()
+
+def are_jsons_equal(json1:dict, json2:dict):
+    json1_bytes = json.dumps(json1).encode('utf-8')
+    json2_bytes = json.dumps(json2).encode('utf-8')
+    return hashlib.sha256(json1_bytes).hexdigest() == \
+           hashlib.sha256(json2_bytes).hexdigest()

@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
+import copy
 import logging
 import math
-import nibabel
+import nibabel as nib
 import numpy as np
 from skimage.filters import gaussian
 from sklearn.linear_model import LinearRegression
@@ -28,7 +29,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
                                The values must range from [-pi to pi].
         echo_times (list): List of echo times in seconds for each echo. The number of echotimes must match the number of
                            echoes. It input is a phasediff (1 phase), input 2 echotimes.
-        unwrapper (str): Unwrapper to use for phase unwrapping. Supported: prelude.
+        unwrapper (str): Unwrapper to use for phase unwrapping. Supported: ``prelude``, ``skimage``.
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
         mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
         threshold: Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower
@@ -102,7 +103,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
 
         # Calculate phasediff using complex difference
         phasediff = complex_difference(echo_0, echo_1)
-        nii_phasediff = nibabel.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
+        nii_phasediff = nib.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
 
         # Calculate the echo time difference
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
@@ -199,6 +200,7 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         numpy.ndarray: 4d array of the unwrapped phase corrected if there were n*2*pi offsets between time points
 
     """
+    unwrapped_cp = copy.deepcopy(unwrapped)
     # Create a mask that excludes the noise
     # TODO: What if the validity region is bigger than the mask
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
@@ -206,14 +208,14 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     # Logical and with the mask used for calculating the fieldmap
     validity_masks = np.logical_and(mask, validity_masks)
 
-    for i_time in range(1, unwrapped.shape[3]):
+    for i_time in range(1, unwrapped_cp.shape[3]):
         # Take the region where both masks intersect
         validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
 
         # Calculate the means in the same validity mask
-        ma_0 = np.ma.array(unwrapped[..., i_time - 1], mask=validity_mask == False)
+        ma_0 = np.ma.array(unwrapped_cp[..., i_time - 1], mask=validity_mask == False)
         mean_0 = np.ma.mean(ma_0)
-        ma_1 = np.ma.array(unwrapped[..., i_time], mask=validity_mask == False)
+        ma_1 = np.ma.array(unwrapped_cp[..., i_time], mask=validity_mask == False)
         mean_1 = np.ma.mean(ma_1)
 
         # Calculate the number of offset by rounding to the nearest integer.
@@ -229,6 +231,6 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
         logger.debug(f"Offset was: {n_offsets_float}")
         # Remove n_offsets to unwrapped[..., i_time] only in the masked region
-        unwrapped[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
+        unwrapped_cp[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
 
-    return unwrapped
+    return unwrapped_cp

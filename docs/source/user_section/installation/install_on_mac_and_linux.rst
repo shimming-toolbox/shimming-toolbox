@@ -1,22 +1,16 @@
-.. _installation:
+*******************************
+Installation on macOS and Linux
+*******************************
 
-************
-Installation
-************
-
-``Shimming Toolbox`` is written in Python. It can be used either from the Terminal
+``Shimming Toolbox`` can be used either from the Terminal
 or from a graphical user interface (GUI) as a plugin for `FSLeyes <https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FSLeyes>`__.
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/fsleyes/fsleyes_example.png
   :alt: Overview
   :width: 1000
 
-
 Dependencies
 ------------
-
-``Shimming Toolbox`` works on ``macOs`` and ``Linux`` operating systems. There is a plan to support
-``Windows`` in the future.
 
 **Optional dependencies:**
 
@@ -24,12 +18,13 @@ Dependencies
 - If you would like to use ``sct_deepseg_sc`` for spinal cord segmentation, you need to install `SCT <https://spinalcordtoolbox.com/>`__.
 
 
-Installation
-------------
+Installation Procedure for macOS and Linux
+------------------------------------------
 
 .. Note::
 
-    The installer will install ``Shimming Toolbox``, ``FSLeyes`` and ``dcm2niix`` into an isolated environment. They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
+    The installer will install ``Shimming Toolbox``, ``FSLeyes`` and ``dcm2niix`` into an isolated environment.
+    They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
     have previously installed ``FSLeyes``, that version will not support the GUI.
 
 Open a Terminal and run the following commands.
@@ -56,7 +51,6 @@ You will be prompted to source your ``.*shrc`` file. For example:
 .. Note::
 
     You can restart your terminal or open a new tab to source your ``.*shrc`` file automatically.
-
 
 The ``shimming-toolbox`` command launches FSLeyes with GUI support.
 
@@ -85,7 +79,6 @@ Test the Installation
 
 This step is optional but it's a good measure to ensure
 ``Shimming Toolbox`` is properly installed on your system.
-
 
 Comprehensive Test
 ~~~~~~~~~~~~~~~~~~
@@ -125,22 +118,13 @@ To test **only** the parts of shimming-toolbox dependent on ``prelude``, the cor
 For Developers
 --------------
 
-The installation files can be found in the ``installer`` folder, and are called by the ``Makefile``.
+Developers have options to start developing Shimming Toolbox. A quick setup is available for those who want to quickly start coding.
+While a more permanent setup is available for those who want to contribute to the project more substantially.
 
-When you run ``make install``, we first check if the ``ST_DIR`` exists, or if a clean install has
-been requested. The ``ST_DIR`` is where the ``shimming-toolbox`` package and also the ``fsleyes-plugin-shimming-toolbox`` are installed. By choosing clean, you delete the entire install directory, and consequently any prior installs of ``shimming-toolbox`` or ``fsleyes-plugin-shimming-toolbox``. Note that this is set to ``CLEAN==false`` by default.
+Quick setup
+~~~~~~~~~~~
 
-We next check if ``conda`` has been installed into the ``ST_DIR``. If not, we run the ``conda`` installer.
-
-Next, we create a virtual environment for ``fsleyes-plugin-shimming-toolbox`` and install the package into it.
-
-Finally, we create a virtual environment for ``shimming-toolbox`` and install the package into it.
-
-.. Note::
-
-    You can track the Github version of ``shimming-toolbox`` if you are a developer. This will remove any previous install of ``shimming-toolbox``,
-    and replace it with the version you have cloned. *Note that this may break the plugin* since you are using a version
-    that has not been tested on the plugin. You can install ``shimming-toolbox`` development version with the following steps:
+To quickly develop Shimming Toolbox, you can clone/fork the repository and run the installer.
 
 .. code:: bash
 
@@ -159,4 +143,12 @@ You can then activate the ``shimming-toolbox`` environment and start coding!
 .. code:: bash
 
     source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
-    conda activate ~/shimming-toolbox/python/
+    conda activate ~/shimming-toolbox/python
+
+Any changes you make in the **cloned** Shimming Toolbox repository should automatically be reflected in the ``shimming-toolbox`` environment.
+You can test that by making  a change to the code and running the right CLI command.
+
+Permanent setup
+~~~~~~~~~~~~~~~
+
+For more permanent developers, we recommend following this `guide <https://docs.google.com/document/d/1vRUfv_rG61WBnOTaQrQoteKYH1SWLjjxWOjxvZ1HnIA/edit?usp=sharing>`__ to set up a development environment.

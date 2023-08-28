@@ -15,7 +15,7 @@ from shimmingtoolbox.download import install_data
 
 URL_DICT: Dict[str, Tuple[List[str], str]] = {
     "testing_data": (
-        ["https://github.com/shimming-toolbox/data-testing/archive/r20220222.zip"],
+        ["https://github.com/shimming-toolbox/data-testing/archive/r20230809.zip"],
         "Light-weighted dataset for testing purpose.",
     ),
     "prelude": (
@@ -27,8 +27,8 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         "B0 dynamic shimming dataset.",
     ),
     "data_create_coil_profiles": (
-        ["https://github.com/shimming-toolbox/data-create-coil-profiles/releases/download/r20230210/dicoms.zip"],
-        ["https://github.com/shimming-toolbox/data-create-coil-profiles/archive/refs/tags/r20230210.zip"],
+        ["https://github.com/shimming-toolbox/data-create-coil-profiles/releases/download/r20230815/dicoms.zip"],
+        ["https://github.com/shimming-toolbox/data-create-coil-profiles/archive/refs/tags/r20230815.zip"],
         "B0 coil profile dataset.",
     ),
     "data_b1_shimming": (

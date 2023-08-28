@@ -76,8 +76,8 @@ def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, p
     fname_nii_b1_shim = os.path.join(path_output, 'TB1map_shimmed.nii.gz')
     nii_b1_shim = nib.Nifti1Image(b1_map @ shim_weights, nii_b1.affine, header=nii_b1.header)
     nib.save(nii_b1_shim, fname_nii_b1_shim)
-    file_json_b1_shim = open(os.path.join(path_output, 'TB1map_shimmed.json'), mode='w')
-    json.dump(json_b1, file_json_b1_shim)
+    with open(os.path.join(path_output, 'TB1map_shimmed.json'), mode='w') as file_json_b1_shim:
+        json.dump(json_b1, file_json_b1_shim)
 
     # Write to a text file
     fname_output_weights = os.path.join(path_output, 'b1_shim_weights_hrd.txt')
