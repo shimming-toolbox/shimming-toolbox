@@ -24,7 +24,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
-from shimmingtoolbox.utils import montage
+from shimmingtoolbox.utils import create_output_dir, montage
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
 
 ListCoil = List[Coil]
@@ -1449,10 +1449,16 @@ class RealTimeSequencer(Sequencer):
         ylim = (min(curated_unshimmed_trace_scaled.min(), self.pmu.min - perc),
                 max(curated_unshimmed_trace_scaled.max(), self.pmu.max + perc))
 
-        fig = Figure(figsize=(8, 4 * n_plots))
+        # Plot
+        if self.path_output is None:
+            return
+
+        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_pressure_and_unshimmed_field')
+        create_output_dir(path_pressure_and_unshimmed_field)
+
         for i_plot in range(n_plots):
-            # Plot
-            ax = fig.add_subplot(n_plots, 1, i_plot + 1)
+            fig = Figure(figsize=(8, 4))
+            ax = fig.add_subplot(111)
             ax.plot((pmu_timestamps_curated - pmu_timestamps_curated[0]) / 1000, pmu_pressures_curated,
                     label='Pressure Trace')
             ax.plot((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
@@ -1467,15 +1473,12 @@ class RealTimeSequencer(Sequencer):
             ax.set_ylabel('RMSE (Hz)')
             ax.set_title(f"Slices: {self.slices[self.index_shimmed[i_plot]]}")
 
-        # Place suptitle
-        # 10 = 2%, 5 = 4%, 1 = 10%
-        top = 1 - (0.1 / (n_plots / 1.5))
-        fig.tight_layout(rect=[0, 0.03, 1, top])
+            # Save figure
+            fname_figure = os.path.join(path_pressure_and_unshimmed_field,
+                                        f'fig_noshim_vs_pressure_shimgroup_{self.index_shimmed[i_plot]:03}.png')
+            fig.savefig(fname_figure, bbox_inches='tight')
 
-        # Save figure
-        fname_figure = os.path.join(self.path_output, 'fig_not_shimmed_trace_vs_pressure.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-        logger.debug(f"Saved figure: {fname_figure}")
+        logger.debug(f"Saved figure: {path_pressure_and_unshimmed_field}")
 
     def plot_shimmed_trace(self, unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro):
         """
