@@ -1430,23 +1430,19 @@ class RealTimeSequencer(Sequencer):
 
         # Get the b0 field in the same units as the pressure reading
         n_plots = len(self.index_shimmed)
-        max_diff_field = 0
-        for i_plot in range(n_plots):
-            diff_field = curated_unshimmed_trace[i_plot].max() - curated_unshimmed_trace[i_plot].min()
-            if abs(max_diff_field) < abs(diff_field):
-                max_diff_field = diff_field
-                min_field = curated_unshimmed_trace[i_plot].min()
-                max_field = curated_unshimmed_trace[i_plot].max()
+
+        max_diff_field_list = max(curated_unshimmed_trace, key=lambda x: abs(x.max() - x.min()))
+        min_field = max_diff_field_list.min()
+        max_field = max_diff_field_list.max()
+        max_diff_field = max_field - min_field
 
         diff_pressure = pmu_pressures_curated.max() - pmu_pressures_curated.min()
         scaling = max_diff_field / diff_pressure
         avg_pressure = np.mean(pmu_pressures_curated)
 
-        curated_unshimmed_trace_scaled = np.zeros_like(curated_unshimmed_trace)
-        for i_plot in range(n_plots):
-            avg_b0field = np.mean(curated_unshimmed_trace[i_plot])
-            curated_unshimmed_trace_scaled[i_plot] = (curated_unshimmed_trace[
-                                                          i_plot] - avg_b0field) / scaling + avg_pressure
+        # Scale
+        curated_unshimmed_trace_scaled = np.array([(x - np.mean(x)) / scaling + avg_pressure
+                                                   for x in curated_unshimmed_trace])
 
         # Find y limits
         perc = (self.pmu.max - self.pmu.min) / 20
@@ -1468,6 +1464,7 @@ class RealTimeSequencer(Sequencer):
             ax.set_yticks([pmu_pressures_curated.min(), pmu_pressures_curated.max()],
                           [min_field.astype(int), max_field.astype(int)])
             ax.set_xlabel('Time (s)')
+            ax.set_ylabel('RMSE (Hz)')
             ax.set_title(f"Slices: {self.slices[self.index_shimmed[i_plot]]}")
 
         # Place suptitle
