@@ -1450,10 +1450,7 @@ class RealTimeSequencer(Sequencer):
                 max(curated_unshimmed_trace_scaled.max(), self.pmu.max + perc))
 
         # Plot
-        if self.path_output is None:
-            return
-
-        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_pressure_and_unshimmed_field')
+        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_noshim_vs_pressure')
         create_output_dir(path_pressure_and_unshimmed_field)
 
         for i_plot in range(n_plots):
@@ -1504,12 +1501,13 @@ class RealTimeSequencer(Sequencer):
             unshimmed_trace[self.index_shimmed, :].max()
         )
 
+        path_shimmed_trace = os.path.join(self.path_output, 'fig_trace_shimmed_vs_unshimmed')
+        create_output_dir(path_shimmed_trace)
+
         # Calc ysize
-        n_shims = len(self.index_shimmed)
-        ysize = n_shims * 4.7
-        fig = Figure(figsize=(10, ysize), tight_layout=True)
         for i, i_shim in enumerate(self.index_shimmed):
-            ax = fig.add_subplot(n_shims, 1, i + 1)
+            fig = Figure(figsize=(8, 4))
+            ax = fig.add_subplot(1, 1, 1)
             ax.plot(shim_trace_static_riro[i_shim, :], label='shimmed static + riro')
             ax.plot(shim_trace_static[i_shim, :], label='shimmed static')
             ax.plot(shim_trace_riro[i_shim, :], label='shimmed_riro')
@@ -1519,8 +1517,8 @@ class RealTimeSequencer(Sequencer):
             ax.legend()
             ax.set_ylim([min_value, max_value])
             ax.set_title(f"Unshimmed vs shimmed values: shim {self.slices[i_shim]}")
-        fname_figure = os.path.join(self.path_output, 'fig_trace_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure)
+            fname_figure = os.path.join(path_shimmed_trace, f'fig_trace_shimmed_vs_unshimmed_shimgroup_{i_shim:03}.png')
+            fig.savefig(fname_figure, bbox_inches='tight')
         logger.debug(f"Saved figure: {fname_figure}")
 
     def print_rt_metrics(self, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask):
