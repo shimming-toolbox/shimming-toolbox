@@ -693,7 +693,7 @@ def save_nii(nii_fieldmap, coil, opt, nii_mask):
     nib.save(nii_coil, fname_coil_res)
 
 
-array = np.array([[1, 2], [3, 4]])
+array = np.array([[1, 2], [3, 4]], dtype=np.uint8)
 array = np.repeat(array, 4, 1)
 array = np.repeat(array[..., np.newaxis], 1, 2)
 array = np.repeat(array[..., np.newaxis], 5, 3)
@@ -836,7 +836,7 @@ class TestMaxintensity():
                       center_dim1=32,
                       center_dim2=36,
                       len_dim1=10, len_dim2=10, len_dim3=nz)
-        self.nii_mask = nib.Nifti1Image(mask.astype(int), self.nii_input.affine)
+        self.nii_mask = nib.Nifti1Image(mask.astype(np.uint8), self.nii_input.affine)
 
     def test_default_max_intensity(self):
         output = shim_max_intensity(self.nii_input, self.nii_mask)
