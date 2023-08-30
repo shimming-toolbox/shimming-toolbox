@@ -1475,7 +1475,7 @@ class RealTimeSequencer(Sequencer):
                                         f'fig_noshim_vs_pressure_shimgroup_{self.index_shimmed[i_plot]:03}.png')
             fig.savefig(fname_figure, bbox_inches='tight')
 
-        logger.debug(f"Saved figure: {path_pressure_and_unshimmed_field}")
+        logger.debug(f"Saved figures: {path_pressure_and_unshimmed_field}")
 
     def plot_shimmed_trace(self, unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro):
         """
@@ -1513,13 +1513,13 @@ class RealTimeSequencer(Sequencer):
             ax.plot(shim_trace_riro[i_shim, :], label='shimmed_riro')
             ax.plot(unshimmed_trace[i_shim, :], label='unshimmed')
             ax.set_xlabel('Timepoints')
-            ax.set_ylabel('RMSE over the ROI')
+            ax.set_ylabel('RMSE over the ROI (Hz)')
             ax.legend()
             ax.set_ylim([min_value, max_value])
             ax.set_title(f"Unshimmed vs shimmed values: shim {self.slices[i_shim]}")
             fname_figure = os.path.join(path_shimmed_trace, f'fig_trace_shimmed_vs_unshimmed_shimgroup_{i_shim:03}.png')
             fig.savefig(fname_figure, bbox_inches='tight')
-        logger.debug(f"Saved figure: {fname_figure}")
+        logger.debug(f"Saved figures: {path_shimmed_trace}")
 
     def print_rt_metrics(self, unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask):
         """
