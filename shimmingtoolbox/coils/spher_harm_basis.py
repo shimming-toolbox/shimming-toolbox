@@ -151,8 +151,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
     # Order 1: [Hz/cm/A]
     # Order 0: [Hz/A]
 
-    # e.g. 1A in xy will produce 1.8367Hz/cm2
-
+    # e.g. 1A in xy will produce 1.8367Hz/cm2 in xy, -0.0018785Hz/cm2 in zy
     order2_to_order2 = np.array([[1.8367, -0.0018785, -0.0038081, -0.001403, -0.00029865],
                                  [-0.0067895, 2.2433, 0.0086222, 0.008697, -0.0091463],
                                  [-0.0046842, 0.0030595, 2.2174, -0.0073788, 0.013379],
@@ -167,9 +166,9 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
     reordered_spher = _reorder_to_ge(spher_harm)
 
     # Scale
-    # Hz/cm2/A, -> uT/m2/A = order2_to_order2 / GYROMAGNETIC_RATIO * 1e6 * (100 ** 2) / 1e6
-    # = order2_to_order2 / GYROMAGNETIC_RATIO * (100 ** 2)
-    orders_to_order2_uT = order2_to_order2 / GYROMAGNETIC_RATIO * (100 ** 2)
+    # Hz/cm2/A, -> uT/m2/A = order2_to_order2 * 1e6 * (100 ** 2) / (GYROMAGNETIC_RATIO * 1e6)
+    # = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
+    orders_to_order2_uT = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
 
     # Order 2
     scaled = np.zeros_like(reordered_spher)
@@ -179,16 +178,9 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
             # Rescale to unit-shims that are G/cm
             # They are currently in uT/m
             # 1G = 1e-4T
-            # uT/m --> G/cm = reordered_spher / 1e6 * 1e4 / 1e2 = reordered_spher / 1e4
+            # uT/m --> G/cm = reordered_spher * 1e4 / (1e6 * 1e2) = reordered_spher / 1e4
             scaled[..., i_channel] = reordered_spher[..., i_channel] / 1e4
         else:
-            # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
-            # uT/m^2/A
-            # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/cm^2 / mA
-            # Hz/mm2 / A -> Hz/cm2 / mA = x * 100 / 1000 = x / 10
-            # I think this is wrong, we just need to rescale to mA since the output should stay in mm
-            # scaled[..., i_channel] = np.matmul(reordered_spher[..., 3:], orders_to_order2_uT[i_channel - 3, :]) / 10
-
             # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
             # uT/m^2 / A
             # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/mm^2 / mA
@@ -257,7 +249,7 @@ def scaled_spher_harm(x, y, z, orders=(1, 2), shim_cs='ras'):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics from first to second order
-    all_orders = np.array(range(1, 3))
+    all_orders = np.array([1, 2])
     spher_harm = spherical_harmonics(all_orders, x, y, z)
     # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics)
 
