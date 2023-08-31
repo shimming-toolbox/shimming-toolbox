@@ -1689,7 +1689,7 @@ def parse_slices(fname_nifti):
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
-        raise RuntimeError("No tag SliceTiming to parse slice data")
+        raise RuntimeError("No tag SliceTiming to automatically parse slice data, see --slices option")
 
     # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
     if 'SliceEncodingDirection' in json_data:

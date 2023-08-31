@@ -25,7 +25,7 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
