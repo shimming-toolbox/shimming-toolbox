@@ -5,14 +5,15 @@ import logging
 import numpy as np
 import pytest
 
-from shimmingtoolbox.shim.shim_utils import convert_to_mp, phys_to_shim_cs, shim_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import convert_to_mp, phys_to_shim_cs, shim_to_phys_cs, logger
 
 
 def test_convert_to_mp_unknown_scanner(caplog):
     dac_units = {'order1': [14436, 14265, 14045], 'order2': [9998, 9998, 9998, 9998, 9998]}
 
-    caplog.set_level(logging.DEBUG)
-    convert_to_mp('unknown', dac_units)
+    with caplog.at_level(logging.DEBUG, logger.name):
+        convert_to_mp('unknown', dac_units)
+
     assert "Manufacturer model unknown not implemented, could not convert shim settings" in caplog.text
 
 
