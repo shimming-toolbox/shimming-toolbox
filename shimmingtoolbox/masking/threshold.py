@@ -24,8 +24,8 @@ def threshold(data, thr=30, scaled_thr=False):
         return abs(data) > thr
     else:
         if scaled_thr:
-            if 0 <= scaled_thr <= 1:
+            if 0 <= thr <= 1:
                 thr = (data.max() - data.min()) * thr + data.min()
             else:
-                raise ValueError(f"scaled_thr must range between 0 and 1. Input was: {scaled_thr}")
+                raise ValueError(f"Threshold must range between 0 and 1 when using scaled_thr. Input was: {thr}")
         return data > thr

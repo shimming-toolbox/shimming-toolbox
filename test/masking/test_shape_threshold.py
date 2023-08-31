@@ -40,6 +40,11 @@ def test_threshold(data, expected):
     assert np.all(threshold(data, thr=3) == expected)
 
 
+def test_threshold_scaled_out_of_bounds():
+    with pytest.raises(ValueError, match="Threshold must range between 0 and 1 when using scaled_thr. Input was: 2"):
+        threshold(np.array([1, 2, 3]), thr=2, scaled_thr=True)
+
+
 @pytest.mark.parametrize('data,shape,expected', dummy_data_shape_square)
 def test_mask_square(data, shape, expected):
     assert(np.all(shapes(data, shape, center_dim1=0, center_dim2=1, len_dim1=1, len_dim2=3) == expected))

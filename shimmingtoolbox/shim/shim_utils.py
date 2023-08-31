@@ -124,7 +124,7 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     Args:
         array (np.ndarray): 3d array
         mask (np.ndarray): 3d array with the same shape as array
-        metric (string): Metric to calculate, supported: std, mean
+        metric (string): Metric to calculate, supported: std, mean, mae, mse, rmse
         axis (int): Axis to perform the metric
 
     Returns:
@@ -136,6 +136,12 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
         output = np.ma.mean(ma_array, axis=axis)
     elif metric == 'std':
         output = np.ma.std(ma_array, axis=axis)
+    elif metric == 'mae':
+        output = np.ma.mean(np.ma.abs(ma_array), axis=axis)
+    elif metric == 'mse':
+        output = np.ma.mean(np.ma.power(ma_array, 2), axis=axis)
+    elif metric == 'rmse':
+        output = np.ma.sqrt(np.ma.mean(np.ma.power(ma_array, 2), axis=axis))
     else:
         raise NotImplementedError("Metric not implemented")
 

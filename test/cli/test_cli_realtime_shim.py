@@ -1,11 +1,13 @@
 #!usr/bin/env python3
 # coding: utf-8
+
+import json
+import numpy as np
 import os
 import pathlib
+import pytest
 import tempfile
 import nibabel as nib
-import pytest
-import json
 
 from click.testing import CliRunner
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
@@ -40,7 +42,7 @@ def test_cli_realtime_shim():
                       center_dim2=int(ny / 2),
                       len_dim1=30, len_dim2=30, len_dim3=nz)
 
-        nii_mask_static = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_static = nib.Nifti1Image(mask.astype(np.int16), nii_anat.affine)
         fname_mask_static = os.path.join(tmp, 'mask.nii.gz')
         nib.save(nii_mask_static, fname_mask_static)
 
@@ -50,7 +52,7 @@ def test_cli_realtime_shim():
                       center_dim2=int(ny / 2),
                       len_dim1=20, len_dim2=20, len_dim3=nz)
 
-        nii_mask_riro = nib.Nifti1Image(mask.astype(int), nii_anat.affine)
+        nii_mask_riro = nib.Nifti1Image(mask.astype(np.uint8), nii_anat.affine)
         fname_mask_riro = os.path.join(tmp, 'mask.nii.gz')
         nib.save(nii_mask_riro, fname_mask_riro)
 
