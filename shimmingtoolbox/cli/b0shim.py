@@ -494,9 +494,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
-@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
-              default=__dir_config_scanner_constraints__, show_default=True,
-              help="Constraints for the scanner coil.")
+@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
+              help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
