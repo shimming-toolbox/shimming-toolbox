@@ -141,6 +141,14 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     else:
         raise NotImplementedError("Metric not implemented")
 
+    # Return nan if the output is masked, this avoids warnings for implicit conversions that could happen later
+    if output is np.ma.masked:
+        return output.filled(np.nan)
+
+    # If it is a masked array, fill the masked values with nans
+    if isinstance(output, np.ma.core.MaskedArray):
+        return output.filled(np.nan)
+
     return output
 
 
