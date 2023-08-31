@@ -52,8 +52,8 @@ class QuadProgOpt(OptimizerUtils):
         n = len(self.reg_vector)
         n_coils = len(self.coils)
 
-        sum_constraints = np.zeros([n_coils, 1])
-        g_bis = np.zeros([n_coils, 2 * n])
+        sum_constraints = []
+        g_bis = []
 
         # First we want to create the part to verify that the sum of the currents don't get above a limit
         start_index = n
@@ -61,9 +61,13 @@ class QuadProgOpt(OptimizerUtils):
             coil = self.coils[i_coil]
             end_index = start_index + coil.dim[3]
             if coil.coef_sum_max != np.inf:
-                sum_constraints[i_coil, 0] = coil.coef_sum_max
-                g_bis[i_coil, start_index: end_index] = 1
+                sum_constraints.append(coil.coef_sum_max)
+                tmp = np.zeros([2 * n])
+                tmp[start_index: end_index] = 1
+                g_bis.append(tmp)
             start_index = end_index
+        g_bis = np.array(g_bis)
+        sum_constraints = np.array(sum_constraints)[:, np.newaxis]
 
         # Then we want to see if the currents are between a lower, and an upper bound
         lb = np.zeros([n, 1])
@@ -72,20 +76,20 @@ class QuadProgOpt(OptimizerUtils):
         ub[:, 0] = np.array([x[1] for x in self.merged_bounds])
 
         # We create both arrays, but if there is no sum constraints, then there is no need to add this constraint
-        if np.all(sum_constraints == 0):
+        if np.any(sum_constraints):
+            g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
+                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (4n + n_sum_constraints, 2n)
+            h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
+                          [-lb], [ub]])
+            # dim(h) = (4n + n_sum_constraints, 1)
+        else:
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)],
                           [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
             # dim(g) = (4n, 2n)
             h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])],
                           [-lb], [ub]])
             # dim(h) = (4n, 1)
-        else:
-            g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
-                          [-np.eye(n), np.zeros([n, n])], [np.eye(n), np.zeros([n, n])]])
-            # dim(g) = (4n +n_coils, 2n)
-            h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [ub]])
-            # dim(h) = (4n +n_coils, 1)
         return g, h
 
     def get_stability_factor(self, coef, unshimmed_vec, coil_mat, factor):
@@ -209,21 +213,26 @@ class PmuQuadProgOpt(QuadProgOpt):
         """
         n_coils = len(self.coils)
         n = len(self.reg_vector)
-        sum_constraints = np.zeros([n_coils, 1])
+        sum_constraints = []
         ub = np.zeros([n, 1])
         lb = np.zeros([n, 1])
-        g_bis = np.zeros([n_coils, 2 * n])
-        start_index = n
+        g_bis = []
 
+        start_index = n
         # First we want to create the part to verify that the sum of the currents doesn't get above a limit
         for i_coil in range(n_coils):
             coil = self.coils[i_coil]
             end_index = start_index + coil.dim[3]
             if coil.coef_sum_max != np.inf:
                 pressure = np.max(np.abs(self.pressure_max), np.abs(self.pressure_min))
-                sum_constraints[i_coil, 0] = coil.coef_sum_max / (coil.dim[3] * pressure)
-                g_bis[i_coil, start_index: end_index] = 1
+                sum_constraints.append(coil.coef_sum_max / (coil.dim[3] * pressure))
+                tmp = np.zeros([2 * n])
+                tmp[start_index: end_index] = 1
+                g_bis.append(tmp)
             start_index = end_index
+
+        g_bis = np.array(g_bis)
+        sum_constraints = np.array(sum_constraints)[:, np.newaxis]
 
         # Then we want to see if the currents are between a lower, and an upper bound
         delta_pressure = self.pressure_max - self.pressure_min
@@ -232,8 +241,18 @@ class PmuQuadProgOpt(QuadProgOpt):
             ub[i_bound, 0] = bound[1]
 
         # We create both array, but if there is no sum constraints, then there is no need to add this constraints
-        if np.all(sum_constraints == 0):
+        if np.any(sum_constraints):
+            g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
+                          [- delta_pressure * - np.eye(n), np.zeros([n, n])],
+                          [delta_pressure * - np.eye(n), np.zeros([n, n])],
+                          [delta_pressure * np.eye(n), np.zeros([n, n])],
+                          [- delta_pressure * np.eye(n), np.zeros([n, n])]])
+            # dim(g) = (6n + n_sum_constraints, 2n)
 
+            h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
+                          [-lb], [-lb], [ub], [ub]])
+            # dim(h) = (6n + n_sum_constraints, 1)
+        else:
             g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)],
                           [- delta_pressure * - np.eye(n), np.zeros([n, n])],
                           [delta_pressure * - np.eye(n), np.zeros([n, n])],
@@ -245,16 +264,4 @@ class PmuQuadProgOpt(QuadProgOpt):
                           [-lb], [-lb], [ub], [ub]])
 
             # dim(h) = (6n, 1)
-        else:
-            g = np.block([[-np.eye(n), -np.eye(n)], [np.eye(n), -np.eye(n)], [g_bis],
-                          [- delta_pressure * - np.eye(n), np.zeros([n, n])],
-                          [delta_pressure * - np.eye(n), np.zeros([n, n])],
-                          [delta_pressure * np.eye(n), np.zeros([n, n])],
-                          [- delta_pressure * np.eye(n), np.zeros([n, n])]])
-            # dim(g) = (6n +n_coils, 2n)
-
-            h = np.block([[np.zeros([n, 1])], [np.zeros([n, 1])], [sum_constraints],
-                          [-lb], [-lb], [ub], [ub]])
-            # dim(h) = (6n +n_coils, 1)
-
         return g, h
