@@ -177,9 +177,9 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
 
             # Rescale to unit-shims that are G/cm
             # They are currently in uT/m
-            # 1G = 1e-4T
-            # uT/m --> G/cm = reordered_spher * 1e4 / (1e6 * 1e2) = reordered_spher / 1e4
-            scaled[..., i_channel] = reordered_spher[..., i_channel] / 1e4
+            # 1G = 1e-4T, 1T = 1e4G
+            # uT/m --> G/cm = reordered_spher * (1/1e6) * 1e4  * 100 = reordered_sphere
+            scaled[..., i_channel] = reordered_spher[..., i_channel]
         else:
             # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
             # uT/m^2 / A

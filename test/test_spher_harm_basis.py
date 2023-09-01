@@ -76,7 +76,7 @@ def test_ge_basis(x, y, z):
     # Test for a value, arbitrarily chose basis[0, 0, 0, 0].
     # The full matrix could be checked to be more thorough but would require explicitly defining the matrix which is
     # 2x2x2x8.
-    assert (np.allclose(basis[2, 2, 0, :], [-4.25774785e-06, -4.25774785e-06, 4.25774785e-06, 3.68477320e-05,
+    assert (np.allclose(basis[2, 2, 0, :], [-4.25774785e-02, -4.25774785e-02, 4.25774785e-02, 3.68477320e-05,
                                             -4.51742340e-05, -4.45028740e-05, 7.18998000e-09, 3.53411800e-07],
                         rtol=1e-09))
 
