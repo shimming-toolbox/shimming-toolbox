@@ -239,8 +239,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if scanner_coil_order != 1:
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}")
-        if json_fm_data['Manufacturer'] != 'Siemens':
-            raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data['Manufacturer']} for output file"
+        if json_fm_data.get('Manufacturer') != 'Siemens':
+            raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
     # Read the current shim settings from the scanner
@@ -249,7 +249,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data['Manufacturer'], json_fm_data['ManufacturersModelName'])
+                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
