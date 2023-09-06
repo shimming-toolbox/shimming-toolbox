@@ -951,10 +951,10 @@ class RealTimeSequencer(Sequencer):
 
     def get_acq_pressures(self):
         """
-        Get the acquisition pressures at the times when the fieldmap was acquired.
+        Get the acquisition pressures at the times when the field map volumes and slices were acquired.
 
         Returns:
-            np.ndarray: 1D array that contains the acquisitions pressures
+            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
         # Fetch PMU timing
         self.acq_timestamps = get_acquisition_times(self.nii_fieldmap, self.json_fmap)
@@ -979,13 +979,15 @@ class RealTimeSequencer(Sequencer):
         """
         fieldmap = self.nii_fieldmap.get_fdata()
         anat = self.nii_anat.get_fdata()
+
+        n_slices = fieldmap.shape[2]
+        n_volumes = fieldmap.shape[-1]
+
         # regularization --> static, riro
         # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
-        mean_p = np.mean(self.acq_pressures)
-        pressure_rms = np.sqrt(np.mean((self.acq_pressures - mean_p) ** 2))
-        x = self.acq_pressures.reshape(-1, 1) - mean_p
+        mean_p = self.pmu.mean(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
+        pressure_rms = self.pmu.get_pressure_rms(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
 
-        # Safety check for linear regression if the pressure and fieldmap fit well
         # Mask the voxels not being shimmed for riro
         nii_3dfmap = nib.Nifti1Image(self.nii_fieldmap.get_fdata()[..., 0], self.nii_fieldmap.affine,
                                      header=self.nii_fieldmap.header)
@@ -993,28 +995,36 @@ class RealTimeSequencer(Sequencer):
                                        dilation_kernel=self.mask_dilation_kernel,
                                        dilation_size=self.mask_dilation_kernel_size).get_fdata()
         masked_fieldmap_riro = np.repeat(fmap_mask_riro[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
-        y = masked_fieldmap_riro.reshape(-1, fieldmap.shape[-1]).T
 
-        reg_riro = LinearRegression().fit(x, y)
-        # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
-        score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
-        logger.debug(f"Linear fit of the RIRO masked fieldmap and pressure got a R2 score of: {score_riro}")
+        static = np.zeros(fieldmap.shape[:-1])
+        riro = np.zeros(fieldmap.shape[:-1])
 
-        # Warn if lower than a threshold
-        # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
-        threshold_score = 0.7
-        if score_riro < threshold_score:
-            logger.warning(f"Linear fit of the RIRO masked fieldmap and pressure got a low R2 score: {score_riro} "
-                           f"(less than {threshold_score}). This indicates a bad fit between the pressure data and the "
-                           f"fieldmap values")
+        for i_slice in range(n_slices):
+            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
 
-        # Fit to the linear model (no mask)
-        y = fieldmap.reshape(-1, fieldmap.shape[-1]).T
-        reg = LinearRegression().fit(x, y)
+            # Safety check for linear regression if the pressure and field map fit well
+            y = masked_fieldmap_riro[..., i_slice, :].reshape(-1, n_volumes).T
 
-        # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
-        static = reg.intercept_.reshape(fieldmap.shape[:-1])
-        riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+            reg_riro = LinearRegression().fit(x, y)
+            # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
+            score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
+            logger.debug(f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure got a R2 score of: {score_riro}")
+
+            # Warn if lower than a threshold
+            # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
+            threshold_score = 0.7
+            if score_riro < threshold_score:
+                logger.warning(f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2 score: {score_riro} "
+                               f"(less than {threshold_score}). This indicates a bad fit between the pressure data and the "
+                               f"fieldmap values")
+
+            # Fit to the linear model (no mask)
+            y = fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
+            reg = LinearRegression().fit(x, y)
+
+            # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
+            static[..., i_slice] = reg.intercept_.reshape(fieldmap.shape[:-2])
+            riro[..., i_slice] = reg.coef_.reshape(fieldmap.shape[:-2])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -1216,7 +1226,6 @@ class RealTimeSequencer(Sequencer):
         shim_trace_static = []
         shim_trace_riro = []
         unshimmed_trace = []
-        mae_unshimmed_trace = []
         mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_static_mask,
                                                             nii_target,
                                                             order=0,
@@ -1265,11 +1274,14 @@ class RealTimeSequencer(Sequencer):
                     logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                                    f"i_shim: {i_shim}, i_t: {i_t}")
 
+                riro_current_txt = ""
+                for i_fmap_slice in range(unshimmed.shape[2]):
+                    riro_current_txt += f"Fmap slice {i_fmap_slice}: {coef_riro[i_shim] * (self.acq_pressures[i_t][i_fmap_slice] - mean_p)}\n"
                 logger.debug(f"\nRMSE: i_shim: {i_shim}, t: {i_t}"
                              f"\nunshimmed: {rmse_unshimmed}, shimmed static: {rmse_shimmed_static}, "
                              f"shimmed static+riro: {rmse_shimmed_static_riro}\n"
                              f"Static currents:\n{coef_static[i_shim]}\n"
-                             f"Riro currents:\n{coef_riro[i_shim] * (self.acq_pressures[i_t] - mean_p)}\n")
+                             f"Riro currents:\n" + riro_current_txt)
 
                 # Create a 1D list of the sum of the shimmed and unshimmed maps
                 shim_trace_static.append(rmse_shimmed_static)
@@ -1332,14 +1344,14 @@ class RealTimeSequencer(Sequencer):
 
         n_channels = static.shape[1]
         for i_channel in range(n_channels):
-            ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
+            ax.plot(static[:, i_channel], label=f"Static channel {i_channel} currents through shim groups")
 
         if riro is not None:
             for i_channel in range(n_channels):
-                ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
+                ax.plot(riro[:, i_channel], label=f"Riro channel {i_channel} currents through shim groups")
 
         ax.set_xlabel('Shim group')
-        ax.set_ylabel('Coefficients (Physical CS [RAS])')
+        ax.set_ylabel('Coefficients')
         ax.legend()
         ax.set_title("Currents through shims")
         fname_figure = os.path.join(self.path_output, 'fig_currents.png')
@@ -1420,8 +1432,8 @@ class RealTimeSequencer(Sequencer):
         # Get the pmu data values in the range of the acquisition
         pmu_timestamps = self.pmu.get_times()
         pmu_pressures = self.pmu.data
-        indexes = np.where(np.logical_and(pmu_timestamps >= (self.acq_timestamps[0] - 1000),
-                                          pmu_timestamps <= self.acq_timestamps[-1] + 1000))
+        indexes = np.where(np.logical_and(pmu_timestamps >= (self.acq_timestamps[0].min() - 1000),
+                                          pmu_timestamps <= self.acq_timestamps[-1].max() + 1000))
         pmu_timestamps_curated = pmu_timestamps[indexes]
         pmu_pressures_curated = pmu_pressures[indexes]
 
@@ -1460,8 +1472,10 @@ class RealTimeSequencer(Sequencer):
                     label='Pressure Trace')
             ax.plot((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
                     label='RMSE over the not shimmed ROI')
-            ax.scatter((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, self.acq_pressures, color='red',
-                       label='Fieldmap timepoints')
+            ax.scatter((np.mean(self.acq_timestamps, axis=1) - pmu_timestamps_curated[0]) / 1000,
+                       np.mean(self.acq_pressures, axis=1),
+                       color='red',
+                       label='Field map timepoints')
             ax.legend()
             ax.set_ylim(ylim)
             ax.set_yticks([pmu_pressures_curated.min(), pmu_pressures_curated.max()],

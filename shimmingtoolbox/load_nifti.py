@@ -22,17 +22,34 @@ def get_acquisition_times(nii_data, json_data):
         json_data (dict): Json dict corresponding to a nifti sidecar.
 
     Returns:
-        numpy.ndarray: Acquisition timestamps in ms.
-
+        numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
     """
     # Get number of volumes
     n_volumes = nii_data.header['dim'][4]
+    n_slices = nii_data.shape[2]
 
+    slice_timing = json_data.get('SliceTiming')
+    if slice_timing is None:
+        logger.warning("No slice timing information found in JSON file. Slice timing will be less accurate.")
+        slice_timing = np.zeros(n_slices)
+    else:
+        slice_timing = np.array(slice_timing)
+
+    # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
     delta_t = json_data['RepetitionTime'] * 1000  # [ms]
-    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+
+    # json_data['AcquisitionTime'] Time the acquisition of data for this image started (ISO format)
+    acq_start_time_iso = json_data['AcquisitionTime']
     acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
 
-    return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
+    # Start time for each volume [ms]
+    volume_start_times = np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)
+
+    start_times = np.zeros((n_volumes, n_slices))
+    for i in range(n_volumes):
+        start_times[i, :] = volume_start_times[i] + (slice_timing * 1000)  # [ms]
+
+    return start_times  # [ms]
 
 
 def load_nifti(path_data, modality='phase'):
