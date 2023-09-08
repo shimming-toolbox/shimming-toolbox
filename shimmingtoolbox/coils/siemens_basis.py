@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*
 
 import numpy as np
+import logging
+
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
+logger = logging.getLogger(__name__)
 
 X = 0
 Y = 1
@@ -35,7 +38,7 @@ def _reorder_to_siemens(spher_harm):
     return reordered
 
 
-def _get_scaling_factors():
+def _get_scaling_factors(orders=(1, 2)):
     """
     Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
     fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
@@ -43,6 +46,8 @@ def _get_scaling_factors():
     Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
 
     2nd order terms should yield 1 micro-T of field shift per metre-squared: equivalently, 0.000042576 Hz/mm^2
+
+    3rd order terms should yield xxx micro-T of field shift per metre-cubed: equivalently,
 
     Gist: given the stated nominal values, we can pick several arbitrary reference positions around the
     origin/isocenter at which we know what the field *should* be, and use that to calculate the appropriate scaling
@@ -56,36 +61,59 @@ def _get_scaling_factors():
     ``shimmingtoolbox.coils.spherical_harmonics``.
     """
 
-    [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
+    [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-2, 3)), np.array(range(-2, 3)), np.array(range(-2, 3)),
                                         indexing='xy')
-    orders = np.array(range(1, 3))
     sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
-    sh = _reorder_to_siemens(sh)
 
-    n_channels = sh.shape[3]
+    def _channels_per_order(order):
+        return 2 * order + 1
+
+    n_channels = np.array([_channels_per_order(order) for order in orders]).sum()
     scaling_factors = np.zeros(n_channels)
 
     # indices of reference positions for normalization:
+    # needed for order 1
     i_x1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 0))
     i_y1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 0))
     i_z1 = np.nonzero((x_iso == 0) & (y_iso == 0) & (z_iso == 1))
-
+    # needed for order 2
     i_x1z1 = np.nonzero((x_iso == 1) & (y_iso == 0) & (z_iso == 1))
     i_y1z1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 1))
     i_x1y1 = np.nonzero((x_iso == 1) & (y_iso == 1) & (z_iso == 0))
+    # needed for order 3
+    i_x1y1z1 = np.nonzero((x_iso == 1) & (y_iso == 1) & (z_iso == 1))
+    # needed for order 4
+    i_x2y1 = np.nonzero((x_iso == 2) & (y_iso == 1) & (z_iso == 0))
 
     # order the reference indices like the sh field terms
-    i_ref = [i_x1, i_y1, i_z1, i_z1, i_x1z1, i_y1z1, i_x1, i_x1y1]
+    # TODO: Find out the polarity of the terms
+    iref = {0: [i_x1],
+            1: [i_y1, i_x1, i_x1],
+            2: [i_x1y1, i_y1z1, i_x1, i_x1z1, i_x1],
+            3: [i_y1, i_x1y1z1, i_y1, i_z1, i_x1, i_x1z1, i_x1],
+            4: [i_x2y1, i_y1z1, i_x1y1, i_y1z1, i_x1, i_x1z1, i_x1, i_x1z1, i_x1]}
 
     # distance from iso/origin to adopted reference point[units: mm]
-    r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
+    r = {0: [1],
+         1: [1, 1, 1],
+         2: [np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1],
+         3: [1, np.sqrt(3), 1, 1, 1, np.sqrt(2), 1],
+         4: [np.sqrt(5), np.sqrt(2), np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1, np.sqrt(2), 1]}
 
-    # scaling:
-    orders = [1, 1, 1, 2, 2, 2, 2, 2]
+    i_ch = 0
+    for order in orders:
 
-    for i_ch in range(0, n_channels):
-        field = sh[:, :, :, i_ch]
-        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]][0]
+        list_orders = [order] * _channels_per_order(order)
+        r.get(order)
+
+        if r.get(order) is None or iref.get(order) is None:
+            raise NotImplementedError("Order must be between 0 and 4")
+
+        for i in range(_channels_per_order(order)):
+            field = sh[:, :, :, i_ch]
+            scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** list_orders[i]) /
+                                     field[iref[order][i]][0])
+            i_ch += 1
 
     return scaling_factors
 

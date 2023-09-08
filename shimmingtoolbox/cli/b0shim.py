@@ -54,7 +54,8 @@ def b0shim_cli():
               help="Anatomical image to apply the correction onto.")
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2', '3']), default='-1',
+              show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -491,7 +492,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2', '3']), default='-1',
+              show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",

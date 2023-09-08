@@ -33,10 +33,10 @@ def spherical_harmonics(orders, x, y, z):
         >>> basis = spherical_harmonics(orders, x, y, z)
 
     Notes:
-        - basis[:, :, :,0] corresponds to the 0th-order constant term (globally=unity)
+        - basis[:, :, :, 0] corresponds to the 0th-order constant term (globally=unity)
             - 0: *c*
 
-        - basis[:, :, :, 1:3] to 1st-order linear terms
+        - basis[:, :, :, 1:4] to 1st-order linear terms
             - 1: *y*
             - 2: *z*
             - 3: *x*
@@ -46,7 +46,16 @@ def spherical_harmonics(orders, x, y, z):
             - 5: *zy*
             - 6: *z2*
             - 7: *zx*
-            - 8: *x2y2*
+            - 8: *x^2 - y^2*
+
+        - basis[:, :, :, 8:15] to 3rd-order terms
+            - 9: *y(3x^2 - y^2)*
+            - 10: *xyz*
+            - 11: *y(5z^2 - r^2)*
+            - 12: *5z^3 - 3zr^2*
+            - 13: *x(5z^2 - r^2)*
+            - 14: *z(x^2 - y^2)*
+            - 15: *x(x^2 - 3y^2)*
 
         Based on
             - spherical_harmonics.m by topfer@ualberta.ca
