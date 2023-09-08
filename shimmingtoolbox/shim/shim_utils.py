@@ -156,7 +156,7 @@ def phys_to_shim_cs(coefs, manufacturer):
     """Convert a list of coefficients from RAS to the Shim Coordinate System
 
     Args:
-        coefs (np.ndarray): 1d list of coefficients in the physical RAS coordinate system of the manufacturer. The first
+        coefs (np.ndarray): Coefficients in the physical RAS coordinate system of the manufacturer. The first
                             dimension represents the different channels. (indexes 0, 1, 2 --> x, y, z...). If there are
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
@@ -173,15 +173,36 @@ def phys_to_shim_cs(coefs, manufacturer):
         # Order 1
         if len(coefs) >= 3:
             # Change from RAS to LAI (ShimCS)
-            coefs[0] = -coefs[0]  # X
-            coefs[2] = -coefs[2]  # Z
+            if isinstance(coefs[0], np.ndarray):
+                if None not in coefs[0]:
+                    coefs[0] = -coefs[0]  # X
+            else:
+                if coefs[0] is not None:
+                    coefs[0] = -coefs[0]  # X
+
+            if isinstance(coefs[2], np.ndarray):
+                if None not in coefs[2]:
+                    coefs[2] = -coefs[2]  # Z
+            else:
+                if coefs[2] is not None:
+                    coefs[2] = -coefs[2]  # X
 
         # Order 2
         if len(coefs) >= 8:
             # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
-            coefs[5] = -coefs[5]  # [ZY]
-            coefs[7] = -coefs[7]  # [XY]
+            if isinstance(coefs[5], np.ndarray):
+                if None not in coefs[5]:
+                    coefs[5] = -coefs[5]  # [ZY]
+            else:
+                if coefs[5] is not None:
+                    coefs[5] = -coefs[5]  #
 
+            if isinstance(coefs[7], np.ndarray):
+                if None not in coefs[7]:
+                    coefs[7] = -coefs[7]  # [XY]
+            else:
+                if coefs[7] is not None:
+                    coefs[7] = -coefs[7]  #
     else:
         logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
 
