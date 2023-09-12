@@ -9,8 +9,9 @@ import numpy as np
 from skimage.filters import gaussian
 from sklearn.linear_model import LinearRegression
 
-from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
+from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
+from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.utils import fill
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 VALIDITY_THRESHOLD = 0.2
 
 
-def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=None, threshold=0.05,
+def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_mask=None, threshold=0.05,
                      gaussian_filter=False, sigma=1, fname_save_mask=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
@@ -31,7 +32,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
                            echoes. It input is a phasediff (1 phase), input 2 echotimes.
         unwrapper (str): Unwrapper to use for phase unwrapping. Supported: ``prelude``, ``skimage``.
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
-        mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
+        nii_mask (nib.Nifti1Image): Mask for masking output fieldmap.
         threshold: Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower
                    than the threshold are set to 0.
         gaussian_filter (bool): Option of using a Gaussian filter to smooth the fieldmaps (boolean)
@@ -73,12 +74,19 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         raise ValueError(f"Threshold should range from 0 to 1. Input value was: {threshold}")
 
     # Make sure mask has the right shape
-    if mask is None:
+    if nii_mask is None:
         # Define the mask using the threshold
         mask = mask_threshold(mag, threshold, scaled_thr=True)
     else:
-        if mask.shape != phase[0].shape:
-            raise ValueError("Shape of mask and phase must match.")
+        if not np.all(nii_mask.shape == list_nii_phase[0].shape) or not np.all(
+                nii_mask.affine == list_nii_phase[0].affine):
+            logger.debug("Resampling mask on the target anat")
+            nii_mask_soft = resample_from_to(nii_mask, list_nii_phase[0], order=1, mode='grid-constant')
+            tmp_mask = nii_mask_soft.get_fdata()
+            # Change soft mask into binary mask
+            mask = mask_threshold(tmp_mask, thr=0.001, scaled_thr=True)
+        else:
+            mask = nii_mask.get_fdata()
 
         logger.debug("A mask was provided, ignoring threshold value")
 
