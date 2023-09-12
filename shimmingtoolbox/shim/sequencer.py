@@ -289,7 +289,7 @@ class ShimSequencer(Sequencer):
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001)
+            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
