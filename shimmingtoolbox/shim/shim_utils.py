@@ -277,12 +277,12 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
     Args:
         manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
                                         ManufacturersModelName'. Supported names: 'Prisma_fit'.
-        shim_settings (dict): Dictionnary with keys: 'order1', 'order2', 'has_valid_settings'. 'order1' is a list of 3
+        shim_settings (dict): Dictionary with keys: 'order1', 'order2', 'has_valid_settings'. 'order1' is a list of 3
                        coefficients for the first order. Found in the json BIDS sidecar under 'ShimSetting'. 'order2' is
                        a list of 5 coefficients. 'has_valid_settings' is a boolean.
 
     Returns:
-        dict: Same dictionnary as the shim_settings input with coefficients of the first, second and third order
+        dict: Same dictionary as the shim_settings input with coefficients of the first, second and third order
               converted according to the appropriate manufacturer model.
     """
     scanner_shim_mp = shim_settings

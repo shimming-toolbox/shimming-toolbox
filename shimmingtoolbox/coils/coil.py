@@ -178,9 +178,28 @@ def get_scanner_constraints(manufacturers_model_name, order=2):
                                                        [-3551.29, 3551.29],
                                                        [-3487.302, 3487.302]])
 
+    elif manufacturers_model_name == "Investigational_Device_7T":
+        constraints = {
+            "name": "Investigational_Device_7T",
+            "coef_channel_minmax": [],
+            "coef_sum_max": None
+        }
+        if order >= 0:
+            pass
+            # todo: f0 min and max is wrong
+        constraints["coef_channel_minmax"].append([None, None])
+        if order >= 1:
+            for _ in range(3):
+                constraints["coef_channel_minmax"].append([-5000, 5000])
+        if order >= 2:
+            constraints["coef_channel_minmax"].extend([[-1839.63, 1839.63],
+                                                       [-791.84, 791.84],
+                                                       [-791.84, 791.84],
+                                                       [-615.87, 615.87],
+                                                       [-615.87, 615.87]])
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-                       f"respected.")
+                       "respected.")
         constraints = {
             "name": "Unknown",
             "coef_sum_max": None
