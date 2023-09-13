@@ -78,15 +78,32 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         # Define the mask using the threshold
         mask = mask_threshold(mag, threshold, scaled_thr=True)
     else:
+        # Check that the mask is the right shape
         if not np.all(nii_mask.shape == list_nii_phase[0].shape) or not np.all(
                 nii_mask.affine == list_nii_phase[0].affine):
             logger.debug("Resampling mask on the target anat")
-            nii_mask_soft = resample_from_to(nii_mask, list_nii_phase[0], order=1, mode='grid-constant')
+            if list_nii_phase[0].ndim == 4:
+                nii_tmp_target = nib.Nifti1Image(list_nii_phase[0].get_fdata()[..., 0], list_nii_phase[0].affine,
+                                                 header=list_nii_phase[0].header)
+                if nii_mask.ndim == 3:
+                    tmp_mask = np.repeat(nii_mask.get_fdata()[..., np.newaxis], list_nii_phase[0].shape[-1], axis=-1)
+                    nii_tmp_mask = nib.Nifti1Image(tmp_mask, nii_mask.affine, header=nii_mask.header)
+                elif nii_mask.ndim == 4:
+                    nii_tmp_mask = nii_mask
+                else:
+                    raise ValueError("Mask must be 3D or 4D")
+            else:
+                # If it's not in 4d, assume it's a 3d mask
+                nii_tmp_target = list_nii_phase[0]
+                nii_tmp_mask = nii_mask
+
+            nii_mask_soft = resample_from_to(nii_tmp_mask, nii_tmp_target, order=1, mode='grid-constant')
             tmp_mask = nii_mask_soft.get_fdata()
             # Change soft mask into binary mask
             mask = mask_threshold(tmp_mask, thr=0.001, scaled_thr=True)
         else:
             mask = nii_mask.get_fdata()
+
 
         logger.debug("A mask was provided, ignoring threshold value")
 
@@ -228,7 +245,7 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
 
         # Calculate the number of offset by rounding to the nearest integer.
         n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
-        n_offsets = round(n_offsets_float)
+        n_offsets = np.round(n_offsets_float)
 
         if 0.3 < (n_offsets_float % 1) < 0.7:
             logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
