@@ -115,9 +115,9 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         # Run the unwrapper
         phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
                                            fname_save_mask=fname_save_mask)
-        # If it's 4d (i.e. there are timepoints)
-        if len(phasediff_unwrapped.shape) == 4:
-            phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
+
+        # If 4d, correct 2pi offset between timepoints, if it's 3d, bring offset closest to the mean
+        phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
 
         # Divide by echo time
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
@@ -216,9 +216,10 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         'correct' offset is assumed to be at time 0.
 
     Args:
-        unwrapped (numpy.ndarray): 4d array of the spatially unwrapped phase
-        mag (numpy.ndarray): 4d array containing the magnitude values of the phase
-        mask (numpy.ndarray): 4d mask of the unwrapped phase array
+        unwrapped (numpy.ndarray): Array of the spatially unwrapped phase. If there is a time dimension, the offset is
+                                   corrected in time, if unwrapped is 3D, the offset closest to 0 is chosen.
+        mag (numpy.ndarray): Array containing the magnitude values of the phase. Same shape as unwrapped.
+        mask (numpy.ndarray): Mask of the unwrapped phase array. Same shape as unwrapped.
         validity_threshold (float): Threshold to create a mask on each timepoints and assume as reliable phase data
 
     Returns:
@@ -233,29 +234,40 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     # Logical and with the mask used for calculating the fieldmap
     validity_masks = np.logical_and(mask, validity_masks)
 
-    for i_time in range(1, unwrapped_cp.shape[3]):
-        # Take the region where both masks intersect
-        validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
+    if unwrapped.ndim == 4:
+        for i_time in range(1, unwrapped_cp.shape[3]):
+            # Take the region where both masks intersect
+            validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
 
-        # Calculate the means in the same validity mask
-        ma_0 = np.ma.array(unwrapped_cp[..., i_time - 1], mask=validity_mask == False)
+            # Calculate the means in the same validity mask
+            ma_0 = np.ma.array(unwrapped_cp[..., i_time - 1], mask=validity_mask == False)
+            mean_0 = np.ma.mean(ma_0)
+            ma_1 = np.ma.array(unwrapped_cp[..., i_time], mask=validity_mask == False)
+            mean_1 = np.ma.mean(ma_1)
+
+            # Calculate the number of offset by rounding to the nearest integer.
+            n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
+            n_offsets = np.round(n_offsets_float)
+
+            if 0.3 < (n_offsets_float % 1) < 0.7:
+                logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
+                               "ambiguous, verify the output fieldmap.")
+
+            if n_offsets != 0:
+                logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
+
+            logger.debug(f"Offset was: {n_offsets_float}")
+            # Remove n_offsets to unwrapped[..., i_time] only in the masked region
+            unwrapped_cp[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
+    else:
+        # unwrapped.ndim == 3:
+        ma_0 = np.ma.array(unwrapped_cp, mask=validity_masks == False)
         mean_0 = np.ma.mean(ma_0)
-        ma_1 = np.ma.array(unwrapped_cp[..., i_time], mask=validity_mask == False)
-        mean_1 = np.ma.mean(ma_1)
-
-        # Calculate the number of offset by rounding to the nearest integer.
-        n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
+        n_offsets_float = mean_0 / (2 * np.pi)
         n_offsets = np.round(n_offsets_float)
-
-        if 0.3 < (n_offsets_float % 1) < 0.7:
-            logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
-                           "ambiguous, verify the output fieldmap.")
-
         if n_offsets != 0:
             logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
 
-        logger.debug(f"Offset was: {n_offsets_float}")
-        # Remove n_offsets to unwrapped[..., i_time] only in the masked region
-        unwrapped_cp[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
+        unwrapped_cp -= mask * n_offsets * (2 * np.pi)
 
     return unwrapped_cp
