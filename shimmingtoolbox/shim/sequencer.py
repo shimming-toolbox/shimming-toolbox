@@ -610,7 +610,7 @@ class ShimSequencer(Sequencer):
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-        fig = Figure(figsize=(8, 5))
+        fig = Figure(figsize=(15, 9))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
