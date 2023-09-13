@@ -10,22 +10,6 @@
         },
         {
             "datatype": "anat",
-            "suffix": "T2w",
-            "criteria": {
-                "SidecarFilename": "007*",
-                "EchoTime": 0.1
-            }
-        },
-        {
-            "datatype": "anat",
-            "suffix": "PD",
-            "criteria": {
-                "SeriesDescription": "*TSE*",
-                "EchoTime": 0.008
-            }
-        },
-        {
-            "datatype": "anat",
             "suffix": "FLAIR",
             "criteria": {
                 "SeriesDescription": "*FLAIR*"
@@ -169,6 +153,7 @@
             "datatype": "fmap",
             "suffix": "magnitude1",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "1"
@@ -178,6 +163,7 @@
             "datatype": "fmap",
             "suffix": "magnitude2",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "2"
@@ -187,6 +173,7 @@
             "datatype": "fmap",
             "suffix": "magnitude3",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "3"
@@ -196,6 +183,7 @@
             "datatype": "fmap",
             "suffix": "magnitude4",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "4"
@@ -205,6 +193,7 @@
             "datatype": "fmap",
             "suffix": "magnitude5",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "5"
@@ -214,6 +203,7 @@
             "datatype": "fmap",
             "suffix": "magnitude6",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "M", "*"],
                 "EchoNumber": "6"
@@ -223,6 +213,7 @@
             "datatype": "fmap",
             "suffix": "phase1",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "1"
@@ -232,6 +223,7 @@
             "datatype": "fmap",
             "suffix": "phase2",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "2"
@@ -241,6 +233,7 @@
             "datatype": "fmap",
             "suffix": "phase3",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "3"
@@ -250,6 +243,7 @@
             "datatype": "fmap",
             "suffix": "phase4",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "4"
@@ -259,6 +253,7 @@
             "datatype": "fmap",
             "suffix": "phase5",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "5"
@@ -268,6 +263,127 @@
             "datatype": "fmap",
             "suffix": "phase6",
             "criteria": {
+                "ProtocolName": "*DYNshim*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude1",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude2",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude3",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude4",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude5",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude6",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "6"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase1",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase2",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase3",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase4",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "4"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase5",
+            "criteria": {
+                "ProtocolName": "*field_map*",
+                "SequenceName": "*fl[2-3]d[2-6]",
+                "ImageType": ["*", "*", "P", "*", "*"],
+                "EchoNumber": "5"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase6",
+            "criteria": {
+                "ProtocolName": "*field_map*",
                 "SequenceName": "*fl[2-3]d[2-6]",
                 "ImageType": ["*", "*", "P", "*", "*"],
                 "EchoNumber": "6"
@@ -441,6 +557,61 @@
                 "Manufacturer": "Philips",
                 "EchoNumber": "1",
                 "ImageType": ["*", "*", "T1", "MIXED", "FIELDMAPHZ"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude1",
+            "criteria": {
+                "InstitutionName": "B.U.F.F",
+                "SeriesDescription": "*GRE_multiTE*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "1"
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude2",
+            "criteria": {
+                "InstitutionName": "B.U.F.F",
+                "SeriesDescription": "*GRE_multiTE*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "2"
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude3",
+            "criteria": {
+                "InstitutionName": "B.U.F.F",
+                "SeriesDescription": "*GRE_multiTE*",
+                "ImageType": [
+                    "*",
+                    "*",
+                    "M",
+                    "*"
+                ],
+                "EchoNumber": "3"
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude4",
+            "criteria": {
+                "InstitutionName": "B.U.F.F",
+                "SeriesDescription": "*GRE_multiTE*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "4"
+            }
+        },
+                {
+            "datatype": "anat",
+            "suffix": "magnitude5",
+            "criteria": {
+                "InstitutionName": "B.U.F.F",
+                "SeriesDescription": "*GRE_multiTE*",
+                "ImageType": ["*", "*", "M", "*"],
+                "EchoNumber": "5"
             }
         }
     ]
