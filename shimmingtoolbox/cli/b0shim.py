@@ -473,11 +473,21 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
+@click.option('--coil', 'coils_static', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
                    "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
+                   "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
+                   f"see: {__dir_config_scanner_constraints__}")
+@click.option('--coil_riro', 'coils_riro', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
+              default=None, required=False,
+              help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
+                   "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
+                   "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
+                   "profiles must be in Hz/unit_shim). If this option is used, these coil profiles will be used for "
+                   "the RIRO optimization. If not, the same coil profiles as the static shimming will be used. "
+                   "If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
@@ -491,7 +501,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+              help="Maximum order of the shim system. Note that specifying 1 will return "
+                   "orders 0 and 1. The 0th order is the f0 frequency.")
+@click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.Choice(['-1', '0', '1', '2']), default=None, show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -560,9 +573,9 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
 def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
-                     opt_criteria, slices, slice_factor, coils, dilation_kernel_size, scanner_coil_order,
-                     fname_sph_constr, fatsat, path_output, o_format_coil, o_format_sph, output_value_format,
-                     reg_factor, verbose):
+                     opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
+                     scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
+                     o_format_coil, o_format_sph, output_value_format, reg_factor, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -571,8 +584,15 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
 
+    #Set coils and scanner order for riro if none were indicated
+    print(coils_riro)
+    if len(coils_riro) == 0:
+        coils_riro = coils_static
+    if scanner_coil_order_riro is None:
+        scanner_coil_order_riro = scanner_coil_order_static
     # Input can be a string
-    scanner_coil_order = int(scanner_coil_order)
+    scanner_coil_order_static = int(scanner_coil_order_static)
+    scanner_coil_order_riro = int(scanner_coil_order_riro)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
@@ -580,8 +600,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if scanner_coil_order != 1:
-            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+        if scanner_coil_order_static != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
 
     # Set logger level
@@ -656,7 +676,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
+    list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap, options['scanner_shim'],
+                             json_fm_data['Manufacturer'], json_fm_data['ManufacturersModelName'])
+    list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap, options['scanner_shim'],
                              json_fm_data['Manufacturer'], json_fm_data['ManufacturersModelName'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
@@ -677,7 +699,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
                                   nii_mask_anat_riro,
-                                  list_slices, pmu, list_coils,
+                                  list_slices, pmu, list_coils_static, list_coils_riro,
                                   method=method,
                                   opt_criteria=opt_criteria,
                                   mask_dilation_kernel='sphere',
@@ -694,7 +716,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     list_fname_output = []
     end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
+
+    #* zip() is used to only stop iterating when the shortest iterable is exhausted
+    #TODO: adapt code to handle different number of static and riro coils
+    for i_coil, (coil, coil_riro) in enumerate(zip(list_coils_static, list_coils_riro)):
 
         # Figure out the start and end channels for a coil to be able to select it from the coefs
         n_channels = coil.dim[3]
@@ -757,7 +782,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 #             bounds=bounds_shim_cs)
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
-                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
+                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
                     for i_channel in range(n_channels):
                         # abs_coef = delta + initial
                         coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
@@ -781,7 +806,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
+    #* zip() is used to only stop iterating when the shortest iterable is exhausted
+    #TODO: adapt code to handle different number of static and riro coils
+    for i_coil, (coil, coil_riro) in enumerate(zip(list_coils_static, list_coils_riro)):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
         n_channels = coil.dim[3]
         start_channel = end_channel
