@@ -585,7 +585,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     """
 
     #Set coils and scanner order for riro if none were indicated
-    print(coils_riro)
     if len(coils_riro) == 0:
         coils_riro = coils_static
     if scanner_coil_order_riro is None:

@@ -1748,8 +1748,6 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     """
 
     new_bounds = []
-    if len(coils_static) != 0:
-        print(f"Old bound: {old_bounds}\nCoils static: {len(coils_static)} {coils_static[0].coef_channel_minmax}\nCoils riro: {len(coils_riro)} {coils_riro[0].coef_channel_minmax}\n currents: {len(currents[0])}")
     if len(coils_static) > len(coils_riro):
         currents = currents[:, -len(coils_riro[0].coef_channel_minmax):]
         old_bounds = old_bounds[-len(coils_riro[0].coef_channel_minmax):]
@@ -1761,7 +1759,6 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
             shim_bound.append(tuple(a_bound))
         new_bounds.append(shim_bound)
 
-    print(f"New bound: {new_bounds}")
     return new_bounds
 
 
