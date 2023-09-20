@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import copy
 import logging
 
 import numpy as np
@@ -117,9 +118,9 @@ class Coil(object):
 
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
-    def __init__(self, coord_system, dim_volume, affine, constraints, order):
+    def __init__(self, coord_system, dim_volume, affine, constraints, orders):
 
-        self.order = order
+        self.orders = orders
         self.coord_system = coord_system
         self.affine = affine
 
@@ -127,7 +128,9 @@ class ScannerCoil(Coil):
         # Todo: add coord system
         sph_coil_profile = self._create_coil_profile(dim_volume)
         # Restricts the constraints to the specified order
-        constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.order)
+        #! Seems to be done twice
+        #! Make sure it is ok to remove because it causes problem with specific orders
+        constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.orders)
 
         super().__init__(sph_coil_profile, affine, constraints)
 
@@ -136,13 +139,14 @@ class ScannerCoil(Coil):
         profile_order_0 = -np.ones(dim)
 
         # define the coil profiles
-        if self.order == 0:
+        if self.orders == [0]:
             # f0 --> [1]
             sph_coil_profile = profile_order_0[..., np.newaxis]
         else:
             # f0, orders
             mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
-            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)))
+            temp_orders = [order for order in self.orders if order != 0]
+            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders))
             sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
         return sph_coil_profile
@@ -196,7 +200,8 @@ def get_scanner_constraints(manufacturers_model_name, order=2):
     return constraints
 
 
-def restrict_sph_constraints(bounds, order):
+def restrict_sph_constraints(bounds, orders):
+    #! Modify description if everything works
     """ Select bounds according to the order specified
 
     Args:
@@ -207,17 +212,17 @@ def restrict_sph_constraints(bounds, order):
     Returns:
         list: 2D list with the bounds of order 0 to the specified order
     """
-
-    if order == 0:
+    minmax_out = []
+    if 0 in orders:
         # f0 --> [1]
-        minmax_out = bounds[:1]
-    elif order == 1:
+        minmax_out.extend(bounds[:1])
+    if 1 in orders:
         # f0, ch1, ch2, ch3 -- > [4]
-        minmax_out = bounds[:4]
-    elif order == 2:
+        minmax_out.extend(bounds[1:4])
+    if 2 in orders:
         # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
-        minmax_out = bounds[:9]
-    else:
+        minmax_out.extend(bounds[4:9])
+    if minmax_out == []:
         raise NotImplementedError("Order must be between 0 and 2")
 
     return minmax_out

@@ -501,10 +501,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
-@click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', 'scanner_coil_order_static', multiple=True, type=click.Choice(['-1', '0', '1', '2']), default=['-1'], show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
-@click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.Choice(['-1', '0', '1', '2']), default=None, show_default=True,
+@click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', multiple=True, type=click.Choice(['-1', '0', '1', '2']), default=None, show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -583,15 +583,19 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
+    scanner_coil_order_static = [int(order) for order in sorted(scanner_coil_order_static)]
+    scanner_coil_order_riro = [int(order) for order in sorted(scanner_coil_order_riro)]
 
     #Set coils and scanner order for riro if none were indicated
     if len(coils_riro) == 0:
         coils_riro = coils_static
-    if scanner_coil_order_riro is None:
+    if len(scanner_coil_order_riro) == 0:
         scanner_coil_order_riro = scanner_coil_order_static
+
     # Input can be a string
-    scanner_coil_order_static = int(scanner_coil_order_static)
-    scanner_coil_order_riro = int(scanner_coil_order_riro)
+    #! previous code when not using a list of orders
+    # scanner_coil_order_static = int(scanner_coil_order_static)
+    # scanner_coil_order_riro = int(scanner_coil_order_riro)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
@@ -599,7 +603,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if scanner_coil_order_static != 1:
+        if scanner_coil_order_static != [1]:
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
 
@@ -901,8 +905,9 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
     return list_fname_output
 
 
-def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
+def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
                 manufacturers_model_name):
+    #! Modify description if everything works
     """ Loads the Coil objects from filenames
 
     Args:
@@ -927,7 +932,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
         list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
 
     # Create the spherical harmonic coil profiles of the scanner
-    if 0 <= order <= 2:
+    if -1 not in orders:
 
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
@@ -935,10 +940,10 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
         else:
             sph_contraints = get_scanner_constraints(manufacturers_model_name)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, order, manufacturer)
+        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
 
         # Create a ScannerCoil object
-        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, order)
+        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
@@ -948,7 +953,8 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
     return list_coils
 
 
-def calculate_scanner_constraints(constraints, scanner_shim_settings, order, manufacturer):
+def calculate_scanner_constraints(constraints, scanner_shim_settings, orders, manufacturer):
+    #! Modify description if everything works
     """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
         absolute bounds
 
@@ -978,44 +984,50 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
                                    f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
 
     # Set the initial coefficients to 0
-    if order == 0:
+    initial_coefs = []
+    if 0 in orders:
         # Order 0 has 1 coefficient (f0)
-        initial_coefs = [0]
-    elif order == 1:
+        initial_coefs.extend([0])
+    if 1 in orders:
         # Order 1 has 3 more coefficients than order 0 (f0, x, y, z)
-        initial_coefs = [0] * 4
-    elif order == 2:
+        initial_coefs.extend([0] * 3)
+    if 2 in orders:
         # Order 2 has 5 more coefficients than order 1 (f0, X, Y, Z, Z2, ZX, ZY, X2-Y2, XY)
-        initial_coefs = [0] * 9
-    else:
+        initial_coefs.extend([0] * 5)
+    if initial_coefs == []:
         initial_coefs = None
 
     # Restrict the constraints to the provided order
-    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], order)
-
+    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
-
-        if scanner_shim_settings['f0'] is not None and order >= 0:
-            initial_coefs[0] = scanner_shim_settings['f0']
-        if scanner_shim_settings['order1'] is not None and order >= 1:
-            initial_coefs[1:4] = scanner_shim_settings['order1']
-        if scanner_shim_settings['order2'] is not None and order >= 2:
-            initial_coefs[4:9] = scanner_shim_settings['order2']
+        index = 0
+        if scanner_shim_settings['f0'] is not None and 0 in orders:
+            initial_coefs[index] = scanner_shim_settings['f0']
+            index += 1
+        if scanner_shim_settings['order1'] is not None and 1 in orders:
+            initial_coefs[index:index+3] = scanner_shim_settings['order1']
+            index += 3
+        if scanner_shim_settings['order2'] is not None and 2 in orders:
+            initial_coefs[index:index+5] = scanner_shim_settings['order2']
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
 
     # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
+
     constraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
                                                                   constraints['coef_channel_minmax']
                                                                   )[0]
 
-    if order >= 1 and scanner_shim_settings['has_valid_settings']:
-        bounds = np.array(constraints['coef_channel_minmax'][1:])
+    if any(order >= 1 for order in orders) and scanner_shim_settings['has_valid_settings']:
+        if 0 in orders:
+            bounds = np.array(constraints['coef_channel_minmax'][1:])
+        else:
+            bounds = np.array(constraints['coef_channel_minmax'])
         # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
-        bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
+        bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer, orders=orders)
         for i_channel in range(len(bounds)):
             bound_0 = bounds[i_channel, 0]
             bound_1 = bounds[i_channel, 1]
