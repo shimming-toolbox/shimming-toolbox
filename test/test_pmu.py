@@ -108,4 +108,5 @@ def test_pmu_fake_data():
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
-    assert np.all(acq_pressures == pmu.data)
+    # 10 volumes, 1 slice
+    assert np.all(acq_pressures[:, 0] == pmu.data)
