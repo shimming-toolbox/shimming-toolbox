@@ -1703,7 +1703,8 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def new_bounds_from_currents(currents, old_bounds):
+def new_bounds_from_currents(currents:dict, old_bounds:dict):
+    #! Modify description if everything works
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
@@ -1716,22 +1717,32 @@ def new_bounds_from_currents(currents, old_bounds):
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
 
-    new_bounds = []
-    for i_shim in range(currents.shape[0]):
-        shim_bound = []
-        for i_channel in range(len(old_bounds)):
-            if old_bounds[i_channel] == [None, None]:
-                a_bound = old_bounds[i_channel]
-            elif old_bounds[i_channel][0] is None:
-                a_bound = [None, old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-            elif old_bounds[i_channel][1] is None:
-                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel], None]
+    new_bounds = {}
+    # for i_shim in range(currents.shape[0]):
+    #     shim_bound = []
+    #     for i_channel in range(len(old_bounds)):
+    #         if old_bounds[i_channel] == [None, None]:
+    #             a_bound = old_bounds[i_channel]
+    #         elif old_bounds[i_channel][0] is None:
+    #             a_bound = [None, old_bounds[i_channel][1] - currents[i_shim, i_channel]]
+    #         elif old_bounds[i_channel][1] is None:
+    #             a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel], None]
+    #         else:
+    #             a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel],
+    #                        old_bounds[i_channel][1] - currents[i_shim, i_channel]]
+    #         shim_bound.append(a_bound)
+    #     new_bounds.append(shim_bound)
+    for key in old_bounds:
+        new_bounds[key] = []
+        for i, bound in enumerate(old_bounds[key]):
+            if bound is not [None, None]:
+                new_bounds[key].append(bound)
+            elif bound[0] is None:
+                new_bounds[key].append([None, bound[1] - currents[key][i]])
+            elif bound[1] is None:
+                new_bounds[key].append([bound[0] - currents[key][i], None])
             else:
-                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel],
-                           old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-            shim_bound.append(a_bound)
-        new_bounds.append(shim_bound)
-
+                new_bounds[key].append([bound[0] - currents[key][i], bound[1] - currents[key][i]])
     return new_bounds
 
 

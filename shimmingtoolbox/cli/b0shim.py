@@ -953,7 +953,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
     return list_coils
 
 
-def calculate_scanner_constraints(constraints, scanner_shim_settings, orders, manufacturer):
+def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, orders, manufacturer):
     #! Modify description if everything works
     """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
         absolute bounds
@@ -967,49 +967,44 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, orders, ma
     Returns:
         dict: Updated constraints of the scanner
     """
-    def _initial_in_bounds(coefs, bounds):
+    def _initial_in_bounds(coefs:dict, bounds:dict):
         """Makes sure the initial values are within the bounds of the constraints"""
-        if len(coefs) != len(bounds):
+        if coefs.keys() != bounds.keys():
+            raise RuntimeError("The scanner coil's orders is not the same length as the initial orders")
+        if any(len(coefs[key]) != len(bounds[key]) for key in bounds):
             raise RuntimeError("The scanner coil's bounds is not the same length as the initial bounds")
-        for i_bound in range(len(bounds)):
-            if bounds[i_bound][0] is None and bounds[i_bound][1] is None:
-                continue
-            if bounds[i_bound][1] is not None:
-                if not coefs[i_bound] <= bounds[i_bound][1]:
-                    logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                   f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
-            if bounds[i_bound][0] is not None:
-                if not bounds[i_bound][0] <= coefs[i_bound]:
-                    logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                   f"{bounds[i_bound]}, initial: {coefs[i_bound]}")
+
+        for key in coefs:
+            for (bound, coef) in zip(bounds[key], coefs[key]):
+                if bound[0] is None and bound[1] is None:
+                    continue
+                if bound[1] is not None:
+                    if not coef <= bound[1]:
+                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
+                                    f"{bound}, initial: {coef}")
+                if bound[0] is not None:
+                    if not bound[0] <= coef:
+                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
+                                    f"{bound}, initial: {coef}")
 
     # Set the initial coefficients to 0
-    initial_coefs = []
-    if 0 in orders:
-        # Order 0 has 1 coefficient (f0)
-        initial_coefs.extend([0])
-    if 1 in orders:
-        # Order 1 has 3 more coefficients than order 0 (f0, x, y, z)
-        initial_coefs.extend([0] * 3)
-    if 2 in orders:
-        # Order 2 has 5 more coefficients than order 1 (f0, X, Y, Z, Z2, ZX, ZY, X2-Y2, XY)
-        initial_coefs.extend([0] * 5)
-    if initial_coefs == []:
+    initial_coefs = {}
+    for order in orders:
+        initial_coefs[str(order)] = [0] * (order*2 + 1)
+    if initial_coefs == {}:
         initial_coefs = None
 
     # Restrict the constraints to the provided order
+    print(f"before: {constraints['coef_channel_minmax']}")
     constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
-        index = 0
         if scanner_shim_settings['f0'] is not None and 0 in orders:
-            initial_coefs[index] = scanner_shim_settings['f0']
-            index += 1
+            initial_coefs["0"] = np.array([scanner_shim_settings['f0']])
         if scanner_shim_settings['order1'] is not None and 1 in orders:
-            initial_coefs[index:index+3] = scanner_shim_settings['order1']
-            index += 3
+            initial_coefs["1"] = scanner_shim_settings['order1']
         if scanner_shim_settings['order2'] is not None and 2 in orders:
-            initial_coefs[index:index+5] = scanner_shim_settings['order2']
+            initial_coefs["2"] = scanner_shim_settings['order2']
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
@@ -1017,25 +1012,24 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, orders, ma
     # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
 
-    constraints['coef_channel_minmax'] = new_bounds_from_currents(np.array([initial_coefs]),
+    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
                                                                   constraints['coef_channel_minmax']
-                                                                  )[0]
+                                                                  )
 
     if any(order >= 1 for order in orders) and scanner_shim_settings['has_valid_settings']:
+        bounds = constraints['coef_channel_minmax'].copy()
         if 0 in orders:
-            bounds = np.array(constraints['coef_channel_minmax'][1:])
-        else:
-            bounds = np.array(constraints['coef_channel_minmax'])
+            del bounds["0"]
         # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
-        bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer, orders=orders)
-        for i_channel in range(len(bounds)):
-            bound_0 = bounds[i_channel, 0]
-            bound_1 = bounds[i_channel, 1]
+        bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
+        for key in bounds:
+            bound_0 = bounds[key][0]
+            bound_1 = bounds[key][1]
             if bound_0 is not None and bound_1 is not None:
                 if bound_0 > bound_1:
-                    bounds[i_channel, 0] = bound_1
-                    bounds[i_channel, 1] = bound_0
-        constraints['coef_channel_minmax'][1:] = bounds.tolist()
+                    bounds[key][0] = bound_1
+                    bounds[key][1] = bound_0
+            constraints['coef_channel_minmax'][key] = bounds[key]
 
     return constraints
 

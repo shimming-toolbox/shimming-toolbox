@@ -188,7 +188,8 @@ def phys_to_shim_cs(coefs, manufacturer):
     return coefs
 
 
-def shim_to_phys_cs(coefs:dict, manufacturer, orders):
+def shim_to_phys_cs(coefs:dict, manufacturer):
+    #! Modify description if everything works
     """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
 
     Args:
@@ -201,22 +202,20 @@ def shim_to_phys_cs(coefs:dict, manufacturer, orders):
     Returns:
         np.ndarray: Coefficients in the physical RAS coordinate system
     """
+    print(coefs["1"][0])
     if manufacturer == 'Siemens':
         # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
         # 0, 1, 2, 3,  4,  5,  6,     7
-        index = 0
-        if 1 in orders:
+        if "1" in coefs.keys():
             # Change from RAS to LAI (ShimCS)
-            coefs[0] = -coefs[0]  # X
-            coefs[2] = -coefs[2]  # Z
-            index +=3
+            coefs['1'][0] = [-coefs["1"][0][0], -coefs['1'][0][1]]  # X
+            coefs['1'][2] = [-coefs['1'][2][0], -coefs['1'][2][1]]  # Z
 
         # Order 2
-        if 2 in orders:
+        if "2" in coefs.keys():
             # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
-            coefs[index + 2] = -coefs[index + 2]  # [ZY]
-            coefs[index + 4] = -coefs[index + 4]  # [XY]
-            index += 5 # Here for futur work where more orders are implemented
+            coefs["2"][2] = [-coefs["2"][2][0], -coefs['2'][2][1]]  # [ZY]
+            coefs["2"][4] = [-coefs["2"][4][0], -coefs['2'][4][1]]
 
     else:
         logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
