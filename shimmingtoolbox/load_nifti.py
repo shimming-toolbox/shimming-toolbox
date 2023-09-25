@@ -40,12 +40,13 @@ def get_acquisition_times(nii_data, json_data):
                                      ((n_volumes - 1) * deltat_volume) + acq_start_time_ms,
                                      n_volumes)
 
-    def get_middle_of_slice_timing(data):
+    def get_middle_of_slice_timing(data, n_sli):
         """ Return the best guess of when the middle of k-space was acquired for each slice. Return an array of 0 if no
             best guess is implemented
 
         Args:
             data (dict): Json dict corresponding to a nifti sidecar.
+            n_sli (int): Number of slices in the volume.
 
         Returns:
             np.ndarray: Slice timing in ms (n_slices).
@@ -103,15 +104,14 @@ def get_acquisition_times(nii_data, json_data):
 
         # Error check
         deltat_vol = float(json_data['RepetitionTime']) * 1000  # [ms]
-        if deltat_slice > deltat_vol:
+        if (deltat_slice * n_sli) > deltat_vol:
             logger.warning("Slice timing is longer than volume timing.")
 
         slice_timing_mid = slice_timing_start + (deltat_slice / 2)
 
         return slice_timing_mid
 
-    slice_timing_middle = get_middle_of_slice_timing(json_data)
-
+    slice_timing_middle = get_middle_of_slice_timing(json_data, n_slices)
     timing = np.zeros((n_volumes, n_slices))
     if np.all(slice_timing_middle == 0):
         logger.warning("Could not figure out the slice timing. Using one time-point per volume instead.")
