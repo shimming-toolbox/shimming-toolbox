@@ -167,6 +167,7 @@ class Optimizer(object):
         return coil_profiles, bounds
 
     def merge_bounds(self):
+        #! Modified
         """
         Merge the coil profile bounds into a single array.
 
@@ -177,8 +178,9 @@ class Optimizer(object):
         bounds = []
         for coil in self.coils:
             # Concat coils and bounds
-            for a_bound in coil.coef_channel_minmax:
-                bounds.append(a_bound)
+            for key in coil.coef_channel_minmax:
+                for a_bound in coil.coef_channel_minmax[key]:
+                    bounds.append(a_bound)
 
         return bounds
 

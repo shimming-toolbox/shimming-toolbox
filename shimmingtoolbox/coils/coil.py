@@ -91,19 +91,20 @@ class Coil(object):
         for key_name in required_constraints:
             if key_name in constraints:
                 if key_name == "coef_channel_minmax":
-                    if len(constraints["coef_channel_minmax"]) != self.dim[3]:
+                    if sum([len(constraints["coef_channel_minmax"][key]) for key in constraints["coef_channel_minmax"]]) != self.dim[3]:
                         raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
-                                         f"{self.dim[3]}")
+                                         f"{self.dim[3]} {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
 
-                    for i_channel in range(self.dim[3]):
-                        if constraints["coef_channel_minmax"][i_channel] is None:
-                            constraints["coef_channel_minmax"][i_channel] = (-np.inf, np.inf)
-                        if constraints["coef_channel_minmax"][i_channel][0] is None:
-                            constraints["coef_channel_minmax"][i_channel] = \
-                                (-np.inf, constraints["coef_channel_minmax"][i_channel][1])
-                        if constraints["coef_channel_minmax"][i_channel][1] is None:
-                            constraints["coef_channel_minmax"][i_channel] = \
-                                (constraints["coef_channel_minmax"][i_channel][0], np.inf)
+                    for key in constraints["coef_channel_minmax"]:
+                        for i in range(len(constraints["coef_channel_minmax"][key])):
+                            if constraints["coef_channel_minmax"][key][i] is None:
+                                constraints["coef_channel_minmax"][key][i] = (-np.inf, np.inf)
+                            if constraints["coef_channel_minmax"][key][i][0] is None:
+                                constraints["coef_channel_minmax"][key][i] = \
+                                    (-np.inf, constraints["coef_channel_minmax"][key][i][1])
+                            if constraints["coef_channel_minmax"][key][i][1] is None:
+                                constraints["coef_channel_minmax"][key][i] = \
+                                    (constraints["coef_channel_minmax"][key][i][0], np.inf)
 
                 if key_name == "coef_sum_max":
                     if constraints["coef_sum_max"] is None:
@@ -134,8 +135,10 @@ class ScannerCoil(Coil):
 
     def _create_coil_profile(self, dim):
         # Define profile for Tx (constant volume)
-        profile_order_0 = -np.ones(dim)
-
+        if 0 in self.orders:
+            profile_order_0 = -np.ones(dim)
+        else:
+            profile_order_0 = None
         # define the coil profiles
         if self.orders == [0]:
             # f0 --> [1]
@@ -144,13 +147,18 @@ class ScannerCoil(Coil):
             # f0, orders
             mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
             temp_orders = [order for order in self.orders if order != 0]
+            print(f"temp_orders: {temp_orders}")
             profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders))
-            sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
+            if profile_order_0 is None:
+                sph_coil_profile = profile_orders
+            else:
+                sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
+        print(sph_coil_profile.shape)
         return sph_coil_profile
 
 
-def get_scanner_constraints(manufacturers_model_name, order=2):
+def get_scanner_constraints(manufacturers_model_name, orders):
     #! Modified
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
@@ -169,32 +177,33 @@ def get_scanner_constraints(manufacturers_model_name, order=2):
             "coef_channel_minmax": {"0":[], "1":[], "2":[]},
             "coef_sum_max": None
         }
-        if order >= 0:
+        if 0 in orders:
             constraints["coef_channel_minmax"]["0"].append([123100100, 123265000])
-        if order >= 1:
+        if 1 in orders:
             for _ in range(3):
                 constraints["coef_channel_minmax"]["1"].append([-2300, 2300])
-        if order >= 2:
-            constraints["coef_channel_minmax"].extend["2"]([[-4959.01, 4959.01],
+        if 2 in orders:
+            constraints["coef_channel_minmax"]["2"].extend([[-4959.01, 4959.01],
                                                        [-3551.29, 3551.29],
                                                        [-3503.299, 3503.299],
                                                        [-3551.29, 3551.29],
                                                        [-3487.302, 3487.302]])
 
-    else:
-        logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-                       f"respected.")
-        constraints = {
-            "name": "Unknown",
-            "coef_sum_max": None
-        }
+    #TODO
+    # else:
+    #     logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
+    #                    f"respected.")
+    #     constraints = {
+    #         "name": "Unknown",
+    #         "coef_sum_max": None
+    #     }
 
-        if order == 0:
-            constraints["coef_channel_minmax"] = [[None, None]]
-        elif order == 1:
-            constraints["coef_channel_minmax"] = [[None, None] for _ in range(4)]
-        elif order == 2:
-            constraints["coef_channel_minmax"] = [[None, None] for _ in range(9)]
+    #     if order == 0:
+    #         constraints["coef_channel_minmax"] = [[None, None]]
+    #     elif order == 1:
+    #         constraints["coef_channel_minmax"] = [[None, None] for _ in range(4)]
+    #     elif order == 2:
+    #         constraints["coef_channel_minmax"] = [[None, None] for _ in range(9)]
 
     return constraints
 

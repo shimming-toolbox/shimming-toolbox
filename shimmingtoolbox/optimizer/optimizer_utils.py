@@ -37,6 +37,7 @@ class OptimizerUtils(Optimizer):
         super().__init__(coils, unshimmed, affine)
         self.initial_guess_method = initial_guess_method
         self.initial_coefs = None
+        print(f"bounds: {self.merged_bounds}")
         reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
         self.reg_vector = reg_factor / (len(reg_factor_channel) * reg_factor_channel)
 

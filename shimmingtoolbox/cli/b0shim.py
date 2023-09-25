@@ -937,11 +937,20 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 sph_contraints = json.load(json_file)
+            orders_to_delete = []
+            for key in sph_contraints['coef_channel_minmax']:
+                if key not in str(orders):
+                    print(key)
+                    orders_to_delete.append(key)
+            for key in orders_to_delete:
+                del sph_contraints['coef_channel_minmax'][key]
+            print(f"json: {sph_contraints['coef_channel_minmax']}")
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name)
+            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders)
 
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
 
+        print(f"--------------------------------\nafter: {type(sph_contraints_calc['coef_channel_minmax'])}")
         # Create a ScannerCoil object
         scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders)
         list_coils.append(scanner_coil)

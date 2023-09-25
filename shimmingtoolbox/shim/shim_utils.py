@@ -202,7 +202,6 @@ def shim_to_phys_cs(coefs:dict, manufacturer):
     Returns:
         np.ndarray: Coefficients in the physical RAS coordinate system
     """
-    print(coefs["1"][0])
     if manufacturer == 'Siemens':
         # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
         # 0, 1, 2, 3,  4,  5,  6,     7
