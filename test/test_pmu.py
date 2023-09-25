@@ -99,7 +99,7 @@ def test_timing_images():
 
 def test_pmu_fake_data():
     pmu.data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
-    pmu.stop_time_mdh = 250 * (len(pmu.data) -1) + 125
+    pmu.stop_time_mdh = 250 * (len(pmu.data) - 1) + 125
     pmu.start_time_mdh = 125
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
