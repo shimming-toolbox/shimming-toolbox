@@ -1008,15 +1008,19 @@ class RealTimeSequencer(Sequencer):
             reg_riro = LinearRegression().fit(x, y)
             # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
             score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
-            logger.debug(f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure got a R2 score of: {score_riro}")
+            logger.debug(
+                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure"
+                f"got a R2 score of: {score_riro}")
 
             # Warn if lower than a threshold
-            # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
+            # Threshold was set by looking at a small sample of data (This value could be updated based on user
+            # feedback)
             threshold_score = 0.7
             if score_riro < threshold_score:
-                logger.warning(f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2 score: {score_riro} "
-                               f"(less than {threshold_score}). This indicates a bad fit between the pressure data and the "
-                               f"fieldmap values")
+                logger.warning(
+                    f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2"
+                    f"score: {score_riro} (less than {threshold_score}). This indicates a bad fit between the pressure"
+                    f"data and the fieldmap values")
 
             # Fit to the linear model (no mask)
             y = fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
@@ -1024,7 +1028,8 @@ class RealTimeSequencer(Sequencer):
 
             # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
             static[..., i_slice] = reg.intercept_.reshape(fieldmap.shape[:-2])
-            riro[..., i_slice] = reg.coef_.reshape(fieldmap.shape[:-2])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+            riro[..., i_slice] = reg.coef_.reshape(
+                fieldmap.shape[:-2])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -1319,6 +1324,7 @@ class RealTimeSequencer(Sequencer):
             self.plot_currents(coef_static, riro=coef_riro * pressure_rms)
             self.plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
             self.plot_pressure_and_unshimmed_field(unshimmed_trace)
+            self.plot_pressure_vs_field(masked_unshimmed, mask_fmap_cs)
             self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
             # Save shimmed result
             nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nii_fieldmap.affine,
@@ -1422,6 +1428,72 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
+    def plot_pressure_vs_field(self, unshimmed, mask_fm):
+        """ One graph per i_shim
+        In each graph, one scatter and one line for each fmap slice in the ROI
+        Each line should have pearson correlation coefficient
+        """
+        # x, y, z, t, i_shim
+
+        n_t = unshimmed.shape[3]
+        n_shims = len(self.slices)
+        n_slices_fm = unshimmed.shape[2]
+
+        # Remove
+        plots = []
+        for i_shim in range(n_shims):
+            if np.any(mask_fm[..., i_shim] != 0):
+                plots.append(i_shim)
+
+        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_noshim_vs_pressure_regression')
+        create_output_dir(path_pressure_and_unshimmed_field)
+
+        # TODO: Deal with issue where fm is single slice so it thinks slice "2" is the slice displayed
+        for i_plot, i_shim in enumerate(plots):
+
+            fm_slices = []
+            for i_slice_fm in range(n_slices_fm):
+                if np.any(mask_fm[..., i_slice_fm, i_shim] != 0):
+                    fm_slices.append(i_slice_fm)
+
+            fig = Figure(figsize=(8, 4))
+            ax = fig.add_subplot(111)
+            y = np.zeros((n_t, len(fm_slices)))
+            # pressure
+            for i, i_slice_fm in enumerate(fm_slices):
+                x = self.acq_pressures[:, i_slice_fm]
+
+                for i_t in range(n_t):
+                    y[i_t, i] = calculate_metric_within_mask(unshimmed[..., i_slice_fm, i_t, i_shim],
+                                                             mask_fm[..., i_slice_fm, i_shim],
+                                                             metric='rmse')
+
+                reg = LinearRegression().fit(x.reshape(-1, 1), y[:, i])
+                # Adjusted r2 score
+                score = (1 - (1 - reg.score(x.reshape(-1, 1), y[:, i])) *
+                         (len(y[:, i]) - 1) / (len(y[:, i]) - x.reshape(-1, 1).shape[1] - 1))
+
+                ax.scatter(x, y[:, i], label=f"Fm slice: {i_slice_fm}, r2: {score:.2f}")
+                ax.plot(x, reg.predict(x.reshape(-1, 1)))
+
+            # If there is only 1 fm slice, it's the same as all the slices
+            if len(fm_slices) != 1:
+                x = self.acq_pressures[:, fm_slices]
+                reg = LinearRegression().fit(x.reshape(-1, 1), y.reshape(-1))
+                # Adjusted r2 score
+                score = (1 - (1 - reg.score(x.reshape(-1, 1), y.reshape(-1))) *
+                         (len(y.reshape(-1)) - 1) / (len(y.reshape(-1)) - x.reshape(-1, 1).shape[1] - 1))
+                ax.plot(x.reshape(-1), reg.predict(x.reshape(-1, 1)),
+                        label=f"All slices: {i_slice_fm}, r2: {score:.2f}")
+
+            ax.legend()
+            ax.set_xlabel('Pressure (A.U.)')
+            ax.set_ylabel('RMSE (Hz)')
+            ax.set_title(f"Pressure vs Field for target slice(s): {self.slices[i_shim]}")
+            fname_figure = os.path.join(path_pressure_and_unshimmed_field,
+                                        f'fig_noshim_vs_pressure_regression_shimgroup_{i_shim:03}.png')
+            fig.savefig(fname_figure, bbox_inches='tight')
+
     def plot_pressure_and_unshimmed_field(self, unshimmed_trace):
         """
         Plot respiratory trace, acquisition time pressure points and the B0 field RMSE
@@ -1471,7 +1543,7 @@ class RealTimeSequencer(Sequencer):
             ax.plot((pmu_timestamps_curated - pmu_timestamps_curated[0]) / 1000, pmu_pressures_curated,
                     label='Pressure Trace')
             ax.plot((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
-                    label='RMSE over the not shimmed ROI')
+                    label='Unshimmed RMSE over the ROI')
             ax.scatter((np.mean(self.acq_timestamps, axis=1) - pmu_timestamps_curated[0]) / 1000,
                        np.mean(self.acq_pressures, axis=1),
                        color='red',
