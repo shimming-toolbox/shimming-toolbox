@@ -700,7 +700,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Load PMU
     pmu = PmuResp(fname_resp)
     # 1 ) Create the real time pmu sequencer object
-    print(list_coils_riro[1].coef_channel_minmax)
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
                                   nii_mask_anat_riro,
                                   list_slices, pmu, list_coils_static, list_coils_riro,
@@ -722,7 +721,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     end_channel = 0
 
     #* zip() is used to only stop iterating when the shortest iterable is exhausted
-    #TODO: adapt code to handle different number of static and riro coils
     for i_coil, (coil, coil_riro) in enumerate(zip(list_coils_static, list_coils_riro)):
 
         # Figure out the start and end channels for a coil to be able to select it from the coefs
@@ -776,14 +774,14 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                     coefs_coil_riro[i_shim, 1:] = phys_to_shim_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
 
                 # Convert bounds
-                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs = np.array([bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
                 bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
-                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
-                # units = "ShimCS [mT/m]"
-                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
-                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
-                #             bounds=bounds_shim_cs)
+                # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
+                units = "ShimCS [mT/m]"
+                _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
+                            pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
+                            bounds=bounds_shim_cs)
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
                     initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
@@ -825,7 +823,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
-                        bounds=coil.coef_channel_minmax)
+                        bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
     logger.info(f"Finished plotting figure(s)")
 
@@ -949,7 +947,6 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
 
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
-
         scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders)
         list_coils.append(scanner_coil)
 
@@ -1018,7 +1015,6 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
 
     # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
-
     constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
                                                                   constraints['coef_channel_minmax']
                                                                   )
@@ -1029,14 +1025,14 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
         # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
         bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
         for key in bounds:
-            bound_0 = bounds[key][0]
-            bound_1 = bounds[key][1]
-            if bound_0 is not None and bound_1 is not None:
-                if bound_0 > bound_1:
-                    bounds[key][0] = bound_1
-                    bounds[key][1] = bound_0
+            for i_channel in range(len(bounds[key])):
+                bound_0 = bounds[key][i_channel][0]
+                bound_1 = bounds[key][i_channel][1]
+                if bound_0 is not None and bound_1 is not None:
+                    if bound_0 > bound_1:
+                        bounds[key][i_channel][0] = bound_1
+                        bounds[key][i_channel][1] = bound_0
             constraints['coef_channel_minmax'][key] = bounds[key]
-
     return constraints
 
 

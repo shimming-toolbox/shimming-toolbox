@@ -1718,20 +1718,6 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
     """
 
     new_bounds = {}
-    # for i_shim in range(currents.shape[0]):
-    #     shim_bound = []
-    #     for i_channel in range(len(old_bounds)):
-    #         if old_bounds[i_channel] == [None, None]:
-    #             a_bound = old_bounds[i_channel]
-    #         elif old_bounds[i_channel][0] is None:
-    #             a_bound = [None, old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-    #         elif old_bounds[i_channel][1] is None:
-    #             a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel], None]
-    #         else:
-    #             a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel],
-    #                        old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-    #         shim_bound.append(a_bound)
-    #     new_bounds.append(shim_bound)
     for key in old_bounds:
         new_bounds[key] = []
         for i, bound in enumerate(old_bounds[key]):
@@ -1757,7 +1743,6 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     Returns:
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
-    print('In HERE\n-----------------------------')
     new_bounds = []
     if len(coils_static) > len(coils_riro):
         currents = currents[:, -len(coils_riro[0].coef_channel_minmax):]
