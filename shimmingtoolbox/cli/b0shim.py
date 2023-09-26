@@ -1003,12 +1003,12 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
 
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
-        if scanner_shim_settings['f0'] is not None and 0 in orders:
-            initial_coefs["0"] = np.array([scanner_shim_settings['f0']])
-        if scanner_shim_settings['order1'] is not None and 1 in orders:
-            initial_coefs["1"] = scanner_shim_settings['order1']
-        if scanner_shim_settings['order2'] is not None and 2 in orders:
-            initial_coefs["2"] = scanner_shim_settings['order2']
+        if scanner_shim_settings['0'] is not None and 0 in orders:
+            initial_coefs["0"] = np.array([scanner_shim_settings['0']])
+        if scanner_shim_settings['1'] is not None and 1 in orders:
+            initial_coefs["1"] = scanner_shim_settings['1']
+        if scanner_shim_settings['2'] is not None and 2 in orders:
+            initial_coefs["2"] = scanner_shim_settings['2']
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
