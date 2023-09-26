@@ -706,7 +706,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
-                logger.debug("Converting scanner coil from Shim CS (RAS) to Gradient CS")
+                logger.debug("Converting scanner coil from Shim CS to Gradient CS")
 
                 # First convert coefficients from Shim CS to RAS
                 for i_shim in range(coefs_coil_static.shape[0]):
