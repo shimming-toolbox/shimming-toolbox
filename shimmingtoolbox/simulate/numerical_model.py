@@ -77,14 +77,14 @@ class NumericalModel:
     _starting_volume = None
     _volume = {"T2_star": None, "proton_density": None}
 
-    def __init__(self, model=None, num_vox=128):
+    def __init__(self, model=None, num_vox=128, n_slices=1):
         """Initializes a NumericalModel object.
 
         Defines the starting volume. Sets the background B0 field to zeros.
 
         Args:
-            model: Volume model used for the measurement simulation. Default is no
-                object (zeros). Implemented models are: 'shepp-logan'.
+            model (str): Volume model used for the measurement simulation. Default is no object (zeros).
+                         Implemented models are: 'shepp-logan'.
             num_vox: In-plane dimensions of the simulated - square.
 
         Returns:
@@ -97,7 +97,7 @@ class NumericalModel:
         if model is None:
             self._starting_volume = np.zeros((num_vox, num_vox))
         elif model == "shepp-logan":
-            self._shepp_logan_brain(num_vox)
+            self._shepp_logan_brain(num_vox, n_slices)
 
         self.deltaB0 = self._starting_volume * 0
 
@@ -107,29 +107,67 @@ class NumericalModel:
         Defines the starting volume. Sets the background B0 field to zeros.
 
         Args:
-            field_type: Type of field to be generated. Available implementations are: ``'linear'``.
-            params: List of parameters defining the field for the selected
-                field type. If ``field_type = 'linear'``, then ``params`` are
-                ``[m b]`` where m (Hz/pixel) is the slope and b is the floor
-                field (Hz).
+            field_type (str): Type of field to be generated. Available implementations are: ``'x'``, ``'y'``, ``'z'``.
+            params (list): List of parameters defining the field for the selected
+                           field type. If ``field_type = 'x' or 'y' or 'z'``, then ``params`` are
+                           ``[m b]`` where m (Hz/pixel) is the slope and b is the floor
+                           field (Hz).
         """
 
-        if field_type == "linear":
+        if field_type == "x":
             m = params[0]
             b = params[1]
 
             dims = self._starting_volume.shape
 
-            [X, Y] = np.meshgrid(
-                np.linspace(-dims[0], dims[0], dims[0]),
-                np.linspace(-dims[1], dims[1], dims[1]),
-            )
+            if len(dims) == 2:
 
+                [X, _] = np.meshgrid(
+                    np.linspace(-dims[0], dims[0], dims[0]),
+                    np.linspace(-dims[1], dims[1], dims[1]))
+            if len(dims) == 3:
+
+                    [X, _, _] = np.meshgrid(
+                        np.linspace(-dims[0], dims[0], dims[0]),
+                        np.linspace(-dims[1], dims[1], dims[1]),
+                        np.linspace(-dims[2], dims[2], dims[2]))
             self.deltaB0 = m * X + b
 
-            self.deltaB0 = self.deltaB0 / (self.gamma / (2 * np.pi))
+        if field_type == "y":
+            m = params[0]
+            b = params[1]
+
+            dims = self._starting_volume.shape
+
+            if len(dims) == 2:
+                [_, Y] = np.meshgrid(
+                    np.linspace(-dims[0], dims[0], dims[0]),
+                    np.linspace(-dims[1], dims[1], dims[1]))
+            if len(dims) == 3:
+                [_, Y, _] = np.meshgrid(
+                    np.linspace(-dims[0], dims[0], dims[0]),
+                    np.linspace(-dims[1], dims[1], dims[1]),
+                    np.linspace(-dims[2], dims[2], dims[2]))
+            self.deltaB0 = m * Y + b
+        if field_type == "z":
+            m = params[0]
+            b = params[1]
+
+            dims = self._starting_volume.shape
+
+            if len(dims) == 2:
+                Z = 0
+
+            if len(dims) == 3:
+                [_, _, Z] = np.meshgrid(
+                    np.linspace(-dims[0], dims[0], dims[0]),
+                    np.linspace(-dims[1], dims[1], dims[1]),
+                    np.linspace(-dims[2], dims[2], dims[2]))
+            self.deltaB0 = m * Z + b
         else:
             Exception("Undefined deltaB0 field type")
+
+        self.deltaB0 = self.deltaB0 / (self.gamma / (2 * np.pi))
 
     def simulate_measurement(self, FA, TE, SNR=None):
         """Simulates a multi-echo measurement for field mapping
@@ -284,13 +322,16 @@ class NumericalModel:
         if format == "nifti":
             empty_header = nib.Nifti1Header()
 
-            img = nib.Nifti1Image(np.rot90(vol), affine=np.eye(4), header=empty_header)
-            nib.save(img, Path(file_name + ".nii"))
+            for i_echo, te in enumerate(self.TE):
+                img = nib.Nifti1Image(np.rot90(vol)[..., i_echo], affine=np.eye(4), header=empty_header)
+                fname_nifti = os.path.join(file_name + "_TE" + str(i_echo) + ".nii")
+                nib.save(img, fname_nifti)
 
-            self._write_json(file_name)
+                fname_json = os.path.join(file_name + "_TE" + str(i_echo))
+                self._write_json(fname_json, te)
         elif format == "mat":
             savemat(Path(file_name + ".mat"), {"vol": vol})
-            self._write_json(file_name)
+            self._write_json(file_name, self.TE)
 
     def _customize_shepp_logan(self, volume, class1, class2, class3):
 
@@ -306,8 +347,11 @@ class NumericalModel:
 
         return custom_volume
 
-    def _shepp_logan_brain(self, numVox):
+    def _shepp_logan_brain(self, numVox, n_slices=1):
         self._starting_volume = shepp_logan(numVox)
+
+        if n_slices != 1:
+            self._starting_volume = np.tile(self._starting_volume[..., np.newaxis], (1, 1, n_slices))
 
         self._volume["proton_density"] = self._customize_shepp_logan(
             self._starting_volume,
@@ -322,8 +366,8 @@ class NumericalModel:
             self.T2_star["CSF"],
         )
 
-    def _write_json(self, file_name):
-        pulse_seq_properties = {"EchoTime": self.TE, "FlipAngle": self.FA}
+    def _write_json(self, file_name, te):
+        pulse_seq_properties = {"EchoTime": te, "FlipAngle": self.FA, "Manufacturer": "GE"}
 
         with open(Path(file_name + ".json"), "w") as outfile:
             json.dump(pulse_seq_properties, outfile)
