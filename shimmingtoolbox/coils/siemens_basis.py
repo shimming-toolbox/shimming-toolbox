@@ -26,7 +26,6 @@ def _reorder_to_siemens(spher_harm, orders):
     Returns:
         numpy.ndarray: 4d basis set of spherical harmonics ordered following siemens convention
     """
-    print(f"orders: {orders}")
     if orders == (1, 2):
         if spher_harm.shape[3] != 8:
             raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
@@ -87,18 +86,32 @@ def _get_scaling_factors(orders):
     i_y1z1 = np.nonzero((x_iso == 0) & (y_iso == 1) & (z_iso == 1))
     i_x1y1 = np.nonzero((x_iso == 1) & (y_iso == 1) & (z_iso == 0))
 
-    # order the reference indices like the sh field terms
-    i_ref = [i_x1, i_y1, i_z1, i_z1, i_x1z1, i_y1z1, i_x1, i_x1y1]
+    i_ref = []
+    r = []
+    orders_coef = []
+    if 1 in orders:
+        # order the reference indices like the sh field terms
+        i_ref.extend([i_x1, i_y1, i_z1])
 
-    # distance from iso/origin to adopted reference point[units: mm]
-    r = [1, 1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)]
+        # distance from iso/origin to adopted reference point[units: mm]
+        r.extend([1, 1, 1])
 
-    # scaling:
-    orders = [1, 1, 1, 2, 2, 2, 2, 2]
+        # scaling:
+        orders_coef.extend([1, 1, 1])
+
+    if 2 in orders:
+        # order the reference indices like the sh field terms
+        i_ref.extend([i_z1, i_x1z1, i_y1z1, i_x1, i_x1y1])
+
+        # distance from iso/origin to adopted reference point[units: mm]
+        r.extend([1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2)])
+
+        # scaling:
+        orders_coef.extend([2, 2, 2, 2, 2])
 
     for i_ch in range(0, n_channels):
         field = sh[:, :, :, i_ch]
-        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]][0]
+        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders_coef[i_ch]) / field[i_ref[i_ch]][0]
 
     return scaling_factors
 
@@ -170,15 +183,13 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     for order in orders:
         range_per_order[order] = list(range(index, index+(order*2 +1)))
         index += order*2 + 1
-    print(range_per_order)
+
     # range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
     output = np.zeros(scaled[..., 0].shape + (length_dim3,), dtype=scaled.dtype)
     start_index = 0
     for order in orders:
         end_index = start_index + len(range_per_order[order])
-        print(f"scaled: {scaled.shape}")
-        print(f"output: {output.shape}")
         output[..., start_index:end_index] = scaled[..., range_per_order[order]]
         # prep next iteration
         start_index = end_index

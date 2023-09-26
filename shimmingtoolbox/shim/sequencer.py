@@ -1735,7 +1735,7 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
     for key in old_bounds:
         new_bounds[key] = []
         for i, bound in enumerate(old_bounds[key]):
-            if bound is not [None, None]:
+            if bound == [None, None]:
                 new_bounds[key].append(bound)
             elif bound[0] is None:
                 new_bounds[key].append([None, bound[1] - currents[key][i]])
@@ -1757,7 +1757,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     Returns:
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
-
+    print('In HERE\n-----------------------------')
     new_bounds = []
     if len(coils_static) > len(coils_riro):
         currents = currents[:, -len(coils_riro[0].coef_channel_minmax):]

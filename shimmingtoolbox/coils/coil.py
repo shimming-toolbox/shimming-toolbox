@@ -147,14 +147,12 @@ class ScannerCoil(Coil):
             # f0, orders
             mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
             temp_orders = [order for order in self.orders if order != 0]
-            print(f"temp_orders: {temp_orders}")
             profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders))
             if profile_order_0 is None:
                 sph_coil_profile = profile_orders
             else:
                 sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
-        print(sph_coil_profile.shape)
         return sph_coil_profile
 
 

@@ -700,6 +700,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Load PMU
     pmu = PmuResp(fname_resp)
     # 1 ) Create the real time pmu sequencer object
+    print(list_coils_riro[1].coef_channel_minmax)
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
                                   nii_mask_anat_riro,
                                   list_slices, pmu, list_coils_static, list_coils_riro,
@@ -940,18 +941,15 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
             orders_to_delete = []
             for key in sph_contraints['coef_channel_minmax']:
                 if key not in str(orders):
-                    print(key)
                     orders_to_delete.append(key)
             for key in orders_to_delete:
                 del sph_contraints['coef_channel_minmax'][key]
-            print(f"json: {sph_contraints['coef_channel_minmax']}")
         else:
             sph_contraints = get_scanner_constraints(manufacturers_model_name, orders)
 
+
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
 
-        print(f"--------------------------------\nafter: {type(sph_contraints_calc['coef_channel_minmax'])}")
-        # Create a ScannerCoil object
         scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders)
         list_coils.append(scanner_coil)
 
@@ -1004,8 +1002,8 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
         initial_coefs = None
 
     # Restrict the constraints to the provided order
-    print(f"before: {constraints['coef_channel_minmax']}")
     constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
+
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
         if scanner_shim_settings['f0'] is not None and 0 in orders:
@@ -1024,7 +1022,6 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
     constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
                                                                   constraints['coef_channel_minmax']
                                                                   )
-
     if any(order >= 1 for order in orders) and scanner_shim_settings['has_valid_settings']:
         bounds = constraints['coef_channel_minmax'].copy()
         if 0 in orders:
