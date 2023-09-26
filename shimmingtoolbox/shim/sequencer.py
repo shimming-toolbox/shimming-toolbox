@@ -2005,7 +2005,8 @@ def extend_slice(nii_array, n_slices=1, axis=2, location=None):
     if nii_array.get_fdata().ndim == 3:
         extended = nii_array.get_fdata()
         extended = extended[..., np.newaxis]
-        orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
+        if location is not None:
+            orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
     elif nii_array.get_fdata().ndim == 4:
         extended = nii_array.get_fdata()
     else:
@@ -2013,28 +2014,33 @@ def extend_slice(nii_array, n_slices=1, axis=2, location=None):
 
     for i_slice in range(n_slices):
         if axis == 0:
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, -1, np.zeros(orig_data_in_new_data.shape[1:]),
-                                              axis=axis)
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, 0, np.zeros(orig_data_in_new_data.shape[1:]),
-                                              axis=axis)
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
         elif axis == 1:
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
-                                              np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
-                                              axis=axis)
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
-                                              np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
-                                              axis=axis)
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
         elif axis == 2:
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
-                                              np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
-                                              axis=axis)
-            orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
-                                              np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
-                                              axis=axis)
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
         else:
