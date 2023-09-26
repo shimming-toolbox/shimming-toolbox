@@ -911,10 +911,10 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
     Args:
         coils (list): List of tuples(fname_nii, fname_json) of coil profiles and constraints
-        order (int): Order of the scanner coils (0 or 1 or 2)
+        orders (list): Orders of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('f0', 'order1', 'order2')
+        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
         manufacturer (str): Name of the MRI manufacturer
         manufacturers_model_name (str): Name of the scanner
 
@@ -964,8 +964,8 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
 
     Args:
         constraints (dict): Constraints of the scanner coils
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('f0', 'order1', 'order2')
-        order (int): Order of the scanner coils (0 or 1 or 2)
+        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
+        orders (list): Order of the scanner coils (0 or 1 or 2)
         manufacturer (str): Name of the MRI manufacturer
 
     Returns:

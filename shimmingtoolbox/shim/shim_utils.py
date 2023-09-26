@@ -193,14 +193,13 @@ def shim_to_phys_cs(coefs:dict, manufacturer):
     """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
 
     Args:
-        coefs (np.ndarray): 1D list of coefficients in the Shim Coordinate System of the manufacturer. The first
-                            dimension represents the different channels. Indexes 0, 1, 2 --> x, y, z... If there are
-                            more coefficients, they are of higher order and must correspond to the implementation of the
-                            manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        coefs (dict): Dictionary of coefficients in the Shim Coordinate System of the manufacturer divided by order. The first
+                            first order: x, y, z
+                            second order for Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
 
     Returns:
-        np.ndarray: Coefficients in the physical RAS coordinate system
+        dict: Coefficients in the physical RAS coordinate system
     """
     if manufacturer == 'Siemens':
         # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY

@@ -127,8 +127,6 @@ class ScannerCoil(Coil):
         # Todo: add coord system
         sph_coil_profile = self._create_coil_profile(dim_volume)
         # Restricts the constraints to the specified order
-        #! Seems to be done twice
-        #! Make sure it is ok to remove because it causes problem with specific orders
         constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.orders)
 
         super().__init__(sph_coil_profile, affine, constraints)
@@ -163,7 +161,7 @@ def get_scanner_constraints(manufacturers_model_name, orders):
 
     Args:
         manufacturers_model_name (str): Name of the scanner
-        order (int): Maximum order of the shim system
+        orders (list): List of all orders of the shim system to be used
 
     Returns:
         dict: The constraints including the scanner name, bounds and the maximum sum of currents.
@@ -188,20 +186,20 @@ def get_scanner_constraints(manufacturers_model_name, orders):
                                                        [-3487.302, 3487.302]])
 
     #TODO
-    # else:
-    #     logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-    #                    f"respected.")
-    #     constraints = {
-    #         "name": "Unknown",
-    #         "coef_sum_max": None
-    #     }
+    else:
+        logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
+                       f"respected.")
+        constraints = {
+            "name": "Unknown",
+            "coef_sum_max": None
+        }
 
-    #     if order == 0:
-    #         constraints["coef_channel_minmax"] = [[None, None]]
-    #     elif order == 1:
-    #         constraints["coef_channel_minmax"] = [[None, None] for _ in range(4)]
-    #     elif order == 2:
-    #         constraints["coef_channel_minmax"] = [[None, None] for _ in range(9)]
+        if 0 in orders:
+            constraints["coef_channel_minmax"]["0"] = [[None, None]]
+        elif 1 in orders:
+            constraints["coef_channel_minmax"]["1"] = [[None, None] for _ in range(4)]
+        elif 2 in orders:
+            constraints["coef_channel_minmax"]["2"] = [[None, None] for _ in range(9)]
 
     return constraints
 
@@ -211,12 +209,12 @@ def restrict_sph_constraints(bounds:dict, orders):
     """ Select bounds according to the order specified
 
     Args:
-        bounds (list): 2D list (n_channels, 2) containing the min and max currents for multiple spherical harmonics
+        bounds (dict): Dictionary containing the min and max currents for multiple spherical harmonics
                        orders
-        order (int): Maximum order of spherical harmonics
+        orders (list): Lsit of all spherical harmonics orders to be used
 
     Returns:
-        list: 2D list with the bounds of order 0 to the specified order
+        dict: Dictionary with the bounds of all specified orders
     """
     minmax_out = {}
     if 0 in orders:

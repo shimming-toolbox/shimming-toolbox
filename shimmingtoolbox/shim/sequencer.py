@@ -1710,11 +1710,11 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
     "old_coef + next_bound < old_bound".
 
     Args:
-        currents (np.ndarray): 2D array (n_shims x n_channels).
-        old_bounds (list): 2D list (n_channels, 2) containing (min, max) containing the merged bounds of the previous
+        currents (dict): Dictionary with n_shims as keys each with a list of n_channels values.
+        old_bounds (dict): Dictionary with orders as keys containing (min, max) containing the merged bounds of the previous
                            optimization.
     Returns:
-        list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
+        dict: Modified bounds (same shape as old_bounds)
     """
 
     new_bounds = {}
