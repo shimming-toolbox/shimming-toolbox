@@ -160,7 +160,7 @@ def phys_to_shim_cs(coefs, manufacturer):
     """Convert a list of coefficients from RAS to the Shim Coordinate System
 
     Args:
-        coefs (np.ndarray): 1d list of coefficients in the physical RAS coordinate system of the manufacturer. The first
+        coefs (np.ndarray): Coefficients in the physical RAS coordinate system of the manufacturer. The first
                             dimension represents the different channels. (indexes 0, 1, 2 --> x, y, z...). If there are
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*

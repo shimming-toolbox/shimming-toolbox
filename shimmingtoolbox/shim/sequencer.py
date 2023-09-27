@@ -289,7 +289,7 @@ class ShimSequencer(Sequencer):
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001)
+            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
@@ -610,15 +610,15 @@ class ShimSequencer(Sequencer):
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-        fig = Figure(figsize=(8, 5))
+        fig = Figure(figsize=(15, 9))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
         im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}\n"
-                     f"mae: {metric_unshimmed_mae:.3}, rmse: {metric_unshimmed_rmse:.3}")
+        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+                     f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -629,8 +629,8 @@ class ShimSequencer(Sequencer):
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}\n"
-                     f"mae: {metric_shimmed_mae:.3}, rmse: {metric_shimmed_rmse:.3}")
+        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+                     f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
