@@ -64,7 +64,7 @@ def parse_orders(orders:str):
               help="Anatomical image to apply the correction onto.")
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
-@click.option('--scanner-coil-order', type=click.Choice(['-1', '0', '1', '2']), default='-1', show_default=True,
+@click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -146,11 +146,10 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     Example of use: st_b0shim dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
+
+    scanner_coil_order = parse_orders(scanner_coil_order)
     # Set logger level
     set_all_loggers(verbose)
-
-    # Input scanner_coil_order can be a string
-    scanner_coil_order = int(scanner_coil_order)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.

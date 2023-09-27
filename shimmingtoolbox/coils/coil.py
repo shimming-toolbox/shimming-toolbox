@@ -19,6 +19,7 @@ required_constraints = [
 
 
 class Coil(object):
+    #! Modify description if everything works
     """
     Coil profile object that stores coil profiles and there constraints
 
@@ -30,7 +31,7 @@ class Coil(object):
                              profile. This transformation relates to the physical coordinates of the scanner (qform).
         required_constraints (list): List containing the required keys for ``constraints``
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
-        coef_channel_minmax (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
+        coef_channel_minmax (dict): Dict of ``(min, max)`` pairs for each coil channels. (None, None) is
                                     used to specify no bounds.
         name (str): Name of the coil.
     """

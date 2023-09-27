@@ -1226,7 +1226,7 @@ class RealTimeSequencer(Sequencer):
                                                             cval=0).get_fdata()), 0, 1)
         for i_shim in range(len(self.slices)):
             # Calculate static correction
-            correction_static = self.optimizer_riro.merged_coils @ coef_static[i_shim]
+            correction_static = self.optimizer.merged_coils @ coef_static[i_shim]
 
             # Calculate the riro coil profiles
             riro_profile = self.optimizer_riro.merged_coils @ coef_riro[i_shim]
@@ -1733,6 +1733,7 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
 
 
 def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[], coils_riro=[]):
+    #! Modify description if everything works
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
@@ -1744,14 +1745,47 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
     new_bounds = []
-    if len(coils_static) > len(coils_riro):
-        currents = currents[:, -len(coils_riro[0].coef_channel_minmax):]
-        old_bounds = old_bounds[-len(coils_riro[0].coef_channel_minmax):]
+    currents_riro = np.empty((currents.shape[0], 0))
+    old_bounds_riro = []
+    static_coil_names = [c.name for c in coils_static]
 
-    for i_shim in range(currents.shape[0]):
+    index = 0
+    coil_indexes = {}
+    for coil in coils_static:
+        if type(coil) == Coil:
+            coil_indexes[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            index += len(coil.coef_channel_minmax['coil'])
+        else:
+            coil_indexes[coil.name] = {}
+            for key in coil.coef_channel_minmax:
+                coil_indexes[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                index += len(coil.coef_channel_minmax[key])
+
+    for i, coil in enumerate(coils_riro):
+        if coil.name in static_coil_names:
+            if type(coil) == Coil:
+                currents_riro = np.append(currents_riro,
+                                          currents[:, coil_indexes[coil.name][0]:coil_indexes[coil.name][1]],
+                                          axis=1)
+                old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][0]:coil_indexes[coil.name][1]])
+            else:
+                for order in coil.coef_channel_minmax:
+                    if order in coils_static[static_coil_names.index(coil.name)].coef_channel_minmax.keys():
+                        currents_riro = np.append(currents_riro,
+                                                  currents[:, coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
+                                                  axis = 1)
+                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
+                    else:
+                        currents_riro = np.append(currents_riro,
+                                                  np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                                  axis=1)
+                        old_bounds_riro.extend(coil.coef_channel_minmax[order])
+
+    new_bounds = []
+    for i_shim in range(currents_riro.shape[0]):
         shim_bound = []
-        for i_channel in range(len(old_bounds)):
-            a_bound = old_bounds[i_channel] - currents[i_shim, i_channel]
+        for i_channel in range(len(old_bounds_riro)):
+            a_bound = old_bounds_riro[i_channel] - currents_riro[i_shim, i_channel]
             shim_bound.append(tuple(a_bound))
         new_bounds.append(shim_bound)
 
