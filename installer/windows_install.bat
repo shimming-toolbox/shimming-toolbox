@@ -54,17 +54,12 @@ for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\st_*.*") do (
 
 REM Copy dcm2niix to the bin directory, there are 2 places it might be
 set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Library\bin\dcm2niix.exe"
-if exist "%PATH_DCM2NIIX%" (
-    echo cp1
-    copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error
-    )
-else (
+if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
     set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Scripts\dcm2niix.exe"
-    if exist "%PATH_DCM2NIIX%" (
-        echo cp2
-        copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error
-        )
-    else goto error
+    if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
+        echo "dcm2niix.exe not found"
+        goto error
+    )
 )
 
 
