@@ -442,6 +442,38 @@
                 "EchoNumber": "1",
                 "ImageType": ["*", "*", "T1", "MIXED", "FIELDMAPHZ"]
             }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "epi",
+            "criteria": {
+                "Manufacturer": "GE",
+                "ScanningSequence": "*EP*",
+                "PulseSequenceName": "*epi*"
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "magnitude1",
+            "criteria": {
+                "Manufacturer": "GE",
+                "PulseSequenceName": "*grassB0*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "OTHER"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "fieldmap",
+            "criteria": {
+                "Manufacturer": "GE",
+                "PulseSequenceName": "*grassB0*",
+                "ImageType": [
+                    "*",
+                    "*",
+                    "*",
+                    "REAL"
+                ]
+            }
         }
     ]
 }

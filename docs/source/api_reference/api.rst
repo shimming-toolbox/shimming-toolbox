@@ -43,7 +43,7 @@ Coils
 .. automodule:: shimmingtoolbox.coils.spherical_harmonics
     :members:
 
-.. automodule:: shimmingtoolbox.coils.siemens_basis
+.. automodule:: shimmingtoolbox.coils.spher_harm_basis
     :members:
 
 .. automodule:: shimmingtoolbox.coils.coordinates
