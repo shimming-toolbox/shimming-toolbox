@@ -38,6 +38,16 @@ logger = logging.getLogger(__name__)
 def b0shim_cli():
     pass
 
+def parse_orders(orders:str):
+    orders = orders.split(',')
+    try:
+        orders = [int(order) for order in orders]
+        if any(order<-1 or order>2 for order in orders):
+            raise ValueError('Orders must be between -1 and 2')
+        return orders
+    except ValueError:
+        raise ValueError(f"Invalid orders: {orders}\n Orders must be integers "
+                         "between -1 and 2 separated by a comma.")
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
@@ -501,10 +511,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
-@click.option('--scanner-coil-order', 'scanner_coil_order_static', multiple=True, type=click.Choice(['-1', '0', '1', '2']), default=['-1'], show_default=True,
+@click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1', show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
-@click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', multiple=True, type=click.Choice(['-1', '0', '1', '2']), default=None, show_default=True,
+@click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.STRING, default=None, show_default=True,
               help="Maximum order of the shim system. Note that specifying 1 will return "
                    "orders 0 and 1. The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -583,19 +593,14 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
-    scanner_coil_order_static = [int(order) for order in sorted(scanner_coil_order_static)]
-    scanner_coil_order_riro = [int(order) for order in sorted(scanner_coil_order_riro)]
-
     #Set coils and scanner order for riro if none were indicated
     if len(coils_riro) == 0:
         coils_riro = coils_static
-    if len(scanner_coil_order_riro) == 0:
+    if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
 
-    # Input can be a string
-    #! previous code when not using a list of orders
-    # scanner_coil_order_static = int(scanner_coil_order_static)
-    # scanner_coil_order_riro = int(scanner_coil_order_riro)
+    scanner_coil_order_static = parse_orders(scanner_coil_order_static)
+    scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
