@@ -31,7 +31,7 @@ from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+AVAILABLE_ORDERS = [-1, 0, 1, 2]
 
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Shim according to the specified algorithm as an argument e.g. st_b0shim xxxxx")
@@ -65,8 +65,10 @@ def parse_orders(orders:str):
 @click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1', show_default=True,
-              help="Maximum order of the shim system. Note that specifying 1 will return "
-                   "orders 0 and 1. The 0th order is the f0 frequency.")
+              help="Spherical harmonics orders to be used in optimization. "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
+                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
+                   "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
@@ -322,7 +324,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                     coefs_coil[i_shim, 1:] = phys_to_shim_cs(coefs_coil[i_shim, 1:], manufacturer)
 
                 # Convert bounds
-                bounds_shim_cs = np.array(coil.coef_channel_minmax)
+                bounds_shim_cs = np.array([bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
                 bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
 
                 # # Plot a figure of the coefficients (Delta), order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
@@ -365,7 +367,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             # Select the coefficients for a coil
             coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
             # Plot a figure of the coefficients
-            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=coil.coef_channel_minmax)
+            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
     logger.info(f"Finished plotting figure(s)")
 
@@ -490,12 +492,12 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
 @click.option('--coil_riro', 'coils_riro', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
-              default=None, required=False,
+              required=False,
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
                    "profiles must be in Hz/unit_shim). If this option is used, these coil profiles will be used for "
-                   "the RIRO optimization. If not, the same coil profiles as the static shimming will be used. "
+                   "the RIRO optimization. "
                    "If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
@@ -511,11 +513,15 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1', show_default=True,
-              help="Maximum order of the shim system. Note that specifying 1 will return "
-                   "orders 0 and 1. The 0th order is the f0 frequency.")
+              help="Spherical harmonics orders to be used in static optimization. "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
+                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
+                   "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.STRING, default=None, show_default=True,
-              help="Maximum order of the shim system. Note that specifying 1 will return "
-                   "orders 0 and 1. The 0th order is the f0 frequency.")
+              help="Spherical harmonics orders to be used in RIRO optimization. "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
+                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
+                   "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
@@ -593,8 +599,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
     #Set coils and scanner order for riro if none were indicated
-    if len(coils_riro) == 0:
-        coils_riro = coils_static
+    # if len(coils_riro) == 0:
+    #     coils_riro = coils_static
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
 
@@ -724,9 +730,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     list_fname_output = []
     end_channel = 0
 
-    #* zip() is used to only stop iterating when the shortest iterable is exhausted
-    for i_coil, (coil, coil_riro) in enumerate(zip(list_coils_static, list_coils_riro)):
-
+    #TODO change so that every coil can be visualized
+    for i_coil, coil in enumerate(list_coils_static):
+        if coil.name not in [coil_riro.name for coil_riro in list_coils_riro]:
+            continue
         # Figure out the start and end channels for a coil to be able to select it from the coefs
         n_channels = coil.dim[3]
         start_channel = end_channel
@@ -812,10 +819,12 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
-    #* zip() is used to only stop iterating when the shortest iterable is exhausted
+
     #TODO: adapt code to handle different number of static and riro coils
-    for i_coil, (coil, coil_riro) in enumerate(zip(list_coils_static, list_coils_riro)):
+    for i_coil, coil in enumerate(list_coils_static):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
+        if coil.name not in [coil_riro.name for coil_riro in list_coils_riro]:
+            continue
         n_channels = coil.dim[3]
         start_channel = end_channel
         end_channel = start_channel + n_channels
