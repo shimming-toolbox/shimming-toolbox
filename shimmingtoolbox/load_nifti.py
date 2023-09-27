@@ -203,7 +203,8 @@ def read_nii(fname_nifti, auto_scale=True):
                 pass
             else:
                 logger.info("Could not scale phase data")
-
+        elif json_data.get('Manufacturer') == 'GE':
+            logger.info("GE phase scaling information is not yet implemented")
         else:
             logger.info("Unknown NIfTI type: No scaling applied")
 

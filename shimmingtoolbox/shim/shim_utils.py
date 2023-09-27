@@ -9,8 +9,12 @@ import numpy as np
 import logging
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
+from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix
 
 logger = logging.getLogger(__name__)
+
+shim_cs = {'SIEMENS': 'LAI',
+           'GE': 'LPI'}
 
 
 def get_phase_encode_direction_sign(fname_nii):
@@ -165,44 +169,21 @@ def phys_to_shim_cs(coefs, manufacturer):
     Returns:
         np.ndarray: Coefficients in the shim coordinate system of the manufacturer
     """
+    manufacturer = manufacturer.upper()
 
-    if manufacturer == 'Siemens':
-        # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
-        # 0, 1, 2, 3,  4,  5,  6,     7
-
+    if manufacturer.upper() in shim_cs:
+        flip_mat = np.ones(len(coefs))
         # Order 1
-        if len(coefs) >= 3:
-            # Change from RAS to LAI (ShimCS)
-            if isinstance(coefs[0], np.ndarray):
-                if None not in coefs[0]:
-                    coefs[0] = -coefs[0]  # X
-            else:
-                if coefs[0] is not None:
-                    coefs[0] = -coefs[0]  # X
-
-            if isinstance(coefs[2], np.ndarray):
-                if None not in coefs[2]:
-                    coefs[2] = -coefs[2]  # Z
-            else:
-                if coefs[2] is not None:
-                    coefs[2] = -coefs[2]  # X
-
+        if len(coefs) == 3:
+            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer, xyz=True)
         # Order 2
-        if len(coefs) >= 8:
-            # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
-            if isinstance(coefs[5], np.ndarray):
-                if None not in coefs[5]:
-                    coefs[5] = -coefs[5]  # [ZY]
-            else:
-                if coefs[5] is not None:
-                    coefs[5] = -coefs[5]  #
+        elif len(coefs) >= 8:
+            flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer)
+        else:
+            logger.warning("Order not supported")
 
-            if isinstance(coefs[7], np.ndarray):
-                if None not in coefs[7]:
-                    coefs[7] = -coefs[7]  # [XY]
-            else:
-                if coefs[7] is not None:
-                    coefs[7] = -coefs[7]  #
+        coefs = flip_mat * coefs
+
     else:
         logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
 
@@ -312,7 +293,7 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
                 scanner_shim_mp['order2'] = order2_mp
 
     else:
-        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented")
+        logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, could not convert shim settings")
 
     return scanner_shim_mp
 

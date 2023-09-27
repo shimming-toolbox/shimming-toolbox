@@ -637,9 +637,6 @@ class ShimSequencer(Sequencer):
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax)
 
-        # Lower suptitle
-        fig.subplots_adjust(top=0.85)
-
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
@@ -1766,7 +1763,7 @@ def parse_slices(fname_nifti):
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
-        raise RuntimeError("No tag SliceTiming to parse slice data")
+        raise RuntimeError("No tag SliceTiming to automatically parse slice data, see --slices option")
 
     # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
     if 'SliceEncodingDirection' in json_data:
