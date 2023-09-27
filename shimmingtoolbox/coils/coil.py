@@ -5,9 +5,8 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, SHIM_CS
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.shim.shim_utils import shim_cs
 
 logger = logging.getLogger(__name__)
 
@@ -123,8 +122,8 @@ class ScannerCoil(Coil):
         self.order = order
 
         manufacturer = manufacturer.upper()
-        if manufacturer in shim_cs:
-            self.coord_system = shim_cs[manufacturer.upper()]
+        if manufacturer in SHIM_CS:
+            self.coord_system = SHIM_CS[manufacturer.upper()]
         else:
             logger.warning(f"Unknown manufacturer {manufacturer}, assuming RAS")
             self.coord_system = 'RAS'
