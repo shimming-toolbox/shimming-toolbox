@@ -764,8 +764,8 @@
             "suffix": "epi",
             "criteria": {
                 "Manufacturer": "GE",
-                "ScanningSequence": "*EP*",
-                "PulseSequenceName": "*epi*"
+                "ScanningSequence": ".*EP.*",
+                "PulseSequenceName": ".*epi.*"
             }
         },
         {
@@ -773,7 +773,7 @@
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "GE",
-                "PulseSequenceName": "*grassB0*",
+                "PulseSequenceName": ".*grassB0.*",
                 "ImageType": ["ORIGINAL", "PRIMARY", "OTHER"]
             }
         },
@@ -782,11 +782,11 @@
             "suffix": "fieldmap",
             "criteria": {
                 "Manufacturer": "GE",
-                "PulseSequenceName": "*grassB0*",
+                "PulseSequenceName": ".*grassB0.*",
                 "ImageType": [
-                    "*",
-                    "*",
-                    "*",
+                    ".*",
+                    ".*",
+                    ".*",
                     "REAL"
                 ]
             }
