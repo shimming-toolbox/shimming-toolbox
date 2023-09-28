@@ -66,7 +66,7 @@ def parse_orders(orders:str):
               help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1', show_default=True,
               help="Spherical harmonics orders to be used in optimization. "
-                   "Available orders: [-1, 0, 1, 2]. "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
@@ -514,13 +514,13 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1', show_default=True,
               help="Spherical harmonics orders to be used in static optimization. "
-                   "Available orders: [-1, 0, 1, 2]. "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.STRING, default=None, show_default=True,
               help="Spherical harmonics orders to be used in RIRO optimization. "
-                   "Available orders: [-1, 0, 1, 2] "
-                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2) "
+                   f"Available orders: {AVAILABLE_ORDERS}. "
+                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")

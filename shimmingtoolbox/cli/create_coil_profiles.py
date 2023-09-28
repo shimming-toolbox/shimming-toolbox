@@ -375,7 +375,7 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     # Create the coil profiles json file
     if max_current_sum is None:
         max_current_sum = nb_channels
-    coef_channel_minmax = [[min_current, max_current]] * nb_channels
+    coef_channel_minmax = {"coil": [[min_current, max_current]] * nb_channels}
     config_coil = {
         'name': coil_name,
         'coef_channel_minmax': coef_channel_minmax,
