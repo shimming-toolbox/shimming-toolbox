@@ -289,7 +289,7 @@ class ShimSequencer(Sequencer):
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001)
+            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
@@ -602,21 +602,23 @@ class ShimSequencer(Sequencer):
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
+        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
+        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
+        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-        fig = Figure(figsize=(9, 6))
+        fig = Figure(figsize=(15, 9))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
         im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                     f"abs mean: {metric_unshimmed_absmean:.3}")
+        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+                     f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -627,16 +629,13 @@ class ShimSequencer(Sequencer):
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                     f"abs mean: {metric_shimmed_absmean:.3}")
+        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+                     f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax)
-
-        # Lower suptitle
-        fig.subplots_adjust(top=0.85)
 
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
@@ -1823,7 +1822,7 @@ def parse_slices(fname_nifti):
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
-        raise RuntimeError("No tag SliceTiming to parse slice data")
+        raise RuntimeError("No tag SliceTiming to automatically parse slice data, see --slices option")
 
     # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
     if 'SliceEncodingDirection' in json_data:

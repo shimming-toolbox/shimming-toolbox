@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# This function will generate static and dynamic (due to respiration) Gx, Gy, Gz components based on a fieldmap time
+# This function will generate static and dynamic (due to respiration) Gx, Gy, Gz components based on a field map time
 # series (magnitude and phase images) and respiratory trace information obtained from Siemens bellows. An additional
-# multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resample the static and dynamic Gx, Gy, Gz
+# multi-gradient echo (MGRE) magnitude image is used to generate a ROI and resample the static and dynamic Gx, Gy, Gz
 # component maps to match the MGRE image. Lastly the average Gx, Gy, Gz values within the ROI are computed for each
 # slice.
 

@@ -6,8 +6,9 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
+from shimmingtoolbox.shim.shim_utils import shim_cs
 
 logger = logging.getLogger(__name__)
 
@@ -118,21 +119,27 @@ class Coil(object):
 
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
-    def __init__(self, coord_system, dim_volume, affine, constraints, orders):
+    def __init__(self, dim_volume, affine, constraints, orders, manufacturer=""):
 
         self.orders = orders
-        self.coord_system = coord_system
+
+        manufacturer = manufacturer.upper()
+        if manufacturer in shim_cs:
+            self.coord_system = shim_cs[manufacturer.upper()]
+        else:
+            logger.warning(f"Unknown manufacturer {manufacturer}, assuming RAS")
+            self.coord_system = 'RAS'
+
         self.affine = affine
 
         # Create the spherical harmonics with the correct order, dim and affine
-        # Todo: add coord system
-        sph_coil_profile = self._create_coil_profile(dim_volume)
+        sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
         constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.orders)
 
         super().__init__(sph_coil_profile, affine, constraints)
 
-    def _create_coil_profile(self, dim):
+    def _create_coil_profile(self, dim, manufacturer=None):
         # Define profile for Tx (constant volume)
         if 0 in self.orders:
             profile_order_0 = -np.ones(dim)
@@ -144,9 +151,20 @@ class ScannerCoil(Coil):
             sph_coil_profile = profile_order_0[..., np.newaxis]
         else:
             # f0, orders
-            mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
             temp_orders = [order for order in self.orders if order != 0]
-            profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders))
+            mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
+
+            if manufacturer == 'SIEMENS':
+                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
+                                               shim_cs=self.coord_system)
+            elif manufacturer == 'GE':
+                profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
+                                          shim_cs=self.coord_system)
+            else:
+                logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
+                               f"0, 1 and 2 respectively")
+                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
+                                               shim_cs=self.coord_system)
             if profile_order_0 is None:
                 sph_coil_profile = profile_orders
             else:
@@ -186,10 +204,28 @@ def get_scanner_constraints(manufacturers_model_name, orders):
                                                        [-3551.29, 3551.29],
                                                        [-3487.302, 3487.302]])
 
-    #TODO
+    elif manufacturers_model_name == "Investigational_Device_7T":
+        constraints = {
+            "name": "Investigational_Device_7T",
+            "coef_channel_minmax": {"coil": []},
+            "coef_sum_max": None
+        }
+        if 0 in orders:
+            pass
+            # todo: f0 min and max is wrong
+        constraints["coef_channel_minmax"].append([None, None])
+        if 1 in orders:
+            for _ in range(3):
+                constraints["coef_channel_minmax"]["1"].append([-5000, 5000])
+        if 2 in orders:
+            constraints["coef_channel_minmax"]["2"].extend([[-1839.63, 1839.63],
+                                                       [-791.84, 791.84],
+                                                       [-791.84, 791.84],
+                                                       [-615.87, 615.87],
+                                                       [-615.87, 615.87]])
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-                       f"respected.")
+                       "respected.")
         constraints = {
             "name": "Unknown",
             "coef_sum_max": None

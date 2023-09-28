@@ -25,7 +25,7 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -42,6 +42,7 @@ def parse_orders(orders:str):
     orders = orders.split(',')
     try:
         orders = [int(order) for order in orders]
+        orders.sort()
         if any(order<-1 or order>2 for order in orders):
             raise ValueError('Orders must be between -1 and 2')
         return orders
@@ -153,16 +154,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Set logger level
     set_all_loggers(verbose)
 
-    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
-    # delta.
-    if o_format_sph == 'gradient':
-        if output_value_format != 'delta':
-            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
-                             f"{o_format_sph}")
-        if scanner_coil_order != 1:
-            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
-                             f"{o_format_sph}")
-
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
 
@@ -251,13 +242,26 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     else:
         raise OSError("Missing fieldmap json file")
 
+    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
+    # delta. Only Siemens gradient coordinate system has been defined
+    if o_format_sph == 'gradient':
+        if output_value_format != 'delta':
+            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                             f"{o_format_sph}")
+        if scanner_coil_order != 1:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
+                             f"{o_format_sph}")
+        if json_fm_data.get('Manufacturer') != 'Siemens':
+            raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
+                                      f"format: {o_format_sph}")
+
     # Read the current shim settings from the scanner
     scanner_shim_settings = ScannerShimSettings(json_fm_data)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data['Manufacturer'], json_fm_data['ManufacturersModelName'])
+                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -295,12 +299,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
+            manufacturer = json_anat_data['Manufacturer']
 
-            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS
+            # If outputting in the gradient CS, it must be the 1st order, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
-                logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
+                logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
+                # First convert to RAS
+                for i_shim in range(coefs.shape[0]):
+                    # Convert coefficient
+                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(coefs_coil[i_shim, 1:], manufacturer)
+
                 # Convert coef of 1st order sph harmonics to Gradient coord system
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
                                                                            coefs_coil[:, 2],
@@ -310,26 +320,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                 coefs_coil[:, 2] = coefs_phase
                 coefs_coil[:, 3] = coefs_slice
 
-                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
-                # units = "Gradient CS [mT/m]"
-                # _plot_coefs(coil, list_slices, coefs[:, start_channel:end_channel], path_output, i_coil, units=units)
-
             else:
-                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
-
-                # Convert coefficients from RAS to the shim CS of the manufacturer
-                manufacturer = json_anat_data['Manufacturer']
-                for i_shim in range(coefs.shape[0]):
-                    # Convert coefficient
-                    coefs_coil[i_shim, 1:] = phys_to_shim_cs(coefs_coil[i_shim, 1:], manufacturer)
-
-                # Convert bounds
-                bounds_shim_cs = np.array([bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
-                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
-
-                # # Plot a figure of the coefficients (Delta), order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
-                # units = "ShimCS [mT/m]"
-                # _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil, units=units, bounds=bounds_shim_cs)
 
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
@@ -607,16 +598,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
-    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
-    # delta.
-    if o_format_sph == 'gradient':
-        if output_value_format == 'absolute':
-            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
-                             f"{o_format_sph}")
-        if scanner_coil_order_static != [1]:
-            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
-                             f"{o_format_sph}")
-
     # Set logger level
     set_all_loggers(verbose)
 
@@ -684,6 +665,19 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     else:
         raise OSError("Missing fieldmap json file")
 
+    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
+    # delta.
+    if o_format_sph == 'gradient':
+        if output_value_format == 'absolute':
+            raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
+                             f"{o_format_sph}")
+        if scanner_coil_order_static != [1]:
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
+                             f"{o_format_sph}")
+        if json_fm_data['Manufacturer'] != 'Siemens':
+            raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
+                             f"{o_format_sph}")
+
     # Read the current shim settings from the scanner
     scanner_shim_settings = ScannerShimSettings(json_fm_data)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
@@ -745,12 +739,20 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS
+            manufacturer = json_anat_data['Manufacturer']
+            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
-                logger.debug("Converting scanner coil from Physical CS (RAS) to Gradient CS")
+                logger.debug("Converting scanner coil from Shim CS to Gradient CS")
 
+                # First convert coefficients from Shim CS to RAS
+                for i_shim in range(coefs_coil_static.shape[0]):
+                    # Convert coefficient
+                    coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer)
+                    coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
+
+                # RAS to gradient
                 coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
                     coefs_coil_static[:, 1],
                     coefs_coil_static[:, 2],
@@ -769,30 +771,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 coefs_coil_riro[:, 2] = coefs_riro_phase
                 coefs_coil_riro[:, 3] = coefs_riro_slice
 
-                # # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
-                # units = "Gradient CS [mT/m]"
-                # _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
-                #             pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units)
-
             else:
-                logger.debug("Converting scanner coil from Physical CS (RAS) to ShimCS")
 
-                # Convert coefficients from RAS to the shim CS of the manufacturer
-                manufacturer = json_anat_data['Manufacturer']
-                for i_shim in range(coefs_coil_static.shape[0]):
-                    # Convert coefficient
-                    coefs_coil_static[i_shim, 1:] = phys_to_shim_cs(coefs_coil_static[i_shim, 1:], manufacturer)
-                    coefs_coil_riro[i_shim, 1:] = phys_to_shim_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
-
-                # Convert bounds
-                bounds_shim_cs = np.array([bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
-                bounds_shim_cs[1:] = phys_to_shim_cs(bounds_shim_cs[1:], manufacturer)
-
-                # Plot a figure of the coefficients, order 0 is in Hz, order 1 in mt/m, order 2 in mt/m^2
-                units = "ShimCS [mT/m]"
-                _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
-                            pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p, units=units,
-                            bounds=bounds_shim_cs)
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
                     initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
@@ -960,7 +940,8 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
 
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
-        scanner_coil = ScannerCoil('ras', nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders)
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
+                                   manufacturer=manufacturer)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
@@ -1017,11 +998,11 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
         if scanner_shim_settings['0'] is not None and 0 in orders:
-            initial_coefs["0"] = np.array([scanner_shim_settings['0']])
+            initial_coefs['0'] = np.array([scanner_shim_settings['0']])
         if scanner_shim_settings['1'] is not None and 1 in orders:
-            initial_coefs["1"] = scanner_shim_settings['1']
+            initial_coefs['1'] = scanner_shim_settings['1']
         if scanner_shim_settings['2'] is not None and 2 in orders:
-            initial_coefs["2"] = scanner_shim_settings['2']
+            initial_coefs['2'] = scanner_shim_settings['2']
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
@@ -1031,21 +1012,7 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
     constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
                                                                   constraints['coef_channel_minmax']
                                                                   )
-    if any(order >= 1 for order in orders) and scanner_shim_settings['has_valid_settings']:
-        bounds = constraints['coef_channel_minmax'].copy()
-        if 0 in orders:
-            del bounds["0"]
-        # Convert bounds to RAS, if they were inverted, place min at index 0, max at index 1
-        bounds = shim_to_phys_cs(bounds, manufacturer=manufacturer)
-        for key in bounds:
-            for i_channel in range(len(bounds[key])):
-                bound_0 = bounds[key][i_channel][0]
-                bound_1 = bounds[key][i_channel][1]
-                if bound_0 is not None and bound_1 is not None:
-                    if bound_0 > bound_1:
-                        bounds[key][i_channel][0] = bound_1
-                        bounds[key][i_channel][1] = bound_0
-            constraints['coef_channel_minmax'][key] = bounds[key]
+
     return constraints
 
 
