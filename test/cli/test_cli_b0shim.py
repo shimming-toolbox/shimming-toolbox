@@ -88,7 +88,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.1',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -113,7 +113,7 @@ class TestCliDynamic(object):
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -311,7 +311,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
@@ -344,7 +344,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'slicewise-ch',
                                              '--output', tmp],
@@ -376,7 +376,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
@@ -586,7 +586,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp,
                                              '-v', 'debug'],
                                 catch_exceptions=False)
@@ -661,6 +661,7 @@ class TestCLIRealtime(object):
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['realtime-dynamic',
                                              '--coil', fname_dummy_coil, fname_constraints,
+                                             '--coil-riro', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask-static', fname_mask,
@@ -700,7 +701,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '-v', 'debug',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -739,7 +740,7 @@ class TestCLIRealtime(object):
                                              '--anat', fname_anat,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -775,7 +776,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -812,7 +813,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -849,7 +850,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '0,1,2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -886,7 +887,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--optimizer-method', 'pseudo_inverse',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -1066,8 +1067,8 @@ def _create_dummy_coil(nii_fmap):
     # Dummy constraints
     dummy_coil_constraints = {
         "name": "Dummy_coil",
-        "coef_channel_minmax": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
-                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)],
+        "coef_channel_minmax": {"coil": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
+                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)]},
         "coef_sum_max": None
     }
 

@@ -1736,6 +1736,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
+
     Args:
         currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
         old_bounds (list): 1d list (n_channels) of tuples (min, max) containing the merged bounds of the previous
@@ -1743,6 +1744,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     Returns:
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
+
     new_bounds = []
     currents_riro = np.empty((currents.shape[0], 0))
     old_bounds_riro = []

@@ -248,7 +248,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if output_value_format != 'delta':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if scanner_coil_order != 1:
+        if not (scanner_coil_order == [0, 1] or scanner_coil_order == [1]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data.get('Manufacturer') != 'Siemens':
@@ -307,9 +307,10 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             if o_format_sph == 'gradient':
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
                 # First convert to RAS
+                orders = tuple([order for order in scanner_coil_order if order != 0])
                 for i_shim in range(coefs.shape[0]):
                     # Convert coefficient
-                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(coefs_coil[i_shim, 1:], manufacturer)
+                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(coefs_coil[i_shim, 1:], manufacturer, orders)
 
                 # Convert coef of 1st order sph harmonics to Gradient coord system
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
@@ -482,7 +483,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
                    f"see: {__dir_config_scanner_constraints__}")
-@click.option('--coil_riro', 'coils_riro', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
+@click.option('--coil-riro', 'coils_riro', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               required=False,
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
@@ -590,8 +591,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
     #Set coils and scanner order for riro if none were indicated
-    # if len(coils_riro) == 0:
-    #     coils_riro = coils_static
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
 
@@ -671,7 +670,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if scanner_coil_order_static != [1]:
+        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1]) or \
+            not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
@@ -745,12 +745,13 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
                 logger.debug("Converting scanner coil from Shim CS to Gradient CS")
-
+                orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
+                orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
                 # First convert coefficients from Shim CS to RAS
                 for i_shim in range(coefs_coil_static.shape[0]):
                     # Convert coefficient
-                    coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer)
-                    coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer)
+                    coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer, orders_static)
+                    coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer, orders_riro)
 
                 # RAS to gradient
                 coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(

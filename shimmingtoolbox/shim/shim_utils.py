@@ -156,7 +156,7 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     return output
 
 
-def phys_to_shim_cs(coefs, manufacturer):
+def phys_to_shim_cs(coefs, manufacturer, orders):
     """Convert a list of coefficients from RAS to the Shim Coordinate System
 
     Args:
@@ -175,10 +175,10 @@ def phys_to_shim_cs(coefs, manufacturer):
         flip_mat = np.ones(len(coefs))
         # Order 1
         if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer, xyz=True)
+            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer, xyz=True)
         # Order 2
         elif len(coefs) >= 8:
-            flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer)
+            flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer)
         else:
             logger.warning("Order not supported")
 
@@ -190,35 +190,23 @@ def phys_to_shim_cs(coefs, manufacturer):
     return coefs
 
 
-def shim_to_phys_cs(coefs:dict, manufacturer):
-    #! Modify description if everything works
+def shim_to_phys_cs(coefs, manufacturer, orders):
     """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
 
     Args:
-        coefs (dict): Dictionary of coefficients in the Shim Coordinate System of the manufacturer divided by order. The first
-                            first order: x, y, z
-                            second order for Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        coefs (np.ndarray): 1D list of coefficients in the Shim Coordinate System of the manufacturer. The first
+                            dimension represents the different channels. Indexes 0, 1, 2 --> x, y, z... If there are
+                            more coefficients, they are of higher order and must correspond to the implementation of the
+                            manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
 
     Returns:
-        dict: Coefficients in the physical RAS coordinate system
+        np.ndarray: Coefficients in the physical RAS coordinate system
+
     """
-    if manufacturer == 'Siemens':
-        # X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
-        # 0, 1, 2, 3,  4,  5,  6,     7
-        if "1" in coefs.keys():
-            # Change from RAS to LAI (ShimCS)
-            coefs['1'][0] = [-coefs["1"][0][0], -coefs['1'][0][1]]  # X
-            coefs['1'][2] = [-coefs['1'][2][0], -coefs['1'][2][1]]  # Z
 
-        # Order 2
-        if "2" in coefs.keys():
-            # Invert X and Z --> invert ZY and XY (Z2, XZ and X2-Y2 are double inverted)
-            coefs["2"][2] = [-coefs["2"][2][0], -coefs['2'][2][1]]  # [ZY]
-            coefs["2"][4] = [-coefs["2"][4][0], -coefs['2'][4][1]]
-
-    else:
-        logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
+    # It's sign flips so the same function can be used for shimCS <--> phys RAS
+    coefs = phys_to_shim_cs(coefs, manufacturer, orders)
 
     return coefs
 
@@ -318,24 +306,24 @@ class ScannerShimSettings:
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict)
         self.shim_settings = convert_to_mp(bids_json_dict.get('ManufacturersModelName'), shim_settings_dac)
 
-    def concatenate_shim_settings(self, order=2):
+    def concatenate_shim_settings(self, orders=[2]):
         coefs = []
         if not self.shim_settings['has_valid_settings']:
             logger.warning("Invalid Shim Settings")
             return coefs
 
-        if self.shim_settings.get('0') is not None and order >= 0:
+        if self.shim_settings.get('0') is not None and any(order>=0 for order in orders):
             # Concatenate 2 lists
             coefs = [self.shim_settings.get('0')]
         else:
             coefs = [0]
 
-        for i_order in range(1, order + 1):
-            if self.shim_settings.get(i_order) is not None:
+        for order in orders:
+            if self.shim_settings.get(order) is not None:
                 # Concatenate 2 lists
-                coefs.extend(self.shim_settings.get(i_order))
+                coefs.extend(self.shim_settings.get(order))
             else:
-                n_coefs = (i_order + 1) * 2
+                n_coefs = (order + 1) * 2
                 coefs.extend([0] * n_coefs)
 
         return coefs

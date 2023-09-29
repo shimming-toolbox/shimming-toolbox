@@ -92,25 +92,23 @@ def _reorder_to_siemens(spher_harm, orders):
     Returns:
         numpy.ndarray: Coefficients ordered following Siemens convention
     """
-    print(f"orders: {orders}")
-
     if orders == (1, 2):
-        if spher_harm.shape[3] != 8:
+        if spher_harm.shape[-1] != 8:
             raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
-        reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
+        reordered = spher_harm[..., [2, 0, 1, 5, 6, 4, 7, 3]]
 
     if orders == (2,):
-        if spher_harm.shape[3] != 5:
+        if spher_harm.shape[-1] != 5:
             raise RuntimeError("Input arrays should have 4th dimension's shape equal to 5")
 
-        reordered = spher_harm[:, :, :, [2, 3, 1, 4, 0]]
+        reordered = spher_harm[..., [2, 3, 1, 4, 0]]
 
     if orders == (1,):
-        if spher_harm.shape[3] != 3:
-            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 3")
+        if spher_harm.shape[-1] != 3:
+            raise RuntimeError(f"Input arrays should have 4th dimension's shape equal to 3 {spher_harm.shape}")
 
-        reordered = spher_harm[:, :, :, [2, 0, 1]]
+        reordered = spher_harm[..., [2, 0, 1]]
 
     return reordered
 
@@ -395,9 +393,8 @@ def get_flip_matrix(shim_cs='ras', orders=(1,2), manufacturer=None, xyz=False):
 
     if manufacturer is not None:
         manufacturer = manufacturer.upper()
-
     if manufacturer == 'SIEMENS':
-        out_matrix = _reorder_to_siemens(out_matrix)
+        out_matrix = _reorder_to_siemens(out_matrix, orders)
     elif manufacturer == 'GE':
         out_matrix = _reorder_to_ge(out_matrix)
     elif manufacturer == 'PHILIPS':
