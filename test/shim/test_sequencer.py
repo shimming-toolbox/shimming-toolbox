@@ -496,7 +496,7 @@ class TestShimRTpmuSimData(object):
 
         # Find optimal currents
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                   slices, pmu, [new_coil]).shim()
+                                   slices, pmu, [new_coil], [new_coil]).shim()
         currents_static, currents_riro, mean_p, p_rms = output
 
         print(f"\nSlices: {slices}"
@@ -511,7 +511,7 @@ class TestShimRTpmuSimData(object):
                                            nii_mask_riro, slices, pmu, coil):
         # Optimize
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                   slices, pmu, [coil], mask_dilation_kernel='line').shim()
+                                   slices, pmu, [coil], [coil], mask_dilation_kernel='line').shim()
 
         assert output[0].shape == (20, 3)
 
@@ -522,7 +522,7 @@ class TestShimRTpmuSimData(object):
                                          header=nii_fieldmap.header)
         with pytest.raises(ValueError, match="Fieldmap must be 4d"):
             RealTimeSequencer(nii_wrong_fmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                              slices, pmu, [coil]).shim()
+                              slices, pmu, [coil], [coil]).shim()
 
     def test_shim_sequencer_rt_wrong_anat_dim(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                               nii_mask_riro, slices, pmu, coil):
@@ -530,7 +530,7 @@ class TestShimRTpmuSimData(object):
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
         with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
             RealTimeSequencer(nii_fieldmap, json_data, nii_wrong_anat, nii_mask_static, nii_mask_riro,
-                              slices, pmu, [coil]).shim()
+                              slices, pmu, [coil], [coil]).shim()
 
     def test_shim_sequencer_rt_diff_mask_shape_static(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                                       nii_mask_riro, slices, pmu, coil):
@@ -538,7 +538,7 @@ class TestShimRTpmuSimData(object):
         nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata()[5:, ...], nii_mask_static.affine,
                                         header=nii_mask_static.header)
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
-                                   slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_diff_mask_shape_riro(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
@@ -548,7 +548,7 @@ class TestShimRTpmuSimData(object):
                                         header=nii_mask_riro.header)
 
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_diff_mask,
-                                   slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_diff_mask_affine(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
@@ -558,7 +558,7 @@ class TestShimRTpmuSimData(object):
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nii_mask_static.get_fdata(), diff_affine, header=nii_mask_static.header)
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_diff_mask, nii_mask_riro,
-                                   slices, pmu, [coil]).shim()
+                                   slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
 
@@ -604,7 +604,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
 
     # Find optimal currents
     output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu,
-                               [coil], method='least_squares').shim()
+                               [coil], [coil], method='least_squares').shim()
     currents_static, currents_riro, mean_p, p_rms = output
 
     # Scale according to rms
