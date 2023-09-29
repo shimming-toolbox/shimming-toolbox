@@ -66,9 +66,9 @@ def create_unshimmed_affine():
 
 def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
     # Set up bounds for output currents
-    bounds = []
+    bounds = {"coil": []}
     for _ in range(n_channels):
-        bounds.append((min_coef, max_coef))
+        bounds['coil'].append((min_coef, max_coef))
 
     constraints = {
         "name": "test",
@@ -414,7 +414,7 @@ class TestShimRTpmuSimData(object):
 
         # Find optimal currents
         sequencer_realtime_test = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
-                                                    slices, pmu, [coil],
+                                                    slices, pmu, [coil], [coil],
                                                     mask_dilation_kernel='sphere')
         output = sequencer_realtime_test.shim()
         currents_static, currents_riro, mean_p, p_rms = output
