@@ -753,13 +753,14 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 index += len(coil.coef_channel_minmax[key])
 
     list_fname_output = []
-    end_channel = 0
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            for key in coil.coef_channel_minmax:
+            for key in [str(order) for order in AVAILABLE_ORDERS
+                        if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
+                                             or str(order) in coil_indexes_static[coil.name]))]:
                 if coil in list_coils_riro:
                     if key in coil_indexes_riro[coil.name]:
                         coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])

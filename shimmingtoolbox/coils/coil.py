@@ -175,7 +175,7 @@ class ScannerCoil(Coil):
         return sph_coil_profile
 
     def __eq__(self, __value: object) -> bool:
-        return super().__eq__(__value) and self.orders == __value.orders
+        return super().__eq__(__value)
 
 
 def get_scanner_constraints(manufacturers_model_name, orders):
