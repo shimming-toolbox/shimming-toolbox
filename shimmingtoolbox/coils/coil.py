@@ -116,6 +116,8 @@ class Coil(object):
             else:
                 raise KeyError(f"Missing required constraint: {key_name}")
 
+    def __eq__(self, __value: object) -> bool:
+        return self.name == __value.name
 
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
@@ -171,6 +173,9 @@ class ScannerCoil(Coil):
                 sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
         return sph_coil_profile
+
+    def __eq__(self, __value: object) -> bool:
+        return super().__eq__(__value) and self.orders == __value.orders
 
 
 def get_scanner_constraints(manufacturers_model_name, orders):

@@ -721,78 +721,139 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Load output options
     options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
 
+    #TODO change so that every coil can be visualized
+    # Get common coils between static and riro
+    coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
+    coil_riro_only = [coil for coil in list_coils_riro if coil not in list_coils_static]
+    list_coils_common = [coil for coil in list_coils_static if coil in list_coils_riro]
+    all_coils = list_coils_common + coil_static_only + coil_riro_only
+
+    index = 0
+    coil_indexes_static = {}
+    for coil in list_coils_static:
+        if type(coil) == Coil:
+            coil_indexes_static[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            index += len(coil.coef_channel_minmax['coil'])
+        else:
+            coil_indexes_static[coil.name] = {}
+            for key in coil.coef_channel_minmax:
+                coil_indexes_static[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                index += len(coil.coef_channel_minmax[key])
+
+    index = 0
+    coil_indexes_riro = {}
+    for coil in list_coils_riro:
+        if type(coil) == Coil:
+            coil_indexes_riro[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            index += len(coil.coef_channel_minmax['coil'])
+        else:
+            coil_indexes_riro[coil.name] = {}
+            for key in coil.coef_channel_minmax:
+                coil_indexes_riro[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                index += len(coil.coef_channel_minmax[key])
+
     list_fname_output = []
     end_channel = 0
-
-    #TODO change so that every coil can be visualized
-    for i_coil, coil in enumerate(list_coils_static):
-        if coil.name not in [coil_riro.name for coil_riro in list_coils_riro]:
-            continue
+    for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
-
-        # Select the coefficients for a coil
-        coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
-        coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            manufacturer = json_anat_data['Manufacturer']
-            # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
-            # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
-            # Therefore, we can only check for the o_format_sph.
-            if o_format_sph == 'gradient':
-                logger.debug("Converting scanner coil from Shim CS to Gradient CS")
-                orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
-                orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
-                # First convert coefficients from Shim CS to RAS
-                for i_shim in range(coefs_coil_static.shape[0]):
-                    # Convert coefficient
-                    coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer, orders_static)
-                    coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer, orders_riro)
+            for key in coil.coef_channel_minmax:
+                if coil in list_coils_riro:
+                    if key in coil_indexes_riro[coil.name]:
+                        coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
+                    else:
+                        coefs_coil_riro = None
 
-                # RAS to gradient
-                coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                    coefs_coil_static[:, 1],
-                    coefs_coil_static[:, 2],
-                    coefs_coil_static[:, 3],
-                    fname_anat)
-                coefs_coil_static[:, 1] = coefs_st_freq
-                coefs_coil_static[:, 2] = coefs_st_phase
-                coefs_coil_static[:, 3] = coefs_st_slice
+                if coil in list_coils_static:
+                    if key in coil_indexes_static[coil.name]:
+                        coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
+                    else:
+                        #! Make sure this is correct with the maths
+                        coefs_coil_static = np.zeros_like(coefs_coil_riro)
 
-                coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                    coefs_coil_riro[:, 1],
-                    coefs_coil_riro[:, 2],
-                    coefs_coil_riro[:, 3],
-                    fname_anat)
-                coefs_coil_riro[:, 1] = coefs_riro_freq
-                coefs_coil_riro[:, 2] = coefs_riro_phase
-                coefs_coil_riro[:, 3] = coefs_riro_slice
+                manufacturer = json_anat_data['Manufacturer']
+                # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
+                # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
+                # Therefore, we can only check for the o_format_sph.
+                if o_format_sph == 'gradient':
+                    if key == '0':
+                        save_coefs_static = coefs_coil_static
+                        if coefs_coil_riro is not None:
+                            save_coefs_riro = coefs_coil_riro
+                        else:
+                            save_coefs_riro = None
+                        has0 = True
+                        continue
+                    elif key == '1' and has0:
+                        save_coefs_static = np.concatenate((save_coefs_static, coefs_coil_static), axis=1)
+                        if save_coefs_riro is not None:
+                            save_coefs_riro = np.concatenate((save_coefs_riro, coefs_coil_riro), axis=1)
+                        elif coefs_coil_riro is not None:
+                            save_coefs_riro = coefs_coil_riro
+                        else:
+                            raise ValueError("Orders do not match gradient")
+                    coefs_coil_static = save_coefs_static
+                    coefs_coil_riro = save_coefs_riro
+                    logger.debug("Converting scanner coil from Shim CS to Gradient CS")
+                    orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
+                    orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
+                    # First convert coefficients from Shim CS to RAS
+                    for i_shim in range(coefs_coil_static.shape[0]):
+                        # Convert coefficient
+                        coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer, orders_static)
+                        coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer, orders_riro)
 
-            else:
+                    # RAS to gradient
+                    coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                        coefs_coil_static[:, 1],
+                        coefs_coil_static[:, 2],
+                        coefs_coil_static[:, 3],
+                        fname_anat)
+                    coefs_coil_static[:, 1] = coefs_st_freq
+                    coefs_coil_static[:, 2] = coefs_st_phase
+                    coefs_coil_static[:, 3] = coefs_st_slice
 
-                # If the output format is absolute, add the initial coefs
-                if output_value_format == 'absolute':
-                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
-                    for i_channel in range(n_channels):
-                        # abs_coef = delta + initial
-                        coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
-                        # riro does not change
+                    coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                        coefs_coil_riro[:, 1],
+                        coefs_coil_riro[:, 2],
+                        coefs_coil_riro[:, 3],
+                        fname_anat)
+                    coefs_coil_riro[:, 1] = coefs_riro_freq
+                    coefs_coil_riro[:, 2] = coefs_riro_phase
+                    coefs_coil_riro[:, 3] = coefs_riro_slice
 
-                    list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                               list_slices, path_output, o_format_sph, options, i_coil,
-                                                               default_st_coefs=initial_coefs)
-                    continue
+                else:
 
-            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_sph, options, i_coil)
+                    # If the output format is absolute, add the initial coefs
+                    if output_value_format == 'absolute' and coefs_coil_static is not None:
+                        initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
+                        for i_channel in range(coefs_coil_static.shape[-1]):
+                            # abs_coef = delta + initial
+                            coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
+                            # riro does not change
+
+                            list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
+                                                                list_slices, path_output, o_format_sph, options, i_coil, int(key)**2,
+                                                                default_st_coefs=initial_coefs)
+                        continue
+
+                list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
+                                                    path_output, o_format_sph, options, i_coil, int(key)**2)
 
         else:  # Custom coil
+            if coil in list_coils_riro:
+                coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][0]:coil_indexes_riro[coil.name][1]])
+            else:
+                coefs_coil_riro = None
+            if coil in list_coils_static:
+                coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][0]:coil_indexes_static[coil.name][1]])
+            else:
+                coefs_coil_static = np.zeros_like(coefs_coil_riro)
+
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
-                                                       path_output, o_format_coil, options, i_coil)
+                                                       path_output, o_format_coil, options, i_coil, 0)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
@@ -802,18 +863,17 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     end_channel = 0
 
     #TODO: adapt code to handle different number of static and riro coils
-    for i_coil, coil in enumerate(list_coils_static):
+    for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
-        if coil.name not in [coil_riro.name for coil_riro in list_coils_riro]:
-            continue
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
-
         if type(coil) != ScannerCoil:
-            # Select the coefficients for a coil
-            coefs_coil_static = copy.deepcopy(coefs_static[:, start_channel:end_channel])
-            coefs_coil_riro = copy.deepcopy(coefs_riro[:, start_channel:end_channel])
+            if coil in list_coils_riro:
+                coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][0]:coil_indexes_riro[coil.name][1]])
+            else:
+                coefs_coil_riro = None
+            if coil in list_coils_static:
+                coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][0]:coil_indexes_static[coil.name][1]])
+            else:
+                coefs_coil_static = np.zeros_like(coefs_coil_riro)
             # Plot a figure of the coefficients
             _plot_coefs(coil, list_slices, coefs_coil_static, path_output, i_coil, coefs_coil_riro,
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
@@ -823,17 +883,19 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
-                          options, coil_number, default_st_coefs=None):
+                          options, coil_number, channel_start, default_st_coefs=None):
     """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     list_fname_output = []
-    n_channels = coil.dim[3]
-
+    if currents_riro is not None:
+        n_channels = currents_riro.shape[-1]
+    else:
+        n_channels = currents_static.shape[-1]
     # Write a file for each channel
     for i_channel in range(n_channels):
 
         if o_format == 'chronological-ch':
-            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{channel_start+i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have 3 coef representing the static, riro and mean_p in chronological order
                 for i_shim in range(len(list_slices)):
@@ -845,19 +907,24 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                         else:
                             # Output initial coefs (absolute)
                             f.write(f"{default_st_coefs[i_channel]:.1f}, {0:.1f}, {mean_p:.4f},\n")
-                    f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
-                    f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+                    if currents_static is not None:
+                        f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                    if currents_riro is not None:
+                        f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
                     f.write(f"{mean_p:.4f},\n")
 
         elif o_format == 'slicewise-ch':
-            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt")
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_ch{channel_start+i_channel}_{coil.name}.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 # Each row will have one coef representing the static, riro and mean_p in slicewise order
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                 for i_slice in range(n_slices):
                     i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
-                    f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
-                    f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+
+                    if currents_static is not None:
+                        f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                    if currents_riro is not None:
+                        f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
                     f.write(f"{mean_p:.4f},\n")
 
         else:  # o_format == 'gradient':
@@ -879,18 +946,22 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
 
                     if i_channel == 0:
                         # f0, Output is in Hz
-                        f.write(f"corr_vec[0][{i_slice}]= "
-                                f"{currents_static[i_shim, i_channel]:.6f}\n")
-                        f.write(f"corr_vec[1][{i_slice}]= "
-                                f"{currents_riro[i_shim, i_channel]:.12f}\n")
+                        if currents_static is not None:
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{currents_static[i_shim, i_channel]:.6f}\n")
+                        if currents_riro is not None:
+                            f.write(f"corr_vec[1][{i_slice}]= "
+                                    f"{currents_riro[i_shim, i_channel]:.12f}\n")
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
                     else:
                         # For Gx, Gy, Gz: Divide by 1000 for mT/m
-                        f.write(f"corr_vec[0][{i_slice}]= "
-                                f"{currents_static[i_shim, i_channel] / 1000:.6f}\n")
-                        f.write(f"corr_vec[1][{i_slice}]= "
-                                f"{currents_riro[i_shim, i_channel] / 1000:.12f}\n")
+                        if currents_static is not None:
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{currents_static[i_shim, i_channel] / 1000:.6f}\n")
+                        if currents_riro is not None:
+                            f.write(f"corr_vec[1][{i_slice}]= "
+                                    f"{currents_riro[i_shim, i_channel] / 1000:.12f}\n")
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
         list_fname_output.append(os.path.abspath(fname_output))

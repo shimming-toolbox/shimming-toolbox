@@ -165,6 +165,7 @@ def phys_to_shim_cs(coefs, manufacturer, orders):
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
+        orders (tuple): Tuple containing the spherical harmonic orders
 
     Returns:
         np.ndarray: Coefficients in the shim coordinate system of the manufacturer
@@ -199,6 +200,7 @@ def shim_to_phys_cs(coefs, manufacturer, orders):
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
+        orders (tuple): Tuple containing the spherical harmonic orders
 
     Returns:
         np.ndarray: Coefficients in the physical RAS coordinate system
