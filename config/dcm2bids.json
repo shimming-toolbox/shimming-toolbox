@@ -744,6 +744,33 @@
         },
         {
             "datatype": "fmap",
+            "suffix": "magnitude2",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "2",
+                "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
+            }
+        },
+        {
+            "datatype": "fmap",
+            "suffix": "phase1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "1",
+                "ImageType": [".*", ".*", ".*", "P", "FFE", "PHASE"]
+            }
+        },
+{
+            "datatype": "fmap",
+            "suffix": "phase2",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "EchoNumber": "2",
+                "ImageType": [".*", ".*", ".*", "P", "FFE", "PHASE"]
+            }
+        },
+        {
+            "datatype": "fmap",
             "suffix": "fieldmap",
             "criteria": {
                 "Manufacturer": "Philips",

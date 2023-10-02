@@ -42,7 +42,7 @@ REM Installing Shimming Toolbox
 copy "%ST_SOURCE_FILES%\config\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
 
 cd "%ST_SOURCE_FILES%"
-"%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install -e ".[docs,dev]" --no-warn-script-location || goto error
+"%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install . --no-warn-script-location || goto error
 
 REM Create launchers for Shimming Toolbox
 set "BIN_DIR=bin"
