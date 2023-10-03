@@ -33,6 +33,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 AVAILABLE_ORDERS = [-1, 0, 1, 2]
 
+
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Shim according to the specified algorithm as an argument e.g. st_b0shim xxxxx")
 def b0shim_cli():
