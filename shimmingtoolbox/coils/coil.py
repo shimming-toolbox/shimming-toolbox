@@ -116,6 +116,9 @@ class Coil(object):
             else:
                 raise KeyError(f"Missing required constraint: {key_name}")
 
+    def __hash__(self):
+        return hash(self.name)
+
     def __eq__(self, __value: object) -> bool:
         return self.name == __value.name
 
@@ -173,6 +176,9 @@ class ScannerCoil(Coil):
                 sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
 
         return sph_coil_profile
+
+    def __hash__(self):
+        return hash(self.name)
 
     def __eq__(self, __value: object) -> bool:
         return super().__eq__(__value)

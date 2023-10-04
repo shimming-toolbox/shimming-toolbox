@@ -151,6 +151,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     """
 
     scanner_coil_order = parse_orders(scanner_coil_order)
+    if len(coils) != len(set(coils)):
+        raise ValueError("Coils must be unique. Make sure different coils have different names.")
+
     # Set logger level
     set_all_loggers(verbose)
 
@@ -593,6 +596,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     #Set coils and scanner order for riro if none were indicated
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
+
+    if len(coils_static) != len(set(coils_static)):
+        raise ValueError("Coils must be unique. Make sure different coils have different names.")
 
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
