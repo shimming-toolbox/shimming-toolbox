@@ -10,6 +10,7 @@ import os
 import nibabel as nib
 import numpy as np
 import json
+import csv
 
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
@@ -95,6 +96,12 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
 
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -596,6 +603,11 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[5].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+            assert values == [11.007908, -0.014577058094, 1311.6784]
 
     def test_cli_rt_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
