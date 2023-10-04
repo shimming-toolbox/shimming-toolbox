@@ -176,7 +176,7 @@ def phys_to_shim_cs(coefs, manufacturer, orders):
         flip_mat = np.ones(len(coefs))
         # Order 1
         if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer, xyz=True)
+            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer)
         # Order 2
         elif len(coefs) >= 8:
             flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer)

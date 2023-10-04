@@ -44,12 +44,11 @@ def parse_orders(orders:str):
     try:
         orders = [int(order) for order in orders]
         orders.sort()
-        if any(order<-1 or order>2 for order in orders):
-            raise ValueError('Orders must be between -1 and 2')
+        if any(order not in AVAILABLE_ORDERS for order in orders):
+            raise ValueError(f'Orders must be selected from: {AVAILABLE_ORDERS}')
         return orders
     except ValueError:
-        raise ValueError(f"Invalid orders: {orders}\n Orders must be integers "
-                         "between -1 and 2 separated by a comma.")
+        raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
@@ -722,11 +721,11 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Load output options
     options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
 
-    #TODO change so that every coil can be visualized
-    # Get common coils between static and riro
+    # Get common coils between static and riro // Comparison based on coil name
     coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
     coil_riro_only = [coil for coil in list_coils_riro if coil not in list_coils_static]
     list_coils_common = [coil for coil in list_coils_static if coil in list_coils_riro]
+    # Create a list of all coils used in optimization
     all_coils = list_coils_common + coil_static_only + coil_riro_only
 
     index = 0
@@ -759,21 +758,34 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            for key in [str(order) for order in AVAILABLE_ORDERS
+            if coil in list_coils_common:
+                keys = [str(order) for order in AVAILABLE_ORDERS
                         if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
-                                             or str(order) in coil_indexes_static[coil.name]))]:
+                                             or str(order) in coil_indexes_static[coil.name]))]
+            elif coil in coil_static_only:
+                keys = [str(order) for order in AVAILABLE_ORDERS
+                        if (order != -1 and str(order) in coil_indexes_static[coil.name])]
+            elif coil in coil_riro_only:
+                keys = [str(order) for order in AVAILABLE_ORDERS
+                        if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
+
+            for key in keys:
                 if coil in list_coils_riro:
                     if key in coil_indexes_riro[coil.name]:
                         coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
                     else:
-                        coefs_coil_riro = None
+                        coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
+                else:
+                    coefs_coil_riro = coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
 
                 if coil in list_coils_static:
                     if key in coil_indexes_static[coil.name]:
                         coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
                     else:
-                        #! Make sure this is correct with the maths
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
+                else:
+                    coefs_coil_static = np.zeros_like(coefs_coil_riro)
+
 
                 manufacturer = json_anat_data['Manufacturer']
                 # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
@@ -848,7 +860,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             if coil in list_coils_riro:
                 coefs_coil_riro = copy.deepcopy(coefs_riro[:, coil_indexes_riro[coil.name][0]:coil_indexes_riro[coil.name][1]])
             else:
-                coefs_coil_riro = None
+                coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][0]:coil_indexes_static[coil.name][1]])
             if coil in list_coils_static:
                 coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][0]:coil_indexes_static[coil.name][1]])
             else:
@@ -864,7 +876,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
 
-    #TODO: adapt code to handle different number of static and riro coils
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
         if type(coil) != ScannerCoil:
@@ -1013,7 +1024,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
             sph_contraints = get_scanner_constraints(manufacturers_model_name, orders)
 
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
+        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders)
         scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
                                    manufacturer=manufacturer)
         list_coils.append(scanner_coil)
@@ -1025,7 +1036,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
     return list_coils
 
 
-def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, orders, manufacturer):
+def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, orders):
     #! Modify description if everything works
     """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
         absolute bounds
@@ -1086,7 +1097,6 @@ def calculate_scanner_constraints(constraints:dict, scanner_shim_settings, order
     constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
                                                                   constraints['coef_channel_minmax']
                                                                   )
-
     return constraints
 
 

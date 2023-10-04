@@ -1715,7 +1715,6 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
     Returns:
         dict: Modified bounds (same shape as old_bounds)
     """
-
     new_bounds = {}
     for key in old_bounds:
         new_bounds[key] = []
@@ -1745,7 +1744,6 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
 
-    new_bounds = []
     currents_riro = np.empty((currents.shape[0], 0))
     old_bounds_riro = []
     static_coil_names = [c.name for c in coils_static]
@@ -1781,6 +1779,20 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
                                                   np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
                                                   axis=1)
                         old_bounds_riro.extend(coil.coef_channel_minmax[order])
+
+        else:
+            if type(coil) == Coil:
+                currents_riro = np.append(currents_riro,
+                                        np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
+                                        axis=1)
+                old_bounds_riro.extend(coil.coef_channel_minmax['coil'])
+
+            else:
+                for order in coil.coef_channel_minmax:
+                    currents_riro = np.append(currents_riro,
+                                              np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                              axis=1)
+                    old_bounds_riro.extend(coil.coef_channel_minmax[order])
 
     new_bounds = []
     for i_shim in range(currents_riro.shape[0]):

@@ -9,7 +9,7 @@ from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 logger = logging.getLogger(__name__)
 
 GYROMAGNETIC_RATIO = 42.5774785178325552  # [MHz/T]
-
+ORDER_INDEXES = {1: 3, 2: 5}
 
 def siemens_basis(x, y, z, orders=(1, 2), shim_cs='LAI'):
     """
@@ -62,8 +62,8 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs='LAI'):
     range_per_order = {}
     index = 0
     for order in orders:
-        range_per_order[order] = list(range(index, index+(order*2 +1)))
-        index += order*2 + 1
+        range_per_order[order] = list(range(index, index + ORDER_INDEXES[order]))
+        index += ORDER_INDEXES[order]
 
     # range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
@@ -349,7 +349,7 @@ def _check_basis_inputs(x, y, z, orders):
         raise NotImplementedError("Spherical harmonics not implemented for order 3 and up")
 
 
-def get_flip_matrix(shim_cs='ras', orders=(1,2), manufacturer=None, xyz=False):
+def get_flip_matrix(shim_cs='ras', orders=(1,2), manufacturer=None):
     """
     Return a matrix to flip the spherical harmonics basis set from ras to the desired coordinate system.
 
@@ -403,11 +403,7 @@ def get_flip_matrix(shim_cs='ras', orders=(1,2), manufacturer=None, xyz=False):
         # Do not reorder if the manufacturer is not specified
         pass
 
-    if xyz:
-        # X, Y, Z
-        return out_matrix[:3]
-    else:
-        # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
-        # GE: x, y, z, xy, zy, zx, X2 - Y2, z2
-        # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
-        return out_matrix
+    # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
+    # GE: x, y, z, xy, zy, zx, X2 - Y2, z2
+    # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
+    return out_matrix
