@@ -9,8 +9,9 @@ import numpy as np
 from skimage.filters import gaussian
 from sklearn.linear_model import LinearRegression
 
-from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
+from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
+from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.utils import fill
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 VALIDITY_THRESHOLD = 0.2
 
 
-def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=None, threshold=0.05,
+def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_mask=None, threshold=0.05,
                      gaussian_filter=False, sigma=1, fname_save_mask=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
@@ -31,7 +32,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
                            echoes. It input is a phasediff (1 phase), input 2 echotimes.
         unwrapper (str): Unwrapper to use for phase unwrapping. Supported: ``prelude``, ``skimage``.
         mag (numpy.ndarray): Array containing magnitude data relevant for ``phase`` input. Shape must match phase[echo].
-        mask (numpy.ndarray): Mask for masking output fieldmap. Must match shape of phase[echo].
+        nii_mask (nib.Nifti1Image): Mask for masking output fieldmap.
         threshold: Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower
                    than the threshold are set to 0.
         gaussian_filter (bool): Option of using a Gaussian filter to smooth the fieldmaps (boolean)
@@ -73,12 +74,36 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         raise ValueError(f"Threshold should range from 0 to 1. Input value was: {threshold}")
 
     # Make sure mask has the right shape
-    if mask is None:
+    if nii_mask is None:
         # Define the mask using the threshold
         mask = mask_threshold(mag, threshold, scaled_thr=True)
     else:
-        if mask.shape != phase[0].shape:
-            raise ValueError("Shape of mask and phase must match.")
+        # Check that the mask is the right shape
+        if not np.all(nii_mask.shape == list_nii_phase[0].shape) or not np.all(
+                nii_mask.affine == list_nii_phase[0].affine):
+            logger.debug("Resampling mask on the target anat")
+            if list_nii_phase[0].ndim == 4:
+                nii_tmp_target = nib.Nifti1Image(list_nii_phase[0].get_fdata()[..., 0], list_nii_phase[0].affine,
+                                                 header=list_nii_phase[0].header)
+                if nii_mask.ndim == 3:
+                    tmp_mask = np.repeat(nii_mask.get_fdata()[..., np.newaxis], list_nii_phase[0].shape[-1], axis=-1)
+                    nii_tmp_mask = nib.Nifti1Image(tmp_mask, nii_mask.affine, header=nii_mask.header)
+                elif nii_mask.ndim == 4:
+                    nii_tmp_mask = nii_mask
+                else:
+                    raise ValueError("Mask must be 3D or 4D")
+            else:
+                # If it's not in 4d, assume it's a 3d mask
+                nii_tmp_target = list_nii_phase[0]
+                nii_tmp_mask = nii_mask
+
+            nii_mask_soft = resample_from_to(nii_tmp_mask, nii_tmp_target, order=1, mode='grid-constant')
+            tmp_mask = nii_mask_soft.get_fdata()
+            # Change soft mask into binary mask
+            mask = mask_threshold(tmp_mask, thr=0.001, scaled_thr=True)
+        else:
+            mask = nii_mask.get_fdata()
+
 
         logger.debug("A mask was provided, ignoring threshold value")
 
@@ -90,9 +115,9 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', mask=
         # Run the unwrapper
         phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
                                            fname_save_mask=fname_save_mask)
-        # If it's 4d (i.e. there are timepoints)
-        if len(phasediff_unwrapped.shape) == 4:
-            phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
+
+        # If 4d, correct 2pi offset between timepoints, if it's 3d, bring offset closest to the mean
+        phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
 
         # Divide by echo time
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
@@ -191,9 +216,10 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         'correct' offset is assumed to be at time 0.
 
     Args:
-        unwrapped (numpy.ndarray): 4d array of the spatially unwrapped phase
-        mag (numpy.ndarray): 4d array containing the magnitude values of the phase
-        mask (numpy.ndarray): 4d mask of the unwrapped phase array
+        unwrapped (numpy.ndarray): Array of the spatially unwrapped phase. If there is a time dimension, the offset is
+                                   corrected in time, if unwrapped is 3D, the offset closest to 0 is chosen.
+        mag (numpy.ndarray): Array containing the magnitude values of the phase. Same shape as unwrapped.
+        mask (numpy.ndarray): Mask of the unwrapped phase array. Same shape as unwrapped.
         validity_threshold (float): Threshold to create a mask on each timepoints and assume as reliable phase data
 
     Returns:
@@ -208,29 +234,40 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     # Logical and with the mask used for calculating the fieldmap
     validity_masks = np.logical_and(mask, validity_masks)
 
-    for i_time in range(1, unwrapped_cp.shape[3]):
-        # Take the region where both masks intersect
-        validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
+    if unwrapped.ndim == 4:
+        for i_time in range(1, unwrapped_cp.shape[3]):
+            # Take the region where both masks intersect
+            validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
 
-        # Calculate the means in the same validity mask
-        ma_0 = np.ma.array(unwrapped_cp[..., i_time - 1], mask=validity_mask == False)
+            # Calculate the means in the same validity mask
+            ma_0 = np.ma.array(unwrapped_cp[..., i_time - 1], mask=validity_mask == False)
+            mean_0 = np.ma.mean(ma_0)
+            ma_1 = np.ma.array(unwrapped_cp[..., i_time], mask=validity_mask == False)
+            mean_1 = np.ma.mean(ma_1)
+
+            # Calculate the number of offset by rounding to the nearest integer.
+            n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
+            n_offsets = np.round(n_offsets_float)
+
+            if 0.3 < (n_offsets_float % 1) < 0.7:
+                logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
+                               "ambiguous, verify the output fieldmap.")
+
+            if n_offsets != 0:
+                logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
+
+            logger.debug(f"Offset was: {n_offsets_float}")
+            # Remove n_offsets to unwrapped[..., i_time] only in the masked region
+            unwrapped_cp[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
+    else:
+        # unwrapped.ndim == 3:
+        ma_0 = np.ma.array(unwrapped_cp, mask=validity_masks == False)
         mean_0 = np.ma.mean(ma_0)
-        ma_1 = np.ma.array(unwrapped_cp[..., i_time], mask=validity_mask == False)
-        mean_1 = np.ma.mean(ma_1)
-
-        # Calculate the number of offset by rounding to the nearest integer.
-        n_offsets_float = (mean_1 - mean_0) / (2 * np.pi)
-        n_offsets = round(n_offsets_float)
-
-        if 0.3 < (n_offsets_float % 1) < 0.7:
-            logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
-                           "ambiguous, verify the output fieldmap.")
-
+        n_offsets_float = mean_0 / (2 * np.pi)
+        n_offsets = np.round(n_offsets_float)
         if n_offsets != 0:
             logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
 
-        logger.debug(f"Offset was: {n_offsets_float}")
-        # Remove n_offsets to unwrapped[..., i_time] only in the masked region
-        unwrapped_cp[..., i_time] -= mask[..., i_time] * n_offsets * (2 * np.pi)
+        unwrapped_cp -= mask * n_offsets * (2 * np.pi)
 
     return unwrapped_cp

@@ -54,13 +54,13 @@ def general_demo(path_output=os.path.join(os.path.curdir, 'output_dir')):
     dicom_to_nifti(path_dicom_unsorted, path_nifti, subject_id='sub-01')
 
     # Open phase data
-    fname_phases = glob.glob(os.path.join(path_nifti, 'sub-01', 'fmap', '*phase*.nii.gz'))
+    fname_phases = glob.glob(os.path.join(path_nifti, 'sub-01', 'anat', '*phase*.nii.gz'))
 
     nii_phase_e1, _, _ = read_nii(fname_phases[0])
     nii_phase_e2, _, _ = read_nii(fname_phases[1])
 
     # Open mag data
-    fname_mags = glob.glob(os.path.join(path_nifti, 'sub-01', 'fmap', '*magnitude*.nii.gz'))
+    fname_mags = glob.glob(os.path.join(path_nifti, 'sub-01', 'anat', '*magnitude*.nii.gz'))
 
     nii_mag_e1 = nib.load(fname_mags[0])
     nii_mag_e2 = nib.load(fname_mags[1])

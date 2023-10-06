@@ -89,12 +89,14 @@ class TestPrepareFieldmap(object):
         with pytest.raises(ValueError, match="mag and phase must have the same dimensions."):
             prepare_fieldmap([self.nii_phase], self.echo_times, mag=np.zeros_like([5, 5]), unwrapper='skimage')
 
-    def test_prepare_fieldmap_mask_wrong_shape(self):
+    def test_prepare_fieldmap_mask_different_shape(self):
         """Mask has the wrong shape."""
-
-        with pytest.raises(ValueError, match="Shape of mask and phase must match."):
-            prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, mask=np.zeros_like([5, 5]),
-                             unwrapper='skimage')
+        mask = self.nii_phase.get_fdata()[..., 0]
+        affine = self.nii_phase.affine
+        affine[2, 3] += 1
+        nii = nib.Nifti1Image(mask, affine=affine, header=self.nii_phase.header)
+        fieldmap, _ = prepare_fieldmap([self.nii_phase], self.echo_times, self.mag, nii_mask=nii, unwrapper='skimage')
+        assert fieldmap.shape == self.nii_phase.shape
 
     def test_prepare_fieldmap_phasediff_1_echotime(self):
         """EchoTime of length one for phasediff should fail."""
