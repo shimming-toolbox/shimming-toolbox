@@ -8,10 +8,10 @@ from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 
 logger = logging.getLogger(__name__)
 
-GYROMAGNETIC_RATIO = 42.5774785178325552  # [MHz/T]
+GYROMAGNETIC_RATIO = 42.5774785178325552  # [MHz/T] or equivalently [Hz/uT]
 SHIM_CS = {'SIEMENS': 'LAI',
            'GE': 'LPI',
-           'PHILIPS': 'LPS'}
+           'PHILIPS': 'RPI'}
 
 
 def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
@@ -56,7 +56,8 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
 
     # Create spherical harmonics from first to second order
     all_orders = np.array(range(1, 3))
-    spher_harm = scaled_spher_harm(x, y, z, all_orders, shim_cs=shim_cs)
+    flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', xyz=True)
+    spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], all_orders)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
     reordered_spher = _reorder_to_siemens(spher_harm)
@@ -136,7 +137,8 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
 
     # Create spherical harmonics from first to second order
     all_orders = np.array(range(1, 3))
-    spher_harm = scaled_spher_harm(x, y, z, all_orders, shim_cs=shim_cs)
+    flip = get_flip_matrix(shim_cs, manufacturer='GE', xyz=True)
+    spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], all_orders)
 
     # The following matrix (8 x 5) refers to the following:
     #  \  xy, zy, zx, XY, z2
@@ -231,13 +233,12 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Philips convention*,
     ``basis`` is then:
 
-        - Rescaled to Hz/unit-shim, where "unit-shim" refers to the measure displayed in the Adjustments card of the
-          Syngo console UI, namely:
+        - Rescaled to Hz/unit-shim, where "unit-shim" refers to:
 
             - 1 milli-T/m for *X,Y,Z* gradients (= 42.576 Hz/mm)
-            - TODO: 1 milli-T/m^2 for 2nd order terms (= 0.042576 Hz/mm^2)
+            - 1 milli-T/m^2 for 2nd order terms (= 0.042576 Hz/mm^2)
 
-        - TODO: Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -254,16 +255,28 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
-    """
 
+    Note:
+        Philips coordinate system has its x in the AP direction and y axis in the RL direction. Therefore, channel 0 (x)
+        changes along axis 1 and channel 1 (y) changes along axis 0.
+    """
+    # TODO: Why are channels zx and zy half of what they should return?
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics from first to second order
     all_orders = np.array(range(1, 3))
-    spher_harm = scaled_spher_harm(x, y, z, all_orders, shim_cs=shim_cs)
+    # Philips' y and x axis are flipped (x is AP, y is RL)
+    flip = get_flip_matrix(shim_cs, manufacturer='Philips', xyz=True)
+    # TODO: The z axis origin seems to be shifted ~5cm from isocenter
+    spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], (z * flip[2]) + 50, all_orders)
 
-    # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
+    # Scale according to Philips convention
+    # milli-T/m for order 1, milli-T/m^2 for order 2
+    # uT/m * 1e3 = mT/m, uT/m^2 * 1e3 = mT/m^2
+    spher_harm *= 1000
+
+    # Reorder according to philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
     reordered_spher = _reorder_to_philips(spher_harm)
 
     # Select order
@@ -284,7 +297,7 @@ def _reorder_to_philips(spher_harm):
     """
     Reorder 1st - 2nd order coefficients along the last dim. From
     1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
-    TODO: 2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
+    2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
 
     Args:
         spher_harm (numpy.ndarray): Coefficients with the last dimensions representing the different order channels.
@@ -297,13 +310,12 @@ def _reorder_to_philips(spher_harm):
     if spher_harm.shape[-1] != 8:
         raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
-    # TODO: Use Philips reordering
     reordered = spher_harm[..., [2, 0, 1, 5, 6, 4, 7, 3]]
 
     return reordered
 
 
-def scaled_spher_harm(x, y, z, orders=(1, 2), shim_cs='RAS'):
+def scaled_spher_harm(x, y, z, orders=(1, 2)):
     """ The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. It is then:
 
@@ -334,15 +346,13 @@ def scaled_spher_harm(x, y, z, orders=(1, 2), shim_cs='RAS'):
     spher_harm = spherical_harmonics(all_orders, x, y, z)
     # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics)
 
-    spher_harm_cs = get_flip_matrix(shim_cs) * spher_harm
-
     # scale according to
     # - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
     # - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
     scaling_factors = _get_scaling_factors()
-    scaled = np.zeros_like(spher_harm_cs)
-    for i_channel in range(0, spher_harm_cs.shape[3]):
-        scaled[:, :, :, i_channel] = scaling_factors[i_channel] * spher_harm_cs[:, :, :, i_channel]
+    scaled = np.zeros_like(spher_harm)
+    for i_channel in range(0, spher_harm.shape[3]):
+        scaled[:, :, :, i_channel] = scaling_factors[i_channel] * spher_harm[:, :, :, i_channel]
 
     # 1 uT/m, 1 uT/m2 in Hz/mm, Hz/mm2
     return scaled
@@ -455,16 +465,18 @@ def get_flip_matrix(shim_cs='ras', manufacturer=None, xyz=False):
     elif manufacturer == 'GE':
         out_matrix = _reorder_to_ge(out_matrix)
     elif manufacturer == 'PHILIPS':
-        logger.warning("Philips shim CS not implemented yet")
+        out_matrix = _reorder_to_philips(out_matrix)
     else:
         # Do not reorder if the manufacturer is not specified
         pass
 
     if xyz:
-        # X, Y, Z
+        # None: Y, Z, X
+        # GE/Siemens/Philips: X, Y, Z
         return out_matrix[:3]
     else:
         # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
         # GE: x, y, z, xy, zy, zx, X2 - Y2, z2
         # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
+        # Philips: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
         return out_matrix

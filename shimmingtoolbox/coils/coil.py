@@ -5,7 +5,7 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, SHIM_CS
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, SHIM_CS
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 logger = logging.getLogger(__name__)
@@ -154,6 +154,9 @@ class ScannerCoil(Coil):
             elif manufacturer == 'GE':
                 profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
                                           shim_cs=self.coord_system)
+            elif manufacturer == 'PHILIPS':
+                profile_orders = philips_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
+                                               shim_cs=self.coord_system)
             else:
                 logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
                                f"0, 1 and 2 respectively")
