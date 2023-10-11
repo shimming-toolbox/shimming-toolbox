@@ -7,10 +7,6 @@ import wx
 from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.select import select_file, select_folder, select_from_overlay
 
-# Load icon resources
-info_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'info-icon.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
-asterisk_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'asterisk.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
-
 
 class TextWithButton:
     """Creates a button with an input text box.
@@ -102,6 +98,8 @@ class TextWithButton:
         for textctrl in self.textctrl_list:
             text_with_button_box.Add(textctrl, 1, wx.ALIGN_LEFT | wx.LEFT, 10)
             if self.required:
+                asterisk_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'asterisk.png'),
+                                         wx.BITMAP_TYPE_PNG).ConvertToBitmap()
                 text_with_button_box.Add(wx.StaticBitmap(self.panel, bitmap=asterisk_icon), 0, wx.RIGHT, 7)
 
         return text_with_button_box
@@ -280,6 +278,7 @@ class InfoIcon(wx.StaticBitmap):
 
 
 def create_info_icon(panel, info_text=""):
+    info_icon = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'info-icon.png'), wx.BITMAP_TYPE_PNG).ConvertToBitmap()
     image = InfoIcon(panel, bitmap=info_icon, info_text=info_text)
     image.Bind(wx.EVT_MOTION, on_info_icon_mouse_over)
     return image

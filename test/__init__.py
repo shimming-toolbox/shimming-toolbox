@@ -145,21 +145,21 @@ def run_with_fsleyes(func, *args, **kwargs):
     idle.idleLoop.allowErrors = True
 
     propagateRaise = kwargs.pop('propagateRaise', True)
-    startingDelay  = kwargs.pop('startingDelay',  500)
+    startingDelay = kwargs.pop('startingDelay',  500)
     finishingDelay = kwargs.pop('finishingDelay', 250)
-    callAfterApp   = kwargs.pop('callAfterApp',   None)
+    callAfterApp = kwargs.pop('callAfterApp',   None)
 
     class State(object):
         pass
-    state             = State()
-    state.result      = None
-    state.raised      = None
-    state.frame       = None
-    state.app         = None
-    state.dummy       = None
-    state.panel       = None
+    state = State()
+    state.result = None
+    state.raised = None
+    state.frame = None
+    state.app = None
+    state.dummy = None
+    state.panel = None
 
-    glver  = os.environ.get('FSLEYES_TEST_GL', None)
+    glver = os.environ.get('FSLEYES_TEST_GL', None)
     if glver is not None:
         glver = [int(v) for v in glver.split('.')]
 
@@ -181,7 +181,7 @@ def run_with_fsleyes(func, *args, **kwargs):
     def run():
 
         overlayList = fsloverlay.OverlayList()
-        displayCtx  = dc.DisplayContext(overlayList)
+        displayCtx = dc.DisplayContext(overlayList)
         state.frame = fslframe.FSLeyesFrame(None,
                                             overlayList,
                                             displayCtx)
@@ -209,7 +209,7 @@ def run_with_fsleyes(func, *args, **kwargs):
         finally:
             wx.CallLater(finishingDelay, finish)
 
-    state.app   = fslmain.FSLeyesApp()
+    state.app = fslmain.FSLeyesApp()
     state.dummy = wx.Frame(None)
     state.panel = wx.Panel(state.dummy)
     state.sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -261,7 +261,7 @@ def run_with_fsleyes(func, *args, **kwargs):
 
 def run_with_viewpanel(func, vptype, *args, **kwargs):
     def inner(frame, overlayList, displayCtx, *a, **kwa):
-        panel      = frame.addViewPanel(vptype)
+        panel = frame.addViewPanel(vptype)
         displayCtx = panel.displayCtx
         try:
             while not panel.IsShownOnScreen():
@@ -352,8 +352,10 @@ def simclick(sim, target, btn=wx.MOUSE_BTN_LEFT, pos=None, stype=0):
 
     sim.MouseMove(round(x), round(y))
     realYield()
-    if   stype == 0: sim.MouseClick(btn)
-    elif stype == 1: sim.MouseDblClick(btn)
+    if stype == 0:
+        sim.MouseClick(btn)
+    elif stype == 1:
+        sim.MouseDblClick(btn)
     else:
         sim.MouseDown(btn)
         sim.MouseUp(btn)

@@ -7,14 +7,14 @@ set -e
 
 ST_DIR=$HOME/shimming-toolbox
 
-cd $ST_DIR
+cd "${ST_DIR}"
 
 # Remove previous install
 rm -rf "${ST_DIR}/shimming-toolbox"
 
 print info "Downloading Shimming-Toolbox"
 
-ST_VERSION="b095b399d0da9201d8cd61d43a2121a85eb0aa96"
+ST_VERSION="c9975f7d6bc8bcc4c79ad73fef59c9b938b156dc"
 
 curl -L "https://github.com/shimming-toolbox/shimming-toolbox/archive/${ST_VERSION}.zip" > "shimming-toolbox-${ST_VERSION}.zip"
 

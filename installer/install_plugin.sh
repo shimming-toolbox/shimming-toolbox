@@ -31,23 +31,23 @@ function edit_shellrc() {
   fi
 }
 
-source $ST_DIR/$PYTHON_DIR/bin/activate
+source "${ST_DIR}/${PYTHON_DIR}/bin/activate"
 
 # Install fsleyes
 print info "Installing fsleyes"
-"$ST_DIR"/"$PYTHON_DIR"/bin/mamba install -y -c conda-forge fsleyes=1.7.0 python=3.9
+"${ST_DIR}"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge fsleyes=1.9.0 python=3.9
 
 # Install fsleyes-plugin-shimming-toolbox
 print info "Installing fsleyes-plugin-shimming-toolbox"
-"$ST_DIR"/"$PYTHON_DIR"/bin/python -m pip install .
+"${ST_DIR}"/"${PYTHON_DIR}"/bin/python -m pip install .
 
 # Create launchers
 print info "Creating launcher for fsleyes-plugin-shimming-toolbox..."
-mkdir -p $ST_DIR/$BIN_DIR
+mkdir -p "${ST_DIR}/${BIN_DIR}"
 chmod +x shimming-toolbox.sh
-cp shimming-toolbox.sh $ST_DIR/$BIN_DIR/ # || die "Problem creating launchers!"
+cp shimming-toolbox.sh "${ST_DIR}/${BIN_DIR}/" # || die "Problem creating launchers!"
 
 # Activate the launchers
-export PATH=$ST_DIR/$BIN_DIR:$PATH
+export PATH="${ST_DIR}/${BIN_DIR}:${PATH}"
 
 edit_shellrc

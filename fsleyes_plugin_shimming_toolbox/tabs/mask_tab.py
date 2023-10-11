@@ -14,6 +14,13 @@ from shimmingtoolbox.cli.mask import box, rect, threshold, sphere
 
 class MaskTab(Tab):
     def __init__(self, parent, title="Mask"):
+
+        self.run_component_sphere = None
+        self.run_component_box = None
+        self.run_component_rect = None
+        self.run_component_thr = None
+        self.choice_box = None
+
         description = "Create a mask.\n\n" \
                       "Select a shape or an algorithm from the dropdown list."
         super().__init__(parent, title, description)
@@ -81,7 +88,7 @@ class MaskTab(Tab):
             sizer.Show(False)
 
     def create_choice_box(self):
-        self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
+        self.choice_box = wx.Choice(self, choices=self.dropdown_choices, name="mask_algorithms")
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
         self.sizer_run.Add(self.choice_box)
         self.sizer_run.AddSpacer(10)
@@ -108,12 +115,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata, cli=threshold)
-        run_component = RunComponent(
+        self.run_component_thr = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask threshold"
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_thr.sizer
         return sizer
 
     def create_sizer_rect(self):
@@ -144,12 +151,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata, cli=rect)
-        run_component = RunComponent(
+        self.run_component_rect = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask rect"
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_rect.sizer
         return sizer
 
     def create_sizer_box(self):
@@ -180,12 +187,12 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata, box)
-        run_component = RunComponent(
+        self.run_component_box = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask box"
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_box.sizer
         return sizer
 
     def create_sizer_sphere(self):
@@ -215,10 +222,10 @@ class MaskTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata, sphere)
-        run_component = RunComponent(
+        self.run_component_sphere = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask sphere"
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_sphere.sizer
         return sizer

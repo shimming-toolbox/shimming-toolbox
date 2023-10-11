@@ -21,6 +21,9 @@ setup(
         'fsleyes_controls': [
             'Shimming Toolbox = fsleyes_plugin_shimming_toolbox.st_plugin:STControlPanel'
         ],
+        'fsleyes_layouts': [
+            'Shimming Toolbox = fsleyes_plugin_shimming_toolbox.st_plugin:STLayout'
+        ],
         # 'fsleyes_tools': [
         #     'My cool tool = myplugin:MyTool'
         # ]

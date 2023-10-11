@@ -14,9 +14,6 @@ from fsleyes_plugin_shimming_toolbox.components.component import Component
 from fsleyes_plugin_shimming_toolbox.events import EVT_RESULT, EVT_LOG
 from fsleyes_plugin_shimming_toolbox.worker_thread import WorkerThread
 
-# Load icon resources
-play_icon = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'play.png'), wx.BITMAP_TYPE_PNG)
-
 
 class RunComponent(Component):
     """Component which contains input and run button.
@@ -57,6 +54,7 @@ class RunComponent(Component):
         """Add the run button which will call the ``Shimming Toolbox`` CLI."""
         button_run = wx.Button(self.panel, -1, label="Run", size=(85, 48))
         button_run.Bind(wx.EVT_BUTTON, self.button_run_on_click)
+        play_icon = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'play.png'), wx.BITMAP_TYPE_PNG)
         button_run.SetBitmap(play_icon, dir=wx.LEFT)
         self.sizer.Add(button_run, 0, wx.CENTRE)
         self.sizer.AddSpacer(10)
@@ -150,6 +148,9 @@ class RunComponent(Component):
         Calls the relevant ``Shimming Toolbox`` CLI command (``st_function``) in a thread
 
         """
+        self.run()
+
+    def run(self):
         if not self.worker:
             try:
                 command, msg = self.get_run_args(self.st_function)
@@ -190,7 +191,7 @@ class RunComponent(Component):
         for component in self.list_components:
             for name, input_text_box_list in component.input_text_boxes.items():
 
-                if name == "no_arg":
+                if name.startswith('no_arg'):
                     continue
 
                 for input_text_box in input_text_box_list:

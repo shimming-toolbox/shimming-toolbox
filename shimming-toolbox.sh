@@ -3,8 +3,8 @@
 set -e
 
 ST_DIR="${HOME}/shimming-toolbox"
-PYTHON_DIR=python
+PYTHON_DIR="python"
 
-source "${ST_DIR}/$PYTHON_DIR/bin/activate"
+source "${ST_DIR}/${PYTHON_DIR}/bin/activate"
 
-fsleyes &
+"${ST_DIR}/${PYTHON_DIR}/bin/fsleyes" --showAllPlugins --scene 'Shimming Toolbox' &

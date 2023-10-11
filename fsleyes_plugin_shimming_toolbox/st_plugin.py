@@ -18,6 +18,7 @@ Authors: Alexandre D'Astous, Ainsleigh Hill, Gaspard Cereza, Julien Cohen-Adad
 
 import fsleyes.controls.controlpanel as ctrlpanel
 import fsleyes.views.canvaspanel as canvaspanel
+import textwrap
 import wx
 
 from fsleyes_plugin_shimming_toolbox.tabs.b0shim_tab import B0ShimTab
@@ -25,6 +26,15 @@ from fsleyes_plugin_shimming_toolbox.tabs.b1shim_tab import B1ShimTab
 from fsleyes_plugin_shimming_toolbox.tabs.dicom_to_nifti_tab import DicomToNiftiTab
 from fsleyes_plugin_shimming_toolbox.tabs.fieldmap_tab import FieldMapTab
 from fsleyes_plugin_shimming_toolbox.tabs.mask_tab import MaskTab
+
+STLayout = textwrap.dedent(
+    """
+    fsleyes.views.orthopanel.OrthoPanel
+    layout2|name=OrthoPanel 1;caption=Ortho View 1;state=67376064;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=-1;besth=-1;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;notebookid=-1;transparent=255|dock_size(5,0,0)=22|
+    fsleyes.controls.orthotoolbar.OrthoToolBar,fsleyes.controls.overlaydisplaytoolbar.OverlayDisplayToolBar,fsleyes.controls.overlaylistpanel.OverlayListPanel,fsleyes.controls.locationpanel.LocationPanel,fsleyes_plugin_shimming_toolbox.st_plugin.STControlPanel;syncLocation=True,syncOverlayOrder=True,syncOverlayDisplay=True,syncOverlayVolume=True,movieRate=400,movieAxis=3;showCursor=True,bgColour=#000000ff,fgColour=#ffffffff,cursorColour=#00ff00ff,cursorGap=False,showColourBar=False,colourBarLocation=top,colourBarLabelSide=top-left,showXCanvas=True,showYCanvas=True,showZCanvas=True,showLabels=True,labelSize=12,layout=horizontal,xzoom=847.0127756479341,yzoom=847.0127756479341,zzoom=100.0
+    layout2|name=Panel;caption=;state=768;dir=5;layer=0;row=0;pos=0;prop=100000;bestw=-1;besth=-1;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;notebookid=-1;transparent=255|name=OrthoToolBar;caption=Ortho view toolbar;state=67382012;dir=1;layer=10;row=0;pos=0;prop=100000;bestw=572;besth=35;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;notebookid=-1;transparent=255|name=OverlayDisplayToolBar;caption=Display toolbar;state=67382012;dir=1;layer=11;row=0;pos=0;prop=100000;bestw=953;besth=56;minw=-1;minh=-1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=-1;floath=-1;notebookid=-1;transparent=255|name=OverlayListPanel;caption=Overlay list;state=67373052;dir=3;layer=0;row=0;pos=0;prop=100000;bestw=197;besth=80;minw=1;minh=1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=197;floath=99;notebookid=-1;transparent=255|name=LocationPanel;caption=Location;state=67373052;dir=3;layer=0;row=0;pos=1;prop=100000;bestw=391;besth=111;minw=1;minh=1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=391;floath=130;notebookid=-1;transparent=255|name=STControlPanel;caption=Shimming Toolbox;state=67373052;dir=1;layer=0;row=0;pos=0;prop=100000;bestw=600;besth=400;minw=1;minh=1;maxw=-1;maxh=-1;floatx=-1;floaty=-1;floatw=600;floath=419;notebookid=-1;transparent=255|dock_size(5,0,0)=22|dock_size(3,0,0)=176|dock_size(1,10,0)=37|dock_size(1,11,0)=58|dock_size(1,0,0)=384|
+    """
+)
 
 
 # We need to create a ctrlpanel.ControlPanel instance so that it can be recognized as a plugin by FSLeyes

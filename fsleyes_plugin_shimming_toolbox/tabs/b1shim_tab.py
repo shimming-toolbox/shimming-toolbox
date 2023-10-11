@@ -83,7 +83,7 @@ class B1ShimTab(Tab):
             sizer_item.Show(False)
 
     def create_choice_box(self):
-        self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
+        self.choice_box = wx.Choice(self, choices=self.dropdown_choices, name="b1shim_algorithms")
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
         self.sizer_run.Add(self.choice_box)
         self.sizer_run.AddSpacer(10)

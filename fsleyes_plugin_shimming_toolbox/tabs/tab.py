@@ -8,13 +8,6 @@ import wx
 from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
 
-# Load icon resources
-rtd_logo = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'RTD.png'), wx.BITMAP_TYPE_PNG)
-# Load ShimmingToolbox logo saved as a png image, rescale it, and return it as a wx.Bitmap image.
-st_logo = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
-st_logo.Rescale(int(st_logo.GetWidth() * 0.2), int(st_logo.GetHeight() * 0.2), wx.IMAGE_QUALITY_HIGH)
-st_logo = st_logo.ConvertToBitmap()
-
 
 class Tab(wx.ScrolledWindow):
     def __init__(self, parent, title, description):
@@ -57,12 +50,18 @@ class InfoSection:
     def create_sizer(self):
         """Create the left sizer containing generic Shimming Toolbox information."""
         sizer = wx.BoxSizer(wx.VERTICAL)
+
+        # Load ShimmingToolbox logo saved as a png image, rescale it, and return it as a wx.Bitmap image.
+        st_logo = wx.Image(os.path.join(__DIR_ST_PLUGIN_IMG__, 'shimming_toolbox_logo.png'), wx.BITMAP_TYPE_PNG)
+        st_logo.Rescale(int(st_logo.GetWidth() * 0.2), int(st_logo.GetHeight() * 0.2), wx.IMAGE_QUALITY_HIGH)
+        st_logo = st_logo.ConvertToBitmap()
         logo = wx.StaticBitmap(parent=self.panel, id=-1, bitmap=st_logo, pos=wx.DefaultPosition)
         width = logo.Size[0]
         sizer.Add(logo, flag=wx.SHAPED, proportion=1)
         sizer.AddSpacer(10)
 
         # Create a "Documentation" button that redirects towards https://shimming-toolbox.org/en/latest/
+        rtd_logo = wx.Bitmap(os.path.join(__DIR_ST_PLUGIN_IMG__, 'RTD.png'), wx.BITMAP_TYPE_PNG)
         button_documentation = wx.Button(self.panel, label="Documentation")
         button_documentation.Bind(wx.EVT_BUTTON, self.open_documentation_url)
         button_documentation.SetBitmap(rtd_logo)

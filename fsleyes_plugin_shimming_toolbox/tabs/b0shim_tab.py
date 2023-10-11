@@ -4,7 +4,7 @@
 import os
 import wx
 
-from fsleyes_plugin_shimming_toolbox import __CURR_DIR__, __ST_DIR__
+from fsleyes_plugin_shimming_toolbox import __CURR_DIR__
 from fsleyes_plugin_shimming_toolbox.tabs.tab import Tab
 from fsleyes_plugin_shimming_toolbox.components.dropdown_component import DropdownComponent
 from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
@@ -17,6 +17,19 @@ from shimmingtoolbox.cli.b0shim import max_intensity as max_intensity_cli
 
 class B0ShimTab(Tab):
     def __init__(self, parent, title="B0 Shim"):
+
+        self.dropdown_coil_format_rt = None
+        self.dropdown_slice_rt = None
+        self.dropdown_opt_rt = None
+        self.dropdown_scanner_order_rt = None
+        self.dropdown_coil_format_dyn = None
+        self.dropdown_slice_dyn = None
+        self.dropdown_opt_dyn = None
+        self.dropdown_scanner_order_dyn = None
+        self.choice_box = None
+        self.run_component_mi = None
+        self.run_component_rt = None
+        self.run_component_dyn = None
 
         description = "Perform B0 shimming.\n\n" \
                       "Select the shimming algorithm from the dropdown list."
@@ -101,7 +114,7 @@ class B0ShimTab(Tab):
             sizer_item.Show(False)
 
     def create_choice_box(self):
-        self.choice_box = wx.Choice(self, choices=self.dropdown_choices)
+        self.choice_box = wx.Choice(self, choices=self.dropdown_choices, name="b0shim_algorithms")
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
         self.sizer_run.Add(self.choice_box)
         self.sizer_run.AddSpacer(10)
@@ -114,7 +127,7 @@ class B0ShimTab(Tab):
             {
                 "button_label": "Number of Custom Coils",
                 "button_function": "add_input_coil_boxes_dyn",
-                "name": "no_arg",
+                "name": "no_arg_ncoils_dyn",
                 "info_text": "Number of phase NIfTI files to be used. Must be an integer > 0.",
             }
         ]
@@ -172,7 +185,6 @@ class B0ShimTab(Tab):
                 "button_label": "Scanner constraints",
                 "button_function": "select_file",
                 "name": "scanner-coil-constraints",
-                "default_text": f"{os.path.join(__ST_DIR__, 'coil_config.json')}",
             },
         ]
         component_scanner1 = InputComponent(self, input_text_box_metadata_scanner, cli=dynamic_cli)
@@ -288,7 +300,8 @@ class B0ShimTab(Tab):
                 "name": 'regularization-factor',
             }
         ]
-        component_reg_factor = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
 
         criteria_dropdown_metadata = [
             {
@@ -318,6 +331,10 @@ class B0ShimTab(Tab):
                 "label": "Pseudo Inverse",
                 "option_value": "pseudo_inverse"
             },
+            {
+                "label": "Quad Prog",
+                "option_value": "quad_prog"
+            }
         ]
 
         self.dropdown_opt_dyn = DropdownComponent(
@@ -325,8 +342,9 @@ class B0ShimTab(Tab):
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
             option_name='optimizer-method',
-            list_components=[dropdown_crit, component_reg_factor, self.create_empty_component()],
-            component_to_dropdown_choice=[0, 0, 1],
+            list_components=[dropdown_crit, component_reg_factor_lsq,
+                             self.create_empty_component(), component_reg_factor_qp],
+            component_to_dropdown_choice=[0, 0, 1, 2],
             cli=dynamic_cli
         )
 
@@ -428,7 +446,7 @@ class B0ShimTab(Tab):
         dropdown_fatsat1.add_dropdown_parent(self.dropdown_coil_format_dyn)
         dropdown_fatsat2.add_dropdown_parent(self.dropdown_coil_format_dyn)
 
-        run_component = RunComponent(
+        self.run_component_dyn = RunComponent(
             panel=self,
             list_components=[self.component_coils_dyn, component_inputs, self.dropdown_opt_dyn, self.dropdown_slice_dyn,
                              self.dropdown_scanner_order_dyn,
@@ -437,7 +455,7 @@ class B0ShimTab(Tab):
             output_paths=["fieldmap_calculated_shim_masked.nii.gz",
                           "fieldmap_calculated_shim.nii.gz"]
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_dyn.sizer
         return sizer
 
     def create_sizer_realtime_shim(self, metadata=None):
@@ -448,7 +466,7 @@ class B0ShimTab(Tab):
             {
                 "button_label": "Number of Custom Coils",
                 "button_function": "add_input_coil_boxes_rt",
-                "name": "no_arg",
+                "name": "no_arg_ncoils_rt",
                 "info_text": "Number of phase NIfTI files to be used. Must be an integer > 0.",
             }
         ]
@@ -497,7 +515,6 @@ class B0ShimTab(Tab):
                 "button_label": "Scanner constraints",
                 "button_function": "select_file",
                 "name": "scanner-coil-constraints",
-                "default_text": f"{os.path.join(__ST_DIR__, 'coil_config.json')}",
             },
         ]
         component_scanner1 = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
@@ -625,7 +642,8 @@ class B0ShimTab(Tab):
                 "name": 'regularization-factor',
             }
         ]
-        component_reg_factor = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
 
         criteria_dropdown_metadata = [
             {
@@ -655,15 +673,20 @@ class B0ShimTab(Tab):
                 "label": "Pseudo Inverse",
                 "option_value": "pseudo_inverse"
             },
+            {
+                "label": "Quad Prog",
+                "option_value": "quad_prog"
+            }
         ]
 
         self.dropdown_opt_rt = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
-            option_name = 'optimizer-method',
-            list_components= [dropdown_crit, component_reg_factor, self.create_empty_component()],
-            component_to_dropdown_choice=[0, 0, 1],
+            option_name='optimizer-method',
+            list_components=[dropdown_crit, component_reg_factor_lsq,
+                             self.create_empty_component(), component_reg_factor_qp],
+            component_to_dropdown_choice=[0, 0, 1, 2],
             cli=realtime_cli
         )
 
@@ -746,7 +769,7 @@ class B0ShimTab(Tab):
 
         dropdown_fatsat.add_dropdown_parent(self.dropdown_coil_format_rt)
 
-        run_component = RunComponent(
+        self.run_component_rt = RunComponent(
             panel=self,
             list_components=[self.component_coils_rt, component_inputs, self.dropdown_opt_rt, self.dropdown_slice_rt,
                              self.dropdown_scanner_order_rt,
@@ -755,7 +778,7 @@ class B0ShimTab(Tab):
             # TODO: output paths
             output_paths=[]
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_rt.sizer
         return sizer
 
     def create_sizer_max_intensity(self, metadata=None):
@@ -781,11 +804,11 @@ class B0ShimTab(Tab):
         ]
         component_inputs = InputComponent(self, inputs_metadata, cli=max_intensity_cli)
 
-        run_component = RunComponent(
+        self.run_component_mi = RunComponent(
             panel=self,
             list_components=[component_inputs],
             st_function="st_b0shim max-intensity",
             output_paths=[]
         )
-        sizer = run_component.sizer
+        sizer = self.run_component_mi.sizer
         return sizer

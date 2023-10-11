@@ -24,14 +24,18 @@ class DropdownComponent(Component):
                     }
 
             label (str): Label of the button describing the dropdown
-            option_name (str): Name of the options of the dropdown, set to 'no_arg' is not an option
+            option_name (str): Name of the options of the dropdown, start with 'no_arg' if it is not an option
             list_components (list): list of Components
             info_text (str): Info message displayed when hovering over the "i" icon. Leave blank to auto fill using option_name
             cli (function): CLI function used by the dropdown
-            component_to_dropdown_choice (list): Tells which component associates with which dropdown selection. 
-                                                 If None, assumes 1:1. 
+            component_to_dropdown_choice (list): Tells which component associates with which dropdown selection.
+                                                 If None, assumes 1:1.
         """
         super().__init__(panel, list_components)
+
+        self.choice_box_sizer = None
+        self.choice_box = None
+
         self.dropdown_metadata = dropdown_metadata
         self.label = label
         self.info_text = info_text
@@ -98,7 +102,7 @@ class DropdownComponent(Component):
                 sizer.Show(False)
 
     def create_choice_box(self):
-        self.choice_box = wx.Choice(self.panel, choices=self.dropdown_choices)
+        self.choice_box = wx.Choice(self.panel, choices=self.dropdown_choices, name=self.option_name)
         self.choice_box.Bind(wx.EVT_CHOICE, self.on_choice)
         button = wx.Button(self.panel, -1, label=self.label)
         self.choice_box_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -114,7 +118,7 @@ class DropdownComponent(Component):
 
             is_propagating_up tells the dropdown to propagate the on_choice() command to the parent drop down until
             there is no more parent. Moreover, on each call of on_choice(), the propagation will also go down. This
-            allows to recalculate each dropdown. THere is some redundency since we would really just want the most
+            allows to recalculate each dropdown. There is some redundancy since we would really just want the most
             parent dropdown to send the down propagation, but this will do for now.
         """
         # Get the selection from the choice box widget
@@ -168,6 +172,6 @@ class DropdownComponent(Component):
         return 0
 
     def create_sizer(self):
-        """Create the a sizer containing tab-specific functionality."""
+        """Create a sizer containing tab-specific functionality."""
         sizer = wx.BoxSizer(wx.VERTICAL)
         return sizer

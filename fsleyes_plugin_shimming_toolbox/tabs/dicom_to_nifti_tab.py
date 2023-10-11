@@ -18,6 +18,7 @@ class DicomToNiftiTab(Tab):
         super().__init__(parent, title, description)
 
         self.sizer_run = self.create_sizer_run()
+        self.run_component = None
         sizer = self.create_dicom_to_nifti_sizer()
         self.sizer_run.Add(sizer, 0, wx.EXPAND)
 
@@ -52,5 +53,5 @@ class DicomToNiftiTab(Tab):
             }
         ]
         component = InputComponent(self, input_text_box_metadata, cli=dicom_to_nifti_cli)
-        run_component = RunComponent(panel=self, list_components=[component], st_function="st_dicom_to_nifti")
-        return run_component.sizer
+        self.run_component = RunComponent(panel=self, list_components=[component], st_function="st_dicom_to_nifti")
+        return self.run_component.sizer

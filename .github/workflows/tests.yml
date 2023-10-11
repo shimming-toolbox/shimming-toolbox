@@ -51,6 +51,13 @@ jobs:
         run: |
           echo "$HOME/shimming-toolbox/bin" >> $GITHUB_PATH
 
+      - name: prelude Ubuntu
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          echo "Download prelude"
+          st_download_data prelude
+          sudo install prelude/prelude /usr/local/bin
+
 #      - name: Run unit tests Mac
 #        if: contains(matrix.os, 'macos')
 #        run: |

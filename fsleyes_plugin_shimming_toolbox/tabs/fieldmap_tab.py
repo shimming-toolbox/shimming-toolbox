@@ -15,6 +15,18 @@ from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_cli
 
 class FieldMapTab(Tab):
     def __init__(self, parent, title="Fieldmap"):
+
+        self.component_save_mask1 = None
+        self.component_save_mask2 = None
+        self.run_component = None
+        self.component_input2 = None
+        self.component_output = None
+        self.dropdown_roi = None
+        self.component_threshold = None
+        self.component_mask = None
+        self.dropdown_unwrapper = None
+        self.component_input = None
+
         description = "Create a B0 fieldmap.\n\n" \
                       "Enter the Number of Echoes then press the `Number of Echoes` button.\n\n" \
                       "Select the unwrapper from the dropdown list."
@@ -34,7 +46,7 @@ class FieldMapTab(Tab):
             {
                 "button_label": "Number of Echoes",
                 "button_function": "add_input_phase_boxes",
-                "name": "no_arg",
+                "name": "no_arg_nechoes",
                 "info_text": "Number of phase NIfTI files to be used. Must be an integer > 0.",
                 "required": True
             }
@@ -46,15 +58,19 @@ class FieldMapTab(Tab):
 
         dropdown_metadata_unwrapper = [
             {
-                "label": "prelude",
+                "label": "Prelude",
                 "option_value": "prelude"
+            },
+            {
+                "label": "Skimage",
+                "option_value": "skimage"
             }
         ]
         self.dropdown_unwrapper = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_metadata_unwrapper,
             label="Unwrapper",
-            option_name = 'unwrapper',
+            option_name='unwrapper',
             cli=prepare_fieldmap_cli
         )
 
@@ -70,16 +86,30 @@ class FieldMapTab(Tab):
             input_text_box_metadata=mask_metadata,
             cli=prepare_fieldmap_cli
         )
+        save_mask_metadata = [
+            {
+                "button_label": "Output Calculated Mask",
+                "name": "savemask",
+                "load_in_overlay": True
+            }
+        ]
+
+        self.component_save_mask1 = InputComponent(
+            panel=self,
+            input_text_box_metadata=save_mask_metadata,
+            cli=prepare_fieldmap_cli
+        )
+
+        self.component_save_mask2 = InputComponent(
+            panel=self,
+            input_text_box_metadata=save_mask_metadata,
+            cli=prepare_fieldmap_cli
+        )
 
         threshold_metadata = [
             {
                 "button_label": "Threshold",
                 "name": "threshold",
-            },
-            {
-                "button_label": "Output Calculated Mask",
-                "name": "savemask",
-                "load_in_overlay": True
             }
         ]
         self.component_threshold = InputComponent(
@@ -108,8 +138,9 @@ class FieldMapTab(Tab):
             dropdown_metadata=dropdown_mask_threshold,
             label="Unwrapping region",
             info_text="Masking methods either with a file input or a threshold",
-            option_name='no_arg',
-            list_components=[self.create_empty_component(), self.component_mask, self.component_threshold],
+            option_name='no_arg_roi',
+            list_components=[self.component_save_mask1, self.component_mask, self.component_threshold, self.component_save_mask2],
+            component_to_dropdown_choice=[0, 1, 2, 2],
             cli=prepare_fieldmap_cli
         )
 
