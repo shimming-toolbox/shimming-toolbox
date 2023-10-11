@@ -597,9 +597,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
 
-    if len(coils_static) != len(set(coils_static)):
-        raise ValueError("Coils must be unique. Make sure different coils have different names.")
-
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
@@ -1013,6 +1010,9 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
         list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
+
+    if len(list_coils) != len(set(list_coils)):
+        raise ValueError("Coils must be unique. Make sure different coils have different names.")
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
