@@ -151,9 +151,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     """
 
     scanner_coil_order = parse_orders(scanner_coil_order)
-    if len(coils) != len(set(coils)):
-        raise ValueError("Coils must be unique. Make sure different coils have different names.")
-
     # Set logger level
     set_all_loggers(verbose)
 
