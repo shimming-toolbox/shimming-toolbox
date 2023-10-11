@@ -20,7 +20,7 @@ required_constraints = [
 
 
 class Coil(object):
-    #! Modify description if everything works
+    # ! Modify description if everything works
     """
     Coil profile object that stores coil profiles and there constraints
 
@@ -87,13 +87,14 @@ class Coil(object):
         self.dim = profile.shape
         self._profile = profile
 
-    def load_constraints(self, constraints:dict):
+    def load_constraints(self, constraints: dict):
         """Loads the constraints named in required_constraints as attribute to this class"""
         # global `required_constraints`
         for key_name in required_constraints:
             if key_name in constraints:
                 if key_name == "coef_channel_minmax":
-                    if sum([len(constraints["coef_channel_minmax"][key]) for key in constraints["coef_channel_minmax"]]) != self.dim[3]:
+                    if sum([len(constraints["coef_channel_minmax"][key]) for key in
+                            constraints["coef_channel_minmax"]]) != self.dim[3]:
                         raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
                                          f"{self.dim[3]} {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
 
@@ -122,8 +123,10 @@ class Coil(object):
     def __eq__(self, __value: object) -> bool:
         return self.name == __value.name
 
+
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
+
     def __init__(self, dim_volume, affine, constraints, orders, manufacturer=""):
 
         self.orders = orders
@@ -185,7 +188,7 @@ class ScannerCoil(Coil):
 
 
 def get_scanner_constraints(manufacturers_model_name, orders):
-    #! Modified
+    # ! Modified
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
 
@@ -200,7 +203,7 @@ def get_scanner_constraints(manufacturers_model_name, orders):
     if manufacturers_model_name == "Prisma_fit":
         constraints = {
             "name": "Prisma_fit",
-            "coef_channel_minmax": {"0":[], "1":[], "2":[]},
+            "coef_channel_minmax": {"0": [], "1": [], "2": []},
             "coef_sum_max": None
         }
         if 0 in orders:
@@ -210,50 +213,51 @@ def get_scanner_constraints(manufacturers_model_name, orders):
                 constraints["coef_channel_minmax"]["1"].append([-2300, 2300])
         if 2 in orders:
             constraints["coef_channel_minmax"]["2"].extend([[-4959.01, 4959.01],
-                                                       [-3551.29, 3551.29],
-                                                       [-3503.299, 3503.299],
-                                                       [-3551.29, 3551.29],
-                                                       [-3487.302, 3487.302]])
+                                                            [-3551.29, 3551.29],
+                                                            [-3503.299, 3503.299],
+                                                            [-3551.29, 3551.29],
+                                                            [-3487.302, 3487.302]])
 
     elif manufacturers_model_name == "Investigational_Device_7T":
         constraints = {
             "name": "Investigational_Device_7T",
-            "coef_channel_minmax": {"coil": []},
+            "coef_channel_minmax": {"0": [], "1": [], "2": []},
             "coef_sum_max": None
         }
         if 0 in orders:
             pass
             # todo: f0 min and max is wrong
-        constraints["coef_channel_minmax"].append([None, None])
+        constraints["coef_channel_minmax"]["0"].append([None, None])
         if 1 in orders:
             for _ in range(3):
                 constraints["coef_channel_minmax"]["1"].append([-5000, 5000])
         if 2 in orders:
             constraints["coef_channel_minmax"]["2"].extend([[-1839.63, 1839.63],
-                                                       [-791.84, 791.84],
-                                                       [-791.84, 791.84],
-                                                       [-615.87, 615.87],
-                                                       [-615.87, 615.87]])
+                                                            [-791.84, 791.84],
+                                                            [-791.84, 791.84],
+                                                            [-615.87, 615.87],
+                                                            [-615.87, 615.87]])
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
                        "respected.")
         constraints = {
             "name": "Unknown",
+            "coef_channel_minmax": {"0": [], "1": [], "2": []},
             "coef_sum_max": None
         }
 
         if 0 in orders:
             constraints["coef_channel_minmax"]["0"] = [[None, None]]
-        elif 1 in orders:
-            constraints["coef_channel_minmax"]["1"] = [[None, None] for _ in range(4)]
-        elif 2 in orders:
-            constraints["coef_channel_minmax"]["2"] = [[None, None] for _ in range(9)]
+        if 1 in orders:
+            constraints["coef_channel_minmax"]["1"] = [[None, None] for _ in range(3)]
+        if 2 in orders:
+            constraints["coef_channel_minmax"]["2"] = [[None, None] for _ in range(5)]
 
     return constraints
 
 
-def restrict_sph_constraints(bounds:dict, orders):
-    #! Modify description if everything works
+def restrict_sph_constraints(bounds: dict, orders):
+    # ! Modify description if everything works
     """ Select bounds according to the order specified
 
     Args:
