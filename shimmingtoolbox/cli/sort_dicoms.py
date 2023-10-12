@@ -58,7 +58,17 @@ def sort_dicoms(path_input, is_recursive, recursive_depth, path_output, verbose)
 
 
 def get_dicom_paths(path, is_recursive, subfolder_depth=0, max_depth=DEFAULT_RECURSIVE_DEPTH):
-    # Create a list containing all the DICOMs in the input folder
+    """ Create a list containing all the DICOMs in the input folder
+
+    Args:
+        path (str): Path to the parent folder containing the DICOMs
+        is_recursive (bool): Whether to look into directories
+        subfolder_depth (int): Current sub-folder depth
+        max_depth (int): Maximum depth to look into the sub-folders
+
+    Returns:
+        list: List of the file names of all DICOMs in the directory and subdirectories (if using the recursive option)
+    """
 
     list_dicoms = []
     for name in os.listdir(path):
