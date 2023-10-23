@@ -1,5 +1,5 @@
 import numpy as np
-import unittest
+import pytest
 import scipy.optimize as opt
 from typing import List
 import warnings
@@ -21,7 +21,7 @@ from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
-class TestLsqOptimizer(unittest.TestCase):
+class TestLsqOptimizer():
     def setUp(self):
         # Initialize common variables or objects needed for testing
         self.coils = []  # Initialize with appropriate Coil objects
@@ -82,7 +82,7 @@ class TestLsqOptimizer(unittest.TestCase):
 
     # Add similar test methods for other functions in the LsqOptimizer class
 
-class TestPmuLsqOptimizer(unittest.TestCase):
+class TestPmuLsqOptimizer():
     def setUp(self):
         # Initialize common variables or objects needed for testing
         self.coils = []  # Initialize with appropriate Coil objects
