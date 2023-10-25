@@ -303,7 +303,7 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     # Philips' y and x axis are flipped (x is AP, y is RL)
     flip = get_flip_matrix(shim_cs, manufacturer='Philips', xyz=True)
     # TODO: The z axis origin seems to be shifted ~5cm from isocenter
-    spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], (z * flip[2]) + 50, all_orders)
+    spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], z * flip[2], all_orders)
 
     # Scale according to Philips convention
     # milli-T/m for order 1, milli-T/m^2 for order 2

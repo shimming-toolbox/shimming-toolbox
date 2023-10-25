@@ -789,6 +789,15 @@
             "datatype": "anat",
             "suffix": "epi",
             "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": ".*EPI.*",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "epi",
+            "criteria": {
                 "Manufacturer": "GE",
                 "ScanningSequence": ".*EP.*",
                 "PulseSequenceName": ".*epi.*"
