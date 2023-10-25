@@ -446,8 +446,13 @@ class ShimSequencer(Sequencer):
             self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Save to a NIfTI
+                # TODO: Should be correction not shimmed_masked
+                fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
+                nii_correction_3d = nib.Nifti1Image(corrections, self.optimizer.unshimmed_affine)
+                nib.save(nii_correction_3d, fname_correction)
+
                 fname_correction = os.path.join(self.path_output, 'fig_correction.nii.gz')
-                nii_correction_3d = nib.Nifti1Image(shimmed_masked, self.optimizer.unshimmed_affine)
+                nii_correction_3d = nib.Nifti1Image(np.sum(corrections, axis=3), self.optimizer.unshimmed_affine)
                 nib.save(nii_correction_3d, fname_correction)
 
                 # 4th dimension is i_shim
