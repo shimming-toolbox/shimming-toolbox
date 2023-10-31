@@ -183,7 +183,7 @@ def siemens_basis(x, y, z, orders=(1, 2, 3)):
 
     # Patch to make orders work. A better implementation would be to refactor _get_scaling_factors and
     # _reorder_to_siemens
-    range_per_order = {1: list(range(3)), 2: list(range(3, 8)), 3: list(range)}
+    range_per_order = {1: list(range(3)), 2: list(range(3, 8)), 3: list(range(8,14))}
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
     output = np.zeros(scaled[..., 0].shape + (length_dim3,), dtype=scaled.dtype)
     start_index = 0
