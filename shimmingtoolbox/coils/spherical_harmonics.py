@@ -109,7 +109,7 @@ def spherical_harmonics(orders, x, y, z):
     ii = 0
 
     # Compute basis
-    for iOrder in range(0, n_orders):
+    for iOrder in range(0, n_orders):orders = [1, 1, 1, 2, 2, 2, 2, 2]
 
         n = orders[iOrder]
         if n == 0:

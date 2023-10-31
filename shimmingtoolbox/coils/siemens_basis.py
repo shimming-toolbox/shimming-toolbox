@@ -33,12 +33,12 @@ def _reorder_to_siemens(spher_harm):
     if spher_harm.shape[3] != 8:
         raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
-    reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3]]
+    reordered = spher_harm[:, :, :, [2, 0, 1, 5, 6, 4, 7, 3, 11, 12, 10, 13]]
 
     return reordered
 
 
-def _get_scaling_factors(orders=(1, 2)):
+def _get_scaling_factors(orders=(1, 2, 3)):
     """
     Get scaling factors for the 8 terms to apply to the (Siemens-reordered) 1st + 2nd order spherical harmonic
     fields for rescaling field terms as "shim reference maps" in units of Hz/unit-shim:
@@ -111,14 +111,14 @@ def _get_scaling_factors(orders=(1, 2)):
 
         for i in range(_channels_per_order(order)):
             field = sh[:, :, :, i_ch]
-            scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** list_orders[i]) /
+            scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
                                      field[iref[order][i]][0])
             i_ch += 1
 
     return scaling_factors
 
 
-def siemens_basis(x, y, z, orders=(1, 2)):
+def siemens_basis(x, y, z, orders=(1, 2, 3)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*,
@@ -161,11 +161,12 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     if not (x.shape == y.shape == z.shape):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
+    # Remove this error at the end
     if max(orders) >= 3:
         raise NotImplementedError("Spherical harmonics not implemented for order 3 and up")
 
-    # Create spherical harmonics from first to second order
-    all_orders = np.array(range(1, 3))
+    # Create spherical harmonics from first to second order (third)
+    all_orders = np.array(range(1, 4))
     spher_harm = spherical_harmonics(all_orders, x, y, z)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
@@ -174,6 +175,7 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     # scale according to
     # - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
     # - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
+    # - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
     scaling_factors = _get_scaling_factors()
     scaled = np.zeros_like(reordered_spher)
     for i_channel in range(0, spher_harm.shape[3]):
@@ -181,7 +183,7 @@ def siemens_basis(x, y, z, orders=(1, 2)):
 
     # Patch to make orders work. A better implementation would be to refactor _get_scaling_factors and
     # _reorder_to_siemens
-    range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
+    range_per_order = {1: list(range(3)), 2: list(range(3, 8)), 3: list(range)}
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
     output = np.zeros(scaled[..., 0].shape + (length_dim3,), dtype=scaled.dtype)
     start_index = 0
