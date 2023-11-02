@@ -21,66 +21,86 @@ from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
+def create_coil(n_x, n_y, n_z, constraints, coil_affine, n_channel=8):
+    # Set up spherical harmonics coil profile
+    mesh_x, mesh_y, mesh_z = generate_meshgrid((n_x, n_y, n_z), coil_affine)
+    profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
+
+    # Define coil1
+    coil = Coil(profiles[..., :n_channel], coil_affine, constraints)
+    return coil
+
+def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
+    # Set up bounds for output currents
+    bounds = []
+    for _ in range(n_channels):
+        bounds.append((min_coef, max_coef))
+
+    constraints = {
+        "name": "test",
+        "coef_sum_max": sum_coef,
+        "coef_channel_minmax": bounds
+    }
+    return constraints
+
+# Initialize common variables or objects needed for testing
+constraints = create_constraints(max_coef,min_coef,sum_coef,n_channels=8) # Initialize constraints
+coils = create_coil(n_x,n_y,n_z,constraints, coil_affine, n_channels=8)  # Initialize coil
+unshimmed =   # Initialize unshimmed vector
+# self.affine =   
+# self.opt_criteria = 'mse'  
+reg_factor = 0  # Choose the regularization factor
+n = len(unshimmed)
+factor =  # inv_factor
+# Initialize (a,b,c) for the MSE 
+a = np.transpose(coil)@coil*factor
+b = 2*factor*np.transpose(unshimmed)@coil
+c = factor*np.transpose(unshimmed)@unshimmed
+
 class TestLsqOptimizer():
-    def setUp(self):
-        # Initialize common variables or objects needed for testing
-        self.coils = []  # Initialize with appropriate Coil objects
-        self.unshimmed =   # Example unshimmed array
-        self.affine =   # Example affine transformation
-        self.opt_criteria = 'mse'  # Choose your optimization criteria
-        self.reg_factor = 0  # Choose the regularization factor
 
     def test_residuals_mae(self):
         # Test the _residuals_mae function
-        lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        unshimmed_vec =   # Example unshimmed vector
-        coil_mat =  # Example coil matrix
-        factor = 1  # Example factor
-        result = lsq_optimizer._residuals_mae(coef, unshimmed_vec, coil_mat, factor)
-        self.assertIsInstance(result, float)
+        MAE_base = 0
+        coef = 
+        for i in range(n):
+            MAE_base += np.abs(unshimmed[i]+(coil@coef)[i])/n
+        lsq_optimizer = LsqOptimizer(coil, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
+        result = lsq_optimizer._residuals_mae(coef, unshimmed, coil, factor)
+        assert_result(MAE_base, result)
 
     def test_residuals_mse(self):
         # Test the _residuals_mse function
-        lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        a = np.zeros(27, len(self.coils[0]))  # Example a array
-        b = np.zeros(27)  # Example b array
-        c = 0  # Example c value
+        MSE_base = 0
+        coef = 
+        for i in range(n):
+            MSE_base += ((unshimmed[i]+(coil@coef)[i])**2)/n
+        lsq_optimizer = LsqOptimizer(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)  
         result = lsq_optimizer._residuals_mse(coef, a, b, c)
-        self.assertIsInstance(result, float)
-
-    def test_initial_guess_mse(self):
-        # Test the _initial_guess_mse function
-        lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        unshimmed_vec =   # Example unshimmed vector
-        coil_mat =   # Example coil matrix
-        factor = 1  # Example factor
-        result = lsq_optimizer._initial_guess_mse(coef, unshimmed_vec, coil_mat, factor)
-        self.assertIsInstance(result, float)
+        assert_result(MSE_base,result)
 
     def test_residuals_std(self):
         # Test the _residuals_std function
-        lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        unshimmed_vec =   # Example unshimmed vector
-        coil_mat =   # Example coil matrix
-        factor =   # Example factor
+        STD_base = 0
+        coef =
+        Mean = np.mean(unshimmed+coil@coef)
+        for i in range(n):
+            STD_base += ((unshimmed[i]+(coil@coef)[i]-Mean)**2)/n
+        STD_base = np.sqrt(STD_base)
+        lsq_optimizer = LsqOptimizer(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
         result = lsq_optimizer._residuals_std(coef, unshimmed_vec, coil_mat, factor)
-        self.assertIsInstance(result, float)
+        assert_result(STD_base,result)
 
     def test_residuals_mse_jacobian(self):
         # Test the _residuals_mse_jacobian function
+        def cost_function(unshimmed,coil,coef):
+            return unshimmed+coil@x
+        Jacobian_base = 
         lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        a =   # Example a array
-        b =   # Example b array
-        c =   # Example c value
         result = lsq_optimizer._residuals_mse_jacobian(coef, a, b, c)
         self.assertIsInstance(result, np.ndarray)
 
-    # Add similar test methods for other functions in the LsqOptimizer class
+    
 
 class TestPmuLsqOptimizer():
     def setUp(self):
@@ -112,28 +132,8 @@ class TestPmuLsqOptimizer():
         result = pmu_optimizer._residuals_mse(coef, a, b, c)
         self.assertIsInstance(result, float)
 
-    # Add similar test methods for other functions in the PmuLsqOptimizer class
-    # Assert fonction filling for now
-def assert_shimmed_map(nii_fieldmap, nii_anat, nii_mask, coil, currents, slices):
-    unshimmed = nii_fieldmap.get_fdata()
-    opt = Optimizer(coil, unshimmed, nii_fieldmap.affine)
-
-    correction_per_channel = np.zeros(opt.merged_coils.shape + (len(slices),))
-    shimmed = np.zeros(unshimmed.shape + (len(slices),))
-    mask_fieldmap = np.zeros(unshimmed.shape + (len(slices),))
     
-    for i_shim in range(len(slices)):
-        correction_per_channel[..., i_shim] = currents[i_shim] * opt.merged_coils
-        correction = np.sum(correction_per_channel[..., i_shim], axis=3, keepdims=False)
-        shimmed[..., i_shim] = unshimmed + correction
+    
+    # Assert fonction filling for now
+def assert_result(Base,result):
 
-        mask_fieldmap[..., i_shim] = resample_mask(nii_mask, nii_fieldmap, slices[i_shim]).get_fdata()
-
-        sum_shimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * shimmed[..., i_shim]))
-        sum_unshimmed = np.sum(np.abs(mask_fieldmap[..., i_shim] * unshimmed))
-
-        assert sum_shimmed <= sum_unshimmed
-
-
-if __name__ == '__main__':
-    unittest.main()
