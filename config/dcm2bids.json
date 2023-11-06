@@ -95,6 +95,16 @@
             }
         },
         {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d1_16",
+                "ProtocolName": "T1w",
+                "ImageType": [".*", ".*", "M", "NORM", ".*", ".*"]
+            }
+        },
+        {
             "datatype": "fmap",
             "suffix": "magnitude1",
             "criteria": {
@@ -440,6 +450,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal)$",
+                "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
                 "ImageType": [".*", ".*", "M", ".*"],
                 "EchoNumber": "2"
@@ -759,7 +770,7 @@
                 "ImageType": [".*", ".*", ".*", "P", "FFE", "PHASE"]
             }
         },
-{
+        {
             "datatype": "fmap",
             "suffix": "phase2",
             "criteria": {
@@ -786,8 +797,8 @@
             }
         },
         {
-            "datatype": "anat",
-            "suffix": "epi",
+            "datatype": "func",
+            "suffix": "bold",
             "criteria": {
                 "Manufacturer": "Philips",
                 "PulseSequenceName": ".*EPI.*",
@@ -796,7 +807,16 @@
         },
         {
             "datatype": "anat",
-            "suffix": "epi",
+            "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "T1TFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "func",
+            "suffix": "bold",
             "criteria": {
                 "Manufacturer": "GE",
                 "ScanningSequence": ".*EP.*",
