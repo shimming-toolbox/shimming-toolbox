@@ -11,7 +11,7 @@ import tempfile
 import pathlib
 
 from shimmingtoolbox import __dir_testing__
-from shimmingtoolbox.coils.siemens_basis import siemens_basis
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.load_nifti import get_acquisition_times

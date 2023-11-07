@@ -12,7 +12,7 @@ def spherical_harmonics(orders, x, y, z):
     Returns an array of spherical harmonic basis fields with the order/degree index along the 4th dimension.
 
     Args:
-        orders (numpy.ndarray):  Degrees of the desired terms in the series expansion, specified as a vector of
+        orders (tuple):  Degrees of the desired terms in the series expansion, specified as a vector of
                                  non-negative integers (``np.array(range(0, 3))`` yields harmonics up to (n-1)-th order).
                                  Must be non negative.
         x (numpy.ndarray): 3-D arrays of grid coordinates
@@ -97,13 +97,14 @@ def spherical_harmonics(orders, x, y, z):
     else:
         raise RuntimeError("Input arrays X, Y, and Z must have 3 dimensions")
 
+    orders = np.array(orders)
     if not np.all(orders >= 0):
         raise RuntimeError("Orders must be positive")
 
     # Initialize variables
     n_voxels = x.size
     n_orders = orders.size
-    n_basis = sum(2*orders+1)
+    n_basis = sum(2 * orders + 1)
     harm_all = np.zeros([n_voxels, n_basis])
 
     ii = 0
