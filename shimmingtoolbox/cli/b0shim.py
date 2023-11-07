@@ -882,7 +882,7 @@ def _load_coils(coils, order, fname_constraints, nii_fmap, scanner_shim_settings
         list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
 
     # Create the spherical harmonic coil profiles of the scanner
-    if 0 <= order <= 2:
+    if 0 <= order <= 3:
 
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
@@ -942,6 +942,9 @@ def calculate_scanner_constraints(constraints, scanner_shim_settings, order, man
         initial_coefs = [0] * 4
     elif order == 2:
         # Order 2 has 5 more coefficients than order 1 (f0, X, Y, Z, Z2, ZX, ZY, X2-Y2, XY)
+        initial_coefs = [0] * 9
+    elif order == 3:
+        # It seems that ShimSettings only support upto the 2nd order
         initial_coefs = [0] * 9
     else:
         initial_coefs = None

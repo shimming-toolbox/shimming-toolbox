@@ -394,11 +394,7 @@ def convert_spher_harm_to_array(spher_harm_dict):
 
     spher_harm = []
     for order in sorted(spher_harm_dict.keys()):
-        sph = spher_harm_dict[order]
-        if order == 0:
-            spher_harm.append(sph[..., np.newaxis])
-        else:
-            spher_harm.append(sph)
+        spher_harm.append(spher_harm_dict[order])
 
     spher_harm = np.concatenate(spher_harm, axis=-1)
 
@@ -472,8 +468,12 @@ def _get_scaling_factors(orders):
 
         for i in range(_channels_per_order(order)):
             field = sh[:, :, :, i_ch]
-            scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
-                                     field[iref[order][i]][0])
+            if order != 0:
+                scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
+                                         field[iref[order][i]][0])
+            else:
+                scaling_factors[i_ch] = -1 / field[iref[order][i]][0]
+
             i_ch += 1
 
     return scaling_factors
@@ -487,8 +487,8 @@ def _check_basis_inputs(x, y, z, orders):
     if not (x.shape == y.shape == z.shape):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
-    if max(orders) >= 3:
-        raise NotImplementedError("Spherical harmonics not implemented for order 3 and up")
+    if max(orders) >= 4:
+        raise NotImplementedError("Spherical harmonics not implemented for order 4 and up")
 
 
 def _channels_per_order(order):

@@ -98,13 +98,13 @@ class Coil(object):
 
                     for i_channel in range(self.dim[3]):
                         if constraints["coef_channel_minmax"][i_channel] is None:
-                            constraints["coef_channel_minmax"][i_channel] = (-np.inf, np.inf)
+                            constraints["coef_channel_minmax"][i_channel] = [-np.inf, np.inf]
                         if constraints["coef_channel_minmax"][i_channel][0] is None:
                             constraints["coef_channel_minmax"][i_channel] = \
-                                (-np.inf, constraints["coef_channel_minmax"][i_channel][1])
+                                [-np.inf, constraints["coef_channel_minmax"][i_channel][1]]
                         if constraints["coef_channel_minmax"][i_channel][1] is None:
                             constraints["coef_channel_minmax"][i_channel] = \
-                                (constraints["coef_channel_minmax"][i_channel][0], np.inf)
+                                [constraints["coef_channel_minmax"][i_channel][0], np.inf]
 
                 if key_name == "coef_sum_max":
                     if constraints["coef_sum_max"] is None:
@@ -117,6 +117,7 @@ class Coil(object):
 
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
+
     def __init__(self, dim_volume, affine, constraints, order, manufacturer=""):
 
         self.order = order
@@ -134,36 +135,29 @@ class ScannerCoil(Coil):
         sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
         constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.order)
+        if order == 3:
+            constraints['coef_channel_minmax'].extend([[None, None]] * (sph_coil_profile.shape[-1] - 9))
 
         super().__init__(sph_coil_profile, affine, constraints)
 
     def _create_coil_profile(self, dim, manufacturer=None):
-        # Define profile for Tx (constant volume)
-        profile_order_0 = -np.ones(dim)
-
         # Create spherical harmonics coil profiles
-        if self.order == 0:
-            # f0 --> [1]
-            sph_coil_profile = profile_order_0[..., np.newaxis]
+        # f0, orders
+        mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
+        if manufacturer == 'SIEMENS':
+            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(self.order + 1)),
+                                             shim_cs=self.coord_system)
+        elif manufacturer == 'GE':
+            sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(range(self.order + 1)),
+                                        shim_cs=self.coord_system)
+        elif manufacturer == 'PHILIPS':
+            sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(range(self.order + 1)),
+                                             shim_cs=self.coord_system)
         else:
-            # f0, orders
-            mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
-            if manufacturer == 'SIEMENS':
-                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
-                                               shim_cs=self.coord_system)
-            elif manufacturer == 'GE':
-                profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
-                                          shim_cs=self.coord_system)
-            elif manufacturer == 'PHILIPS':
-                profile_orders = philips_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
-                                               shim_cs=self.coord_system)
-            else:
-                logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
-                               f"0, 1 and 2 respectively")
-                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
-                                               shim_cs=self.coord_system)
-
-            sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
+            logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
+                           f"0, 1 and 2 respectively")
+            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(range(self.order + 1)),
+                                             shim_cs=self.coord_system)
 
         return sph_coil_profile
 
@@ -256,7 +250,12 @@ def restrict_sph_constraints(bounds, order):
     elif order == 2:
         # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
         minmax_out = bounds[:9]
+    elif order == 3:
+        if len(bounds) >= 16:
+            minmax_out = bounds[:16]
+        else:
+            minmax_out = bounds
     else:
-        raise NotImplementedError("Order must be between 0 and 2")
+        raise NotImplementedError("Order must be between 0 and 3")
 
     return minmax_out

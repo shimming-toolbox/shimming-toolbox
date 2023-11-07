@@ -17,40 +17,47 @@ dummy_data = [
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
 def test_normal_siemens_basis(x, y, z):
-    basis = siemens_basis(x, y, z)
+    basis = siemens_basis(x, y, z, orders=(0, 1, 2, 3))
 
     # Test for shape
-    assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 8)))
+    assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 13)))
     # X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
-    assert np.allclose(basis[:, 1, 1, 0], [4.25774785e-02, 0, -4.25774785e-02])
-    assert np.allclose(basis[1, :, 1, 1], [-4.25774785e-02, 0, 4.25774785e-02])
-    assert np.allclose(basis[1, 1, :, 2], [4.25774785e-02, 0, -4.25774785e-02])
-    assert np.allclose(basis[1, 1, :, 3], [4.25774785e-05, 0.00000000e+00, 4.25774785e-05])
-    assert np.allclose(basis[:, 1, :, 4], np.array([[8.5154957e-05, 0.0000000e+00, -8.5154957e-05],
+    assert np.allclose(basis[:, 1, 1, 0], [-1, -1, -1])
+    assert np.allclose(basis[:, 1, 1, 1], [4.25774785e-02, 0, -4.25774785e-02])
+    assert np.allclose(basis[1, :, 1, 2], [-4.25774785e-02, 0, 4.25774785e-02])
+    assert np.allclose(basis[1, 1, :, 3], [4.25774785e-02, 0, -4.25774785e-02])
+    assert np.allclose(basis[1, 1, :, 4], [4.25774785e-05, 0.00000000e+00, 4.25774785e-05])
+    assert np.allclose(basis[:, 1, :, 5], np.array([[8.5154957e-05, 0.0000000e+00, -8.5154957e-05],
                                                     [-0.0000000e+00, 0.0000000e+00, 0.0000000e+00],
                                                     [-8.5154957e-05, -0.0000000e+00, 8.5154957e-05]]))
-    assert np.allclose(basis[1, :, :, 5], np.array([[-8.5154957e-05, -0.0000000e+00, 8.5154957e-05],
+    assert np.allclose(basis[1, :, :, 6], np.array([[-8.5154957e-05, -0.0000000e+00, 8.5154957e-05],
                                                     [0.0000000e+00, -0.0000000e+00, -0.0000000e+00],
                                                     [8.5154957e-05, 0.0000000e+00, -8.5154957e-05]]))
-    assert np.allclose(basis[:, :, 1, 6], np.array([[0, 4.25774785e-05, 0],
+    assert np.allclose(basis[:, :, 1, 7], np.array([[0, 4.25774785e-05, 0],
                                                     [-4.25774785e-05, 0.00000000e+00, -4.25774785e-05],
                                                     [0, 4.25774785e-05, 0]]))
-    assert np.allclose(basis[:, :, 1, 7], np.array([[-8.51549570e-05, 0, 8.51549570e-05],
+    assert np.allclose(basis[:, :, 1, 8], np.array([[-8.51549570e-05, 0, 8.51549570e-05],
                                                     [0, 0, 0],
                                                     [8.51549570e-05, -0.00000000e+00, -8.51549570e-05]]))
+    # TODO: add tests for order 3
 
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
 def test_siemens_basis(x, y, z):
     basis = siemens_basis(x, y, z, orders=(1,))
-    print(basis.shape)
     assert np.all(basis.shape == (3, 3, 3, 3))
 
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
-def test_create_scanner_coil_order3(x, y, z):
-    with pytest.raises(NotImplementedError, match="Spherical harmonics not implemented for order 3 and up"):
-        siemens_basis(x, y, z, orders=(3,))
+def test_create_siemens_basis_order3(x, y, z):
+    basis = siemens_basis(x, y, z, orders=(3,))
+    assert np.all(basis.shape == (3, 3, 3, 4))
+
+
+@pytest.mark.parametrize('x,y,z', dummy_data)
+def test_create_siemens_basis_order4(x, y, z):
+    with pytest.raises(NotImplementedError, match="Spherical harmonics not implemented for order 4 and up"):
+        siemens_basis(x, y, z, orders=(4,))
 
 
 def test_siemens_basis_resample():
