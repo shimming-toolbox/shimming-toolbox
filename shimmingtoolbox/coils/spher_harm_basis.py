@@ -180,24 +180,17 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     for i_channel in range(reordered_spher.shape[3]):
         if i_channel in [0, 1, 2]:
 
-            # Rescale to unit-shims that are G/cm
+            # Rescale to unit-shims that are XXXXX
             # They are currently in uT/m
-            # 1G = 1e-4T, 1T = 1e4G
-            # uT/m in Hz/mm --> G/cm in Hz/mm = reordered_spher * (1/1e6) * 1e4  * (1/100) = reordered_sphere / 1e4
-            # Todo: /10 discrepancy between expected linear results and calculated results
-            # uT/m in Hz/mm --> G/cm in Hz/mm = reordered_spher * 1e6 * (1/1e4)  * 100 = reordered_sphere * 1e4
-            # uT / m in Hz / mm --> G / m in Hz / mm = reordered_spher * 1e6 / 1e4
-            # TODO: Maybe mGauss/m
-            # scaled[..., i_channel] = reordered_spher[..., i_channel] * 1e2 / 1e3
+            # Todo: This seems to be the appropriate scaling factor, we need to verify the units
             scaled[..., i_channel] = reordered_spher[..., i_channel] / 10
 
-            # 300 Gauss/cm * (1T/1e4G) * (1e6uT/T) * (100cm/1m) = 300 * 1e4 uT/m = 3000mT/m crazy
         else:
             # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
             # uT/m^2 / A
             # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/mm^2 / mA
             scaled[..., i_channel] = np.matmul(reordered_spher[..., 3:], orders_to_order2_uT[i_channel - 3, :]) / 1000
-            # Todo: /2 discrepancy between expected zx, zy, xy results and calculated results
+            # Todo: We need a /2 between expected zx, zy, xy results and calculated results
             if i_channel in [3, 4, 5]:
                 scaled[..., i_channel] /= 2
 
@@ -294,7 +287,6 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
         Philips coordinate system has its x in the AP direction and y axis in the RL direction. Therefore, channel 0 (x)
         changes along axis 1 and channel 1 (y) changes along axis 0.
     """
-    # TODO: Why are channels zx and zy half of what they should return?
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
@@ -302,7 +294,6 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     all_orders = np.array(range(1, 3))
     # Philips' y and x axis are flipped (x is AP, y is RL)
     flip = get_flip_matrix(shim_cs, manufacturer='Philips', xyz=True)
-    # TODO: The z axis origin seems to be shifted ~5cm from isocenter
     spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], z * flip[2], all_orders)
 
     # Scale according to Philips convention
@@ -313,6 +304,7 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     # Reorder according to philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
     reordered_spher = _reorder_to_philips(spher_harm)
 
+    # Todo: We need a /2 between expected zx, zy results and calculated results (Similar to GE but not with XY)
     reordered_spher[..., 4] /= 2
     reordered_spher[..., 5] /= 2
 
