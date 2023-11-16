@@ -182,11 +182,12 @@ def read_nii(fname_nifti, auto_scale=True):
 
             if np.amin(image) < 0 and (0.95 * 2 * PHASE_SCALING_SIEMENS < extent < 2 * PHASE_SCALING_SIEMENS * 1.05):
                 # Siemens' scaling: [-4096, 4095] --> [-pi, pi)
-                image = image * math.pi / PHASE_SCALING_SIEMENS
+                image = (image * math.pi / PHASE_SCALING_SIEMENS)
+                image = np.angle(np.exp(1j * image))
             elif np.amin(image) >= 0 and (0.95 * PHASE_SCALING_SIEMENS < extent < PHASE_SCALING_SIEMENS * 1.05):
                 # Siemens' scaling [0, 4095] --> [0, 2pi)
                 # We want: [-pi, pi]
-                image = image * 2 * math.pi / PHASE_SCALING_SIEMENS
+                image = (image * 2 * math.pi / PHASE_SCALING_SIEMENS) - math.pi
                 image = np.angle(np.exp(1j * image))
             else:
                 logger.info("Could not scale phase data")
