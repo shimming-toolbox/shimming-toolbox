@@ -6,7 +6,7 @@
 #
 
 import numpy as np
-
+from scipy import signal
 
 class PmuResp(object):
     """
@@ -96,7 +96,7 @@ class PmuResp(object):
 
         # Returned values will be a numpy array of ints
         data = np.asarray([int(field) for field in clean_fields])
-
+        length = len(data)
         # Extract the start/stop times from subsequent lines
         start_time_mdh = int([line for line in lines if line.startswith('LogStartMDHTime')][0].split()[1])
         stop_time_mdh = int([line for line in lines if line.startswith('LogStopMDHTime')][0].split()[1])
@@ -109,6 +109,16 @@ class PmuResp(object):
         # We are assuming that the 5000/6000 marks are inserted into the data values list rather than overwriting.
         # That is we assume they do *not* occupy a raster position.
         data_cleaned = data[data < 4096]
+
+        # Define the filter parameters
+        fs = 1 // ((stop_time_mdh - start_time_mdh) / 1000 / (length - 1))
+        cutoff_freq = 0.4  # Cutoff frequency (Hz)
+        nyquist_freq = 0.5 * fs  # Nyquist frequency
+        order = 4  # Filter order
+
+        # Create a low-pass Butterworth filter
+        b, a = signal.butter(order, cutoff_freq / nyquist_freq, btype='low')
+        data_cleaned = signal.filtfilt(b, a, data_cleaned)
 
         attributes = {
             'fname': fname_pmu,
