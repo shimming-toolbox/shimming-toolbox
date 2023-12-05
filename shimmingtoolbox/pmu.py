@@ -133,29 +133,66 @@ class PmuResp(object):
 
         return attributes
 
-    def get_times(self):
+    def get_times(self, start_time=None, stop_time=None):
         """
         Get the times in ms at which the respiration took place.
+
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
 
         Returns:
             np.ndarray: Array containing the timepoints in ms of each data
         """
-        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data)-1)
-        times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
+        times = self._get_all_times()
+        start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
 
+        # +1 is needed to include the stop_idx
+        return times[start_idx:stop_idx + 1]
+
+    def _get_all_times(self):
+        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data) - 1)
+        times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
         return times
+
+    def _get_time_indexes(self, start_time=None, stop_time=None):
+        times = self._get_all_times()
+        if start_time is None:
+            start_time = times[0]
+        if stop_time is None:
+            stop_time = times[-1]
+
+        start_idx = np.argmin(np.abs(times - start_time))
+        stop_idx = np.argmin(np.abs(times - stop_time))
+
+        return start_idx, stop_idx
+
+    def get_resp_trace(self, start_time=None, stop_time=None):
+        """
+        Returns the resp trace between ``start_time`` and ``stop_time``
+
+        Args:
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
+
+        Returns:
+            numpy.ndarray: Array with the resp trace between ``start_time`` and ``stop_time``
+        """
+
+        start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
+        # +1 is needed to include the stop_idx
+        return self.data[start_idx:stop_idx + 1]
 
     def interp_resp_trace(self, acquisition_times):
         """
         Interpolates ``data`` to the specified ``acquisition_times``
 
         Args:
-            acquisition_times (numpy.ndarray): 1D array of the times in milliseconds past midnight of the desired
+            acquisition_times (numpy.ndarray): Array of the times in milliseconds past midnight of the desired
                                                times to interpolate the resp_trace. Times must be within
                                                ``self.start_time_mdh`` and ``self.stop_time_mdh``
 
         Returns:
-            numpy.ndarray: 1D array with interpolated times
+            numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
         """
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
@@ -164,3 +201,36 @@ class PmuResp(object):
         interp_data = np.interp(acquisition_times, times, self.data)
 
         return interp_data
+
+    def mean(self, start_time=None, stop_time=None):
+        """
+        Returns the mean value of the resp trace between ``start_time`` and ``stop_time``
+
+        Args:
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
+
+        Returns:
+            float: Mean value of the resp trace between ``start_time`` and ``stop_time``
+        """
+
+        pressures = self.get_resp_trace(start_time=start_time, stop_time=stop_time)
+
+        return np.mean(pressures)
+
+    def get_pressure_rms(self, start_time=None, stop_time=None):
+        """
+        Returns the RMS value of the resp trace between ``start_time`` and ``stop_time``
+
+        Args:
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
+
+        Returns:
+            float: RMS value of the resp trace between ``start_time`` and ``stop_time``
+        """
+
+        pressures = self.get_resp_trace(start_time=start_time, stop_time=stop_time)
+        mean_p = self.mean(start_time=start_time, stop_time=stop_time)
+
+        return np.sqrt(np.mean((pressures - mean_p)**2))
