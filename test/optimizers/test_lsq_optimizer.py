@@ -6,16 +6,9 @@ import warnings
 
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
-from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.load_nifti import get_acquisition_times
-from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer, resample_mask
-from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
-from shimmingtoolbox.shim.sequencer import shim_max_intensity
-from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.utils import set_all_loggers
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
@@ -46,7 +39,7 @@ def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
 # Initialize common variables or objects needed for testing
 constraints = create_constraints(max_coef,min_coef,sum_coef,n_channels=8) # Initialize constraints
 coils = create_coil(n_x,n_y,n_z,constraints, coil_affine, n_channels=8)  # Initialize coil
-unshimmed =   # Initialize unshimmed vector
+unshimmed =   
 # self.affine =   
 # self.opt_criteria = 'mse'  
 reg_factor = 0  # Choose the regularization factor
@@ -64,7 +57,7 @@ class TestLsqOptimizer():
         MAE_base = 0
         coef = 
         for i in range(n):
-            MAE_base += np.abs(unshimmed[i]+(coil@coef)[i])/n
+            MAE_base += np.abs(unshimmed[i]+(coils@coef)[i])/n
         lsq_optimizer = LsqOptimizer(coil, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
         result = lsq_optimizer._residuals_mae(coef, unshimmed, coil, factor)
         assert_result(MAE_base, result)
@@ -74,7 +67,7 @@ class TestLsqOptimizer():
         MSE_base = 0
         coef = 
         for i in range(n):
-            MSE_base += ((unshimmed[i]+(coil@coef)[i])**2)/n
+            MSE_base += ((unshimmed[i]+(coils@coef)[i])**2)/n
         lsq_optimizer = LsqOptimizer(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)  
         result = lsq_optimizer._residuals_mse(coef, a, b, c)
         assert_result(MSE_base,result)
@@ -85,7 +78,7 @@ class TestLsqOptimizer():
         coef =
         Mean = np.mean(unshimmed+coil@coef)
         for i in range(n):
-            STD_base += ((unshimmed[i]+(coil@coef)[i]-Mean)**2)/n
+            STD_base += ((unshimmed[i]+(coils@coef)[i]-Mean)**2)/n
         STD_base = np.sqrt(STD_base)
         lsq_optimizer = LsqOptimizer(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
         result = lsq_optimizer._residuals_std(coef, unshimmed_vec, coil_mat, factor)
@@ -93,8 +86,7 @@ class TestLsqOptimizer():
 
     def test_residuals_mse_jacobian(self):
         # Test the _residuals_mse_jacobian function
-        def cost_function(unshimmed,coil,coef):
-            return unshimmed+coil@x
+        
         Jacobian_base = 
         lsq_optimizer = LsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, reg_factor=self.reg_factor)
         result = lsq_optimizer._residuals_mse_jacobian(coef, a, b, c)
@@ -103,37 +95,33 @@ class TestLsqOptimizer():
     
 
 class TestPmuLsqOptimizer():
-    def setUp(self):
-        # Initialize common variables or objects needed for testing
-        self.coils = []  # Initialize with appropriate Coil objects
-        self.unshimmed =   # Example unshimmed array
-        self.affine =   # Example affine transformation
-        self.opt_criteria = 'mse'  # Choose your optimization criteria
-        self.reg_factor = 0  # Choose the regularization factor
-        self.pmu = None  # Initialize with an appropriate PmuResp object
-
+    
     def test_residuals_mae(self):
         # Test the _residuals_mae function in the PmuLsqOptimizer class
-        pmu_optimizer = PmuLsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, self.pmu, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        unshimmed_vec =   # Example unshimmed vector
-        coil_mat =   # Example coil matrix
-        factor =   # Example factor
-        result = pmu_optimizer._residuals_mae(coef, unshimmed_vec, coil_mat, factor)
-        self.assertIsInstance(result, float)
+        result = PmuLsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, self.pmu, reg_factor=self.reg_factor)
+        MAE_base = 0
+        coef = 
+        for i in range(n):
+            MAE_base += np.abs(unshimmed[i]+(coils@coef)[i])/n
+        assert_result(MAE_base, result)
 
     def test_residuals_mse(self):
         # Test the _residuals_mse function in the PmuLsqOptimizer class
-        pmu_optimizer = PmuLsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, self.pmu, reg_factor=self.reg_factor)
-        coef = np.zeros(len(self.coils[0]))  # Example coefficient array
-        a = np.zeros(27, len(self.coils[0]))  # Example a array
-        b = np.zeros(27)  # Example b array
-        c = 0  # Example c value
-        result = pmu_optimizer._residuals_mse(coef, a, b, c)
-        self.assertIsInstance(result, float)
+        result = PmuLsqOptimizer(self.coils, self.unshimmed, self.affine, self.opt_criteria, self.pmu, reg_factor=self.reg_factor)
+        MSE_base = 0
+        coef = 
+        for i in range(n):
+            MSE_base += ((unshimmed[i]+(coils@coef)[i])**2)/n
+        assert_result(MAE_base, result)
 
     
     
     # Assert fonction filling for now
 def assert_result(Base,result):
 
+    if isinstance(Base, (float, int)) and isinstance(result, (float, int)):
+        return abs(Base - result) <= tolerance
+    elif isinstance(Base, np.ndarray) and isinstance(result, np.ndarray) and base.shape == result.shape:
+        return np.all(np.abs(Base - result) <= tolerance)
+    else:
+        raise ValueError("Incompatible types for 'base' and 'result'")
