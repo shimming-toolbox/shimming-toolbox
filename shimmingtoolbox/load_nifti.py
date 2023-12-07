@@ -62,8 +62,12 @@ def get_acquisition_times(nii_data, json_data):
         # list containing the time at which each slice was acquired
         slice_timing_start = data.get('SliceTiming')
         if slice_timing_start is None:
-            logger.warning("No slice timing information found in JSON file.")
-            return np.zeros(n_slices)
+            if n_sli == 1:
+                # Slice timing information does not seem to be defined if there is only one slice
+                slice_timing_start = [0.0]
+            else:
+                logger.warning("No slice timing information found in JSON file.")
+                return np.zeros(n_slices)
 
         # Convert to ms
         slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
@@ -100,7 +104,7 @@ def get_acquisition_times(nii_data, json_data):
             return np.zeros(n_slices)
 
         # Todo: When partial fourier is used, crossing of the middle of k-space is shifted, for a_gre, I simulated it
-        #  and it seems to start with the "smaller" side
+        # and it seems to start with the "smaller" side
 
         # Error check
         deltat_vol = float(json_data['RepetitionTime']) * 1000  # [ms]
