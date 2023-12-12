@@ -10,17 +10,13 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from sklearn.preprocessing import PolynomialFeatures
 
 # PATHS
-FIELD_MAP_PATH_1 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/rt_fm.nii.gz'
-MAG_PATH_1 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/252-gre_2.2mm_60vol_5mm_multSeries_iPat1/sub-acdc216/anat/sub-acdc216_magnitude1.nii.gz'
+FIELD_MAP_PATH_1 = './rt_dataset/dataset_1/rt_fm_dataset_1.nii.gz'
+MAG_PATH_1 = './rt_dataset/dataset_1/rt_mag_dataset_1.nii.gz'
 FNAME_JSON_1 = FIELD_MAP_PATH_1.rsplit('.nii', 1)[0] + '.json'
 
-FIELD_MAP_PATH_2 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/mutliSeries_fm_2/rt_fm.nii.gz'
-MAG_PATH_2 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/250-gre_2.2mm_60vol_5mm_multSeries/sub-acdc216/anat/sub-acdc216_magnitude1.nii.gz'
+FIELD_MAP_PATH_2 = './rt_dataset/dataset_2/rt_fm_dataset_2.nii.gz'
+MAG_PATH_2 = './rt_dataset/dataset_2/rt_mag_dataset_2.nii.gz'
 FNAME_JSON_2 = FIELD_MAP_PATH_2.rsplit('.nii', 1)[0] + '.json'
-
-FIELD_MAP_PATH_3 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/mutliSeries_fm/rt_fm.nii.gz'
-MAG_PAHT_3 = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/254-gre_2.2mm_60vol_multSeries/sub-acdc216/anat/sub-acdc216_magnitude1.nii.gz'
-FNAME_JSON_3 = FIELD_MAP_PATH_1.rsplit('.nii', 1)[0] + '.json'
 
 MASK_PATH = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/centerline.nii.gz'
 PMU_PATH = '/Users/arnaud/Documents/MSC/UNF_experiment/acdc_216/PMUresp_signal_acqs.resp'
