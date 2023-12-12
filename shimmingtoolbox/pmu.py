@@ -6,6 +6,7 @@
 #
 
 import numpy as np
+from scipy import signal
 
 
 class PmuResp(object):
@@ -37,6 +38,7 @@ class PmuResp(object):
         self.stop_time_mdh = attributes['stop_time_mdh']
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
+        self.data_triggers = attributes['data_triggers']
         self.max = attributes['max']
         self.min = attributes['min']
 
@@ -113,6 +115,7 @@ class PmuResp(object):
         attributes = {
             'fname': fname_pmu,
             'data': data_cleaned,
+            'data_triggers': data,
             'start_time_mdh': start_time_mdh,
             'stop_time_mdh': stop_time_mdh,
             'start_time_mpcu': start_time_mpcu,

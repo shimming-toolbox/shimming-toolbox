@@ -103,15 +103,37 @@ def get_acquisition_times(nii_data, json_data):
             logger.warning("Protocol name not recognized.")
             return np.zeros(n_slices)
 
-        # Todo: When partial fourier is used, crossing of the middle of k-space is shifted, for a_gre, I simulated it
-        # and it seems to start with the "smaller" side
-
         # Error check
-        deltat_vol = float(json_data['RepetitionTime']) * 1000  # [ms]
+        volume_tr = data.get('RepetitionTime')
+        if volume_tr is None:
+            logger.warning("No volume repetition time found in JSON file.")
+            return np.zeros(n_slices)
+        deltat_vol = float(volume_tr) * 1000  # [ms]
         if (deltat_slice * n_sli) > deltat_vol:
             logger.warning("Slice timing is longer than volume timing.")
 
-        slice_timing_mid = slice_timing_start + (deltat_slice / 2)
+        # Get when the middle of k-space was acquired
+        manufacturer = data.get('Manufacturer')
+        if manufacturer == 'Siemens':
+            fourier = data.get('PartialFourier')
+            if fourier is None:
+                logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
+                fourier = 1.0
+            else:
+                fourier = float(fourier)
+                if not (0 <= fourier <= 1):
+                    logger.warning("Partial Fourier value format not supported, make sure it is between 0 and 1."
+                                   "Setting it to 1")
+                    fourier = 1.0
+
+            # When partial fourier is used, crossing of the middle of k-space is shifted
+            # For Siemens, it seems to start with the "smaller" side
+            ratio = (fourier - 0.5) / fourier
+        else:
+            logger.warning("Manufacturer not supported for partial fourier, assuming no partial fourier.")
+            ratio = 0.5
+
+        slice_timing_mid = slice_timing_start + (deltat_slice * ratio)
 
         return slice_timing_mid
 
