@@ -111,7 +111,7 @@ def get_acquisition_times(nii_data, json_data):
         if (deltat_slice * n_sli) > deltat_vol:
             logger.warning("Slice timing is longer than volume timing.")
 
-        slice_timing_mid = slice_timing_start + (deltat_slice / 2)
+        slice_timing_mid = slice_timing_start - (deltat_slice)
 
         return slice_timing_mid
 
@@ -122,7 +122,7 @@ def get_acquisition_times(nii_data, json_data):
         # If the slice timing is set to 0, then we could not figure out the slice timing, then set the best guess to
         # the time required to get to the middle of the volume
         for i in range(n_volumes):
-            timing[i, :] = np.repeat(volume_start_times[i] + (deltat_volume / 2), n_slices)
+            timing[i, :] = np.repeat(volume_start_times[i] - (deltat_volume), n_slices)
     else:
         # If we figured out the slice timing, then we can use it to get the timing of each slice for each volume
         for i in range(n_volumes):
