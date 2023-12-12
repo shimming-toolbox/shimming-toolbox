@@ -18,8 +18,8 @@ FIELD_MAP_PATH_2 = './rt_dataset/dataset_2/rt_fm_dataset_2.nii.gz'
 MAG_PATH_2 = './rt_dataset/dataset_2/rt_mag_dataset_2.nii.gz'
 FNAME_JSON_2 = FIELD_MAP_PATH_2.rsplit('.nii', 1)[0] + '.json'
 
-MASK_PATH = '/Users/arnaud/Documents/MSC/UNF_data/acdc_216/centerline.nii.gz'
-PMU_PATH = '/Users/arnaud/Documents/MSC/UNF_experiment/acdc_216/PMUresp_signal_acqs.resp'
+MASK_PATH = './rt_dataset/mask.nii.gz'
+PMU_PATH = './rt_dataset/PMUresp_signal_acqs.resp'
 
 
 def load_data(FIELD_MAP_PATH, MAG_PATH, FNAME_JSON, MASK_PATH, PMU_PATH):
