@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
 from numpy.polynomial.polynomial import polyfit
-from scipy.interpolate import splprep, splev
+from scipy.interpolate import splrep, BSpline
 from sklearn.linear_model import Lasso, Ridge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -47,11 +47,6 @@ def load_data(FIELD_MAP_PATH, MAG_PATH, FNAME_JSON, MASK_PATH, PMU_PATH):
     acq_timestamps = (acq_timestamps - acq_timestamps[0]) / 1000
     acq_pressures = acq_pressures - np.mean(acq_pressures)
 
-    # Sort field map data based on acq_timestamps
-    idx = np.argsort(acq_pressures, axis=0)
-    acq_timestamps = np.take_along_axis(acq_timestamps, idx, axis=0)
-    acq_pressures = np.take_along_axis(acq_pressures, idx, axis=0)
-    field_map_data = np.take_along_axis(field_map_data, idx[..., np.newaxis].T, axis=-1)
     return field_map_data, mag, json_data, mask, acq_timestamps, acq_pressures
 
 
@@ -88,6 +83,11 @@ def get_points(data):
     y_points = y.flatten()[~np.isnan(z_points)]
     z_points = z_points[~np.isnan(z_points)]
 
+    # plot in 3D
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+    # ax.scatter(x_points, y_points, z_points, c='r', marker='o')
+    # plt.show()
     return x_points, y_points, z_points
 
 
@@ -200,16 +200,16 @@ def plot_surface(z_points, x_points, y_points, X_mesh, Y_mesh, Z_lasso):
     plt.show()
 
 
-def fit_realtime_surface(data, pressures, fit):
+def fit_realtime_surface(data, pressures, fit_function):
     # Create new data
     surfaces = np.zeros_like(data)
 
     # Fit surface for every timepoint
     for t in range(data.shape[-1]):
         if t == 12:
-            surfaces[..., t] = fit(data[..., t], plot=True)
+            surfaces[..., t] = fit_function(data[..., t], plot=True)
         else:
-            surfaces[..., t] = fit(data[..., t])
+            surfaces[..., t] = fit_function(data[..., t])
 
     # Plot AP mean through z direction for every time point
     max = int(np.nanmax(pressures))
@@ -235,25 +235,9 @@ def fit_realtime_surface(data, pressures, fit):
     # plt.show()
 
 
-def fit_realtime_2d_curve(data, pressures, fit, degree):
-    # Set the colors for the different pressures
-    max = int(np.nanmax(pressures))
-    min = int(np.nanmin(pressures))
-    colors = plt.cm.viridis(np.linspace(0, 1, max - min + 1))
-
-    # Get the coefficients for every time point
-    fig, (ax1, ax2) = plt.subplots(1,2)
-    for t in range(data.shape[-1]):
-        x_fit, z_fit = fit(data[..., t], degree)
-        # Plot the fitted curve
-        c = int(pressures[t][0] - min)
-        ax1.plot(x_fit, z_fit, color=colors[c], label='t = ' + str(t))
-        ax2.plot(x_fit, np.gradient(z_fit), color=colors[c], label='t = ' + str(t))
-
-    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min, vmax=max))
-    sm.set_array([])  # fake up the array of the scalar mappable
-    plt.colorbar(sm, label='Pressure')
-    plt.show()
+def fit_realtime_2d_curve(data, fit_function, degree):
+    curve_funcs = [fit_function(data[..., t], degree) for t in range(data.shape[-1])]
+    return curve_funcs
 
 
 def poly_fit(data, degree):
@@ -272,7 +256,7 @@ def poly_fit(data, degree):
     # plt.plot(x_points, z_points, 'o')
     # plt.plot(x_fit, z_fit)
     # plt.show()
-    return x_fit, z_fit
+    return np.poly1d(coefficients)
 
 
 def b_spline_fit(data, degree):
@@ -282,28 +266,79 @@ def b_spline_fit(data, degree):
     # organize the data in increasing order
     idx = np.argsort(x_points)
     x_points = x_points[idx]
-    y_points = y_points[idx]
+    z_points = z_points[idx]
 
     # Fit curve
     s_param = z_points.shape[0] * z_points.var() * 2 # Based on the data variance
-    tck, u = splprep([x_points, z_points], k=2, s=s_param)
-    u = np.linspace(0, 1, num=500)
-    x_fit, z_fit = splev(u, tck)
+    tck = splrep(x_points, z_points, k=degree, s=s_param)
+    bspline = BSpline(*tck)
+    x_fit = np.linspace(min(x_points), max(x_points), 500)
+    z_fit = bspline(x_fit)
+
 
     # Plot
     # plt.plot(x_fit, z_fit)
     # plt.scatter(x_points, z_points, c='r', marker='o')
     # plt.show()
 
-    return x_fit, z_fit
+    return bspline
+
+
+def plot_2d_curve(all_funcs, data, pressures, times):
+
+    # Set the colors for the different pressures
+    max = int(np.nanmax(pressures))
+    min = int(np.nanmin(pressures))
+    colors = plt.cm.viridis(np.linspace(0, 1, max - min + 1))
+
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    x_fit = np.arange(0, data.shape[1], 1)
+    fitted_data = np.array([fit(x_fit) for fit in all_funcs])
+    for d, pressure in zip(fitted_data, pressures):
+        c = int(pressure[0] - min)
+        ax1.plot(x_fit, d, color=colors[c])
+        ax2.plot(x_fit, np.gradient(d), color=colors[c])
+
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min, vmax=max))
+    sm.set_array([])  # fake up the array of the scalar mappable
+    ax1.set_title('B0')
+    ax2.set_title('Gradient B0')
+    ax1.set_xlabel('Z')
+    ax2.set_xlabel('Z')
+    ax1.set_ylabel('B0')
+    ax2.set_ylabel('dB0/dz')
+    plt.colorbar(sm, label='Pressure')
+    plt.tight_layout()
+    plt.show()
+
+    # Fit temporal B0 curve and gradient curve
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    for t in range(data.shape[-1]):
+        ax1.plot(times, fitted_data[..., t])
+        ax3 = ax1.twinx()
+        ax3.plot(times, pressures, 'r-', linewidth=5, label='PMU')
+
+        ax2.plot(times, np.gradient(fitted_data[..., t]))
+        ax4 = ax2.twinx()
+        ax4.plot(times, pressures, 'r-', linewidth=5, label='PMU')
+
+    ax1.set_title('B0 through time')
+    ax1.set_xlabel('Time [s]')
+    ax1.set_ylabel('B0')
+    ax2.set_title('Gradient B0 through time')
+    ax2.set_xlabel('Time [s]')
+    ax2.set_ylabel('dB0/dz')
+    plt.tight_layout()
+    plt.show()
 
 
 def main():
     field_map, mag, json_data, mask, acq_timestamps, acq_pressures = \
-        load_data(FIELD_MAP_PATH_1, MAG_PATH_1, FNAME_JSON_1, MASK_PATH, PMU_PATH)
+        load_data(FIELD_MAP_PATH_2, MAG_PATH_2, FNAME_JSON_2, MASK_PATH, PMU_PATH)
 
     fm_masked = prep_fm(field_map, mag, mask, 200)
-    fit_realtime_2d_curve(fm_masked, acq_pressures, b_spline_fit, 2)
+    curve_funcs = fit_realtime_2d_curve(fm_masked, b_spline_fit, 2)
+    plot_2d_curve(curve_funcs, fm_masked, acq_pressures, acq_timestamps)
     # fit_realtime_surface(fm_masked, acq_pressures, fit_surface_LASSO)
 
 

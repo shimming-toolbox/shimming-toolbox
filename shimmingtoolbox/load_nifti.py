@@ -111,7 +111,7 @@ def get_acquisition_times(nii_data, json_data):
         if (deltat_slice * n_sli) > deltat_vol:
             logger.warning("Slice timing is longer than volume timing.")
 
-        slice_timing_mid = slice_timing_start - (deltat_slice)
+        slice_timing_mid = slice_timing_start + (deltat_slice/2)
 
         return slice_timing_mid
 
