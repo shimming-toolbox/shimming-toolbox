@@ -4,6 +4,8 @@ import json
 import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
+from numpy.polynomial.polynomial import polyfit
+from scipy.interpolate import splprep, splev
 from sklearn.linear_model import Lasso, Ridge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -63,7 +65,7 @@ def prep_fm(fm, mag, mask, threshold):
     fm_mask = np.isnan(mag_masked)
     fm_masked[fm_mask] = np.nan
 
-    # Get crop idexes
+    # Get crop indexes
     x_min = np.min(np.where(fm_mask[..., 0] == False)[0])
     x_max = np.max(np.where(fm_mask[..., 0] == False)[0])
     y_min = np.min(np.where(fm_mask[..., 0] == False)[1])
@@ -76,6 +78,17 @@ def prep_fm(fm, mag, mask, threshold):
     fm_masked = fm_masked - np.nanmean(fm_masked, axis=-1, keepdims=True)
 
     return fm_masked
+
+
+def get_points(data):
+    # Get x, y, z points
+    x, y = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
+    z_points = data.flatten()
+    x_points = x.flatten()[~np.isnan(z_points)]
+    y_points = y.flatten()[~np.isnan(z_points)]
+    z_points = z_points[~np.isnan(z_points)]
+
+    return x_points, y_points, z_points
 
 
 def first_degree_polynomial(xy, a, b, c):
@@ -97,11 +110,7 @@ def fit_surface(data, plot = False):
     # Select func
     func = second_degree_polynomial
     # Get x, y, z points
-    x, y = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
-    z_points = data.flatten()
-    x_points = x.flatten()[~np.isnan(z_points)]
-    y_points = y.flatten()[~np.isnan(z_points)]
-    z_points = z_points[~np.isnan(z_points)]
+    x_points, y_points, z_points = get_points(data)
 
     # Fit curve
     popt, pcov = opt.curve_fit(func, (x_points, y_points), z_points)
@@ -122,14 +131,8 @@ def fit_surface(data, plot = False):
 
 
 def fit_surface_RIDGE(data, plot = False):
-    # Select func
-    func = second_degree_polynomial
     # Get x, y, z points
-    x, y = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
-    z_points = data.flatten()
-    x_points = x.flatten()[~np.isnan(z_points)]
-    y_points = y.flatten()[~np.isnan(z_points)]
-    z_points = z_points[~np.isnan(z_points)]
+    x_points, y_points, z_points = get_points(data)
 
     degree = 2
     poly = PolynomialFeatures(degree)
@@ -155,11 +158,7 @@ def fit_surface_RIDGE(data, plot = False):
 
 def fit_surface_LASSO(data, plot = False):
     # Get x, y, z points
-    x, y = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
-    z_points = data.flatten()
-    x_points = x.flatten()[~np.isnan(z_points)]
-    y_points = y.flatten()[~np.isnan(z_points)]
-    z_points = z_points[~np.isnan(z_points)]
+    x_points, y_points, z_points = get_points(data)
 
     degree = 2
     poly = PolynomialFeatures(degree)
@@ -236,12 +235,76 @@ def fit_realtime_surface(data, pressures, fit):
     # plt.show()
 
 
+def fit_realtime_2d_curve(data, pressures, fit, degree):
+    # Set the colors for the different pressures
+    max = int(np.nanmax(pressures))
+    min = int(np.nanmin(pressures))
+    colors = plt.cm.viridis(np.linspace(0, 1, max - min + 1))
+
+    # Get the coefficients for every time point
+    fig, (ax1, ax2) = plt.subplots(1,2)
+    for t in range(data.shape[-1]):
+        x_fit, z_fit = fit(data[..., t], degree)
+        # Plot the fitted curve
+        c = int(pressures[t][0] - min)
+        ax1.plot(x_fit, z_fit, color=colors[c], label='t = ' + str(t))
+        ax2.plot(x_fit, np.gradient(z_fit), color=colors[c], label='t = ' + str(t))
+
+    sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min, vmax=max))
+    sm.set_array([])  # fake up the array of the scalar mappable
+    plt.colorbar(sm, label='Pressure')
+    plt.show()
+
+
+def poly_fit(data, degree):
+    # Get x, y, z points
+    x_points, y_points, z_points = get_points(data)
+
+    # Perform a quadratic fit using numpy.polyfit
+    coefficients = np.polyfit(x_points, z_points, degree)
+
+    # Generate x values for the fitted curve
+    x_fit = np.linspace(min(x_points), max(x_points), 500)
+
+    # Calculate corresponding y values using the fitted polynomial coefficients
+    z_fit = np.polyval(coefficients, x_fit)
+
+    # plt.plot(x_points, z_points, 'o')
+    # plt.plot(x_fit, z_fit)
+    # plt.show()
+    return x_fit, z_fit
+
+
+def b_spline_fit(data, degree):
+    # Get x, y, z points
+    x_points, y_points, z_points = get_points(data)
+
+    # organize the data in increasing order
+    idx = np.argsort(x_points)
+    x_points = x_points[idx]
+    y_points = y_points[idx]
+
+    # Fit curve
+    s_param = z_points.shape[0] * z_points.var() * 2 # Based on the data variance
+    tck, u = splprep([x_points, z_points], k=2, s=s_param)
+    u = np.linspace(0, 1, num=500)
+    x_fit, z_fit = splev(u, tck)
+
+    # Plot
+    # plt.plot(x_fit, z_fit)
+    # plt.scatter(x_points, z_points, c='r', marker='o')
+    # plt.show()
+
+    return x_fit, z_fit
+
+
 def main():
     field_map, mag, json_data, mask, acq_timestamps, acq_pressures = \
         load_data(FIELD_MAP_PATH_1, MAG_PATH_1, FNAME_JSON_1, MASK_PATH, PMU_PATH)
 
     fm_masked = prep_fm(field_map, mag, mask, 200)
-    fit_realtime_surface(fm_masked, acq_pressures, fit_surface_LASSO)
+    fit_realtime_2d_curve(fm_masked, acq_pressures, b_spline_fit, 2)
+    # fit_realtime_surface(fm_masked, acq_pressures, fit_surface_LASSO)
 
 
 if __name__ == '__main__':
