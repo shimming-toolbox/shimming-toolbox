@@ -294,6 +294,7 @@ def plot_2d_curve(all_funcs, data, pressures, times):
     fig, (ax1, ax2) = plt.subplots(1,2)
     x_fit = np.arange(0, data.shape[1], 1)
     fitted_data = np.array([fit(x_fit) for fit in all_funcs])
+    grad = np.array([np.gradient(fitted_data[i_time]) for i_time in range(data.shape[-1])])
     for d, pressure in zip(fitted_data, pressures):
         c = int(pressure[0] - min)
         ax1.plot(x_fit, d, color=colors[c])
@@ -313,14 +314,14 @@ def plot_2d_curve(all_funcs, data, pressures, times):
 
     # Fit temporal B0 curve and gradient curve
     fig, (ax1, ax2) = plt.subplots(1,2)
-    for t in range(data.shape[-1]):
-        ax1.plot(times, fitted_data[..., t])
+    for i_slice in range(data.shape[1]):
+        ax1.plot(times, fitted_data[..., i_slice])
         ax3 = ax1.twinx()
         ax3.plot(times, pressures, 'r-', linewidth=5, label='PMU')
 
-        ax2.plot(times, np.gradient(fitted_data[..., t]))
+        ax2.plot(times, grad[..., i_slice])
         ax4 = ax2.twinx()
-        ax4.plot(times, pressures, 'r-', linewidth=5, label='PMU')
+        ax4.plot(times, pressures, 'r-', linewidth=2, label='PMU')
 
     ax1.set_title('B0 through time')
     ax1.set_xlabel('Time [s]')
