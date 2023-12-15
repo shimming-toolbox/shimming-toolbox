@@ -6,7 +6,7 @@ import scipy.optimize as opt
 
 from numpy.polynomial.polynomial import polyfit
 from scipy.interpolate import splrep, BSpline
-from sklearn.linear_model import Lasso, Ridge
+from sklearn.linear_model import Lasso, LinearRegression, Ridge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from sklearn.preprocessing import PolynomialFeatures
@@ -291,12 +291,16 @@ def b_spline_fit(data, degree):
     return bspline, bspline.derivative()
 
 
-def plot_2d_curve(all_funcs, all_derivatives, data, pressures, times):
+def get_data_from_fit(all_funcs, all_derivatives, data):
     # Retrieve the data from the fitted functions
     x_fit = np.arange(0, data.shape[1], 1)
     fitted_data = np.array([fit(x_fit) for fit in all_funcs]) # (time, z)
     fitted_grad = np.array([deriv(x_fit) for deriv in all_derivatives]) # (time, z)
+    return fitted_data, fitted_grad
 
+
+def plot_2d_curve(fitted_data, fitted_grad, pressures, times):
+    x_fit = np.arange(0, fitted_data.shape[1], 1)
     # Set the colors for the different pressures
     max = int(np.nanmax(pressures))
     min = int(np.nanmin(pressures))
@@ -324,12 +328,16 @@ def plot_2d_curve(all_funcs, all_derivatives, data, pressures, times):
     # Plot temporal B0 curve and gradient curve
     fig, (ax1, ax2) = plt.subplots(1,2)
     ax3 = ax1.twinx()
+    ax3.plot(times, pressures, 'r-', linewidth=3, label='PMU')
     ax4 = ax2.twinx()
-    for i_slice in range(data.shape[1]):
-        ax1.plot(times, fitted_data[..., i_slice])
-        ax3.plot(times, pressures, 'r-', linewidth=5, label='PMU')
-        ax2.plot(times, fitted_grad[..., i_slice])
-        ax4.plot(times, pressures, 'r-', linewidth=5, label='PMU')
+    ax4.plot(times, pressures, 'r-', linewidth=3, label='PMU')
+    for i_slice in range(fitted_data.shape[1]):
+        if i_slice == 0:
+            ax1.plot(times, fitted_data[..., i_slice], label='Slice ' + str(i_slice))
+            ax2.plot(times, fitted_grad[..., i_slice], label='Slice ' + str(i_slice))
+        else:
+            ax1.plot(times, fitted_data[..., i_slice], alpha=0.1)
+            ax2.plot(times, fitted_grad[..., i_slice], alpha=0.1)
 
     ax1.set_title('B0 through time')
     ax1.set_xlabel('Time [s]')
@@ -337,8 +345,27 @@ def plot_2d_curve(all_funcs, all_derivatives, data, pressures, times):
     ax2.set_title('Gradient B0 through time')
     ax2.set_xlabel('Time [s]')
     ax2.set_ylabel('dB0/dz')
+    ax1.legend()
+    ax2.legend()
     plt.tight_layout()
     plt.show()
+
+
+def get_linear_regressions(gradients, pressures):
+    # Get linear regression between gradient and pressure
+    model = LinearRegression()
+    regressions = []
+    for i_slice in range(gradients.shape[1]):
+        reg = model.fit(pressures, gradients[..., i_slice])
+        regressions.append(reg)
+        plt.plot(i_slice, reg.score(pressures, gradients[..., i_slice]), 'o')
+
+    plt.xlabel('Slice')
+    plt.ylabel('R2')
+    plt.title('R2 between gradient and pressure')
+    plt.show()
+
+    return regressions
 
 
 def main():
@@ -347,8 +374,10 @@ def main():
 
     fm_masked = prep_fm(field_map, mag, mask, threshold=200)
     curve_funcs, curve_derivatives = fit_realtime_2d_curve(fm_masked, b_spline_fit, degree=2)
-    plot_2d_curve(curve_funcs, curve_derivatives, fm_masked, acq_pressures, acq_timestamps)
-    # fit_realtime_surface(fm_masked, acq_pressures, fit_surface_LASSO)
+    fitted_data, fitted_grad = get_data_from_fit(curve_funcs, curve_derivatives, fm_masked)
+    plot_2d_curve(fitted_data, fitted_grad, acq_pressures, acq_timestamps)
+    regressions = get_linear_regressions(fitted_grad, acq_pressures)
+
 
 
 if __name__ == '__main__':
