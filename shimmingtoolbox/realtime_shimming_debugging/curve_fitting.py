@@ -236,8 +236,14 @@ def fit_realtime_surface(data, pressures, fit_function):
 
 
 def fit_realtime_2d_curve(data, fit_function, degree):
-    curve_funcs = [fit_function(data[..., t], degree) for t in range(data.shape[-1])]
-    return curve_funcs
+    curve_funcs = []
+    curve_derivatives = []
+    for time_point in range(data.shape[-1]):
+        func, deriv = fit_function(data[..., time_point], degree)
+        curve_funcs.append(func)
+        curve_derivatives.append(deriv)
+
+    return curve_funcs, curve_derivatives
 
 
 def poly_fit(data, degree):
@@ -256,7 +262,8 @@ def poly_fit(data, degree):
     # plt.plot(z_points, b0_points, 'o')
     # plt.plot(x_fit, z_fit)
     # plt.show()
-    return np.poly1d(coefficients)
+    fit = np.poly1d(coefficients)
+    return fit, fit.deriv()
 
 
 def b_spline_fit(data, degree):
@@ -281,14 +288,14 @@ def b_spline_fit(data, degree):
     # plt.scatter(z_points, b0_points, c='r', marker='o')
     # plt.show()
 
-    return bspline
+    return bspline, bspline.derivative()
 
 
-def plot_2d_curve(all_funcs, data, pressures, times):
+def plot_2d_curve(all_funcs, all_derivatives, data, pressures, times):
     # Retrieve the data from the fitted functions
     x_fit = np.arange(0, data.shape[1], 1)
     fitted_data = np.array([fit(x_fit) for fit in all_funcs]) # (time, z)
-    grad = np.array([np.gradient(fitted_data[i_time]) for i_time in range(data.shape[-1])]) # (time, z)
+    fitted_grad = np.array([deriv(x_fit) for deriv in all_derivatives]) # (time, z)
 
     # Set the colors for the different pressures
     max = int(np.nanmax(pressures))
@@ -297,10 +304,10 @@ def plot_2d_curve(all_funcs, data, pressures, times):
 
     # Plot B0 curve and gradient curve in spatial dimension
     fig, (ax1, ax2) = plt.subplots(1,2)
-    for d, pressure in zip(fitted_data, pressures):
+    for curve, grad, pressure in zip(fitted_data, fitted_grad, pressures):
         c = int(pressure[0] - min)
-        ax1.plot(x_fit, d, color=colors[c])
-        ax2.plot(x_fit, np.gradient(d), color=colors[c])
+        ax1.plot(x_fit, curve, color=colors[c])
+        ax2.plot(x_fit, grad, color=colors[c])
 
     sm = plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min, vmax=max))
     sm.set_array([])  # fake up the array of the scalar mappable
@@ -321,7 +328,7 @@ def plot_2d_curve(all_funcs, data, pressures, times):
     for i_slice in range(data.shape[1]):
         ax1.plot(times, fitted_data[..., i_slice])
         ax3.plot(times, pressures, 'r-', linewidth=5, label='PMU')
-        ax2.plot(times, grad[..., i_slice])
+        ax2.plot(times, fitted_grad[..., i_slice])
         ax4.plot(times, pressures, 'r-', linewidth=5, label='PMU')
 
     ax1.set_title('B0 through time')
@@ -338,9 +345,9 @@ def main():
     field_map, mag, mask, acq_timestamps, acq_pressures = \
         load_data(FIELD_MAP_PATH_2, MAG_PATH_2, FNAME_JSON_2, MASK_PATH, PMU_PATH)
 
-    fm_masked = prep_fm(field_map, mag, mask, 200)
-    curve_funcs = fit_realtime_2d_curve(fm_masked, b_spline_fit, 2)
-    plot_2d_curve(curve_funcs, fm_masked, acq_pressures, acq_timestamps)
+    fm_masked = prep_fm(field_map, mag, mask, threshold=200)
+    curve_funcs, curve_derivatives = fit_realtime_2d_curve(fm_masked, b_spline_fit, degree=2)
+    plot_2d_curve(curve_funcs, curve_derivatives, fm_masked, acq_pressures, acq_timestamps)
     # fit_realtime_surface(fm_masked, acq_pressures, fit_surface_LASSO)
 
 
