@@ -47,7 +47,7 @@ def load_data(FIELD_MAP_PATH, MAG_PATH, FNAME_JSON, MASK_PATH, PMU_PATH):
     acq_timestamps = (acq_timestamps - acq_timestamps[0]) / 1000
     acq_pressures = acq_pressures - np.mean(acq_pressures)
 
-    return field_map_data, mag, json_data, mask, acq_timestamps, acq_pressures
+    return field_map_data, mag, mask, acq_timestamps, acq_pressures
 
 
 def prep_fm(fm, mag, mask, threshold):
@@ -78,17 +78,17 @@ def prep_fm(fm, mag, mask, threshold):
 def get_points(data):
     # Get x, y, z points
     x, y = np.meshgrid(np.arange(data.shape[1]), np.arange(data.shape[0]))
-    z_points = data.flatten()
-    x_points = x.flatten()[~np.isnan(z_points)]
-    y_points = y.flatten()[~np.isnan(z_points)]
-    z_points = z_points[~np.isnan(z_points)]
+    b0_points = data.flatten()
+    z_points = x.flatten()[~np.isnan(b0_points)]
+    y_points = y.flatten()[~np.isnan(b0_points)]
+    b0_points = b0_points[~np.isnan(b0_points)]
 
     # plot in 3D
     # fig = plt.figure()
     # ax = fig.add_subplot(111, projection='3d')
-    # ax.scatter(x_points, y_points, z_points, c='r', marker='o')
+    # ax.scatter(z_points, y_points, b0_points, c='r', marker='o')
     # plt.show()
-    return x_points, y_points, z_points
+    return z_points, y_points, b0_points
 
 
 def first_degree_polynomial(xy, a, b, c):
@@ -110,10 +110,10 @@ def fit_surface(data, plot = False):
     # Select func
     func = second_degree_polynomial
     # Get x, y, z points
-    x_points, y_points, z_points = get_points(data)
+    z_points, y_points, b0_points = get_points(data)
 
     # Fit curve
-    popt, pcov = opt.curve_fit(func, (x_points, y_points), z_points)
+    popt, pcov = opt.curve_fit(func, (z_points, y_points), b0_points)
     X = np.arange(0, data.shape[1], 1)
     Y = np.arange(0, data.shape[0], 1)
     X, Y = np.meshgrid(X, Y)
@@ -125,22 +125,22 @@ def fit_surface(data, plot = False):
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
         ax.plot_surface(X, Y, Z)
-        ax.scatter(x_points, y_points, z_points, c='r', marker='o')
+        ax.scatter(z_points, y_points, b0_points, c='r', marker='o')
         plt.show()
     return Z
 
 
 def fit_surface_RIDGE(data, plot = False):
     # Get x, y, z points
-    x_points, y_points, z_points = get_points(data)
+    z_points, y_points, b0_points = get_points(data)
 
     degree = 2
     poly = PolynomialFeatures(degree)
-    X_transformed = poly.fit_transform(np.vstack((x_points, y_points)).T)
+    X_transformed = poly.fit_transform(np.vstack((z_points, y_points)).T)
 
     alpha = 0.01 # Regularization strength (hyperparameter to be tuned)
     ridge_model = Ridge(alpha=alpha, fit_intercept=False)  # Choose fit_intercept based on your data
-    ridge_model.fit(X_transformed, z_points)
+    ridge_model.fit(X_transformed, b0_points)
 
     # Predict using the RIDGE model
     X_mesh, Y_mesh = np.meshgrid(np.arange(0, data.shape[1], 1), np.arange(0, data.shape[0], 1))
@@ -150,7 +150,7 @@ def fit_surface_RIDGE(data, plot = False):
     Z_ridge = Z_ridge.reshape(X_mesh.shape)
 
     if plot:
-        plot_surface(z_points, x_points, y_points, X_mesh, Y_mesh, Z_ridge)
+        plot_surface(b0_points, z_points, y_points, X_mesh, Y_mesh, Z_ridge)
 
     Z_ridge[np.isnan(data)] = np.nan
     return Z_ridge
@@ -158,15 +158,15 @@ def fit_surface_RIDGE(data, plot = False):
 
 def fit_surface_LASSO(data, plot = False):
     # Get x, y, z points
-    x_points, y_points, z_points = get_points(data)
+    z_points, y_points, b0_points = get_points(data)
 
     degree = 2
     poly = PolynomialFeatures(degree)
-    X_transformed = poly.fit_transform(np.vstack((x_points, y_points)).T)
+    X_transformed = poly.fit_transform(np.vstack((z_points, y_points)).T)
 
     alpha = 0.1  # Regularization strength (hyperparameter to be tuned)
     lasso_model = Lasso(alpha=alpha, fit_intercept=False, max_iter=10000)  # Choose fit_intercept based on your data
-    lasso_model.fit(X_transformed, z_points)
+    lasso_model.fit(X_transformed, b0_points)
 
     # Predict using the LASSO model
     X_mesh, Y_mesh = np.meshgrid(np.arange(0, data.shape[1], 1), np.arange(0, data.shape[0], 1))
@@ -177,16 +177,16 @@ def fit_surface_LASSO(data, plot = False):
     Z_lasso[np.isnan(data)] = np.nan
     # Plot in 3D
     if plot:
-        plot_surface(z_points, x_points, y_points, X_mesh, Y_mesh, Z_lasso)
+        plot_surface(b0_points, z_points, y_points, X_mesh, Y_mesh, Z_lasso)
 
     return Z_lasso
 
 
-def plot_surface(z_points, x_points, y_points, X_mesh, Y_mesh, Z_lasso):
+def plot_surface(b0_points, z_points, y_points, X_mesh, Y_mesh, Z_lasso):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.plot_surface(X_mesh, Y_mesh, Z_lasso)
-    ax.scatter(x_points, y_points, z_points, c='r', marker='o')
+    ax.scatter(z_points, y_points, b0_points, c='r', marker='o')
     # Set axis titles
     ax.set_xlabel('Z')
     ax.set_ylabel('Y')
@@ -242,18 +242,18 @@ def fit_realtime_2d_curve(data, fit_function, degree):
 
 def poly_fit(data, degree):
     # Get x, y, z points
-    x_points, y_points, z_points = get_points(data)
+    z_points, y_points, b0_points = get_points(data)
 
     # Perform a quadratic fit using numpy.polyfit
-    coefficients = np.polyfit(x_points, z_points, degree)
+    coefficients = np.polyfit(z_points, b0_points, degree)
 
     # Generate x values for the fitted curve
-    x_fit = np.linspace(min(x_points), max(x_points), 500)
+    x_fit = np.linspace(min(z_points), max(z_points), 500)
 
     # Calculate corresponding y values using the fitted polynomial coefficients
     z_fit = np.polyval(coefficients, x_fit)
 
-    # plt.plot(x_points, z_points, 'o')
+    # plt.plot(z_points, b0_points, 'o')
     # plt.plot(x_fit, z_fit)
     # plt.show()
     return np.poly1d(coefficients)
@@ -261,40 +261,42 @@ def poly_fit(data, degree):
 
 def b_spline_fit(data, degree):
     # Get x, y, z points
-    x_points, y_points, z_points = get_points(data)
+    z_points, y_points, b0_points = get_points(data)
 
     # organize the data in increasing order
-    idx = np.argsort(x_points)
-    x_points = x_points[idx]
+    idx = np.argsort(z_points)
     z_points = z_points[idx]
+    b0_points = b0_points[idx]
 
     # Fit curve
-    s_param = z_points.shape[0] * z_points.var() * 2 # Based on the data variance
-    tck = splrep(x_points, z_points, k=degree, s=s_param)
+    s_param = b0_points.shape[0] * b0_points.var() * 2 # Based on the data variance
+    tck = splrep(z_points, b0_points, k=degree, s=s_param)
     bspline = BSpline(*tck)
-    x_fit = np.linspace(min(x_points), max(x_points), 500)
+    x_fit = np.linspace(min(z_points), max(z_points), 500)
     z_fit = bspline(x_fit)
 
 
     # Plot
     # plt.plot(x_fit, z_fit)
-    # plt.scatter(x_points, z_points, c='r', marker='o')
+    # plt.scatter(z_points, b0_points, c='r', marker='o')
     # plt.show()
 
     return bspline
 
 
 def plot_2d_curve(all_funcs, data, pressures, times):
+    # Retrieve the data from the fitted functions
+    x_fit = np.arange(0, data.shape[1], 1)
+    fitted_data = np.array([fit(x_fit) for fit in all_funcs]) # (time, z)
+    grad = np.array([np.gradient(fitted_data[i_time]) for i_time in range(data.shape[-1])]) # (time, z)
 
     # Set the colors for the different pressures
     max = int(np.nanmax(pressures))
     min = int(np.nanmin(pressures))
     colors = plt.cm.viridis(np.linspace(0, 1, max - min + 1))
 
+    # Plot B0 curve and gradient curve in spatial dimension
     fig, (ax1, ax2) = plt.subplots(1,2)
-    x_fit = np.arange(0, data.shape[1], 1)
-    fitted_data = np.array([fit(x_fit) for fit in all_funcs])
-    grad = np.array([np.gradient(fitted_data[i_time]) for i_time in range(data.shape[-1])])
     for d, pressure in zip(fitted_data, pressures):
         c = int(pressure[0] - min)
         ax1.plot(x_fit, d, color=colors[c])
@@ -312,16 +314,15 @@ def plot_2d_curve(all_funcs, data, pressures, times):
     plt.tight_layout()
     plt.show()
 
-    # Fit temporal B0 curve and gradient curve
+    # Plot temporal B0 curve and gradient curve
     fig, (ax1, ax2) = plt.subplots(1,2)
+    ax3 = ax1.twinx()
+    ax4 = ax2.twinx()
     for i_slice in range(data.shape[1]):
         ax1.plot(times, fitted_data[..., i_slice])
-        ax3 = ax1.twinx()
         ax3.plot(times, pressures, 'r-', linewidth=5, label='PMU')
-
         ax2.plot(times, grad[..., i_slice])
-        ax4 = ax2.twinx()
-        ax4.plot(times, pressures, 'r-', linewidth=2, label='PMU')
+        ax4.plot(times, pressures, 'r-', linewidth=5, label='PMU')
 
     ax1.set_title('B0 through time')
     ax1.set_xlabel('Time [s]')
@@ -334,7 +335,7 @@ def plot_2d_curve(all_funcs, data, pressures, times):
 
 
 def main():
-    field_map, mag, json_data, mask, acq_timestamps, acq_pressures = \
+    field_map, mag, mask, acq_timestamps, acq_pressures = \
         load_data(FIELD_MAP_PATH_2, MAG_PATH_2, FNAME_JSON_2, MASK_PATH, PMU_PATH)
 
     fm_masked = prep_fm(field_map, mag, mask, 200)
