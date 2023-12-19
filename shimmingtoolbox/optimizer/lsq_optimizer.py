@@ -7,7 +7,7 @@ from typing import List
 import warnings
 from shimmingtoolbox.masking.mask_utils import erode_binary_mask
 
-from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
@@ -16,33 +16,30 @@ ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'std', 'grad']
 
 
-class LsqOptimizer(Optimizer):
+class LsqOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.allowed_opt_criteria
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', reg_factor=0, w_signal_loss=0, epi_te=0):
+    def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', initial_guess_method='mean',
+                 reg_factor=0,  w_signal_loss_loss=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
         """
-        super().__init__(coils, unshimmed, affine)
-        self._initial_guess_method = 'mean'
-        self.initial_coefs = None
-        self.reg_factor = reg_factor
-        self.w_signal_loss = w_signal_loss
+        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
+        self.w_signal_loss_loss = w_signal_loss_loss
         self.epi_te = epi_te
-        self.reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
 
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
@@ -53,48 +50,70 @@ class LsqOptimizer(Optimizer):
             allowed_opt_criteria[3]: self._residuals_grad
             #############################################
         }
-        if opt_criteria in lsq_residual_dict:
+        lsq_jacobian_dict = {
+            allowed_opt_criteria[0]: self._residuals_mse_jacobian,
+            allowed_opt_criteria[1]: None,
+            allowed_opt_criteria[2]: None,
+            allowed_opt_criteria[3]: None
+        }
+
+        if opt_criteria in allowed_opt_criteria:
             self._criteria_func = lsq_residual_dict[opt_criteria]
+            self._jacobian_func = lsq_jacobian_dict[opt_criteria]
+            self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
 
-    @property
-    def initial_guess_method(self):
-        return self._initial_guess_method
+    def _prepare_data(self, mask):
+        """ Prepares the data for the optimization.
+        """
+        # Define coil profiles
+        n_channels = self.merged_coils.shape[3]
+        # Personalized parameters to LSQ
+        mask_vec = mask.reshape((-1,))
+        mask_erode = erode_binary_mask(mask, shape='sphere', size=3)
+        mask_erode_vec = mask_erode.reshape((-1,))
 
-    @initial_guess_method.setter
-    def initial_guess_method(self, method, coefs=None):
-        allowed_methods = ['mean', 'zeros', 'set']
-        if method not in allowed_methods:
-            raise ValueError(f"Initial_guess_method not supported. Supported methods are: {allowed_methods}")
+        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        merged_coils_Gx = np.zeros(np.shape(temp))
+        merged_coils_Gy = np.zeros(np.shape(temp))
+        merged_coils_Gz = np.zeros(np.shape(temp))
+        for ch in range(n_channels):
+            merged_coils_Gx[ch] = np.gradient(temp[ch], axis=0)
+            merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
+            merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
 
-        if method == 'set':
-            if coefs is not None:
-                self.initial_coefs = coefs
-            else:
-                raise ValueError(f"There are no coefficients to set")
+        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gz_mat = np.reshape(merged_coils_Gz,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
 
-        self._initial_guess_method = method
+        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
+
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization
         """
 
         # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))) / factor + \
-            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-            
+        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+
     def _residuals_grad_orig(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean squared error (MSE) and the signal loss function (gradient in z direction)
 
@@ -105,7 +124,7 @@ class LsqOptimizer(Optimizer):
         Returns:
             numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
         """
-        #print("w_signal_loss is: " + str(self.w_signal_loss) + "," + " epi_te is: " + str(self.epi_te) + " factor is" + str(factor))
+        #print("w_signal_loss_loss is: " + str(self.w_signal_loss_loss) + "," + " epi_te is: " + str(self.epi_te) + " factor is" + str(factor))
         nx,ny,nz,nc = np.shape(self.merged_coils)
         shimmed = self.unshimmed + np.sum(self.merged_coils * np.tile(coef,(nx,ny,nz,1)),axis= 3) # need test
         signal = 1
@@ -115,59 +134,105 @@ class LsqOptimizer(Optimizer):
             signal = signal * abs(np.sinc(self.epi_te * G))
         # MSE regularized to minimize currents
         #print("" + str(np.shape(signal)))
-        #print("in this round of optimization, residual from signal loss is : " + str(np.mean(1 - signal) * self.w_signal_loss) + ", residual from B0 inhomogeneity is: " + str(np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))) + ", residual from current is " + str((self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))))
+        #print("in this round of optimization, residual from signal loss is : " + str(np.mean(1 - signal) * self.w_signal_loss_loss) + ", residual from B0 inhomogeneity is: " + str(np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))) + ", residual from current is " + str((self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))))
         return np.mean(1 - signal) + \
-               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor * self.w_signal_loss + \
-               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-    
+               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor * self.w_signal_loss_loss + \
+               (self.reg_vector * np.mean(np.abs(coef) / self.reg_factor_channel))
+
+    #! FLAG: Which function to keep? + remove/add Gx, Gy
     def _residuals_grad(self, coef, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor):
-        #print("current Gradient residual is:" + str(np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
-        #               np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
-        #               np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss))
+        #print("current Gradient residual is:" + str(np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
+        #               np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
+        #               np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss))
         return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
-               (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel)) + \
-               np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss
-            #  np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
-            #  np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss + \
-               
-        
-    def _residuals_mse(self, coef, unshimmed_vec, coil_mat, factor):
+               np.abs(coef).dot(self.reg_vector) + \
+               np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss
+            #  np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
+            #  np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
+
+    def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array used for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization
+
+        Returns:
+            float: Residuals for least squares optimization
+        """
+        # The first version was :
+        # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
+        # self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        # For the second version we switched np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef
+        # which is way faster Then for a vector, mean(x**2) is equivalent to x.dot( x)/n
+        # it's faster to do this operation instead of a np.mean Finally np.abs(coef).dot(self.reg_vector) is
+        # equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel) For the
+        # mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432
+        # This gave us the following expression for the residuals mse :
+        # shimmed_vec = unshimmed_vec + coil_mat @ coef
+        # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
+        # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
+        # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
+
+        return a @ coef @ coef + b @ coef + c
+
+    def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to find the initial guess for the mean squared error (MSE) optimization
+
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization
         """
-
-        # MSE regularized to minimize currents
-        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
-            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        shimmed_vec = unshimmed_vec + coil_mat @ coef
+        return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the standard deviation (STD)
 
         Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            unshimmed_vec (numpy.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (numpy.ndarray): 2D flattened array (point, channel) of masked coils
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
                             avoid positive directional linesearch
 
         Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
+            float: Residuals for least squares optimization
         """
 
         # STD regularized to minimize currents
-        return np.std(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) / factor + \
-            (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        return np.std(unshimmed_vec + coil_mat @ coef) / factor + np.abs(coef).dot(self.reg_vector)
+
+    def _residuals_mse_jacobian(self, coef, a, b, c):
+        """ Jacobian of the function that we want to minimize
+        The function to minimize is :
+        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
+           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
+        The first Version of the jacobian was :
+        self.b * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector where self.b was equal
+        to 2/(len(unshimmed_vec * factor)
+        This jacobian come from the new version of the residuals mse that was implemented with the PR#451
+
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array using for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization but not used here
+
+        Returns:
+            np.ndarray : 1D array of the gradient of the mse function to minimize
+        """
+        return 2 * a @ coef + b
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
@@ -191,120 +256,40 @@ class LsqOptimizer(Optimizer):
             start_index = end_index
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
+        if self.opt_criteria == 'mse':
+            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(a, b, c),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 1000})
 
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor),
-                                   method='SLSQP',
-                                   bounds=self.merged_bounds,
-                                   constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 1000})
+        elif self.opt_criteria == 'grad':
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, self.unshimmed_Gx_vec,
+                                             self.unshimmed_Gy_vec, self.unshimmed_Gz_vec, self.coil_Gx_mat,
+                                             self.coil_Gy_mat, self.coil_Gz_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       options={'maxiter': 1000})
+
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       options={'maxiter': 1000})
+
         return currents_sp
 
-    def get_initial_guess(self):
-        """ Calculates the initial guess according to the `self.initial_guess_method`
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
 
-        Returns:
-            np.ndarray: 1d array (n_channels) containing the initial guess for the optimization
-        """
-
-        allowed_guess_method = {
-            'mean': self._initial_guess_mean_bounds,
-            'zeros': self._initial_guess_zeros,
-            'set': self._initial_guess_set
-        }
-
-        initial_guess = allowed_guess_method[self.initial_guess_method]()
-
-        return initial_guess
-
-    def _initial_guess_set(self):
-        return self.initial_coefs
-
-    def _initial_guess_mean_bounds(self):
-        """
-        Calculates the initial guess from the bounds, sets it to the mean of the bounds
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
-
-        """
-        current_0 = []
-        for bounds in self.merged_bounds:
-            avg = np.mean(bounds)
-
-            if np.isnan(avg):
-                current_0.append(0)
-            else:
-                current_0.append(avg)
-
-        return np.array(current_0)
-
-    def _initial_guess_zeros(self):
-        """
-        Return a numpy array with zeros.
-
-        Returns:
-            np.ndarray: 1d array (n_channels) of coefficient representing the initial guess
-
-        """
-        current_0 = np.zeros(len(self.merged_bounds))
-
-        return current_0
-
-    def optimize(self, mask):
-        """
-        Optimize unshimmed volume by varying current to each channel
-
-        Args:
-            mask (numpy.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
-
-        Returns:
-            numpy.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
-                           The shape of the array returned has shape corresponding to the total number of channels
-        """
-
-        # Check for sizing errors
-        self._check_sizing(mask)
-
-        # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
-        mask_vec = mask.reshape((-1,))
-        
-        mask_erode = erode_binary_mask(mask,shape='sphere',size = 3)
-        mask_erode_vec = mask.reshape((-1,))
-        # Reshape coil profile: X, Y, Z, N --> [mask.shape], N
-        #   --> N, [mask.shape] --> N, mask.size --> mask.size, N --> masked points, N
-        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
-        coil_mat = np.reshape(temp,
-                              (n_channels, -1)).T[mask_vec != 0, :]  # masked points x N
-        
-        merged_coils_Gx = np.zeros(np.shape(temp))
-        merged_coils_Gy = np.zeros(np.shape(temp))
-        merged_coils_Gz = np.zeros(np.shape(temp))
-        for ch in range(n_channels):
-            merged_coils_Gx[ch] = np.gradient(temp[ch], axis = 0)
-            merged_coils_Gy[ch] = np.gradient(temp[ch], axis = 1)
-            merged_coils_Gz[ch] = np.gradient(temp[ch], axis = 2)
-            
-        coil_Gx_mat = np.reshape(merged_coils_Gx,
-                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
-        coil_Gy_mat = np.reshape(merged_coils_Gy,
-                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
-        coil_Gz_mat = np.reshape(merged_coils_Gz,
-                              (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
-                              
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
-        
-        unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed,axis=0), (-1,))[mask_erode_vec != 0]  # mV'
-        unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed,axis=1), (-1,))[mask_erode_vec != 0]  # mV'
-        unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed,axis=2), (-1,))[mask_erode_vec != 0]  # mV'
-                
         scipy_constraints = self._define_scipy_constraints()
-
-        # Set up output currents
-        currents_0 = self.get_initial_guess()
-
         # Optimize
         # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
         # warning
@@ -316,10 +301,24 @@ class LsqOptimizer(Optimizer):
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
             # regularization on the currents has no affect on the output stability factor.
-            stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec, np.zeros_like(coil_mat), unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor=1)
+            if self.opt_criteria == 'mse':
+                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
+                                                           np.zeros_like(coil_mat),
+                                                           factor=1)
+            elif self.opt_criteria == 'grad':
+                self._prepare_data(self.mask)
+                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
+                                                       np.zeros_like(coil_mat),
+                                                       self.unshimmed_Gx_vec, self.unshimmed_Gy_vec,
+                                                       self.unshimmed_Gz_vec, self.coil_Gx_mat, self.coil_Gy_mat, self.coil_Gz_mat,
+                                                       factor=1)
+            else:
+                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
+                                                       np.zeros_like(coil_mat),
+                                                       factor=1)
 
-            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor=stability_factor)
-
+            currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
+                                               factor=stability_factor)
         if not currents_sp.success:
             raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
 
@@ -343,17 +342,16 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (numpy.ndarray): 3d array of unshimmed volume
-            affine (numpy.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            unshimmed (np.ndarray): 3d array of unshimmed volume
+            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, opt_criteria, reg_factor=reg_factor)
+        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
-        self.initial_guess_method = 'zeros'
 
     def _define_scipy_constraints(self):
         """Redefined from super() to include more constraints"""
@@ -442,12 +440,24 @@ class PmuLsqOptimizer(LsqOptimizer):
 
         return constraints
 
-    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, scipy_constraints, factor):
+    def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
+        if self.opt_criteria == 'mse':
+            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
 
-        currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                   args=(unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor),
-                                   method='SLSQP',
-                                   constraints=tuple(scipy_constraints),
-                                   options={'maxiter': 30000})
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(a, b, c),
+                                       method='SLSQP',
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 500})
+
+        else:
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 500})
+
         return currents_sp

@@ -1,7 +1,7 @@
 .. _dynamic_shimming:
 
-Dynamic Shimming
-----------------
+Dynamic Shimming Tutorial
+-------------------------
 
 In this tutorial, we will learn the following:
 

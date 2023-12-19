@@ -88,7 +88,31 @@ def test_cli_mask_threshold():
 
         out = os.path.join(tmp, 'mask.nii.gz')
         thr = 780
-        result = runner.invoke(mask_cli, ['threshold', '--input', inp, '--output', out, '--thr', thr])
+        result = runner.invoke(mask_cli, ['threshold', '--input', inp, '--output', out, '--thr', thr],
+                               catch_exceptions=False)
+
+        # With a threshold value of 780, the expected mask for the positions [58:62, 28:31, 7:9] is :
+        expected = np.array([[[1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
+                             [[1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],
+                             [[0.0, 1.0], [0.0, 0.0], [0.0, 0.0]],
+                             [[0.0, 1.0], [0.0, 0.0], [0.0, 0.0]]])
+
+        nii = nib.load(out)
+        mask = nii.get_fdata()
+
+        assert result.exit_code == 0
+        assert np.all(mask[58:62, 28:31, 7:9] == expected)
+
+
+def test_cli_mask_threshold_scaled():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        out = os.path.join(tmp, 'mask.nii.gz')
+        thr = 0.412
+        result = runner.invoke(mask_cli, ['threshold', '--input', inp, '--output', out, '--thr', thr,
+                                          '--scaled-thr'],
+                               catch_exceptions=False)
 
         # With a threshold value of 780, the expected mask for the positions [58:62, 28:31, 7:9] is :
         expected = np.array([[[1.0, 1.0], [0.0, 1.0], [0.0, 0.0]],

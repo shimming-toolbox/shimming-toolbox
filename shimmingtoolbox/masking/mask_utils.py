@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='None', dilation_size=3,
-                  path_output=None):
+                  path_output=None, return_non_dil_mask=False):
     """
     Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
 
@@ -26,11 +26,11 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
         path_output (str): Path to output debug artefacts.
+        return_non_dil_mask (bool): See if we want to return the dilated and non dilated resampled mask
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
     """
-
     mask_from = nii_mask_from.get_fdata()
 
     if from_slices is None:
@@ -42,13 +42,10 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
 
     # Create nibabel object of sliced mask
     nii_mask = nib.Nifti1Image(sliced_mask.astype(float), nii_mask_from.affine, header=nii_mask_from.header)
-
     # Resample the sliced mask onto nii_target
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
-
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
-
     # TODO: Deal with soft mask
     # Find highest value and stretch to 1
     # Look into dilation of soft mask
@@ -59,12 +56,20 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
-    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
-        nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    # if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+    #     nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
+    #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
+    #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
 
-    return nii_mask_dilated
+    if return_non_dil_mask:
+        mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
+        nii_mask_resampled = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
+
+        return nii_mask_resampled, nii_mask_dilated
+
+    else:
+
+        return nii_mask_dilated
 
 
 def dilate_binary_mask(mask, shape='sphere', size=3):

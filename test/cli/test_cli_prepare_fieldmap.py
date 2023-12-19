@@ -23,29 +23,15 @@ fname_phase1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 's
 fname_phase2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_1_echo():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output',
-                                                      fname_output], catch_exceptions=False)
-
-        assert result.exit_code == 0
-        assert os.path.isfile(fname_output)
-        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
-
-
-@pytest.mark.prelude
-def test_cli_prepare_fieldmap_2_echos():
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        runner = CliRunner()
-
-        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
-
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag_fieldmap,
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--unwrapper', 'skimage',
                                                       '--output', fname_output], catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -53,7 +39,23 @@ def test_cli_prepare_fieldmap_2_echos():
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
-@pytest.mark.prelude
+def test_cli_prepare_fieldmap_2_echos():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2,
+                                                      '--mag', fname_mag_fieldmap,
+                                                      '--unwrapper', 'skimage',
+                                                      '--output', fname_output],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
+
+
 def test_cli_prepare_fieldmap_3_echos():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
@@ -88,19 +90,21 @@ def test_cli_prepare_fieldmap_3_echos():
         with open(fname_json3, 'w') as outfile:
             json.dump(json_1, outfile, indent=2)
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, fname_phase3, '--mag',
-                                                      fname_mag_fieldmap,
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, fname_phase3,
+                                                      '--mag', fname_mag_fieldmap,
+                                                      '--unwrapper', 'skimage',
                                                       '--output', fname_output], catch_exceptions=False)
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_default_output():
     runner = CliRunner()
 
-    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2, '--mag', fname_mag_fieldmap],
+    result = runner.invoke(prepare_fieldmap_cli, [fname_phase1, fname_phase2,
+                                                  '--mag', fname_mag_fieldmap,
+                                                  '--unwrapper', 'skimage'],
                            catch_exceptions=False)
 
     assert result.exit_code == 0
@@ -110,15 +114,18 @@ def test_cli_prepare_fieldmap_default_output():
     os.remove(os.path.join(os.curdir, 'fieldmap.json'))
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_gaussian():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output',
-                                                      fname_output, '--gaussian-filter', 'True', '--sigma', 1],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--unwrapper', 'skimage',
+                                                      '--output', fname_output,
+                                                      '--gaussian-filter', 'True',
+                                                      '--sigma', 1],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -126,7 +133,6 @@ def test_cli_prepare_fieldmap_gaussian():
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_autoscale():
     """Tests the CLI with autoscale False"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -148,8 +154,11 @@ def test_cli_prepare_fieldmap_autoscale():
         # Set up other paths
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_rescaled, '--mag', fname_mag_realtime, '--output',
-                                                      fname_output, '--autoscale-phase', 'False'],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_rescaled,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--unwrapper', 'skimage',
+                                                      '--output', fname_output,
+                                                      '--autoscale-phase', 'False'],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -157,23 +166,26 @@ def test_cli_prepare_fieldmap_autoscale():
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
+@pytest.mark.prelude
 def test_cli_prepare_fieldmap_wrong_ext():
     runner = CliRunner()
 
     fname_output = 'fieldmap.txt'
 
     with pytest.raises(ValueError,
-                       match="Output filename must have one of the following extensions: '.nii', '.nii.gz'"):
+                       match=r"Output filename: .* must have one of the following extensions: '.nii', '.nii.gz'"):
         runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output', fname_output],
                       catch_exceptions=False)
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_default_fname_output():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
-        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff, '--mag', fname_mag_realtime, '--output', tmp],
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--unwrapper', 'skimage',
+                                                      '--output', tmp],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
@@ -181,18 +193,35 @@ def test_cli_prepare_fieldmap_default_fname_output():
         assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))
 
 
-@pytest.mark.prelude
 def test_cli_prepare_fieldmap_savemask():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
-        fname_output_mask = os.path.join(tmp, 'output_mask.nii.gz')
+        fname_output_mask = os.path.join(tmp, 'a', 'output_mask.nii.gz')
 
         result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
                                                       '--mag', fname_mag_realtime,
+                                                      '--unwrapper', 'skimage',
                                                       '--savemask', fname_output_mask,
                                                       '--output', fname_output], catch_exceptions=False)
 
         assert result.exit_code == 0
         assert os.path.isfile(fname_output_mask)
+
+
+@pytest.mark.prelude
+def test_cli_prepare_fieldmap_prelude():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
+
+        result = runner.invoke(prepare_fieldmap_cli, [fname_phasediff,
+                                                      '--mag', fname_mag_realtime,
+                                                      '--output', fname_output,
+                                                      '--unwrapper', 'prelude'], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'fieldmap.json'))

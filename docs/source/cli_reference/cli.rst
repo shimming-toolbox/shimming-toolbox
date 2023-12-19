@@ -1,3 +1,4 @@
+.. _cli_reference:
 
 Command Line Tools
 ==================
@@ -7,16 +8,17 @@ The following section outlines the CLI of shimming-toolbox.
 .. contents::
    :local:
    :depth: 2
-..
 
-Fieldmapping
-------------
+Field mapping
+-------------
 
 .. click:: shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli
    :prog: st_prepare_fieldmap
 
 Shimming
 --------
+
+.. _st_b0shimming:
 
 .. click:: shimmingtoolbox.cli.b0shim:b0shim_cli
    :prog: st_b0shim
@@ -38,6 +40,15 @@ File Conversion
 .. click:: shimmingtoolbox.cli.dicom_to_nifti:dicom_to_nifti_cli
    :prog: st_dicom_to_nifti
 
+Coil Profile Generation
+-----------------------
+
+.. _st_create_coil_profiles:
+
+.. click:: shimmingtoolbox.cli.create_coil_profiles:coil_profiles_cli
+   :prog: st_create_coil_profiles
+   :nested: full
+
 Image manipulation
 ------------------
 
@@ -54,6 +65,9 @@ Miscellaneous
 
 .. click:: shimmingtoolbox.cli.download_data:download_data
    :prog: st_download_data
+
+.. click:: shimmingtoolbox.cli.sort_dicoms:sort_dicoms
+   :prog: st_sort_dicoms
 
 System Tools
 ------------

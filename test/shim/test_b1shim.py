@@ -49,12 +49,12 @@ def test_b1shim_algo_2_no_target():
         b1shim(b1, algorithm=2)
 
 
-def test_b1shim_algo_3(caplog):
+def test_b1shim_algo_3():
     shim_weights = b1shim(b1, algorithm=3, q_matrix=vop)
     assert len(shim_weights) == b1.shape[3], "The number of shim weights does not match the number of coils"
 
 
-def test_b1shim_algo_4(caplog):
+def test_b1shim_algo_4():
     shim_weights = b1shim(b1, algorithm=4)
     assert len(shim_weights) == b1.shape[3], "The number of shim weights does not match the number of coils"
 

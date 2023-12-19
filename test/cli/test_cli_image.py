@@ -13,7 +13,7 @@ from shimmingtoolbox import __dir_testing__
 
 
 class TestImageConcat(object):
-    def setup(self):
+    def setup_method(self):
         path_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat')
         self.list_fname = [os.path.join(path_anat, 'sub-realtime_unshimmed_e1.nii.gz'),
                            os.path.join(path_anat, 'sub-realtime_unshimmed_e2.nii.gz'),
@@ -53,10 +53,10 @@ class TestImageConcat(object):
 
 
 class TestImageLogicalAnd(object):
-    def setup(self):
+    def setup_method(self):
         affine_1 = np.eye(4)
-        self.nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]]), affine=affine_1)
-        self.nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]]), affine=affine_1)
+        self.nii1 = nib.Nifti1Image(np.array([[[1, 1], [1, 1]], [[0, 0], [0, 0]]], dtype=np.uint8), affine=affine_1)
+        self.nii2 = nib.Nifti1Image(np.array([[[0, 0], [1, 1]], [[1, 1], [0, 0]]], dtype=np.uint8), affine=affine_1)
 
         mask_3 = np.ones([8, 8])
         mask_3[0, 0] = 0

@@ -5,6 +5,7 @@ import json
 import pathlib
 import pytest
 import tempfile
+import shutil
 
 from shimmingtoolbox.dicom_to_nifti import *
 from shimmingtoolbox import __dir_testing__
@@ -33,7 +34,7 @@ def test_dicom_to_nifti():
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
                     assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}",
-                                                       'fmap', f"sub-{subject_id}_{modality}{i}.{ext}"))
+                                                       'anat', f"sub-{subject_id}_{modality}{i}.{ext}"))
 
 
 @pytest.mark.dcm2niix
@@ -66,7 +67,7 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
             for ext in ['nii.gz', 'json']:
                 assert os.path.exists(
                     os.path.join(path_nifti, f"sub-{subject_id}", sequence_type,
-                                 f"sub-{subject_id}_unshimmed_e{i+1}.{ext}"))
+                                 f"sub-{subject_id}_magnitude{i+1}.{ext}"))
 
         sequence_type = 'func'
         for ext in ['nii.gz', 'json']:
@@ -120,6 +121,45 @@ def test_dicom_to_nifti_path_config_invalid(test_dcm2niix_installation):
                 subject_id=subject_id,
                 fname_config_dcm2bids=os.path.join(tmp, "invalid_folder")
             )
+
+
+def test_rename_dual_echo():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        subject_id = 'fieldmap'
+        path_fmap = os.path.join(tmp, f"sub-{subject_id}", 'fmap')
+        os.mkdir(os.path.join(tmp, f"sub-{subject_id}"))
+        os.mkdir(path_fmap)
+        fname_json_e1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.json')
+        with open(fname_json_e1) as json_file:
+            json_data = json.load(json_file)
+        del json_data['EchoTime']
+        json_data['EchoTime1'] = 1
+        json_data['EchoTime2'] = 2
+        json_data['SequenceName'] = 'fl2d2'
+        fname_json_e1_new = os.path.join(path_fmap, 'sub-fieldmap_phase1.json')
+        with open(fname_json_e1_new, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+
+        fname_json_e2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.json')
+        with open(fname_json_e2) as json_file:
+            json_data = json.load(json_file)
+        del json_data['EchoTime']
+        json_data['EchoTime1'] = 1
+        json_data['EchoTime2'] = 2
+        json_data['SequenceName'] = 'fl2d2'
+        fname_json_e2_new = os.path.join(path_fmap, 'sub-fieldmap_phase2.json')
+        with open(fname_json_e2_new, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=4)
+
+        fname_nii_e1 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase1.nii.gz')
+        fname_nii_e1_new = os.path.join(path_fmap, 'sub-fieldmap_phase1.nii.gz')
+        shutil.copyfile(fname_nii_e1, fname_nii_e1_new)
+        fname_nii_e2 = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_phase2.nii.gz')
+        fname_nii_e2_new = os.path.join(path_fmap, 'sub-fieldmap_phase2.nii.gz')
+        shutil.copyfile(fname_nii_e2, fname_nii_e2_new)
+
+        rename_phasediff(tmp, subject_id)
+        assert os.path.isfile(fname_nii_e2_new)
 
 
 def test_fix_tfl_b1():

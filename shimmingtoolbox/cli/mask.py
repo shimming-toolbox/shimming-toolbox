@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
 import click
+import logging
 import nibabel as nib
 import numpy as np
 import os
-import logging
 
-import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
+import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -55,7 +55,7 @@ def box(fname_input, output, size, center, verbose):
     if len(data.shape) == 3:
         mask_cb = shape_cube(data, size[0], size[1], size[2], center[0], center[1], center[2])  # creation
         # of the box mask
-        mask_cb = mask_cb.astype(int)
+        mask_cb = mask_cb.astype(np.int32)
         nii_img = nib.Nifti1Image(mask_cb, nii.affine)
         nib.save(nii_img, output)
         click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
@@ -114,7 +114,7 @@ def rect(fname_input, output, size, center, verbose):
             # on each slice (2D)
             mask_sqr[:, :, z] = mask_slice  # addition of each masked slice to form a 3D array
 
-        mask_sqr = mask_sqr.astype(int)
+        mask_sqr = mask_sqr.astype(np.int32)
         nii_img = nib.Nifti1Image(mask_sqr, nii.affine)
         nib.save(nii_img, output)
         click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
@@ -151,7 +151,7 @@ def sphere(fname_input, fname_output, radius, center, verbose):
     # API for sphere mask
     mask = shape_sphere(nii.get_fdata(), radius, center[0], center[1], center[2])
 
-    nii_mask = nib.Nifti1Image(mask.astype(int), affine=nii.affine, header=nii.header)
+    nii_mask = nib.Nifti1Image(mask.astype(np.int32), affine=nii.affine, header=nii.header)
     nib.save(nii_mask, fname_output)
 
 
@@ -165,11 +165,15 @@ def sphere(fname_input, fname_output, radius, center, verbose):
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'), show_default=True,
               help="Name of output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask.nii.gz'))")
-@click.option('--thr', default=30, help="Value to threshold the data: voxels will be set to zero if their "
-                                        "value is equal or less than this threshold. (default: 30)")
+@click.option('--thr', type=click.FLOAT, default=30.0, show_default=True,
+              help="Value to threshold the data: voxels will be set to zero if their value is equal or less than this"
+                   " threshold.")
+@click.option('--scaled-thr', is_flag=True, default=False, show_default=True,
+              help="Indicate whether the --thr option is scaled from 0 to 1 (True) or according to the values within "
+                   "the input (False). Default: False")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def threshold(fname_input, output, thr, verbose):
-    
+def threshold(fname_input, output, thr, scaled_thr, verbose):
+
     # Set all loggers
     set_all_loggers(verbose)
 
@@ -179,8 +183,8 @@ def threshold(fname_input, output, thr, verbose):
     nii = nib.load(fname_input)
     data = nii.get_fdata()  # convert nifti file to numpy array
 
-    mask_thr = shimmingtoolbox.masking.threshold.threshold(data, thr)  # creation of the threshold mask
-    mask_thr = mask_thr.astype(int)
+    mask_thr = shimmingtoolbox.masking.threshold.threshold(data, thr, scaled_thr)  # creation of the threshold mask
+    mask_thr = mask_thr.astype(np.int32)
     nii_img = nib.Nifti1Image(mask_thr, nii.affine)
     nib.save(nii_img, output)
     click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
