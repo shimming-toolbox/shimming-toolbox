@@ -26,14 +26,13 @@ Typical usage example:
     b0_sim.save('Phase', 'b0_mapping_data.nii', format='nifti')
 """
 
-import os, json
 from copy import deepcopy
-from pathlib import Path
-
+import json
+import os
 import nibabel as nib
 import numpy as np
+from pathlib import Path
 from scipy.io import savemat
-
 from phantominator import shepp_logan
 
 np.seterr(divide="ignore", invalid="ignore")
