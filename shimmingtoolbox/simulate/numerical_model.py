@@ -112,60 +112,30 @@ class NumericalModel:
                            ``[m b]`` where m (Hz/pixel) is the slope and b is the floor
                            field (Hz).
         """
+        m = params[0]
+        b = params[1]
+
+        dims = self._starting_volume.shape
+        if len(dims) == 2:
+            [X, Y] = np.meshgrid(
+                np.linspace(-dims[0], dims[0], dims[0]),
+                np.linspace(-dims[1], dims[1], dims[1]))
+            Z = 0
+
+        if len(dims) == 3:
+            [X, Y, Z] = np.meshgrid(
+                np.linspace(-dims[0], dims[0], dims[0]),
+                np.linspace(-dims[1], dims[1], dims[1]),
+                np.linspace(-dims[2], dims[2], dims[2]))
 
         if field_type == "x":
-            m = params[0]
-            b = params[1]
-
-            dims = self._starting_volume.shape
-
-            if len(dims) == 2:
-
-                [X, _] = np.meshgrid(
-                    np.linspace(-dims[0], dims[0], dims[0]),
-                    np.linspace(-dims[1], dims[1], dims[1]))
-            if len(dims) == 3:
-
-                    [X, _, _] = np.meshgrid(
-                        np.linspace(-dims[0], dims[0], dims[0]),
-                        np.linspace(-dims[1], dims[1], dims[1]),
-                        np.linspace(-dims[2], dims[2], dims[2]))
             self.deltaB0 = m * X + b
-
-        if field_type == "y":
-            m = params[0]
-            b = params[1]
-
-            dims = self._starting_volume.shape
-
-            if len(dims) == 2:
-                [_, Y] = np.meshgrid(
-                    np.linspace(-dims[0], dims[0], dims[0]),
-                    np.linspace(-dims[1], dims[1], dims[1]))
-            if len(dims) == 3:
-                [_, Y, _] = np.meshgrid(
-                    np.linspace(-dims[0], dims[0], dims[0]),
-                    np.linspace(-dims[1], dims[1], dims[1]),
-                    np.linspace(-dims[2], dims[2], dims[2]))
+        elif field_type == "y":
             self.deltaB0 = m * Y + b
-
-        if field_type == "z":
-            m = params[0]
-            b = params[1]
-
-            dims = self._starting_volume.shape
-
-            if len(dims) == 2:
-                Z = 0
-
-            if len(dims) == 3:
-                [_, _, Z] = np.meshgrid(
-                    np.linspace(-dims[0], dims[0], dims[0]),
-                    np.linspace(-dims[1], dims[1], dims[1]),
-                    np.linspace(-dims[2], dims[2], dims[2]))
+        elif field_type == "z":
             self.deltaB0 = m * Z + b
         else:
-            Exception("Undefined deltaB0 field type")
+            ValueError("Undefined deltaB0 field type")
 
         self.deltaB0 = self.deltaB0 / (self.gamma / (2 * np.pi))
 
