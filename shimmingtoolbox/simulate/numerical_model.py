@@ -148,6 +148,7 @@ class NumericalModel:
                     np.linspace(-dims[1], dims[1], dims[1]),
                     np.linspace(-dims[2], dims[2], dims[2]))
             self.deltaB0 = m * Y + b
+
         if field_type == "z":
             m = params[0]
             b = params[1]
@@ -278,7 +279,7 @@ class NumericalModel:
     def get_imaginary(self):
         return np.imag(self.measurement)
 
-    def save(self, data_type, file_name, format=None):
+    def save(self, data_type, file_name, format=None, manufacturer='Simulated'):
         """Exports simulated data to a file with a JSON sidecar.
 
         Resets the measurement class attribute to zero before simulating. Simulates
@@ -287,11 +288,12 @@ class NumericalModel:
 
         Args:
             data_type: Export data type. "Magnitude", "Phase", "Real", or
-                "Imaginary".
+                       "Imaginary".
             file_name: Filename of exported file, with or without file extension.
             format: File format for exported data. If no value given, will attempt
-                to extract format from filename file extension, otherwise default
-                to NIfTI.
+                    to extract format from filename file extension, otherwise default
+                    to NIfTI.
+            manufacturer (str): Manufacturer to be written in the Json sidecar. Defaults to simulated.
         """
         if format is None:
             format = "nifti"
@@ -327,10 +329,10 @@ class NumericalModel:
                 nib.save(img, fname_nifti)
 
                 fname_json = os.path.join(file_name + "_TE" + str(i_echo))
-                self._write_json(fname_json, te)
+                self._write_json(fname_json, te, manufacturer=manufacturer)
         elif format == "mat":
             savemat(Path(file_name + ".mat"), {"vol": vol})
-            self._write_json(file_name, self.TE)
+            self._write_json(file_name, self.TE, manufacturer=manufacturer)
 
     def _customize_shepp_logan(self, volume, class1, class2, class3):
 
@@ -365,8 +367,8 @@ class NumericalModel:
             self.T2_star["CSF"],
         )
 
-    def _write_json(self, file_name, te):
-        pulse_seq_properties = {"EchoTime": te, "FlipAngle": self.FA, "Manufacturer": "GE"}
+    def _write_json(self, file_name, te, manufacturer='Simulated'):
+        pulse_seq_properties = {"EchoTime": te, "FlipAngle": self.FA, "Manufacturer": manufacturer}
 
         with open(Path(file_name + ".json"), "w") as outfile:
             json.dump(pulse_seq_properties, outfile)

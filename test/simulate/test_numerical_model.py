@@ -133,7 +133,7 @@ class TestNumericalModel(object):
         )
 
     # --------------generate_deltaB0 method tests-------------- #
-    def test_generate_deltaB0_linear_floor_value(self):
+    def test_generate_deltaB0_x_floor_value(self):
 
         test_obj = NumericalModel(model="shepp-logan")
 
@@ -144,10 +144,38 @@ class TestNumericalModel(object):
         deltaB0_map = test_obj.deltaB0
 
         assert np.allclose(
-            np.mean(deltaB0_map[:]), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
         )
 
-    def test_generate_deltaB0_linear_slope_value(self):
+    def test_generate_deltaB0_y_floor_value(self):
+
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 0
+        b = 2
+        test_obj.generate_deltaB0("y", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        assert np.allclose(
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+        )
+
+    def test_generate_deltaB0_z_floor_value(self):
+
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 0
+        b = 2
+        test_obj.generate_deltaB0("z", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        assert np.allclose(
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+        )
+
+    def test_generate_deltaB0_x_slope_value(self):
         test_obj = NumericalModel(model="shepp-logan")
 
         m = 1
@@ -157,14 +185,55 @@ class TestNumericalModel(object):
         deltaB0_map = test_obj.deltaB0
 
         dims = deltaB0_map.shape
-        [X, Y] = np.meshgrid(
+        [X, _] = np.meshgrid(
             np.linspace(-dims[0], dims[0], dims[0]),
             np.linspace(-dims[1], dims[1], dims[1]),
         )
 
         assert np.allclose(
-            deltaB0_map[int(dims[0] / 2), int(dims[0] / 4)],
-            m * X[int(dims[0] / 2), int(dims[0] / 4)] / (test_obj.gamma / (2 * np.pi)),
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * X[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
+        )
+
+    def test_generate_deltaB0_y_slope_value(self):
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 1
+        b = 0
+        test_obj.generate_deltaB0("y", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        dims = deltaB0_map.shape
+        [_, Y] = np.meshgrid(
+            np.linspace(-dims[0], dims[0], dims[0]),
+            np.linspace(-dims[1], dims[1], dims[1]),
+        )
+
+        assert np.allclose(
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * Y[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
+        )
+
+    def test_generate_deltaB0_z_slope_value(self):
+        test_obj = NumericalModel(model="shepp-logan", n_slices=4)
+
+        m = 1
+        b = 0
+        test_obj.generate_deltaB0("z", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        dims = deltaB0_map.shape
+        [_, _, Z] = np.meshgrid(
+            np.linspace(-dims[0], dims[0], dims[0]),
+            np.linspace(-dims[1], dims[1], dims[1]),
+            np.linspace(-dims[2], dims[2], dims[2])
+        )
+
+        assert np.allclose(
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * Z[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
         )
 
     # --------------simulate_signal method tests-------------- #
@@ -194,7 +263,7 @@ class TestNumericalModel(object):
         assert np.isreal(test_obj.get_real().all())
         assert np.isreal(test_obj.get_imaginary().all())
 
-    def test_simulate_signal_SNR_results_in_noisy_backgroun(self):
+    def test_simulate_signal_SNR_results_in_noisy_background(self):
         test_obj = NumericalModel(model="shepp-logan")
 
         FA = 15
@@ -265,21 +334,29 @@ class TestNumericalModel(object):
 
         # create temporary directory
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename))
+            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename), manufacturer="Siemens")
             # Default option for save is a NIfTI output.
 
             assert os.path.isfile(os.path.join(tmp, self.test_filename + "_TE0" + ".nii"))
+            assert os.path.isfile(os.path.join(tmp, self.test_filename + "_TE1" + ".nii"))
 
-            fname = os.path.join(tmp, self.test_filename + "_TE0" + ".json")
-
+            fname0 = os.path.join(tmp, self.test_filename + "_TE0" + ".json")
+            fname1 = os.path.join(tmp, self.test_filename + "_TE1" + ".json")
             # Verify that JSON was written correctly
-            assert os.path.isfile(fname)
+            assert os.path.isfile(fname0)
+            assert os.path.isfile(fname1)
 
-            with open(str(fname)) as f:
-                data = json.load(f)
+            with open(str(fname0)) as f:
+                data0 = json.load(f)
+            with open(str(fname1)) as f:
+                data1 = json.load(f)
 
-            np.testing.assert_equal(data["EchoTime"], TE[0])
-            np.testing.assert_equal(data["FlipAngle"], FA)
+            np.testing.assert_equal(data0["EchoTime"], TE[0])
+            np.testing.assert_equal(data0["FlipAngle"], FA)
+            np.testing.assert_equal(data0["Manufacturer"], 'Siemens')
+            np.testing.assert_equal(data1["EchoTime"], TE[1])
+            np.testing.assert_equal(data1["FlipAngle"], FA)
+            np.testing.assert_equal(data1["Manufacturer"], 'Siemens')
 
     def test_save_nii_with_extension(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -305,6 +382,7 @@ class TestNumericalModel(object):
 
             np.testing.assert_equal(data["EchoTime"], TE[0])
             np.testing.assert_equal(data["FlipAngle"], FA)
+            np.testing.assert_equal(data["Manufacturer"], 'Simulated')
 
     def test_save_mat(self):
         test_obj = NumericalModel(model="shepp-logan")
