@@ -15,31 +15,129 @@ PHASE_SCALING_SIEMENS = 4096
 
 
 def get_acquisition_times(nii_data, json_data):
-    """Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+    """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
         nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
         json_data (dict): Json dict corresponding to a nifti sidecar.
 
     Returns:
-        numpy.ndarray: Acquisition timestamps in ms.
-
+        numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
     """
     # Get number of volumes
     n_volumes = nii_data.header['dim'][4]
+    n_slices = nii_data.shape[2]
 
-    delta_t = json_data['RepetitionTime'] * 1000  # [ms]
-    acq_start_time_iso = json_data['AcquisitionTime']  # ISO format
+    # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
+    deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
+
+    # json_data['AcquisitionTime'] Time the acquisition of data for this image started (ISO format)
+    acq_start_time_iso = json_data['AcquisitionTime']
     acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
 
-    return np.linspace(acq_start_time_ms, ((n_volumes - 1) * delta_t) + acq_start_time_ms, n_volumes)  # [ms]
+    # Start time for each volume [ms]
+    volume_start_times = np.linspace(acq_start_time_ms,
+                                     ((n_volumes - 1) * deltat_volume) + acq_start_time_ms,
+                                     n_volumes)
+
+    def get_middle_of_slice_timing(data, n_sli):
+        """ Return the best guess of when the middle of k-space was acquired for each slice. Return an array of 0 if no
+            best guess is implemented
+
+        Args:
+            data (dict): Json dict corresponding to a nifti sidecar.
+            n_sli (int): Number of slices in the volume.
+
+        Returns:
+            np.ndarray: Slice timing in ms (n_slices).
+        """
+
+        # Can be '2D' or 3D
+        mr_acquisition_type = data.get('MRAcquisitionType')
+        if mr_acquisition_type != '2D':
+            # mr_acquisition_type is None or 3D
+            logger.warning("MR acquisition type is not 2D or not set.")
+            return np.zeros(n_slices)
+
+        # list containing the time at which each slice was acquired
+        slice_timing_start = data.get('SliceTiming')
+        if slice_timing_start is None:
+            if n_sli == 1:
+                # Slice timing information does not seem to be defined if there is only one slice
+                slice_timing_start = [0.0]
+            else:
+                logger.warning("No slice timing information found in JSON file.")
+                return np.zeros(n_slices)
+
+        # Convert to ms
+        slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
+
+        phase_encode_steps = int(data.get('PhaseEncodingSteps'))
+        repetition_slice_excitation = float(data.get('RepetitionTimeExcitation'))
+        if repetition_slice_excitation is None or phase_encode_steps is None:
+            logger.warning("Not enough information to figure out each slice time.")
+            return np.zeros(n_slices)
+
+        # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
+        # (more than one slice acquired within a TR excitation)
+        repetition_slice_excitation = repetition_slice_excitation * 1000  # [ms]
+        # Remove slices that are at 0 ms (acquired during the first TR excitation)
+        slice_timing_start_no_zero = slice_timing_start[slice_timing_start > 0]
+        # If there are other slices acquired that happen before the next TR excitation, then this is interleaved
+        # multi-slice
+        if np.any(slice_timing_start_no_zero < repetition_slice_excitation):
+            logger.warning("Interleaved multi-slice acquisition detected.")
+            return np.zeros(n_slices)
+
+        pulse_sequence_details = data.get('PulseSequenceDetails')
+        if pulse_sequence_details is None:
+            logger.warning("No PulseSequenceDetails name found in JSON file.")
+            return np.zeros(n_slices)
+
+        if "%CustomerSeq%\\gre_field_mapping_PMUlog" == pulse_sequence_details:
+            # This protocol acquires 2 echos with 2 different TRs
+            deltat_slice = repetition_slice_excitation * phase_encode_steps * 2
+        elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
+            deltat_slice = repetition_slice_excitation * phase_encode_steps
+        else:
+            logger.warning("Protocol name not recognized.")
+            return np.zeros(n_slices)
+
+        # Todo: When partial fourier is used, crossing of the middle of k-space is shifted, for a_gre, I simulated it
+        # and it seems to start with the "smaller" side
+
+        # Error check
+        deltat_vol = float(json_data['RepetitionTime']) * 1000  # [ms]
+        if (deltat_slice * n_sli) > deltat_vol:
+            logger.warning("Slice timing is longer than volume timing.")
+
+        slice_timing_mid = slice_timing_start + (deltat_slice/2)
+
+        return slice_timing_mid
+
+    slice_timing_middle = get_middle_of_slice_timing(json_data, n_slices)
+    timing = np.zeros((n_volumes, n_slices))
+    if np.all(slice_timing_middle == 0):
+        logger.warning("Could not figure out the slice timing. Using one time-point per volume instead.")
+        # If the slice timing is set to 0, then we could not figure out the slice timing, then set the best guess to
+        # the time required to get to the middle of the volume
+        for i in range(n_volumes):
+            timing[i, :] = np.repeat(volume_start_times[i] - (deltat_volume), n_slices)
+    else:
+        # If we figured out the slice timing, then we can use it to get the timing of each slice for each volume
+        for i in range(n_volumes):
+            timing[i, :] = volume_start_times[i] + slice_timing_middle  # [ms]
+
+    return timing  # [ms]
 
 
 def load_nifti(path_data, modality='phase'):
-    """Load data from a directory containing NIFTI type file with nibabel.
+    """ Load data from a directory containing NIFTI type file with nibabel.
+
     Args:
         path_data (str): Path to the directory containing the file(s) to load
         modality (str): Modality to read nifti (can be phase or magnitude)
+
     Returns:
         nibabel.Nifti1Image.Header: List containing headers for every Nifti file
         dict: List containing all information in JSON format from every Nifti image
