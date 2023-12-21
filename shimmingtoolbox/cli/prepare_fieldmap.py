@@ -33,7 +33,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "standard data, it would be preferable to set this option to False and input your phase data from "
                    "-pi to pi to avoid unwanted rescaling")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True),
-              help="Input path for a mask. Mask must be the same shape as the array of each PHASE input.")
+              help="Input path for a mask.")
 @click.option('--threshold', 'threshold', type=float, show_default=True, default=0.05,
               help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower "
                    "than the threshold are set to 0.")
@@ -74,8 +74,7 @@ def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
         autoscale (bool): Tells whether to auto rescale phase inputs according to manufacturer standards. If you have
                           non siemens data not automatically converted from dcm2niix, you should set this to False and
                           input phase data from -pi to pi.
-        fname_mask (str): Input path for a mask. Mask must be the same shape as the array of each PHASE input.
-                          Used for PRELUDE
+        fname_mask (str): Input path for a mask. Used for PRELUDE
         threshold (float): Threshold for masking. Used for: PRELUDE
         fname_save_mask (str): Filename of the mask calculated by the unwrapper
         gaussian_filter (bool): Gaussian filter for B0 map
@@ -106,8 +105,7 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
         autoscale (bool): Tells whether to auto rescale phase inputs according to manufacturer standards. If you have
                           non siemens data not automatically converted from dcm2niix, you should set this to False and
                           input phase data from -pi to pi.
-        fname_mask (str): Input path for a mask. Mask must be the same shape as the array of each PHASE input.
-                          Used for PRELUDE
+        fname_mask (str): Input path for a mask. Used for PRELUDE
         threshold (float): Threshold for masking. Used for: PRELUDE
         gaussian_filter (bool): Gaussian filter for B0 map
         sigma (float): Standard deviation of gaussian filter. Used for: gaussian_filter
@@ -152,12 +150,12 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
 
     # Import mask
     if fname_mask is not None:
-        mask = nib.load(fname_mask).get_fdata()
+        nii_mask = nib.load(fname_mask)
     else:
-        mask = None
+        nii_mask = None
 
     fieldmap_hz, save_mask = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
-                                              mask=mask, threshold=threshold, gaussian_filter=gaussian_filter,
+                                              nii_mask=nii_mask, threshold=threshold, gaussian_filter=gaussian_filter,
                                               sigma=sigma, fname_save_mask=fname_save_mask)
 
     # Create nii fieldmap
