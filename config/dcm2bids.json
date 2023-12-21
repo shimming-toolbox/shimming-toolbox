@@ -96,6 +96,38 @@
         },
         {
             "datatype": "anat",
+            "suffix": "inv-1_MP2RAGE",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d1_16.*",
+                "ProtocolName": ".*mp2rage.*",
+                "SeriesDescription": ".*_INV1",
+                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "inv-2_MP2RAGE",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d1_16.*",
+                "ProtocolName": ".*mp2rage.*",
+                "SeriesDescription": ".*_INV2",
+                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "UNIT1",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d1_16.*",
+                "ProtocolName": ".*mp2rage.*",
+                "ImageType": [".*", ".*", "M", "UNI", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
