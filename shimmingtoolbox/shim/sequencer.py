@@ -1703,7 +1703,6 @@ class RealTimeSequencer(Sequencer):
 
 
 def new_bounds_from_currents(currents:dict, old_bounds:dict):
-    #! Modify description if everything works
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".

@@ -167,7 +167,6 @@ class Optimizer(object):
         return coil_profiles, bounds
 
     def merge_bounds(self):
-        #! Modified
         """
         Merge the coil profile bounds into a single array.
 

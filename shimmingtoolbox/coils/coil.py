@@ -20,7 +20,6 @@ required_constraints = [
 
 
 class Coil(object):
-    # ! Modify description if everything works
     """
     Coil profile object that stores coil profiles and there constraints
 
@@ -188,7 +187,6 @@ class ScannerCoil(Coil):
 
 
 def get_scanner_constraints(manufacturers_model_name, orders):
-    # ! Modified
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
 
