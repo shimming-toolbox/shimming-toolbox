@@ -125,11 +125,11 @@ def rename_phasediff(path_nifti, subject_id):
             # Open the json file
             with open(fname_json) as json_file:
                 json_data = json.load(json_file)
-                # Make sure it is a phase data and that the keys EchoTime1 and EchoTime2 are defined and that
-                # sequenceName's last digit is 2 (refers to number of echoes when using dcm2bids)
+                # Make sure it is phase data and that the keys EchoTime1 and EchoTime2 are defined and that
+                # the tag "sequenceName" includes fm2d2 which is Siemens' sequence that outputs a phasediff
                 if ('ImageType' in json_data) and ('P' in json_data['ImageType']) and \
                    ('EchoTime1' in json_data) and ('EchoTime2' in json_data) and \
-                   ('SequenceName' in json_data) and (int(json_data['SequenceName'][-1]) == 2) and \
+                   ('SequenceName' in json_data) and ('fm2d2' in json_data['SequenceName']) and \
                    ('EchoNumber' in json_data) and (int(json_data['EchoNumber']) == 2):
                     # Make sure it is not already named phasediff
                     if len(os.path.basename(fname_json).split(subject_id, 1)[-1].rsplit('phasediff', 1)) == 1:

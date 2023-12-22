@@ -66,6 +66,9 @@ Miscellaneous
 .. click:: shimmingtoolbox.cli.download_data:download_data
    :prog: st_download_data
 
+.. click:: shimmingtoolbox.cli.sort_dicoms:sort_dicoms
+   :prog: st_sort_dicoms
+
 System Tools
 ------------
 
