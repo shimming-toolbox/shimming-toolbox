@@ -204,7 +204,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '3',
                                              '--output', tmp],
                                 catch_exceptions=False)
 

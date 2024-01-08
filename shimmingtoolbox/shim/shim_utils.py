@@ -172,12 +172,19 @@ def phys_to_shim_cs(coefs, manufacturer):
         flip_mat = np.ones(len(coefs))
         # Order 1
         if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, xyz=True)
+            flip_mat[:3] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=[1, ])
         # Order 2
-        elif len(coefs) >= 8:
-            flip_mat[:8] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer)
+        elif len(coefs) == 8:
+            flip_mat[:8] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=[1, 2])
+        elif len(coefs) > 8:
+            if manufacturer == 'SIEMENS':
+                # Siemens has a 3rd order
+                flip_mat[:12] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=[1, 2, 3])
+            else:
+                logger.warning(f"3rd order conversion of Shim Settings not supported for manufacturer: {manufacturer}")
+                flip_mat[:15] = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=[1, 2, 3])
         else:
-            logger.warning("Order not supported")
+            logger.warning("Conversion of Shim settings coefficients not supported")
 
         coefs = flip_mat * coefs
 

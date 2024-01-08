@@ -49,13 +49,13 @@ def spherical_harmonics(orders, x, y, z):
             - 8: *x^2 - y^2*
 
         - basis[:, :, :, 8:15] to 3rd-order terms
-            - 9: *y(3x^2 - y^2)*
+            - 9: *y(x^2 - y^2)*
             - 10: *xyz*
-            - 11: *y(5z^2 - r^2)*
-            - 12: *5z^3 - 3zr^2*
-            - 13: *x(5z^2 - r^2)*
+            - 11: *yz^2*
+            - 12: *z^3*
+            - 13: *xz^2*
             - 14: *z(x^2 - y^2)*
-            - 15: *x(x^2 - 3y^2)*
+            - 15: *x(x^2 - y^2)*
 
         Based on
             - spherical_harmonics.m by topfer@ualberta.ca

@@ -110,15 +110,15 @@ def test_ge_basis(x, y, z):
 
 class TestGetFlipMatrix:
     def test_flip_cs(self):
-        out = get_flip_matrix('RAS', xyz=True)
+        out = get_flip_matrix('RAS', orders=[1, ])
         assert np.all(out == [1, 1, 1])
 
     def test_flip_cs_lpi(self):
-        out = get_flip_matrix('LPI', xyz=True)
+        out = get_flip_matrix('LPI', orders=[1, ])
         assert np.all(out == [-1, -1, -1])
 
     def test_flip_cs_order2(self):
-        out = get_flip_matrix('LAI', xyz=False)
+        out = get_flip_matrix('LAI', orders=[1, 2])
         assert np.all(out == [1, -1, -1, -1, -1, 1, 1, 1])
 
     def test_flip_cs_len4(self):
@@ -130,15 +130,16 @@ class TestGetFlipMatrix:
             get_flip_matrix('LAP')
 
     def test_flip_siemens(self):
-        out = get_flip_matrix('LAI', xyz=False, manufacturer='Siemens')
-        assert np.all(out == [-1, 1, -1, 1, 1, -1, 1, -1])
+        out = get_flip_matrix('LAI', orders=[1, 2, 3], manufacturer='Siemens')
+        # TODO: Verify 3rd order
+        assert np.all(out == [-1, 1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1])
 
     def test_flip_ge(self):
-        out = get_flip_matrix('LPI', xyz=False, manufacturer='GE')
+        out = get_flip_matrix('LPI', orders=[1, 2], manufacturer='GE')
         assert np.all(out == [-1, -1, -1, 1, 1, 1, 1, 1])
 
     def test_flip_philips(self):
-        out = get_flip_matrix('RPI', xyz=False, manufacturer='PHILIPS')
+        out = get_flip_matrix('RPI', orders=[1, 2], manufacturer='PHILIPS')
         assert np.all(out == [1, -1, -1, 1, -1, 1, 1, -1])
 
 
