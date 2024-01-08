@@ -105,7 +105,7 @@ def b0shim_cli():
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
               " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--epi-echo-time', 'epi_te', type=click.FLOAT, required=False, default=0.0, show_default=True,
-              help="EPI acquistion parameter Echo Time (TE). relevant for signal recovery") #! FLAG: TE in ms?
+              help="EPI acquistion parameter Echo Time (TE) in seconds. Relevant for signal recovery")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
