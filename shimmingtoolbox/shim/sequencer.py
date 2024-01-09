@@ -618,6 +618,7 @@ class ShimSequencer(Sequencer):
             shimmed_masked(np.ndarray): Masked shimmed fieldmap
             mask (np.ndarray): Binary mask in the fieldmap space
         """
+        mask = erode_binary_mask(shimmed_masked, shape='sphere', size=3)
         # Plot
         mt_unshimmed = montage(unshimmed)
         mt_unshimmed_masked = montage(unshimmed * mask)
