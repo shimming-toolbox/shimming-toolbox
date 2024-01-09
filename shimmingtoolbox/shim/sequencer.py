@@ -434,9 +434,9 @@ class ShimSequencer(Sequencer):
                     grad_temp = np.gradient(shimmed_temp, axis = 2)
                     full_Gz[:,:,slc] = grad_temp[:,:,slc]
                     # Apply the correction weighted according to the mask
-                    full_shimmed[:,:,slc] = shimmed_temp[:,:,slc] #! FLAG: no modification?
+                    full_shimmed[:,:,slc] = shimmed_temp[:,:,slc]
 
-            shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections) #! FLAG: Mask not eroded. To be modified if erosion is necessary
+            shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
             # eroded_mask_binary = erode_binary_mask(mask_full_binary,shape='sphere',size=3)
             if len(self.slices) == 1:
                 # TODO: Output json sidecar

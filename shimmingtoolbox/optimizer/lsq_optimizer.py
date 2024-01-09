@@ -114,32 +114,6 @@ class LsqOptimizer(OptimizerUtils):
         # MAE regularized to minimize currents
         return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
-    def _residuals_grad_orig(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize the mean squared error (MSE) and the signal loss function (gradient in z direction)
-
-        Args:
-            coef (numpy.ndarray): 1D array of channel coefficients
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
-        Returns:
-            numpy.ndarray: Residuals for least squares optimization -- equivalent to flattened shimmed vector
-        """
-        #print("w_signal_loss_loss is: " + str(self.w_signal_loss_loss) + "," + " epi_te is: " + str(self.epi_te) + " factor is" + str(factor))
-        nx,ny,nz,nc = np.shape(self.merged_coils)
-        shimmed = self.unshimmed + np.sum(self.merged_coils * np.tile(coef,(nx,ny,nz,1)),axis= 3) # need test
-        signal = 1
-        # if consider signal loss from x, y, and z
-        for i in range(2,3):
-            G = np.gradient(shimmed, axis=i)
-            signal = signal * abs(np.sinc(self.epi_te * G))
-        # MSE regularized to minimize currents
-        #print("" + str(np.shape(signal)))
-        #print("in this round of optimization, residual from signal loss is : " + str(np.mean(1 - signal) * self.w_signal_loss_loss) + ", residual from B0 inhomogeneity is: " + str(np.mean(np.abs(unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)))) + ", residual from current is " + str((self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))))
-        return np.mean(1 - signal) + \
-               np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor * self.w_signal_loss_loss + \
-               (self.reg_vector * np.mean(np.abs(coef) / self.reg_factor_channel))
-
-    #! FLAG: Which function to keep? + remove/add Gx, Gy
     def _residuals_grad(self, coef, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor):
         #print("current Gradient residual is:" + str(np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
         #               np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
