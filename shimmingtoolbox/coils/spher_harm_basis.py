@@ -299,8 +299,11 @@ def scaled_spher_harm(x, y, z, all_orders, shim_cs='ras'):
     # - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
     scaling_factors = _get_scaling_factors()
     scaled = np.zeros_like(spher_harm_cs)
-    for i_channel in range(0, spher_harm_cs.shape[3]):
-        scaled[:, :, :, i_channel] = scaling_factors[i_channel] * spher_harm_cs[:, :, :, i_channel]
+    index = 0
+    for order in all_orders:
+        scaled[:, :, :, index:index + ORDER_INDEXES[order]] = np.array(scaling_factors[order]).squeeze() \
+            * spher_harm_cs[:, :, :, index:index + ORDER_INDEXES[order]]
+        index += ORDER_INDEXES[order]
 
     # 1 uT/m, 1 uT/m2 in Hz/mm, Hz/mm2
     return scaled
@@ -348,12 +351,13 @@ def _get_scaling_factors():
     r = [1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1]
 
     # scaling:
-    orders = [1, 1, 1, 2, 2, 2, 2, 2]
-
-    for i_ch in range(0, n_channels):
-        field = sh[:, :, :, i_ch]
-        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
-
+    orders = [1, 2]
+    scaling_factors = {}
+    index = 0
+    for order in orders:
+        scaling_factors[order] = [GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** order)
+                                  / sh[:, :, :, i_ch][i_ref[i_ch]] for i_ch in range(index, index + ORDER_INDEXES[order])]
+        index += ORDER_INDEXES[order]
     return scaling_factors
 
 
