@@ -295,7 +295,6 @@ def convert_spher_harm_to_dict(spher_harm, orders):
 
     Returns:
         dict: Dictionary of 3D arrays, where each key is the order of the spherical harmonic
-
     """
 
     spher_harm_dict = {}
@@ -321,12 +320,15 @@ def convert_spher_harm_to_array(spher_harm_dict):
 def reorder_to_manufacturer(spher_harm, manufacturer):
     """
     Reorder 1st - 2nd - 3rd order coefficients, if specified. From
-    1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, y(x2 - y2), xyz, yz2, z3, xz^2, z(x2 - y2), x(x2 - y2)
-     (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
 
-    2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, z3,  xz^2, yz2, z(x2 - y2) (in line with Siemens shims) or
-    2. x, y, z, xy, zy, zx, X2 - Y2, z2 (in line with GE scaling matrix) or
-    2. X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
+    Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, y(x2 - y2), xyz, yz2, z3, xz^2, z(x2 - y2), x(x2 - y2)
+    (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
+
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, z3,  xz^2, yz2, z(x2 - y2) (in line with Siemens shims) or
+
+    x, y, z, xy, zy, zx, X2 - Y2, z2 (in line with GE scaling matrix) or
+
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
 
     Args:
         spher_harm (dict): 3D array of spherical harmonics coefficients with key corresponding to the order
