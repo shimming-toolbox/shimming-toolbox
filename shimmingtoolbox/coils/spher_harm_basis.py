@@ -9,7 +9,7 @@ from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 logger = logging.getLogger(__name__)
 
 GYROMAGNETIC_RATIO = 42.5774785178325552  # [MHz/T]
-
+ORDER_INDEXES = {1: 3, 2: 5}
 
 def siemens_basis(x, y, z, orders=(1, 2), shim_cs='LAI'):
     """
@@ -52,14 +52,20 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs='LAI'):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics from first to second order
-    all_orders = np.array(range(1, 3))
+    all_orders = np.array([order for order in orders if order != 0])
     spher_harm = scaled_spher_harm(x, y, z, all_orders, shim_cs=shim_cs)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
-    reordered_spher = _reorder_to_siemens(spher_harm)
+    reordered_spher = _reorder_to_siemens(spher_harm, orders)
 
     # Select order
-    range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
+    range_per_order = {}
+    index = 0
+    for order in orders:
+        range_per_order[order] = list(range(index, index + ORDER_INDEXES[order]))
+        index += ORDER_INDEXES[order]
+
+    # range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
     output = np.zeros(reordered_spher[..., 0].shape + (length_dim3,), dtype=reordered_spher.dtype)
     start_index = 0
@@ -72,7 +78,7 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs='LAI'):
     return output
 
 
-def _reorder_to_siemens(spher_harm):
+def _reorder_to_siemens(spher_harm, orders):
     """
     Reorder 1st - 2nd order coefficients along the last dim. From
     1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
@@ -81,15 +87,28 @@ def _reorder_to_siemens(spher_harm):
     Args:
         spher_harm (numpy.ndarray): Coefficients with the last dimensions representing the different order channels.
                                     ``spher_harm.shape[-1]`` must equal 8.
+        orders (tuple): Spherical harmonics orders to use
 
     Returns:
         numpy.ndarray: Coefficients ordered following Siemens convention
     """
+    if orders == (1, 2):
+        if spher_harm.shape[-1] != 8:
+            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
 
-    if spher_harm.shape[-1] != 8:
-        raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+        reordered = spher_harm[..., [2, 0, 1, 5, 6, 4, 7, 3]]
 
-    reordered = spher_harm[..., [2, 0, 1, 5, 6, 4, 7, 3]]
+    if orders == (2,):
+        if spher_harm.shape[-1] != 5:
+            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 5")
+
+        reordered = spher_harm[..., [2, 3, 1, 4, 0]]
+
+    if orders == (1,):
+        if spher_harm.shape[-1] != 3:
+            raise RuntimeError(f"Input arrays should have 4th dimension's shape equal to 3 {spher_harm.shape}")
+
+        reordered = spher_harm[..., [2, 0, 1]]
 
     return reordered
 
@@ -132,7 +151,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics from first to second order
-    all_orders = np.array(range(1, 3))
+    all_orders = np.array([order for order in orders if order != 0])
     spher_harm = scaled_spher_harm(x, y, z, all_orders, shim_cs=shim_cs)
 
     # The following matrix (8 x 5) refers to the following:
@@ -163,31 +182,41 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
     # [0.85228, 2.3916, -0.10486, 0.48776, -305.75]])
 
     # Reorder according to GE convention: x, y, z, xy, zy, zx, X2-Y2, z2
-    reordered_spher = _reorder_to_ge(spher_harm)
+    reordered_spher = _reorder_to_ge(spher_harm, orders)
 
     # Scale
     # Hz/cm2/A, -> uT/m2/A = order2_to_order2 * 1e6 * (100 ** 2) / (GYROMAGNETIC_RATIO * 1e6)
     # = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
     orders_to_order2_uT = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
 
+
     # Order 2
     scaled = np.zeros_like(reordered_spher)
-    for i_channel in range(reordered_spher.shape[3]):
-        if i_channel in [0, 1, 2]:
+    index = 0
+    if 1 in orders:
 
-            # Rescale to unit-shims that are G/cm
-            # They are currently in uT/m
-            # 1G = 1e-4T, 1T = 1e4G
-            # uT/m --> G/cm = reordered_spher * (1/1e6) * 1e4  * 100 = reordered_sphere
-            scaled[..., i_channel] = reordered_spher[..., i_channel]
-        else:
+        # Rescale to unit-shims that are G/cm
+        # They are currently in uT/m
+        # 1G = 1e-4T, 1T = 1e4G
+        # uT/m --> G/cm = reordered_spher * (1/1e6) * 1e4  * 100 = reordered_sphere
+        scaled[..., 0:ORDER_INDEXES[1]] = reordered_spher[..., 0:ORDER_INDEXES[1]]
+        index += ORDER_INDEXES[1]
+
+    if 2 in orders:
+        for i_channel in range(index, index + ORDER_INDEXES[2]):
             # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
             # uT/m^2 / A
             # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/mm^2 / mA
-            scaled[..., i_channel] = np.matmul(reordered_spher[..., 3:], orders_to_order2_uT[i_channel - 3, :]) / 1000
+            scaled[..., i_channel] = np.matmul(reordered_spher[..., index:index + ORDER_INDEXES[2]],
+                                               orders_to_order2_uT[i_channel - index, :]) / 1000
 
     # Output according to the specified order
-    range_per_order = {1: list(range(3)), 2: list(range(3, 8))}
+    range_per_order = {}
+    index = 0
+    for order in orders:
+        range_per_order[order] = list(range(index, index + ORDER_INDEXES[order]))
+        index += ORDER_INDEXES[order]
+
     length_dim3 = np.sum([len(values) for key, values in range_per_order.items() if key in orders])
     output = np.zeros(scaled[..., 0].shape + (length_dim3,), dtype=scaled.dtype)
     start_index = 0
@@ -200,7 +229,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs='LPI'):
     return output
 
 
-def _reorder_to_ge(spher_harm):
+def _reorder_to_ge(spher_harm, orders):
     """
     Reorder 1st - 2nd order coefficients along the last dim. From
     1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
@@ -214,15 +243,25 @@ def _reorder_to_ge(spher_harm):
         numpy.ndarray: Coefficients ordered following GE convention
     """
 
-    if spher_harm.shape[-1] != 8:
-        raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+    if orders == (1, 2):
+        if spher_harm.shape[-1] != 8:
+            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 8")
+        reordered = spher_harm[..., [2, 0, 1, 3, 4, 6, 7, 5]]
 
-    reordered = spher_harm[..., [2, 0, 1, 3, 4, 6, 7, 5]]
+    if orders == (2,):
+        if spher_harm.shape[-1] != 5:
+            raise RuntimeError("Input arrays should have 4th dimension's shape equal to 5")
+        reordered = spher_harm[..., [0, 1, 3, 4, 2]]
+
+    if orders == (1,):
+        if spher_harm.shape[-1] != 3:
+            raise RuntimeError(f"Input arrays should have 4th dimension's shape equal to 3 {spher_harm.shape}")
+        reordered = spher_harm[..., [2, 0, 1]]
 
     return reordered
 
 
-def scaled_spher_harm(x, y, z, orders=(1, 2), shim_cs='ras'):
+def scaled_spher_harm(x, y, z, all_orders, shim_cs='ras'):
     """ The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. It is then:
 
@@ -246,22 +285,25 @@ def scaled_spher_harm(x, y, z, orders=(1, 2), shim_cs='ras'):
         numpy.ndarray: 4d basis set of spherical harmonics scaled
     """
     # Check inputs
-    _check_basis_inputs(x, y, z, orders)
+    _check_basis_inputs(x, y, z, all_orders)
 
     # Create spherical harmonics from first to second order
-    all_orders = np.array([1, 2])
     spher_harm = spherical_harmonics(all_orders, x, y, z)
     # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2 (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics)
 
-    spher_harm_cs = get_flip_matrix(shim_cs) * spher_harm
+    # spher_harm_cs = _reorder_to_siemens(spher_harm, tuple(all_orders))
+    spher_harm_cs = get_flip_matrix(shim_cs, all_orders) * spher_harm
 
     # scale according to
     # - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
     # - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
     scaling_factors = _get_scaling_factors()
     scaled = np.zeros_like(spher_harm_cs)
-    for i_channel in range(0, spher_harm_cs.shape[3]):
-        scaled[:, :, :, i_channel] = scaling_factors[i_channel] * spher_harm_cs[:, :, :, i_channel]
+    index = 0
+    for order in all_orders:
+        scaled[:, :, :, index:index + ORDER_INDEXES[order]] = np.array(scaling_factors[order]).squeeze() \
+            * spher_harm_cs[:, :, :, index:index + ORDER_INDEXES[order]]
+        index += ORDER_INDEXES[order]
 
     # 1 uT/m, 1 uT/m2 in Hz/mm, Hz/mm2
     return scaled
@@ -309,12 +351,13 @@ def _get_scaling_factors():
     r = [1, 1, 1, np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1]
 
     # scaling:
-    orders = [1, 1, 1, 2, 2, 2, 2, 2]
-
-    for i_ch in range(0, n_channels):
-        field = sh[:, :, :, i_ch]
-        scaling_factors[i_ch] = GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** orders[i_ch]) / field[i_ref[i_ch]]
-
+    orders = [1, 2]
+    scaling_factors = {}
+    index = 0
+    for order in orders:
+        scaling_factors[order] = [GYROMAGNETIC_RATIO * ((r[i_ch] * 0.001) ** order)
+                                  / sh[:, :, :, i_ch][i_ref[i_ch]] for i_ch in range(index, index + ORDER_INDEXES[order])]
+        index += ORDER_INDEXES[order]
     return scaling_factors
 
 
@@ -330,7 +373,7 @@ def _check_basis_inputs(x, y, z, orders):
         raise NotImplementedError("Spherical harmonics not implemented for order 3 and up")
 
 
-def get_flip_matrix(shim_cs='ras', manufacturer=None, xyz=False):
+def get_flip_matrix(shim_cs='ras', orders=(1,2), manufacturer=None):
     """
     Return a matrix to flip the spherical harmonics basis set from ras to the desired coordinate system.
 
@@ -360,30 +403,31 @@ def get_flip_matrix(shim_cs='ras', manufacturer=None, xyz=False):
     if shim_cs[2] == 'I':
         xyz_cs[2] = -1
 
+    temp_list_out = []
+    if 1 in orders:
+        # Y, Z, X
+        out_matrix = temp_list_out.extend([xyz_cs[1], xyz_cs[2], xyz_cs[0]])
+    if 2 in orders:
+        # XY, ZY, ZX, X2 - Y2
+        out_matrix = temp_list_out.extend([xyz_cs[0] * xyz_cs[1],
+                                           xyz_cs[2] * xyz_cs[1], 1,
+                                           xyz_cs[2] * xyz_cs[0], 1])
     # Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
-    out_matrix = np.array([xyz_cs[1], xyz_cs[2],
-                           xyz_cs[0], xyz_cs[0] * xyz_cs[1],
-                           xyz_cs[2] * xyz_cs[1], 1,
-                           xyz_cs[2] * xyz_cs[0], 1])
+    out_matrix = np.array(temp_list_out)
 
     if manufacturer is not None:
         manufacturer = manufacturer.upper()
-
     if manufacturer == 'SIEMENS':
-        out_matrix = _reorder_to_siemens(out_matrix)
+        out_matrix = _reorder_to_siemens(out_matrix, orders)
     elif manufacturer == 'GE':
-        out_matrix = _reorder_to_ge(out_matrix)
+        out_matrix = _reorder_to_ge(out_matrix, orders)
     elif manufacturer == 'PHILIPS':
         logger.warning("Philips shim CS not implemented yet")
     else:
         # Do not reorder if the manufacturer is not specified
         pass
 
-    if xyz:
-        # X, Y, Z
-        return out_matrix[:3]
-    else:
-        # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
-        # GE: x, y, z, xy, zy, zx, X2 - Y2, z2
-        # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
-        return out_matrix
+    # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
+    # GE: x, y, z, xy, zy, zx, X2 - Y2, z2
+    # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
+    return out_matrix
