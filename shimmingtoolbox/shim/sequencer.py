@@ -437,7 +437,7 @@ class ShimSequencer(Sequencer):
                     full_shimmed[:,:,slc] = shimmed_temp[:,:,slc] #! FLAG: no modification?
 
             shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections) #! FLAG: Mask not eroded. To be modified if erosion is necessary
-
+            # eroded_mask_binary = erode_binary_mask(mask_full_binary,shape='sphere',size=3)
             if len(self.slices) == 1:
                 # TODO: Output json sidecar
                 # TODO: Update the shim settings if Scanner coil?
@@ -593,6 +593,7 @@ class ShimSequencer(Sequencer):
                                                             order=0,
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
+        # mask_full_binary = erode_binary_mask(mask_full_binary,shape='sphere',size=9)
         # Find the correction
         # This is the same as this but in a faster way:
         # for i_shim in range(len(slices)):
