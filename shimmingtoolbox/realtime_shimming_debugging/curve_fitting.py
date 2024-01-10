@@ -368,16 +368,34 @@ def get_linear_regressions(gradients, pressures):
     return regressions
 
 
+def get_inhale_data(data, grad, pressures, times):
+    pressures_grad = np.gradient(pressures.squeeze())
+    inspiration_indexes = np.where(pressures_grad > 500)[0]
+    data = data[inspiration_indexes]
+    grad = grad[inspiration_indexes]
+    pressures = pressures[inspiration_indexes]
+    times = times[inspiration_indexes]
+    return data, grad, pressures, times
+
+
+def get_exhale_data(data, grad, pressures, times):
+    pressures_grad = np.gradient(pressures.squeeze())
+    inspiration_indexes = np.where(pressures_grad < -500)[0]
+    data = data[inspiration_indexes]
+    grad = grad[inspiration_indexes]
+    pressures = pressures[inspiration_indexes]
+    times = times[inspiration_indexes]
+    return data, grad, pressures, times
+
+
 def main():
     field_map, mag, mask, acq_timestamps, acq_pressures = \
         load_data(FIELD_MAP_PATH_2, MAG_PATH_2, FNAME_JSON_2, MASK_PATH, PMU_PATH)
-
     fm_masked = prep_fm(field_map, mag, mask, threshold=200)
     curve_funcs, curve_derivatives = fit_realtime_2d_curve(fm_masked, b_spline_fit, degree=2)
     fitted_data, fitted_grad = get_data_from_fit(curve_funcs, curve_derivatives, fm_masked)
     plot_2d_curve(fitted_data, fitted_grad, acq_pressures, acq_timestamps)
     regressions = get_linear_regressions(fitted_grad, acq_pressures)
-
 
 
 if __name__ == '__main__':
