@@ -36,6 +36,7 @@ def auto_mask_mrs(fname_input, raw_data, X, Y, Z, V):
 
     if X is not None and Y is not None and Z is not None and V is not None:
         # If X,Y,Z,V arguments were provided, execute this block
+        MRS_voxel_thick = V
         scanner_coordinate = np.array([X, Y, Z, 1])
         logger.info(f"Scanner position: {scanner_coordinate}")
 
@@ -75,7 +76,8 @@ def auto_mask_mrs(fname_input, raw_data, X, Y, Z, V):
     json_dir = os.path.join(data_dir, json_name)
 
     # Open the JSON file
-    json_file = os.path.join(json_dir,'.json')
+    json_file = json_dir+'.json'
+
     with open(json_file, 'r') as info:
         # Load the data from the json file
         header = json.load(info)
