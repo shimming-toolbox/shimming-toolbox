@@ -8,7 +8,7 @@ import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
-import shimmingtoolbox.masking.auto_mask_mrs
+import shimmingtoolbox.masking.mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -322,7 +322,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 @click.option('-Z', 'z_position', type=click.FLOAT, help="scanner's Z position in mm [optional]")
 @click.option('-V', 'voxel_size', type=click.FLOAT, help="MRS voxel size in mm [optional]")
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def auto_mask_mrs(fname_input, output, raw_data, x_position, y_position, z_position, voxel_size, verbose):
+def mask_mrs(fname_input, output, raw_data, x_position, y_position, z_position, voxel_size, verbose):
 
     # Set all loggers
     set_all_loggers(verbose)
@@ -331,7 +331,7 @@ def auto_mask_mrs(fname_input, output, raw_data, x_position, y_position, z_posit
     create_output_dir(output, is_file=True)
 
     nii = nib.load(fname_input)
-    mask_mrs = shimmingtoolbox.masking.auto_mask_mrs.auto_mask_mrs(fname_input, raw_data, x_position, y_position, z_position, voxel_size) # creation of the MRS mask
+    mask_mrs = shimmingtoolbox.masking.mask_mrs.mask_mrs(fname_input, raw_data, x_position, y_position, z_position, voxel_size) # creation of the MRS mask
     mask_mrs = mask_mrs.astype(np.int32)
     nii_img = nib.Nifti1Image(mask_mrs, nii.affine)
     nib.save(nii_img, output)

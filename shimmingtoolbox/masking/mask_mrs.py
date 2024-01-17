@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def auto_mask_mrs(fname_input, raw_data, X, Y, Z, V):
+def mask_mrs(fname_input, raw_data, X, Y, Z, V):
     """
     Create a mask to shim single voxel MRS
 
@@ -32,7 +32,7 @@ def auto_mask_mrs(fname_input, raw_data, X, Y, Z, V):
     """
 
     if fname_input is None:
-        raise FileNotFoundError(f"The file '{fname_input}' was not found. See: st_mask auto_mask_mrs -h")
+        raise FileNotFoundError(f"The file '{fname_input}' was not found. See: st_mask mask_mrs -h")
 
     if X is not None and Y is not None and Z is not None and V is not None:
         # If X,Y,Z,V arguments were provided, execute this block
@@ -43,7 +43,7 @@ def auto_mask_mrs(fname_input, raw_data, X, Y, Z, V):
     else:
         # If X,Y,Z,V arguments were NOT provided, execute this block
         if raw_data is None:
-            raise FileNotFoundError(f"The file '{raw_data}' was not found. If X,Y,Z and V are not directly given the raw-data must be given to read these info, See: st_mask auto_mask_mrs -h")
+            raise FileNotFoundError(f"The file '{raw_data}' was not found. If X,Y,Z and V are not directly given the raw-data must be given to read these info, See: st_mask mask_mrs -h")
         else:
             logger.info("Reading the twix raw-data")
 
