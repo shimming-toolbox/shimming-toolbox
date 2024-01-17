@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import time
 import numpy as np
 import scipy.optimize as opt
 from typing import List
@@ -83,10 +84,6 @@ class LsqOptimizer(OptimizerUtils):
             merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
             merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
 
-        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
-                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
-        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
-                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
         self.coil_Gz_mat = np.reshape(merged_coils_Gz,
                                     (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
 
@@ -112,17 +109,10 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # MAE regularized to minimize currents
+        start_time = time.time()
+        result = np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+        print('time for calculating the residuals_mae is {}'.format(time.time() - start_time))
         return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
-
-    def _residuals_grad(self, coef, unshimmed_vec, coil_mat, unshimmed_Gx_vec, unshimmed_Gy_vec, unshimmed_Gz_vec, coil_Gx_mat, coil_Gy_mat, coil_Gz_mat, factor):
-        #print("current Gradient residual is:" + str(np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
-        #               np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
-        #               np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss))
-        return np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor + \
-               np.abs(coef).dot(self.reg_vector) + \
-               np.mean((unshimmed_Gz_vec + np.sum(coil_Gz_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss
-            #  np.mean((unshimmed_Gx_vec + np.sum(coil_Gx_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
-            #  np.mean((unshimmed_Gy_vec + np.sum(coil_Gy_mat * coef, axis=1, keepdims=False)) ** 2) * self.w_signal_loss_loss + \
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
@@ -149,8 +139,18 @@ class LsqOptimizer(OptimizerUtils):
         # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
         # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
         # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
-
+        start_time = time.time()
+        result = a @ coef @ coef + b @ coef + c
+        print('time for calculating the residuals_mse is {}'.format(time.time() - start_time))
         return a @ coef @ coef + b @ coef + c
+
+    def _residuals_grad(self, coef, a, b, c, unshimmed_Gz_vec, coil_Gz_mat):
+        start_time = time.time()
+        result = a @ coef @ coef + b @ coef + c + \
+                    np.mean((unshimmed_Gz_vec + coil_Gz_mat @ coef) ** 2) * self.w_signal_loss_loss
+        end_time = time.time()
+        print('time for calculating the residuals_grad is {}'.format(end_time - start_time))
+        return result
 
     def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to find the initial guess for the mean squared error (MSE) optimization
@@ -242,10 +242,10 @@ class LsqOptimizer(OptimizerUtils):
                                        options={'maxiter': 1000})
 
         elif self.opt_criteria == 'grad':
+            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, self.unshimmed_Gx_vec,
-                                             self.unshimmed_Gy_vec, self.unshimmed_Gz_vec, self.coil_Gx_mat,
-                                             self.coil_Gy_mat, self.coil_Gz_mat, factor),
+                                       args=(a, b, c, self.unshimmed_Gz_vec,
+                                             self.coil_Gz_mat),
                                        method='SLSQP',
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
@@ -281,11 +281,9 @@ class LsqOptimizer(OptimizerUtils):
                                                            factor=1)
             elif self.opt_criteria == 'grad':
                 self._prepare_data(self.mask)
-                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
-                                                       np.zeros_like(coil_mat),
-                                                       self.unshimmed_Gx_vec, self.unshimmed_Gy_vec,
-                                                       self.unshimmed_Gz_vec, self.coil_Gx_mat, self.coil_Gy_mat, self.coil_Gz_mat,
-                                                       factor=1)
+                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
+                                                           np.zeros_like(coil_mat),
+                                                           factor=1)
             else:
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
                                                        np.zeros_like(coil_mat),
