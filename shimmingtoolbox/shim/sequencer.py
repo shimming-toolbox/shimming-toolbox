@@ -642,7 +642,7 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=-100, vmax=100, cmap='jet') #! FLAG: Had to change vmin and vmax
         ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
                      f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
@@ -654,7 +654,7 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_shimmed_masked, vmin=-100, vmax=100, cmap='jet') #! FLAG: Had to change vmin and vmax
         ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
                      f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
@@ -818,7 +818,8 @@ class ShimSequencer(Sequencer):
         #
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                    f"abs mean: {metric_unshimmed_absmean:.3}")
+                    f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
+        # Change title font size
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -830,7 +831,7 @@ class ShimSequencer(Sequencer):
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                    f"abs mean: {metric_shimmed_absmean:.3}")
+                    f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -880,7 +881,7 @@ class ShimSequencer(Sequencer):
         #
         im = ax.imshow(mt_unshimmed_masked, vmin=-30, vmax=30, cmap='jet')
         ax.set_title(f"Before shimming Gz \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                    f"abs mean: {metric_unshimmed_absmean:.3}")
+                    f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -892,7 +893,7 @@ class ShimSequencer(Sequencer):
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=-30, vmax=30, cmap='jet')
         ax.set_title(f"After shimming Gz \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                    f"abs mean: {metric_shimmed_absmean:.3}")
+                    f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
