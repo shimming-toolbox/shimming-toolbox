@@ -158,6 +158,30 @@ class OptimizerUtils(Optimizer):
 
         return a, b, c
 
+    def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
+        len_unshimmed = len(unshimmed_vec)
+        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
+        inv_factor = 1 / (len_unshimmed * factor)
+        w_inv_factor = self.w_signal_loss_loss / len_unshimmed_Gz
+
+        # MSE term for unshimmed_vec and coil_mat
+        a1 = inv_factor * (coil_mat.T @ coil_mat)
+        b1 = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        c1 = inv_factor * (unshimmed_vec @ unshimmed_vec)
+
+        # MSE term for unshimmed_Gz_vec and coil_Gz_mat
+        a2 = w_inv_factor * (self.coil_Gz_mat.T @ self.coil_Gz_mat)
+        b2 = 2 * w_inv_factor * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
+        c2 = w_inv_factor * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
+
+        # Combining the terms
+        a = a1 + a2
+        b = b1 + b2
+        c = c1 + c2
+        e = self.reg_vector
+
+        return a, b, c, e
+
     @abstractmethod
     def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
         """

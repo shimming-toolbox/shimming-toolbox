@@ -55,7 +55,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
             allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: None
+            allowed_opt_criteria[3]: self._residuals_grad_jacobian
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -139,17 +139,10 @@ class LsqOptimizer(OptimizerUtils):
         # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
         # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
         # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
-        start_time = time.time()
-        result = a @ coef @ coef + b @ coef + c
-        print('time for calculating the residuals_mse is {}'.format(time.time() - start_time))
         return a @ coef @ coef + b @ coef + c
 
-    def _residuals_grad(self, coef, a, b, c, unshimmed_Gz_vec, coil_Gz_mat):
-        start_time = time.time()
-        result = a @ coef @ coef + b @ coef + c + \
-                    np.mean((unshimmed_Gz_vec + coil_Gz_mat @ coef) ** 2) * self.w_signal_loss_loss
-        end_time = time.time()
-        print('time for calculating the residuals_grad is {}'.format(end_time - start_time))
+    def _residuals_grad(self, coef, a, b, c, e):
+        result = coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
         return result
 
     def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
@@ -208,6 +201,21 @@ class LsqOptimizer(OptimizerUtils):
         """
         return 2 * a @ coef + b
 
+    def _residuals_grad_jacobian(self, coef, a, b, c, e):
+        """ Jacobian of the function that we want to minimize
+
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array using for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization but not used here
+            e (np.ndarray): 1D array of the regularization vector
+
+        Returns:
+            np.ndarray : 1D array of the gradient of the mse function to minimize
+        """
+        return 2 * a @ coef + b + np.sign(coef) * e
+
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
 
@@ -242,13 +250,14 @@ class LsqOptimizer(OptimizerUtils):
                                        options={'maxiter': 1000})
 
         elif self.opt_criteria == 'grad':
-            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
+
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c, self.unshimmed_Gz_vec,
-                                             self.coil_Gz_mat),
+                                       args=(a, b, c, e),
                                        method='SLSQP',
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
                                        options={'maxiter': 1000})
 
         else:
