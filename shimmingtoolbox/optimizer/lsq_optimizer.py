@@ -13,13 +13,12 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-# add allowed criteria 'grad'
 allowed_opt_criteria = ['mse', 'mae', 'std', 'grad']
 
 
 class LsqOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
-        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.allowed_opt_criteria
+        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
@@ -46,10 +45,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
-            #############################################
-            ####### Yixin add the following code ########
             allowed_opt_criteria[3]: self._residuals_grad
-            #############################################
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
