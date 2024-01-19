@@ -19,7 +19,7 @@ allowed_opt_criteria = ['mse', 'mae', 'std', 'grad']
 
 class LsqOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
-        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.allowed_opt_criteria
+        Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
