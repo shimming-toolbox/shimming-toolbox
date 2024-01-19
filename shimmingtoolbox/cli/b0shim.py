@@ -298,10 +298,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               epi_te=epi_te,
                               path_output=path_output)
     end_time = time.time()
-    print("Time taken for shim_sequencer to run is : ", end_time - start_time, "seconds")    # 2) Launch shim sequencer
+    # 2) Launch shim sequencer
     start_time = time.time()
     coefs = sequencer.shim()
-    print("Time taken for shim to run is : ", time.time() - start_time, "seconds")
     # Output
     # Load output options
     options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)

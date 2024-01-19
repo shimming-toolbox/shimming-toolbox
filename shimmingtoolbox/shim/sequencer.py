@@ -633,8 +633,8 @@ class ShimSequencer(Sequencer):
         metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
         metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
+        min_value = min(shimmed_masked.min(), mt_shimmed_masked.min())
+        max_value = max(shimmed_masked.max(), mt_shimmed_masked.max())
 
         fig = Figure(figsize=(15, 9))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
