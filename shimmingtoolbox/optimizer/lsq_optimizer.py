@@ -13,7 +13,6 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-# add allowed criteria 'grad'
 allowed_opt_criteria = ['mse', 'mae', 'std', 'grad']
 
 
