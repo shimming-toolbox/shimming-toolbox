@@ -295,9 +295,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               w_signal_loss=w_signal_loss_loss,
                               epi_te=epi_te,
                               path_output=path_output)
-    end_time = time.time()
+
     # 2) Launch shim sequencer
-    start_time = time.time()
     coefs = sequencer.shim()
     # Output
     # Load output options
