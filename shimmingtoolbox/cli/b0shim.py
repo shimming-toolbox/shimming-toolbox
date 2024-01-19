@@ -15,7 +15,6 @@ import nibabel as nib
 import numpy as np
 import logging
 import os
-import time
 from matplotlib.figure import Figure
 
 from shimmingtoolbox import __dir_config_scanner_constraints__
