@@ -226,7 +226,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
 
 def erode_binary_mask(mask, shape='sphere', size=3):
     """
-    Dilates a binary mask according to different shapes and kernel size
+    Erode a binary mask according to different shapes and kernel size
 
     Args:
         mask (numpy.ndarray): 3d array containing the binary mask.

@@ -46,7 +46,6 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
             allowed_opt_criteria[3]: self._residuals_grad
-            #############################################
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
