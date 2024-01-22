@@ -158,7 +158,9 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--output', tmp],
+                                             '--output', tmp,
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'grad'],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
