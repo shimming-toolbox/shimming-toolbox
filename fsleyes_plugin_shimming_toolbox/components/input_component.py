@@ -3,7 +3,7 @@
 
 import wx
 
-from fsleyes_plugin_shimming_toolbox.components.component import Component, get_help_text
+from fsleyes_plugin_shimming_toolbox.components.component import Component, get_help_text, RunArgumentErrorST
 from fsleyes_plugin_shimming_toolbox.text_with_button import TextWithButton
 
 
@@ -91,3 +91,66 @@ class InputComponent(Component):
 
     def button_do_something(self, event):
         pass
+
+    def get_command(self):
+        """ Returns the arguments of the input text boxes.
+
+        Returns:
+            args (string): argmuents of the input text boxes
+        """
+
+        return get_command_dict(self.input_text_boxes)
+
+
+def get_command_dict(input_text_boxes):
+
+    command = []
+    command_list_arguments = []
+    command_list_options = []
+    output = ""
+    load_in_overlay = []
+    for name, input_text_box_list in input_text_boxes.items():
+
+        if name.startswith('no_arg'):
+            continue
+
+        for input_text_box in input_text_box_list:
+            is_arg = False
+            option_values = []
+            for textctrl in input_text_box.textctrl_list:
+                arg = textctrl.GetValue()
+                if arg == "" or arg is None:
+                    if input_text_box.required is True:
+                        raise RunArgumentErrorST(
+                            f"Argument {name} is missing a value, please enter a valid input"
+                        )
+                else:
+                    # Case where the option name is set to arg, this handles it as if it were an argument
+                    if name == "arg":
+                        command_list_arguments.append(arg)
+                        is_arg = True
+                    # Normal options
+                    else:
+                        if name == "output":
+                            output = arg
+                        elif input_text_box.load_in_overlay:
+                            load_in_overlay.append(arg)
+                        
+                        option_values.append(arg)
+                        
+                # If its an argument don't include it as an option, if the option list is empty don't either
+            if not is_arg and option_values:
+                command_list_options.append((name, option_values))
+
+    # Arguments don't need "-"
+    for arg in command_list_arguments:
+        command.append(arg)
+
+    # Handles options
+    for name, args in command_list_options:
+        command.append('--' + name)
+        for arg in args:
+            command.append(arg)
+
+    return command, output, load_in_overlay
+    

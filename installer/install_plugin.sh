@@ -35,7 +35,7 @@ source "${ST_DIR}/${PYTHON_DIR}/bin/activate"
 
 # Install fsleyes
 print info "Installing fsleyes"
-"${ST_DIR}"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge fsleyes=1.9.0 python=3.9
+"${ST_DIR}"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge fsleyes=1.9.0 python=3.10
 
 # Install fsleyes-plugin-shimming-toolbox
 print info "Installing fsleyes-plugin-shimming-toolbox"

@@ -4,6 +4,7 @@
 import wx
 
 from fsleyes_plugin_shimming_toolbox.components.component import Component, get_help_text
+from fsleyes_plugin_shimming_toolbox.components.input_component import get_command_dict
 from fsleyes_plugin_shimming_toolbox.text_with_button import create_info_icon
 
 
@@ -175,3 +176,23 @@ class DropdownComponent(Component):
         """Create a sizer containing tab-specific functionality."""
         sizer = wx.BoxSizer(wx.VERTICAL)
         return sizer
+    
+    def get_command(self):
+        """Return the selcted options in the dropdown"""
+        command = []
+        output = None
+        load_in_overlay = []
+        for name, input_text_box_list in self.input_text_boxes.items():
+                if name.startswith('no_arg'):
+                    continue
+
+                for input_text_box in input_text_box_list:
+                    # Allows to choose from a dropdown
+                    if type(input_text_box) == str:
+                        command.extend(['--'+ name, input_text_box])
+                    else:
+                        input_text_boxes = {name: input_text_box_list}
+                        
+                        cmd, output, load_in_overlay = get_command_dict(input_text_boxes)
+                        command.extend(cmd)
+        return command, output, load_in_overlay

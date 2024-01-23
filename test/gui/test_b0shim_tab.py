@@ -11,7 +11,7 @@ import tempfile
 import time
 import wx
 
-from .test_tabs import get_notebook, set_notebook_page, get_tab, get_all_children, set_dropdown_selection
+from .test_tabs import get_notebook, set_notebook_page, get_tab, get_all_children, set_dropdown_selection, set_checkbox
 from .. import realYield, run_with_orthopanel
 from fsleyes_plugin_shimming_toolbox import __dir_testing__
 from fsleyes_plugin_shimming_toolbox.tabs.b0shim_tab import B0ShimTab
@@ -21,7 +21,7 @@ def test_st_plugin_b0shim_dyn_lsq_mse():
     options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Squared Error',
                'slices': 'Auto detect',
-               'scanner-coil-order': '1',
+               'scanner-coil-order': '0',
                'output-file-format-scanner': 'Slicewise per Channel',
                'output-file-format-coil': 'Slicewise per Channel',
                'fatsat': 'Auto detect',
@@ -89,17 +89,22 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
     assert b0shim_tab is not None
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(fmap_dim=3)
+        nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data = _define_inputs(fmap_dim=3)
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
         fname_anat = os.path.join(tmp, 'anat.nii.gz')
         fname_anat_json = os.path.join(tmp, 'anat.json')
+        fname_coil = os.path.join(tmp, 'coil.nii.gz')
+        fname_coil_json = os.path.join(tmp, 'coil.json')
+        
         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                      nii_anat=nii_anat, fname_anat=fname_anat,
                      nii_mask=nii_mask, fname_mask=fname_mask,
+                     nii_coil=nii_coil, fname_coil=fname_coil,
                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-                     anat_data=anat_data, fname_anat_json=fname_anat_json)
+                     anat_data=anat_data, fname_anat_json=fname_anat_json,
+                     coil_data=coil_data, fname_coil_json=fname_coil_json)
         fname_output = os.path.join(tmp, 'fieldmap.nii.gz')
 
         # Fill in the B0 shim tab options
@@ -118,14 +123,19 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
             if isinstance(widget, wx.Choice) and widget.IsShown():
                 if widget.GetName() == 'optimizer-method':
                     assert set_dropdown_selection(widget, options['optimizer-method'])
-                if widget.GetName() == 'scanner-coil-order':
-                    assert set_dropdown_selection(widget, options['scanner-coil-order'])
                 if widget.GetName() == 'slices':
                     assert set_dropdown_selection(widget, options['slices'])
-                if widget.GetName() == 'scanner-coil-order':
-                    assert set_dropdown_selection(widget, options['scanner-coil-order'])
                 if widget.GetName() == 'output-value-format':
                     assert set_dropdown_selection(widget, options['output-value-format'])
+        
+        # Select the checkboxes
+        list_widgets = []
+        get_all_children(b0shim_tab.sizer_run, list_widgets)
+        for widget in list_widgets:
+            if isinstance(widget, wx.CheckBox) and widget.IsShown():
+                if widget.GetName() == 'check':
+                    assert set_checkbox(widget)
+            
         # Select the dropdowns that are nested
         list_widgets = []
         get_all_children(b0shim_tab.sizer_run, list_widgets)
@@ -151,7 +161,19 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         for widget in list_widgets:
             if isinstance(widget, wx.TextCtrl) and widget.IsShown():
                 if widget.GetName() == 'no_arg_ncoils_dyn':
-                    widget.SetValue('0')
+                    widget.SetValue('1')
+                    new_widget_list = []
+                    counter = 0
+                    get_all_children(b0shim_tab.sizer_run, new_widget_list)
+                    for new_widget in new_widget_list:
+                        if isinstance(new_widget, wx.TextCtrl) and new_widget.IsShown():
+                            if new_widget.GetName() == 'input_coil_1' and counter == 0:
+                                new_widget.SetValue(fname_coil)
+                                counter += 1
+                                realYield()
+                            elif new_widget.GetName() == 'input_coil_1' and counter == 1:
+                                new_widget.SetValue(fname_coil_json)
+                                realYield()
                     realYield()
                 if widget.GetName() == 'fmap':
                     widget.SetValue(fname_fmap)
@@ -228,14 +250,21 @@ def _define_inputs(fmap_dim):
 
     nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_anat.affine)
 
-    return nii_fmap, nii_anat, nii_mask, fm_data, anat_data
+    fname_coil_nii = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_coil_profiles.nii.gz')
+    nii_coil = nib.load(fname_coil_nii)
+    fname_coil_json = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_config.json')
+    coil_data = json.load(open(fname_coil_json))
+    
+    return nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data
 
 
 def _save_inputs(nii_fmap=None, fname_fmap=None,
                  nii_anat=None, fname_anat=None,
                  nii_mask=None, fname_mask=None,
+                 nii_coil=None, fname_coil=None,
                  fm_data=None, fname_fm_json=None,
-                 anat_data=None, fname_anat_json=None):
+                 anat_data=None, fname_anat_json=None,
+                 coil_data=None, fname_coil_json=None,):
     """Save inputs if they are not None, use the respective fnames for the different inputs to save"""
     if nii_fmap is not None:
         # Save the fieldmap
@@ -258,3 +287,12 @@ def _save_inputs(nii_fmap=None, fname_fmap=None,
     if nii_mask is not None:
         # Save the mask
         nib.save(nii_mask, fname_mask)
+    
+    if nii_coil is not None:
+        # Save the coil
+        nib.save(nii_coil, fname_coil)
+    
+    if coil_data is not None:
+        # Save json
+        with open(fname_coil_json, 'w', encoding='utf-8') as f:
+            json.dump(coil_data, f, indent=4)

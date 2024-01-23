@@ -17,6 +17,10 @@ class Component:
     @classmethod
     def __subclasshook__(cls, subclass):
         return hasattr(subclass, 'create_sizer') and callable(subclass.create_sizer) or NotImplemented
+    
+    @abc.abstractmethod
+    def get_command(self):
+        raise NotImplementedError
 
 
 def get_help_text(cli_function, name):
@@ -29,3 +33,9 @@ def get_help_text(cli_function, name):
                 return param.help
 
     raise ValueError(f"Could not find param: {name} in {cli_function.name}")
+
+
+class RunArgumentErrorST(Exception):
+    """Exception for missing input arguments for CLI call."""
+    pass
+    

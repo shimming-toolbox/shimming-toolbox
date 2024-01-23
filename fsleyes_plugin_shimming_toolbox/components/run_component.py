@@ -10,7 +10,8 @@ import os
 import wx
 
 from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
-from fsleyes_plugin_shimming_toolbox.components.component import Component
+from fsleyes_plugin_shimming_toolbox.components.component import Component, RunArgumentErrorST
+from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
 from fsleyes_plugin_shimming_toolbox.events import EVT_RESULT, EVT_LOG
 from fsleyes_plugin_shimming_toolbox.worker_thread import WorkerThread
 
@@ -184,60 +185,21 @@ class RunComponent(Component):
         msg = "Running "
         # Split is necessary if we have grouped commands (st_mask threshold)
         command = st_function.split(' ')
-
-        self.output = ""
-        command_list_arguments = []
-        command_list_options = []
-        for component in self.list_components:
-            for name, input_text_box_list in component.input_text_boxes.items():
-
-                if name.startswith('no_arg'):
-                    continue
-
-                for input_text_box in input_text_box_list:
-                    # Allows to choose from a dropdown
-                    if type(input_text_box) == str:
-                        command_list_options.append((name, [input_text_box]))
-
-                    # Normal case where input_text_box is a TextwithButton
-                    else:
-                        is_arg = False
-                        option_values = []
-                        for textctrl in input_text_box.textctrl_list:
-                            arg = textctrl.GetValue()
-                            if arg == "" or arg is None:
-                                if input_text_box.required is True:
-                                    raise RunArgumentErrorST(
-                                        f"Argument {name} is missing a value, please enter a valid input"
-                                    )
-                            else:
-                                # Case where the option name is set to arg, this handles it as if it were an argument
-                                if name == "arg":
-                                    command_list_arguments.append(arg)
-                                    is_arg = True
-                                # Normal options
-                                else:
-                                    if name == "output":
-                                        self.output = arg
-                                    elif input_text_box.load_in_overlay:
-                                        self.load_in_overlay.append(arg)
-
-                                    option_values.append(arg)
-
-                        # If its an argument don't include it as an option, if the option list is empty don't either
-                        if not is_arg and option_values:
-                            command_list_options.append((name, option_values))
-
-        # Arguments don't need "-"
-        for arg in command_list_arguments:
-            command += [arg]
-
-        # Handles options
-        for name, args in command_list_options:
-            command += ['--' + name]
-            for arg in args:
-                command += [arg]
-
+    
+        for component in self.list_components:  
+            
+            cmd, output, load_in_overlay = component.get_command()
+            command.extend(cmd)
+            
+            if st_function.split(' ')[-1] == "realtime-dynamic" and cmd[0] == "--coil":
+                cmd_riro = ['--coil-riro' if i == '--coil' else i for i in cmd]
+                command.extend(cmd_riro)
+                
+            self.load_in_overlay.extend(load_in_overlay)
+            
+            if output:
+                self.output = output
+                
         msg += ' '.join(command) + '\n'
 
         return command, msg
@@ -256,11 +218,6 @@ class RunComponent(Component):
                     path_output = box_with_button_out.textctrl_list[0].GetValue()
 
             return path_output, subject
-
-
-class RunArgumentErrorST(Exception):
-    """Exception for missing input arguments for CLI call."""
-    pass
 
 
 def load_png_image_from_path(fsl_panel, image_path, is_mask=False, add_to_overlayList=True, colormap="greyscale"):
