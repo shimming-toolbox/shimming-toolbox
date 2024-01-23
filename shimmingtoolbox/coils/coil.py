@@ -167,7 +167,7 @@ class ScannerCoil(Coil):
                 profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
                                           shim_cs=self.coord_system)
             elif manufacturer == 'PHILIPS':
-                profile_orders = philips_basis(mesh1, mesh2, mesh3, orders=tuple(range(1, self.order + 1)),
+                profile_orders = philips_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
                                                shim_cs=self.coord_system)
             else:
                 logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
