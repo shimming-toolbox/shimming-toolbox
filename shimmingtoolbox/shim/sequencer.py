@@ -436,7 +436,7 @@ class ShimSequencer(Sequencer):
             # TODO: Add units if possible
             # TODO: Add in anat space?
             # Figure that shows unshimmed vs shimmed for each slice
-            self.plot_full_mask(unshimmed, shimmed_masked, mask_full_binary)
+            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -445,9 +445,14 @@ class ShimSequencer(Sequencer):
             self.plot_currents(coef)
             self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
+
                 # Save to a NIfTI
+                fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
+                nii_correction_3d = nib.Nifti1Image(corrections, self.optimizer.unshimmed_affine)
+                nib.save(nii_correction_3d, fname_correction)
+
                 fname_correction = os.path.join(self.path_output, 'fig_correction.nii.gz')
-                nii_correction_3d = nib.Nifti1Image(shimmed_masked, self.optimizer.unshimmed_affine)
+                nii_correction_3d = nib.Nifti1Image(np.sum(corrections, axis=3), self.optimizer.unshimmed_affine)
                 nib.save(nii_correction_3d, fname_correction)
 
                 # 4th dimension is i_shim
@@ -584,63 +589,6 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
-    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
-        """
-        Plot and save the static full mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked(np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Binary mask in the fieldmap space
-        """
-        # Plot
-        mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed * mask)
-        mt_shimmed_masked = montage(shimmed_masked)
-
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
-        fig = Figure(figsize=(15, 9))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
-
-        ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                     f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                     f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
@@ -659,18 +607,17 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
         mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
 
-        min_masked_value = np.min([mt_unshimmed_masked, mt_shimmed_masked])
-        max_masked_value = np.max([mt_unshimmed_masked, mt_shimmed_masked])
+        min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
+        max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
 
-        min_fmap_value = np.min([mt_unshimmed, mt_shimmed])
-        max_fmap_value = np.max([mt_unshimmed, mt_shimmed])
+        min_fmap_value = np.nanmin([mt_unshimmed, mt_shimmed])
+        max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
         fig = Figure(figsize=(8, 5))
         fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
         im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
         ax.set_title("Unshimmed")
         ax.get_xaxis().set_visible(False)
@@ -681,7 +628,6 @@ class ShimSequencer(Sequencer):
 
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
         ax.set_title("Shimmed")
         ax.get_xaxis().set_visible(False)
@@ -1291,7 +1237,7 @@ class RealTimeSequencer(Sequencer):
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3),
                       where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
+            plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary, self.path_output)
 
             # Plot STD over time before and after shimming
             self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
@@ -1567,65 +1513,6 @@ class RealTimeSequencer(Sequencer):
                      f"\nstatic_shim_riro: {static_shim_riro}"
                      f"\nstatic_unshimmed: {static_unshimmed}")
 
-    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
-        """
-        Plot and save the static full mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked(np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Binary mask in the fieldmap space
-        """
-        # Plot
-
-        mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed * mask)
-        mt_shimmed_masked = montage(shimmed_masked)
-
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
-
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
-        fig = Figure(figsize=(9, 6))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
-
-        ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                     f"abs mean: {metric_unshimmed_absmean:.3}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                     f"abs mean: {metric_shimmed_absmean:.3}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        # Lower suptitle
-        fig.subplots_adjust(top=0.85)
-
-        # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-
     def plot_full_time_std(self, unshimmed, masked_shim_static_riro, mask_fmap_cs, mask):
         """
         Plot and save the std heatmap over time
@@ -1652,22 +1539,25 @@ class RealTimeSequencer(Sequencer):
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
 
         # Plot
+        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=mask == False, fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=mask == False, fill_value=np.nan)
+
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
-        mt_unshimmed_masked = montage(std_unshimmed * mask)
-        mt_shimmed_masked = montage(std_shimmed_masked)
+        mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
+        mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
 
-        # Remove the outliners to calculate the colorbar limits
+        # Remove the outliers to calculate the colorbar limits
         # Necessary because some STD are much higher and are not visible on the heatmap, they are still considered in
         # the metric
-        shim_limit = np.percentile(mt_shimmed_masked[mt_shimmed_masked != 0], 90)
-        unshim_limit = np.percentile(mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
+        shim_limit = np.nanpercentile(mt_shimmed_masked[mt_shimmed_masked != 0], 90)
+        unshim_limit = np.nanpercentile(mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
 
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked[mt_unshimmed_masked < unshim_limit].max(),
-                        mt_shimmed_masked[mt_shimmed_masked < shim_limit].max())
+        min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
+        max_value = max(np.nanmax(mt_unshimmed_masked[mt_unshimmed_masked < unshim_limit]),
+                        np.nanmax(mt_shimmed_masked[mt_shimmed_masked < shim_limit]))
 
         fig = Figure(figsize=(9, 6))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
@@ -1702,6 +1592,67 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
+def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
+    """
+    Plot and save the static full mask
+
+    Args:
+        unshimmed (np.ndarray): Original fieldmap not shimmed
+        shimmed_masked(np.ndarray): Masked shimmed fieldmap
+        mask (np.ndarray): Binary mask in the fieldmap space
+        path_output (str): Path to the output folder
+    """
+
+    # Plot
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=mask == False, fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=mask == False, fill_value=np.nan)
+
+    mt_unshimmed = montage(unshimmed)
+    mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
+    mt_shimmed_masked = montage(nan_shimmed_masked.filled())
+
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
+    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
+
+    min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
+    max_value = max(np.nanmax(mt_unshimmed_masked), np.nanmax(mt_shimmed_masked))
+
+    fig = Figure(figsize=(15, 9))
+    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
+
+
 def new_bounds_from_currents(currents:dict, old_bounds:dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
@@ -1730,7 +1681,6 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
 
 
 def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[], coils_riro=[]):
-    #! Modify description if everything works
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".

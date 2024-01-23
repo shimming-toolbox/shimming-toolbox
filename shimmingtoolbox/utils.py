@@ -193,7 +193,8 @@ def montage(X):
     x, y, n_images = np.shape(X)
     mm = np.floor(np.sqrt(n_images)).astype(int)
     nn = np.ceil(n_images/mm).astype(int)
-    result = np.zeros((mm * x, nn * y))
+    result = np.empty((mm * x, nn * y))
+    result.fill(np.nan)
     image_id = 0
     for k in range(mm):
         for j in range(nn):
