@@ -18,17 +18,17 @@ def test_convert_to_mp_unknown_scanner(caplog):
 
 
 def test_convert_to_mp_outside_bounds():
-    dac_units = {'order1': [20000, 14265, 14045], 'order2': [9998, 9998, 9998, 9998, 9998]}
+    dac_units = {'1': [20000, 14265, 14045], '2': [9998, 9998, 9998, 9998, 9998]}
 
     with pytest.raises(ValueError, match="Multipole values exceed known system limits."):
         convert_to_mp('Prisma_fit', dac_units)
 
 
 def test_phys_to_shim_cs():
-    out = phys_to_shim_cs(np.array([1, 1, 1]), 'Siemens')
+    out = phys_to_shim_cs(np.array([1, 1, 1]), 'Siemens', orders=(1,))
     assert np.all(out == [-1, 1, -1])
 
 
 def test_shim_to_phys_cs():
-    out = shim_to_phys_cs(np.array([1, 1, 1]), 'Siemens')
+    out = shim_to_phys_cs(np.array([1, 1, 1]), 'Siemens', orders=(1,))
     assert np.all(out == [-1, 1, -1])

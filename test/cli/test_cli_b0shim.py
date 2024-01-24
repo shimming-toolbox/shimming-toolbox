@@ -88,13 +88,19 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
 
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -113,7 +119,7 @@ class TestCliDynamic(object):
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -338,7 +344,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
@@ -371,7 +377,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'slicewise-ch',
                                              '--output', tmp],
@@ -403,7 +409,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
                                              '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
@@ -613,7 +619,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp,
                                              '-v', 'debug'],
                                 catch_exceptions=False)
@@ -623,6 +629,11 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[5].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+            assert values == [11.007908, -0.014577058094, 1311.6784]
 
     def test_cli_rt_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -657,6 +668,44 @@ class TestCLIRealtime(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
 
+    def test_cli_rt_sph_order_02(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,2',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch4_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch5_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch6_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch7_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch8_Prisma_fit.txt"))
+
     def test_cli_rt_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -688,6 +737,7 @@ class TestCLIRealtime(object):
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['realtime-dynamic',
                                              '--coil', fname_dummy_coil, fname_constraints,
+                                             '--coil-riro', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask-static', fname_mask,
@@ -727,7 +777,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '-v', 'debug',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -766,7 +816,7 @@ class TestCLIRealtime(object):
                                              '--anat', fname_anat,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -802,7 +852,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output-file-format-scanner', 'chronological-ch',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -839,7 +889,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--output-file-format-scanner', 'gradient',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -876,7 +926,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '0,1,2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -913,7 +963,7 @@ class TestCLIRealtime(object):
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
-                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order', '0,1',
                                              '--optimizer-method', 'pseudo_inverse',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -1093,8 +1143,8 @@ def _create_dummy_coil(nii_fmap):
     # Dummy constraints
     dummy_coil_constraints = {
         "name": "Dummy_coil",
-        "coef_channel_minmax": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
-                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)],
+        "coef_channel_minmax": {"coil": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
+                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)]},
         "coef_sum_max": None
     }
 

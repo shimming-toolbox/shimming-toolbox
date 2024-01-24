@@ -81,7 +81,7 @@ class Optimizer(object):
             merged_bounds: Concatenated coil profile bounds
         """
         if len(self.merged_bounds) != len(merged_bounds):
-            raise ValueError(f"Size of merged bounds: must match the number of total channel: {len(self.merged_bounds)}")
+            raise ValueError(f"Size of merged bounds: must match the number of total channel: {len(self.merged_bounds)} not {len(merged_bounds)}")
         self.merged_bounds = merged_bounds
 
     def optimize(self, mask):
@@ -177,8 +177,9 @@ class Optimizer(object):
         bounds = []
         for coil in self.coils:
             # Concat coils and bounds
-            for a_bound in coil.coef_channel_minmax:
-                bounds.append(a_bound)
+            for key in coil.coef_channel_minmax:
+                for a_bound in coil.coef_channel_minmax[key]:
+                    bounds.append(a_bound)
 
         return bounds
 
