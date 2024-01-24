@@ -54,7 +54,7 @@ def _define_inputs(fmap_dim):
     mask = shapes(anat, 'cube',
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
-                  len_dim1=30, len_dim2=30, len_dim3=nz - 5)
+                  len_dim1=10, len_dim2=10, len_dim3=nz - 10)
 
     nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_anat.affine)
 

@@ -202,6 +202,8 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
                                                             [-3551.29, 3551.29],
                                                             [-3487.302, 3487.302]])
         if 3 in orders:
+            logger.warning(f"3rd order not available on the {manufacturers_model_name}, using the typical 4 unbounded "
+                           f"3rd order shim terms")
             constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(4)]
 
     elif manufacturers_model_name == "Investigational_Device_7T":
