@@ -492,7 +492,7 @@ def _check_basis_inputs(x, y, z, orders):
     if not (x.shape == y.shape == z.shape):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
-    if max(orders) >= 3:
+    if max(orders) >= 4:
         raise NotImplementedError("Spherical harmonics not implemented for order 4 and up")
 
 
