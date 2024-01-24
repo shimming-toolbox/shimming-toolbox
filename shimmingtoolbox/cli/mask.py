@@ -8,7 +8,7 @@ import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
-import shimmingtoolbox.masking.mask_mrs
+from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -306,23 +306,21 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Create a mask to shim single voxel MRS."
-                       "Scanner's XYZ coordiante and MRS Voxel size can be directly given or these info can be read "
+                       "voxel position and size can be directly given or these info can be read "
                        "from the twix raw-data."
                        "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
                        "folder. Return an output nifti file to be used as a mask for MRS shimming.")
 @click.option('-i', '--input', 'fname_input',  type=click.Path(), required=True,
-               help="Input path of the fieldmap to be shimmed (both nifti and json file should be in this path).")
-@click.option('-raw', '--raw_data', type=str,
+               help="Input path of the fieldmap to be shimmed.")
+@click.option('-r', '--raw_data', type=click.Path(),
               help="Input path of the of the twix raw-data (supported extention .dat) [optional]")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'), show_default=True,
               help="Name of the output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask_mrs.nii.gz'))")
-@click.option('-X', 'x_position', type=click.FLOAT, help="scanner's X position in mm [optional]")
-@click.option('-Y', 'y_position', type=click.FLOAT, help="scanner's Y position in mm [optional]")
-@click.option('-Z', 'z_position', type=click.FLOAT, help="scanner's Z position in mm [optional]")
-@click.option('-V', 'voxel_size', type=click.FLOAT, help="MRS voxel size in mm [optional]")
+@click.option('-c', '--center', nargs=3, type=click.FLOAT, help="voxel's center position in mm of the x, y and z of the scanner's coordinate [optional]")
+@click.option('-s', '--size', nargs=3, type=click.FLOAT, help="voxel size in mm of the x, y and z of the scanner's coordinate")
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def mask_mrs(fname_input, output, raw_data, x_position, y_position, z_position, voxel_size, verbose):
+def mrs_mask(fname_input, output, raw_data, center, size, verbose):
 
     # Set all loggers
     set_all_loggers(verbose)
@@ -331,9 +329,9 @@ def mask_mrs(fname_input, output, raw_data, x_position, y_position, z_position, 
     create_output_dir(output, is_file=True)
 
     nii = nib.load(fname_input)
-    mask_mrs = shimmingtoolbox.masking.mask_mrs.mask_mrs(fname_input, raw_data, x_position, y_position, z_position, voxel_size) # creation of the MRS mask
-    mask_mrs = mask_mrs.astype(np.int32)
-    nii_img = nib.Nifti1Image(mask_mrs, nii.affine)
+    output_mask = mask_mrs(fname_input, raw_data, center, size) # creation of the MRS mask
+    output_mask = output_mask.astype(np.int32)
+    nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
     nib.save(nii_img, output)
     click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
     return output
