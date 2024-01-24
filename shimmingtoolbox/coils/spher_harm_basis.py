@@ -136,7 +136,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     # [-0.34644, 0.15591, -0.13374, -0.34059, 1.7438],
     # [0.85228, 2.3916, -0.10486, 0.48776, -305.75]])
 
-    # Reorder according to GE convention: x, y, z, xy, zy, zx, X2-Y2, z2
+    # Reorder according to GE shim convention: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
     reordered_spher = reorder_to_manufacturer(spher_harm, manufacturer='GE')
 
     scaled = {}
@@ -322,8 +322,8 @@ def convert_spher_harm_to_dict(spher_harm, orders):
     spher_harm_dict = {}
     i_ch = 0
     for order in orders:
-        spher_harm_dict[order] = spher_harm[..., i_ch:i_ch + _channels_per_order(order)]
-        i_ch += _channels_per_order(order)
+        spher_harm_dict[order] = spher_harm[..., i_ch:i_ch + channels_per_order(order)]
+        i_ch += channels_per_order(order)
 
     return spher_harm_dict
 
@@ -347,7 +347,7 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
 
     X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, z3,  xz^2, yz2, z(x2 - y2) (in line with Siemens shims) or
 
-    x, y, z, xy, zy, zx, X2 - Y2, z2 (in line with GE scaling matrix) or
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with GE shims) or
 
     X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
 
@@ -429,7 +429,7 @@ def _get_scaling_factors(orders):
                                         indexing='xy')
     sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
 
-    n_channels = np.array([_channels_per_order(order) for order in orders]).sum()
+    n_channels = np.array([channels_per_order(order) for order in orders]).sum()
     scaling_factors = np.zeros(n_channels)
 
     # indices of reference positions for normalization:
@@ -471,7 +471,7 @@ def _get_scaling_factors(orders):
         if r.get(order) is None or iref.get(order) is None:
             raise NotImplementedError("Order must be between 0 and 3")
 
-        for i in range(_channels_per_order(order)):
+        for i in range(channels_per_order(order)):
             field = sh[:, :, :, i_ch]
             if order != 0:
                 scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
@@ -492,11 +492,23 @@ def _check_basis_inputs(x, y, z, orders):
     if not (x.shape == y.shape == z.shape):
         raise RuntimeError("Input arrays X, Y, and Z must be identically sized")
 
-    if max(orders) >= 4:
+    if max(orders) >= 3:
         raise NotImplementedError("Spherical harmonics not implemented for order 4 and up")
 
 
-def _channels_per_order(order):
+def channels_per_order(order, manufacturer=None):
+    """
+    Return the number of channels per order for the specified manufacturer
+
+    Args:
+        order (int): Order of the spherical harmonics
+        manufacturer (str): Manufacturer of the scanner.
+
+    Returns:
+
+    """
+    if manufacturer == 'Siemens' and order == 3:
+        return 4
     return 2 * order + 1
 
 

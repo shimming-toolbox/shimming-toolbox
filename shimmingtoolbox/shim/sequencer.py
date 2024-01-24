@@ -1653,67 +1653,6 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
-    """
-    Plot and save the static full mask
-
-    Args:
-        unshimmed (np.ndarray): Original fieldmap not shimmed
-        shimmed_masked(np.ndarray): Masked shimmed fieldmap
-        mask (np.ndarray): Binary mask in the fieldmap space
-        path_output (str): Path to the output folder
-    """
-
-    # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=mask == False, fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=mask == False, fill_value=np.nan)
-
-    mt_unshimmed = montage(unshimmed)
-    mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
-    mt_shimmed_masked = montage(nan_shimmed_masked.filled())
-
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-
-    min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
-    max_value = max(np.nanmax(mt_unshimmed_masked), np.nanmax(mt_shimmed_masked))
-
-    fig = Figure(figsize=(15, 9))
-    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
-
-    ax = fig.add_subplot(1, 2, 1)
-    ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-    ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax)
-
-    ax = fig.add_subplot(1, 2, 2)
-    ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-    ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    divider = make_axes_locatable(ax)
-    cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax)
-
-    # Save
-    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
-    fig.savefig(fname_figure, bbox_inches='tight')
-
-
 def new_bounds_from_currents(currents:dict, old_bounds:dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that

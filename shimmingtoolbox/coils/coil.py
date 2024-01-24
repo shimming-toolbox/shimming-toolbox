@@ -6,7 +6,7 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, SHIM_CS
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, SHIM_CS, channels_per_order
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 logger = logging.getLogger(__name__)
@@ -158,8 +158,8 @@ class ScannerCoil(Coil):
             sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
                                              shim_cs=self.coord_system)
         else:
-            logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
-                           f"0, 1 and 2 respectively")
+            logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
+                           "order 0, 1, 2 and 3 respectively")
             sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
                                              shim_cs=self.coord_system)
 
@@ -202,15 +202,16 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
                                                             [-3551.29, 3551.29],
                                                             [-3487.302, 3487.302]])
         if 3 in orders:
-            logger.warning(f"3rd order not available on the {manufacturers_model_name}, using the typical 4 unbounded "
-                           f"3rd order shim terms")
-            constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(4)]
+            n_channels = channels_per_order(3, manufacturer)
+            logger.warning(f"3rd order not available on the {manufacturers_model_name}, using the typical {n_channels} "
+                           "unbounded 3rd order shim terms")
+            constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(n_channels)]
 
     elif manufacturers_model_name == "Investigational_Device_7T":
         constraints["name"] = "Investigational_Device_7T"
         if 0 in orders:
             pass
-            # todo: f0 min and max is wrong
+            # todo: f0 min and max are wrong
         constraints["coef_channel_minmax"]["0"].append([None, None])
         if 1 in orders:
             for _ in range(3):
@@ -222,23 +223,16 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
                                                             [-615.87, 615.87],
                                                             [-615.87, 615.87]])
         if 3 in orders:
-            constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(4)]
+            # Todo: Get 3rd order shim constraints
+            constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(channels_per_order(3, manufacturer))]
 
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
                        "respected.")
         constraints["name"] = "Unknown"
-        if 0 in orders:
-            constraints["coef_channel_minmax"]["0"] = [[None, None]]
-        if 1 in orders:
-            constraints["coef_channel_minmax"]["1"] = [[None, None] for _ in range(3)]
-        if 2 in orders:
-            constraints["coef_channel_minmax"]["2"] = [[None, None] for _ in range(5)]
-        if 3 in orders:
-            if manufacturer == 'Siemens':
-                constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(4)]
-            else:
-                constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(7)]
+        for order in orders:
+            constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(
+                channels_per_order(order, manufacturer))]
 
     return constraints
 
