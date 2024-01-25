@@ -40,7 +40,7 @@ class LsqOptimizer(OptimizerUtils):
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
         self.w_signal_loss_loss = w_signal_loss_loss
         self.epi_te = epi_te
-
+        self.counter = 0
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
@@ -64,6 +64,7 @@ class LsqOptimizer(OptimizerUtils):
     def _prepare_data(self, mask):
         """ Prepares the data for the optimization.
         """
+        self.counter += 1
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
         # Personalized parameters to LSQ
@@ -81,6 +82,10 @@ class LsqOptimizer(OptimizerUtils):
             merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
 
         self.coil_Gz_mat = np.reshape(merged_coils_Gz,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
                                     (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
 
         self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
@@ -285,7 +290,6 @@ class LsqOptimizer(OptimizerUtils):
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
             elif self.opt_criteria == 'grad':
-                self._prepare_data(self.mask)
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)

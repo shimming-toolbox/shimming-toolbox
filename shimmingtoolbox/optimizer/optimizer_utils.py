@@ -122,6 +122,8 @@ class OptimizerUtils(Optimizer):
         """
         self.mask = mask
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        if self.opt_criteria == 'grad':
+            self._prepare_data(mask)
         # Set up output currents
         currents_0 = self.get_initial_guess()
         # If what to shim is already 0s
@@ -174,11 +176,26 @@ class OptimizerUtils(Optimizer):
         b2 = 2 * w_inv_factor * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
         c2 = w_inv_factor * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
 
+        # MSE term for unshimmed_Gx_vec and coil_Gx_mat
+        a3 = w_inv_factor * (self.coil_Gx_mat.T @ self.coil_Gx_mat)
+        b3 = 2 * w_inv_factor * (self.unshimmed_Gx_vec @ self.coil_Gx_mat)
+        c3 = w_inv_factor * (self.unshimmed_Gx_vec @ self.unshimmed_Gx_vec)
+
+        # MSE term for unshimmed_Gy_vec and coil_Gy_mat
+        a4 = w_inv_factor * (self.coil_Gy_mat.T @ self.coil_Gy_mat)
+        b4 = 2 * w_inv_factor * (self.unshimmed_Gy_vec @ self.coil_Gy_mat)
+        c4 = w_inv_factor * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
+
         # Combining the terms
         a = a1 + a2
         b = b1 + b2
         c = c1 + c2
         e = self.reg_vector
+
+        # Add x and y terms
+        a += a3 + a4
+        b += b3 + b4
+        c += c3 + c4
 
         return a, b, c, e
 
