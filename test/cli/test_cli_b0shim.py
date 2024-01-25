@@ -449,13 +449,19 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '2',
+                                             '--scanner-coil-order', '0, 2',
                                              '--output-value-format', 'absolute',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [123259067.330864, -718.069583, 138.656751, -110.517759, 24.97596, -4.888655]
 
     def test_cli_2d_fmap(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
 
