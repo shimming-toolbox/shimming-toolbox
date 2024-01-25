@@ -29,7 +29,7 @@ def mask_mrs(fname_input, raw_data, center, size):
     """
 
     if fname_input is None:
-        raise TypeError(f"The file '{fname_input}' is required. See: st_mask mrs-mask -h")
+        raise TypeError(f"The fname_input is cannot be None. See: st_mask mrs-mask -h")
 
     if raw_data is None:
         logger.info(" The raw_data is not provided, creating the mask with the given voxel position and size info")
@@ -45,8 +45,9 @@ def mask_mrs(fname_input, raw_data, center, size):
             logger.info("Reading the twix raw_data")
             run_subprocess(['spec2nii', 'twix', raw_data, '-e', 'image'])
             name_nii, ext = splitext(raw_data)
-            header_twix = nib.load(name_nii + '.nii.gz').header
-            affine = nib.load(name_nii + '.nii.gz').affine
+            nii = nib.load(name_nii + '.nii.gz')
+            header_twix = nii.header
+            affine = nii.affine
             position_sag = header_twix['qoffset_x']
             position_cor = header_twix['qoffset_y']
             position_tra = header_twix['qoffset_z']
