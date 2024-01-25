@@ -40,7 +40,7 @@ def b0shim_cli():
     pass
 
 #required_options = {
-#    'grad': ['w_signal_loss_loss', 'reg_factor'],
+#    'grad': ['w_signal_loss', 'reg_factor'],
 #    'mse': 'reg_factor',
 #    'mae': 'reg_factor',
 #}
@@ -87,9 +87,12 @@ def b0shim_cli():
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
                    " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery")
-@click.option('--weighting-signal-loss', 'w_signal_loss_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
               " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
+              " and Gradient in z, x, y direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--epi-echo-time', 'epi_te', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="EPI acquistion parameter Echo Time (TE) in seconds. Relevant for signal recovery")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
@@ -142,7 +145,7 @@ def b0shim_cli():
 @timeit
 def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-            o_format_sph, output_value_format, reg_factor, w_signal_loss_loss, epi_te, verbose):
+            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -278,7 +281,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               mask_dilation_kernel='sphere',
                               mask_dilation_kernel_size=dilation_kernel_size,
                               reg_factor=reg_factor,
-                              w_signal_loss=w_signal_loss_loss,
+                              w_signal_loss=w_signal_loss,
+                              w_signal_loss_xy=w_signal_loss_xy,
                               epi_te=epi_te,
                               path_output=path_output)
 

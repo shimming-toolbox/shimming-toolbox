@@ -23,7 +23,7 @@ class LsqOptimizer(OptimizerUtils):
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', initial_guess_method='mean',
-                 reg_factor=0,  w_signal_loss_loss=None, epi_te=None):
+                 reg_factor=0,  w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
@@ -38,7 +38,8 @@ class LsqOptimizer(OptimizerUtils):
                                 regularization. A negative value will favour high currents (not preferred).
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
-        self.w_signal_loss_loss = w_signal_loss_loss
+        self.w_signal_loss = w_signal_loss
+        self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
         self.counter = 0
         lsq_residual_dict = {

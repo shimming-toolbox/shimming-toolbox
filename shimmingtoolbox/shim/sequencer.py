@@ -63,7 +63,8 @@ class Sequencer(object):
         index_not_shimmed: Indexes of ``slices`` that have not been shimmed
     """
 
-    def __init__(self, slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, w_signal_loss=0, epi_te=0, path_output=None):
+    def __init__(self, slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor,
+                 w_signal_loss=0, w_signal_loss_xy=0, epi_te=0, path_output=None):
         """
         Constructor of the sequencer class
 
@@ -88,6 +89,7 @@ class Sequencer(object):
         self.reg_factor = reg_factor
         self.path_output = path_output
         self.w_signal_loss = w_signal_loss
+        self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
         self.optimizer = None
         self.index_shimmed = []
@@ -149,7 +151,7 @@ class ShimSequencer(Sequencer):
 
     def __init__(self, nii_fieldmap, nii_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
-                 epi_te=None, path_output=None):
+                 w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
         Initialization for the ShimSequencer class
 
@@ -195,6 +197,7 @@ class ShimSequencer(Sequencer):
         self.method = method
         self.masks_fmap = None
         self.w_signal_loss = w_signal_loss
+        self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
 
     def get_fieldmap(self, nii_fieldmap):
@@ -381,8 +384,8 @@ class ShimSequencer(Sequencer):
             if self.method == 'least_squares':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
-                                                              reg_factor=self.reg_factor, w_signal_loss_loss=self.w_signal_loss,
-                                                              epi_te=self.epi_te)
+                                                              reg_factor=self.reg_factor, w_signal_loss=self.w_signal_loss,
+                                                              w_signal_loss_xy=self.w_signal_loss_xy, epi_te=self.epi_te)
             elif self.method == 'quad_prog':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, reg_factor=self.reg_factor)
@@ -431,8 +434,8 @@ class ShimSequencer(Sequencer):
                 shimmed_temp = corrections + unshimmed[..., np.newaxis]
 
                 full_Gz = np.gradient(shimmed_temp, axis=2)
-                full_Gx = np.gradient(shimmed_temp, axis=1)
-                full_Gy = np.gradient(shimmed_temp, axis=0)
+                full_Gx = np.gradient(shimmed_temp, axis=0)
+                full_Gy = np.gradient(shimmed_temp, axis=1)
 
                 full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
                 full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
@@ -460,9 +463,11 @@ class ShimSequencer(Sequencer):
             if self.opt_criteria == 'grad':
                 # Plot gradient realted results
                 self._plot_static_signal_recovery_mask(unshimmed, full_Gz, full_Gx, full_Gy, mask_full_binary)
-                self._plot_Gz_mask(unshimmed, shimmed_masked, full_Gz, mask_full_binary)
+                self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
+                self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
+                self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
 
-                unshimmed_gradient = (np.gradient(unshimmed, axis=1), np.gradient(unshimmed, axis=0),
+                unshimmed_gradient = (np.gradient(unshimmed, axis=0), np.gradient(unshimmed, axis=1),
                                       np.gradient(unshimmed, axis=2))
                 shimmed_gradient = (full_Gx, full_Gy, full_Gz)
                 self._plot_T2_star_mask(unshimmed_gradient, shimmed_gradient, mask_full_binary)
@@ -653,11 +658,11 @@ class ShimSequencer(Sequencer):
             shimmed_masked(np.ndarray): Masked shimmed fieldmap
             mask (np.ndarray): Binary mask in the fieldmap space
         """
-        mask = erode_binary_mask(shimmed_masked, shape='sphere', size=3)
+        # mask = erode_binary_mask(shimmed_masked, shape='sphere', size=3)
         # Plot
         mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed) #* mask
-        mt_shimmed_masked = montage(shimmed_masked)
+        mt_unshimmed_masked = montage(unshimmed * mask)
+        mt_shimmed_masked = montage(shimmed_masked * mask)
 
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
@@ -810,7 +815,6 @@ class ShimSequencer(Sequencer):
 
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, shimmed_Gx, shimmed_Gy, mask):
     # Plot signal loss maps
-        [nx,ny,nz] = np.shape(unshimmed)
         def calculate_signal_loss(B0_map):
             signal_map = 1
             for i in range(2,3):
@@ -820,9 +824,9 @@ class ShimSequencer(Sequencer):
             return signal_loss_map
 
         unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-        shimmed_signal_loss = 1 - abs(np.sinc(self.epi_te * shimmed_Gz)) * \
+        shimmed_signal_loss = 1 - (abs(np.sinc(self.epi_te * shimmed_Gz)) * \
                                     abs(np.sinc(self.epi_te * shimmed_Gy) * \
-                                    abs(np.sinc(self.epi_te * shimmed_Gx)))
+                                    abs(np.sinc(self.epi_te * shimmed_Gx))))
 
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
         mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
@@ -883,33 +887,30 @@ class ShimSequencer(Sequencer):
         fname_figure = os.path.join(self.path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
-    def _plot_Gz_mask(self, unshimmed, shimmed_masked, shimmed_Gz, mask):
-        # Plot T2 star change / Gz maps
-        [nx,ny,nz] = np.shape(unshimmed)
-        shimmed = np.reshape(shimmed_masked,(nx, ny, nz))
+    def _plot_G_mask(self, unshimmed_G, shimmed_G, mask, name='G'):
+        # Plot Gradient maps
 
-        unshimmed_Gz = np.gradient(unshimmed, axis = 2)
         #shimmed_Gz = np.gradient(shimmed, axis = 2)
         mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
 
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
-        mt_unshimmed = montage(unshimmed_Gz[:,:,nonzero_indices])
-        mt_unshimmed_masked = montage(unshimmed_Gz[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
-        mt_shimmed_masked = montage(shimmed_Gz[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+        mt_unshimmed = montage(unshimmed_G[:,:,nonzero_indices])
+        mt_unshimmed_masked = montage(unshimmed_G[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+        mt_shimmed_masked = montage(shimmed_G[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
 
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed_Gz, mask_erode, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_Gz, mask_erode, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_Gz, mask_erode, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_Gz, mask_erode, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_Gz), mask_erode, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_Gz), mask_erode, metric='mean')
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed_G, mask_erode, metric='std')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_G, mask_erode, metric='std')
+        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed_G, mask_erode, metric='mean')
+        metric_shimmed_mean = calculate_metric_within_mask(shimmed_G, mask_erode, metric='mean')
+        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed_G), mask_erode, metric='mean')
+        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_G), mask_erode, metric='mean')
 
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
         fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
-        fig.suptitle(f"Gz - R2* T2* \nFieldmap Coordinate System")
+        fig.suptitle(f"{name}\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         #ax.imshow(mt_unshimmed, cmap='gray')s
@@ -920,7 +921,7 @@ class ShimSequencer(Sequencer):
         #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
         #
         im = ax.imshow(mt_unshimmed_masked, vmin=-30, vmax=30, cmap='jet')
-        ax.set_title(f"Before shimming Gz \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
+        ax.set_title(f"Before shimming {name} \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
                     f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -932,7 +933,7 @@ class ShimSequencer(Sequencer):
         #ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=-30, vmax=30, cmap='jet')
-        ax.set_title(f"After shimming Gz \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
+        ax.set_title(f"After shimming {name} \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
                     f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -942,7 +943,7 @@ class ShimSequencer(Sequencer):
         # Lower suptitle
         #fig.subplots_adjust(top=0.85)
         # Save
-        fname_figure = os.path.join(self.path_output, 'fig_Gz_shimmed_vs_unshimmed.png')
+        fname_figure = os.path.join(self.path_output, f'fig_{name}_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def _plot_T2_star_mask(self, unshimmed_Gradient, shimmed_Gradient, mask):
