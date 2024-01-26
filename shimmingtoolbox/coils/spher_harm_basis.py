@@ -44,12 +44,6 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
-
-    NOTES:
-        For now, ``orders`` is, in fact, as default [1:2]—which is suitable for the Prisma (presumably other
-        Siemens systems as well) however, the 3rd-order shims of the Terra should ultimately be accommodated too.
-        (Requires checking the Adjustments/Shim card to see what the corresponding terms and values actually are). So,
-        ``basis`` will return with 8 terms along the 4th dim if using the 1st and 2nd order.
     """
 
     # Check inputs
@@ -96,18 +90,20 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
-
-    NOTES:
-        For now, ``orders`` is, in fact, as default [1:2]. So, ``basis`` will return with 8 terms along the
-        4th dim if using the 1st and 2nd order.
         """
 
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics from first to second order
-    flip = get_flip_matrix(shim_cs, manufacturer='GE', orders=(1,))
-    spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
+    flip = get_flip_matrix(shim_cs, manufacturer='GE', orders=[1, ])
+
+    # 2nd order cross terms require the calculation of the 0, 1, 2nd order
+    required_calculated_orders = orders
+    if 2 in orders:
+        required_calculated_orders = tuple(set(orders).union({0, 1, 2}))
+
+    spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], required_calculated_orders)
 
     # The following matrix (8 x 5) refers to the following:
     #  \  xy, zy, zx, XY, z2
@@ -125,16 +121,20 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     # Order 1: [Hz/cm/A]
     # Order 0: [Hz/A]
 
-    # e.g. 1A in xy will produce 1.8367Hz/cm2 in xy, -0.0018785Hz/cm2 in zy
-    order2_to_order2 = np.array([[1.8367, -0.0018785, -0.0038081, -0.001403, -0.00029865],
+    # e.g. 1A in xy will produce 1.8367Hz/cm2 in xy, -0.0067895Hz/cm2 in zy
+    orders_to_order2 = np.array([[1.8367, -0.0018785, -0.0038081, -0.001403, -0.00029865],
                                  [-0.0067895, 2.2433, 0.0086222, 0.008697, -0.0091463],
                                  [-0.0046842, 0.0030595, 2.2174, -0.0073788, 0.013379],
                                  [7.8099e-05, 0.0041857, -0.0044671, 0.90317, -0.0079819],
-                                 [-0.00060671, -0.0077883, -0.010489, -0.0036487, 2.0056]])
-    # [0.096079, -0.061232, 0.37826, -0.11422, -0.55906],
-    # [-0.077678, 0.69811, 0.04663, -0.16589, -0.10913],
-    # [-0.34644, 0.15591, -0.13374, -0.34059, 1.7438],
-    # [0.85228, 2.3916, -0.10486, 0.48776, -305.75]])
+                                 [-0.00060671, -0.0077883, -0.010489, -0.0036487, 2.0056],
+                                 [0.096079, -0.061232, 0.37826, -0.11422, -0.55906],
+                                 [-0.077678, 0.69811, 0.04663, -0.16589, -0.10913],
+                                 [-0.34644, 0.15591, -0.13374, -0.34059, 1.7438],
+                                 [0.85228, 2.3916, -0.10486, 0.48776, -305.75]]
+                                )
+
+    # B0 term needs to be flipped. Producing a -300 Hz in f means that the coil profile should be positive. (f0 - f)
+    orders_to_order2[8] *= -1
 
     # Reorder according to GE shim convention: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
     reordered_spher = reorder_to_manufacturer(spher_harm, manufacturer='GE')
@@ -163,9 +163,15 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
                 return coefs[..., [4, 2, 1, 3, 0]]
 
             # Scale
+            orders_to_order2_ut = np.zeros_like(orders_to_order2)
             # Hz/cm2/A, -> uT/m2/A = order2_to_order2 * 1e6 * (100 ** 2) / (GYROMAGNETIC_RATIO * 1e6)
             # = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
-            orders_to_order2_uT = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
+            orders_to_order2_ut[4:] = orders_to_order2[0:5] * (100 ** 2) / GYROMAGNETIC_RATIO
+            # Hz/cm/A, -> uT/m/A = order1_to_order2 * 1e6 * 100 / (GYROMAGNETIC_RATIO * 1e6)
+            # = order2_to_order2 * 100 / GYROMAGNETIC_RATIO
+            orders_to_order2_ut[1:4] = orders_to_order2[5:8] * 100 / GYROMAGNETIC_RATIO
+            # Hz/A
+            orders_to_order2_ut[0] = orders_to_order2[8]
 
             # Reorder 2nd order terms to the scaling matrix order
             # *xy, zy, zx, X2 - Y2, z2 * (scaling matrix)
@@ -176,8 +182,13 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
                 # Since reordered_spher contains the values of 1uT/m^2 in Hz/mm^2. We simply multiply by the amount of
                 # uT/m^2 / A
                 # This gives us a value in Hz/mm^2 / A which we need to modify to Hz/mm^2 / mA
-                scaled[2][..., i_channel] = np.matmul(reordered_spher[2],
-                                                      orders_to_order2_uT[i_channel, :]) / 1000
+
+                # Orders 0, 1, 2 should exist in the dictionary as they are necessary to compute the 2nd order terms
+                reordered_spher_necessary = {key: reordered_spher[key] for key in (0, 1, 2)}
+                reordered_spher_array = convert_spher_harm_to_array(reordered_spher_necessary)
+
+                scaled[2][..., i_channel] = np.matmul(reordered_spher_array,
+                                                      orders_to_order2_ut[:, i_channel]) / 1000
                 # Todo: We need a /2 between expected zx, zy, xy results and calculated results
                 if i_channel in [0, 1, 2]:
                     scaled[2][..., i_channel] /= 2
@@ -477,6 +488,8 @@ def _get_scaling_factors(orders):
                 scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
                                          field[iref[order][i]][0])
             else:
+                # B0 term needs to be flipped. Producing a 300 Hz in f means that the coil profile should be negative.
+                # (f0 - f)
                 scaling_factors[i_ch] = -1 / field[iref[order][i]][0]
 
             i_ch += 1
