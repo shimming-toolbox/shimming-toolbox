@@ -305,22 +305,24 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="Create a mask to shim single voxel MRS."
-                       "voxel position and size can be directly given or these info can be read "
-                       "from the twix raw-data."
+                  help="Create a mask to shim single voxel MRS. "
+                       "Voxel position and size can be directly given or these info can be read "
+                       "from the twix raw-data. "
                        "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
                        "folder. Return an output nifti file to be used as a mask for MRS shimming.")
-@click.option('-i', '--input', 'fname_input',  type=click.Path(), required=True,
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
                help="Input path of the fieldmap to be shimmed.")
 @click.option('-r', '--raw_data', type=click.Path(),
-              help="Input path of the of the twix raw-data (supported extention .dat) [optional]")
-@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'), show_default=True,
-              help="Name of the output mask. Supported extensions are .nii or .nii.gz. (default: "
+              help="Input path of the of the twix raw-data (supported extention .dat)")
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
+              show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz. (default: "
                    "(os.curdir, 'mask_mrs.nii.gz'))")
-@click.option('-c', '--center', nargs=3, type=click.FLOAT, help="voxel's center position in mm of the x, y and z of the scanner's coordinate [optional]")
-@click.option('-s', '--size', nargs=3, type=click.FLOAT, help="voxel size in mm of the x, y and z of the scanner's coordinate")
+@click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
+              "the scanner's coordinate")
+@click.option('-s', '--size', nargs=3, type=click.FLOAT, help="Voxel size in mm of the x, y and z of the scanner's "
+              "coordinate")
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def mrs_mask(fname_input, output, raw_data, center, size, verbose):
+def mrs(fname_input, output, raw_data, center, size, verbose):
 
     # Set all loggers
     set_all_loggers(verbose)
