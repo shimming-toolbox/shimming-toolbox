@@ -16,8 +16,8 @@ SHIM_CS = {'SIEMENS': 'LAI',
 
 def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     """
-    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
-    harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Siemens convention*,
+    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order
+    spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``. *Following Siemens convention*,
     ``basis`` is then:
 
         - Rescaled to Hz/unit-shim, where "unit-shim" refers to the measure displayed in the Adjustments card of the
@@ -49,8 +49,8 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
-    # Create spherical harmonics from first to second order
-    flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', orders=(1,))
+    # Create spherical harmonics
+    flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', orders=[1, ])
     spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
@@ -64,8 +64,8 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
 
 def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     """
-    The function first wraps ``shimmingtoolbox.coils.spher_harm_basis.scaled_spher_harm`` to generate 1st and 2nd
-    order spherical harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``.
+    The function first wraps ``shimmingtoolbox.coils.spher_harm_basis.scaled_spher_harm`` to generate the specified order
+     spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``.
     *Following GE convention*, ``basis`` is then:
 
         - Reordered along the 4th dimension as *x, y, z, xy, zy, zx, X2-Y2, z2*
@@ -95,7 +95,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
-    # Create spherical harmonics from first to second order
+    # Create spherical harmonics
     flip = get_flip_matrix(shim_cs, manufacturer='GE', orders=[1, ])
 
     # 2nd order cross terms require the calculation of the 0, 1, 2nd order
@@ -209,7 +209,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
 
 def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     """
-    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
+    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Philips convention*,
     ``basis`` is then:
 
@@ -243,9 +243,9 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
     # Check inputs
     _check_basis_inputs(x, y, z, orders)
 
-    # Create spherical harmonics from first to second order
+    # Create spherical harmonics
     # Philips' y and x axis are flipped (x is AP, y is RL)
-    flip = get_flip_matrix(shim_cs, manufacturer='Philips', orders=(1,))
+    flip = get_flip_matrix(shim_cs, manufacturer='Philips', orders=[1, ])
     spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], z * flip[2], orders)
 
     # Reorder according to philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
@@ -273,13 +273,14 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
 
 
 def scaled_spher_harm(x, y, z, orders=(1, 2)):
-    """ The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate 1st and 2nd order spherical
-    harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. It is then:
+    """ The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified orders
+    spherical harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. It is then:
 
         - Rescaled to 1uT/m or 1uT/m^2 in units of Hz/mm or Hz/mm^2:
 
             - 1 micro-T/m for *X,Y,Z* gradients(= 0.042576 Hz/mm)
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
+            - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
 
     Args:
         x (numpy.ndarray): 3-D arrays of grid coordinates, "Left->Right" grid coordinates in the patient coordinate
