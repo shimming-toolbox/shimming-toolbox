@@ -64,8 +64,8 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
 
 def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     """
-    The function first wraps ``shimmingtoolbox.coils.spher_harm_basis.scaled_spher_harm`` to generate the specified order
-     spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``.
+    The function first wraps ``shimmingtoolbox.coils.spher_harm_basis.scaled_spher_harm`` to generate the specified
+    order spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``.
     *Following GE convention*, ``basis`` is then:
 
         - Reordered along the 4th dimension as *x, y, z, xy, zy, zx, X2-Y2, z2*
