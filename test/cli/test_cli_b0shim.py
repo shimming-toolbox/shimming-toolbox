@@ -12,6 +12,7 @@ import numpy as np
 import json
 import csv
 
+from shimmingtoolbox import __dir_config_custom_coil_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -723,6 +724,7 @@ class TestCLIRealtime(object):
                                              '--mask-static', fname_mask,
                                              '--mask-riro', fname_mask,
                                              '--resp', fname_resp,
+                                             '--optimizer-method', 'pseudo_inverse',
                                              '--slice-factor', '2',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -1121,14 +1123,11 @@ def _create_dummy_coil(nii_fmap):
     nii_dummy_coil = nib.Nifti1Image(sph_coil_profile, nii_fmap.affine, header=nii_fmap.header)
 
     # Dummy constraints
-    dummy_coil_constraints = {
-        "name": "Dummy_coil",
-        "coef_channel_minmax": {"coil": [(-6000, 6000), (-2405, 2194), (-1120, 3479), (-754, 3845), (-4252.2, 5665.8),
-                                (-3692, 3409), (-3417, 3588), (-3568, 3534), (-3483, 3490)]},
-        "coef_sum_max": None
-    }
+    with open(__dir_config_custom_coil_constraints__, 'r', encoding='utf-8') as f:
+        constraints = json.load(f)
 
-    return nii_dummy_coil, dummy_coil_constraints
+    constraints['name'] = 'Dummy_coil'
+    return nii_dummy_coil, constraints
 
 
 def test_b0_max_intensity():
