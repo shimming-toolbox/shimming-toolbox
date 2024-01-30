@@ -130,49 +130,49 @@
             "datatype": "anat",
             "suffix": "MPRAGE",
             "criteria": {
-                "SequenceName": "*tfl3d[2-4]_ns",
-                "ProtocolName": "*MPRAGE*",
-                "ImageType": ["*", "*", "*", "*", "MEAN"]
+                "SequenceName": ".*tfl3d[2-4].*",
+                "ProtocolName": ".*MPRAGE.*",
+                "ImageType": [".*", ".*", ".*", ".*", "MEAN"]
             }
         },
         {
             "datatype": "anat",
             "suffix": "MPRAGE_e1",
             "criteria": {
-                "SequenceName": "*tfl3d[2-4]_ns",
-                "ProtocolName": "*MPRAGE*",
+                "SequenceName": ".*tfl3d[2-4].*",
+                "ProtocolName": ".*MPRAGE.*",
                 "EchoNumber": "1",
-                "ImageType": ["*", "*", "M", "*"]
+                "ImageType": [".*", ".*", "M", ".*"]
             }
         },
                 {
             "datatype": "anat",
             "suffix": "MPRAGE_e2",
             "criteria": {
-                "SequenceName": "*tfl3d[2-4]_ns",
-                "ProtocolName": "*MPRAGE*",
+                "SequenceName": ".*tfl3d[2-4].*",
+                "ProtocolName": ".*MPRAGE.*",
                 "EchoNumber": "2",
-                "ImageType": ["*", "*", "M", "*"]
+                "ImageType": [".*", ".*", "M", ".*"]
             }
         },
                 {
             "datatype": "anat",
             "suffix": "MPRAGE_e3",
             "criteria": {
-                "SequenceName": "*tfl3d[2-4]_ns",
-                "ProtocolName": "*MPRAGE*",
+                "SequenceName": ".*tfl3d[2-4].*",
+                "ProtocolName": ".*MPRAGE.*",
                 "EchoNumber": "3",
-                "ImageType": ["*", "*", "M", "*"]
+                "ImageType": [".*", ".*", "M", ".*"]
             }
         },
                 {
             "datatype": "anat",
             "suffix": "MPRAGE_e4",
             "criteria": {
-                "SequenceName": "*tfl3d[2-4]_ns",
-                "ProtocolName": "*MPRAGE*",
+                "SequenceName": ".*tfl3d[2-4].*",
+                "ProtocolName": ".*MPRAGE.*",
                 "EchoNumber": "4",
-                "ImageType": ["*", "*", "M", "*"]
+                "ImageType": [".*", ".*", "M", ".*"]
             }
         },
         {
