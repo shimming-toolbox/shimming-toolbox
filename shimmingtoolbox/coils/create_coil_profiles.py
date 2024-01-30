@@ -9,6 +9,7 @@ import logging
 logger = logging.getLogger(__name__)
 TOLERANCE = 0.001
 
+
 def create_coil_profiles(fnames_fmaps, list_currents):
     """ Create coil profiles from fieldmaps
 

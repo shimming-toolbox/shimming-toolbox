@@ -436,7 +436,7 @@ class ShimSequencer(Sequencer):
             # TODO: Add units if possible
             # TODO: Add in anat space?
             # Figure that shows unshimmed vs shimmed for each slice
-            self.plot_full_mask(unshimmed, shimmed_masked, mask_full_binary)
+            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -445,9 +445,14 @@ class ShimSequencer(Sequencer):
             self.plot_currents(coef)
             self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
+
                 # Save to a NIfTI
+                fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
+                nii_correction_3d = nib.Nifti1Image(corrections, self.optimizer.unshimmed_affine)
+                nib.save(nii_correction_3d, fname_correction)
+
                 fname_correction = os.path.join(self.path_output, 'fig_correction.nii.gz')
-                nii_correction_3d = nib.Nifti1Image(shimmed_masked, self.optimizer.unshimmed_affine)
+                nii_correction_3d = nib.Nifti1Image(np.sum(corrections, axis=3), self.optimizer.unshimmed_affine)
                 nib.save(nii_correction_3d, fname_correction)
 
                 # 4th dimension is i_shim
@@ -584,63 +589,6 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
-    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
-        """
-        Plot and save the static full mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked(np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Binary mask in the fieldmap space
-        """
-        # Plot
-        mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed * mask)
-        mt_shimmed_masked = montage(shimmed_masked)
-
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
-        fig = Figure(figsize=(15, 9))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
-
-        ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                     f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                     f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
@@ -659,18 +607,17 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
         mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
 
-        min_masked_value = np.min([mt_unshimmed_masked, mt_shimmed_masked])
-        max_masked_value = np.max([mt_unshimmed_masked, mt_shimmed_masked])
+        min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
+        max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
 
-        min_fmap_value = np.min([mt_unshimmed, mt_shimmed])
-        max_fmap_value = np.max([mt_unshimmed, mt_shimmed])
+        min_fmap_value = np.nanmin([mt_unshimmed, mt_shimmed])
+        max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
         fig = Figure(figsize=(8, 5))
         fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
         im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
         ax.set_title("Unshimmed")
         ax.get_xaxis().set_visible(False)
@@ -681,7 +628,6 @@ class ShimSequencer(Sequencer):
 
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
         ax.set_title("Shimmed")
         ax.get_xaxis().set_visible(False)
@@ -799,9 +745,9 @@ class RealTimeSequencer(Sequencer):
             extended_fma (bool): True if the fieldmap was extended to be able to shim only 1 slice
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils,
-                 method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere', mask_dilation_kernel_size=3,
-                 reg_factor=0, path_output=None):
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_static,
+                 coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
+                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
         """
         Initialization of the RealTimeSequencer class
 
@@ -844,7 +790,8 @@ class RealTimeSequencer(Sequencer):
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
         self.json_fmap = json_fmap
         self.pmu = pmu
-        self.coils = coils
+        self.coils_static = coils_static
+        self.coils_riro = coils_riro
         self.method = method
         self.bounds = None
 
@@ -1095,7 +1042,8 @@ class RealTimeSequencer(Sequencer):
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
-        self.bounds = new_bounds_from_currents(coef_static, self.optimizer.merged_bounds)
+        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds, self.coils_static,
+                                                              self.coils_riro)
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(riro_mask_resampled)
@@ -1122,10 +1070,10 @@ class RealTimeSequencer(Sequencer):
         # global supported_optimizers
         if self.method in supported_optimizers:
             if self.method == 'least_squares':
-                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine, self.opt_criteria,
+                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine, self.opt_criteria,
                                                                    reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
-                self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine,
+                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
             elif self.method == 'least_squares_rt':
@@ -1134,7 +1082,7 @@ class RealTimeSequencer(Sequencer):
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
-                self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine,
+                self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine,
                                                                         self.opt_criteria, pmu,
                                                                         reg_factor=self.reg_factor)
             elif self.method == 'quad_prog_rt':
@@ -1143,14 +1091,14 @@ class RealTimeSequencer(Sequencer):
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
-                self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine, pmu,
+                self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine, pmu,
                                                                         reg_factor=self.reg_factor)
 
             else:
                 if pmu is None:
-                    self.optimizer = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                    self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine)
                 else:
-                    self.optimizer_riro = supported_optimizers[self.method](self.coils, unshimmed, affine)
+                    self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine)
 
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
@@ -1257,17 +1205,22 @@ class RealTimeSequencer(Sequencer):
         if self.extended_fmap:
             # Remove extended slices if the field map was smaller than the kernel size
             n_channels = self.optimizer.merged_coils.shape[-1]
+            # static coil
             merged_coils = self.optimizer.merged_coils[self.fmap_orig_location[..., 0], :]
             merged_coils = merged_coils.reshape(unshimmed.shape[:-1] + (n_channels,))
+            # riro coil
+            merged_coils_riro = self.optimizer_riro.merged_coils[self.fmap_orig_location[..., 0], :]
+            merged_coils_riro = merged_coils_riro.reshape(unshimmed.shape[:-1] + (n_channels,))
         else:
             merged_coils = self.optimizer.merged_coils
+            merged_coils_riro = self.optimizer_riro.merged_coils
 
         for i_shim in range(len(self.slices)):
             # Calculate static correction
             correction_static = merged_coils @ coef_static[i_shim]
 
             # Calculate the riro coil profiles
-            riro_profile = merged_coils @ coef_riro[i_shim]
+            riro_profile = merged_coils_riro @ coef_riro[i_shim]
 
             mask_fmap_cs[..., i_shim] = np.ceil(resample_mask(self.nii_static_mask, nii_target,
                                                               self.slices[i_shim]).get_fdata())
@@ -1333,7 +1286,7 @@ class RealTimeSequencer(Sequencer):
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3),
                       where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            self.plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary)
+            plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary, self.path_output)
 
             # Plot STD over time before and after shimming
             self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
@@ -1611,65 +1564,6 @@ class RealTimeSequencer(Sequencer):
                      f"\nstatic_shim_riro: {static_shim_riro}"
                      f"\nstatic_unshimmed: {static_unshimmed}")
 
-    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
-        """
-        Plot and save the static full mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked(np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Binary mask in the fieldmap space
-        """
-        # Plot
-
-        mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed * mask)
-        mt_shimmed_masked = montage(shimmed_masked)
-
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(unshimmed), mask, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(shimmed_masked), mask, metric='mean')
-
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
-
-        fig = Figure(figsize=(9, 6))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
-
-        ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"Before shimming\nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                     f"abs mean: {metric_unshimmed_absmean:.3}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
-        ax.set_title(f"After shimming\nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                     f"abs mean: {metric_shimmed_absmean:.3}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        # Lower suptitle
-        fig.subplots_adjust(top=0.85)
-
-        # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-
     def plot_full_time_std(self, unshimmed, masked_shim_static_riro, mask_fmap_cs, mask):
         """
         Plot and save the std heatmap over time
@@ -1696,22 +1590,25 @@ class RealTimeSequencer(Sequencer):
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
 
         # Plot
+        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=mask == False, fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=mask == False, fill_value=np.nan)
+
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
-        mt_unshimmed_masked = montage(std_unshimmed * mask)
-        mt_shimmed_masked = montage(std_shimmed_masked)
+        mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
+        mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
 
-        # Remove the outliners to calculate the colorbar limits
+        # Remove the outliers to calculate the colorbar limits
         # Necessary because some STD are much higher and are not visible on the heatmap, they are still considered in
         # the metric
-        shim_limit = np.percentile(mt_shimmed_masked[mt_shimmed_masked != 0], 90)
-        unshim_limit = np.percentile(mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
+        shim_limit = np.nanpercentile(mt_shimmed_masked[mt_shimmed_masked != 0], 90)
+        unshim_limit = np.nanpercentile(mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
 
-        min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(mt_unshimmed_masked[mt_unshimmed_masked < unshim_limit].max(),
-                        mt_shimmed_masked[mt_shimmed_masked < shim_limit].max())
+        min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
+        max_value = max(np.nanmax(mt_unshimmed_masked[mt_unshimmed_masked < unshim_limit]),
+                        np.nanmax(mt_shimmed_masked[mt_shimmed_masked < shim_limit]))
 
         fig = Figure(figsize=(9, 6))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
@@ -1746,33 +1643,163 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def new_bounds_from_currents(currents, old_bounds):
+def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
+    """
+    Plot and save the static full mask
+
+    Args:
+        unshimmed (np.ndarray): Original fieldmap not shimmed
+        shimmed_masked(np.ndarray): Masked shimmed fieldmap
+        mask (np.ndarray): Binary mask in the fieldmap space
+        path_output (str): Path to the output folder
+    """
+
+    # Plot
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=mask == False, fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=mask == False, fill_value=np.nan)
+
+    mt_unshimmed = montage(unshimmed)
+    mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
+    mt_shimmed_masked = montage(nan_shimmed_masked.filled())
+
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
+    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
+
+    min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
+    max_value = max(np.nanmax(mt_unshimmed_masked), np.nanmax(mt_shimmed_masked))
+
+    fig = Figure(figsize=(15, 9))
+    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+
+    ax = fig.add_subplot(1, 2, 1)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    ax = fig.add_subplot(1, 2, 2)
+    ax.imshow(mt_unshimmed, cmap='gray')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes('right', size='5%', pad=0.05)
+    fig.colorbar(im, cax=cax)
+
+    # Save
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def new_bounds_from_currents(currents:dict, old_bounds:dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
 
     Args:
-        currents (np.ndarray): 2D array (n_shims x n_channels).
-        old_bounds (list): 2D list (n_channels, 2) containing (min, max) containing the merged bounds of the previous
+        currents (dict): Dictionary with n_shims as keys each with a list of n_channels values.
+        old_bounds (dict): Dictionary with orders as keys containing (min, max) containing the merged bounds of the previous
+                           optimization.
+    Returns:
+        dict: Modified bounds (same shape as old_bounds)
+    """
+    new_bounds = {}
+    for key in old_bounds:
+        new_bounds[key] = []
+        for i, bound in enumerate(old_bounds[key]):
+            if bound == [None, None]:
+                new_bounds[key].append(bound)
+            elif bound[0] is None:
+                new_bounds[key].append([None, bound[1] - currents[key][i]])
+            elif bound[1] is None:
+                new_bounds[key].append([bound[0] - currents[key][i], None])
+            else:
+                new_bounds[key].append([bound[0] - currents[key][i], bound[1] - currents[key][i]])
+    return new_bounds
+
+
+def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[], coils_riro=[]):
+    """
+    Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
+    "old_coef + next_bound < old_bound".
+
+    Args:
+        currents (np.ndarray): 2D array (n_shims x n_channels). Direct output from :func:`_optimize`.
+        old_bounds (list): 1d list (n_channels) of tuples (min, max) containing the merged bounds of the previous
                            optimization.
     Returns:
         list: 2d list (n_shim_groups x n_channels) of bounds (min, max) corresponding to each shim group and channel.
     """
 
-    new_bounds = []
-    for i_shim in range(currents.shape[0]):
-        shim_bound = []
-        for i_channel in range(len(old_bounds)):
-            if old_bounds[i_channel] == [None, None]:
-                a_bound = old_bounds[i_channel]
-            elif old_bounds[i_channel][0] is None:
-                a_bound = [None, old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-            elif old_bounds[i_channel][1] is None:
-                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel], None]
+    currents_riro = np.empty((currents.shape[0], 0))
+    old_bounds_riro = []
+    static_coil_names = [c.name for c in coils_static]
+
+    index = 0
+    coil_indexes = {}
+    for coil in coils_static:
+        if type(coil) == Coil:
+            coil_indexes[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            index += len(coil.coef_channel_minmax['coil'])
+        else:
+            coil_indexes[coil.name] = {}
+            for key in coil.coef_channel_minmax:
+                coil_indexes[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                index += len(coil.coef_channel_minmax[key])
+
+    for i, coil in enumerate(coils_riro):
+        if coil.name in static_coil_names:
+            if type(coil) == Coil:
+                currents_riro = np.append(currents_riro,
+                                          currents[:, coil_indexes[coil.name][0]:coil_indexes[coil.name][1]],
+                                          axis=1)
+                old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][0]:coil_indexes[coil.name][1]])
             else:
-                a_bound = [old_bounds[i_channel][0] - currents[i_shim, i_channel],
-                           old_bounds[i_channel][1] - currents[i_shim, i_channel]]
-            shim_bound.append(a_bound)
+                for order in coil.coef_channel_minmax:
+                    if order in coils_static[static_coil_names.index(coil.name)].coef_channel_minmax.keys():
+                        currents_riro = np.append(currents_riro,
+                                                  currents[:, coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
+                                                  axis = 1)
+                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
+                    else:
+                        currents_riro = np.append(currents_riro,
+                                                  np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                                  axis=1)
+                        old_bounds_riro.extend(coil.coef_channel_minmax[order])
+
+        else:
+            if type(coil) == Coil:
+                currents_riro = np.append(currents_riro,
+                                        np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
+                                        axis=1)
+                old_bounds_riro.extend(coil.coef_channel_minmax['coil'])
+
+            else:
+                for order in coil.coef_channel_minmax:
+                    currents_riro = np.append(currents_riro,
+                                              np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                              axis=1)
+                    old_bounds_riro.extend(coil.coef_channel_minmax[order])
+
+    new_bounds = []
+    for i_shim in range(currents_riro.shape[0]):
+        shim_bound = []
+        for i_channel in range(len(old_bounds_riro)):
+            a_bound = old_bounds_riro[i_channel] - currents_riro[i_shim, i_channel]
+            shim_bound.append(tuple(a_bound))
         new_bounds.append(shim_bound)
 
     return new_bounds

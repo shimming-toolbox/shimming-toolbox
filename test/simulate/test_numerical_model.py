@@ -1,10 +1,16 @@
 # coding: utf-8
 
-from shimmingtoolbox.simulate import *
+import json
+import os
+import numpy as np
+import pathlib
 from phantominator import shepp_logan
+import tempfile
+
+from shimmingtoolbox.simulate import NumericalModel
 
 
-class TestCore(object):
+class TestNumericalModel(object):
     def setup_method(self):
         self.test_filename = "test"
         self.test_filename_nii = "test.nii"
@@ -127,38 +133,107 @@ class TestCore(object):
         )
 
     # --------------generate_deltaB0 method tests-------------- #
-    def test_generate_deltaB0_linear_floor_value(self):
+    def test_generate_deltaB0_x_floor_value(self):
 
         test_obj = NumericalModel(model="shepp-logan")
 
         m = 0
         b = 2
-        test_obj.generate_deltaB0("linear", [m, b])
+        test_obj.generate_deltaB0("x", [m, b])
 
         deltaB0_map = test_obj.deltaB0
 
         assert np.allclose(
-            np.mean(deltaB0_map[:]), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
         )
 
-    def test_generate_deltaB0_linear_slope_value(self):
+    def test_generate_deltaB0_y_floor_value(self):
+
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 0
+        b = 2
+        test_obj.generate_deltaB0("y", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        assert np.allclose(
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+        )
+
+    def test_generate_deltaB0_z_floor_value(self):
+
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 0
+        b = 2
+        test_obj.generate_deltaB0("z", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        assert np.allclose(
+            np.mean(deltaB0_map), b / (test_obj.gamma / (2 * np.pi)), rtol=10 ** -6
+        )
+
+    def test_generate_deltaB0_x_slope_value(self):
         test_obj = NumericalModel(model="shepp-logan")
 
         m = 1
         b = 0
-        test_obj.generate_deltaB0("linear", [m, b])
+        test_obj.generate_deltaB0("x", [m, b])
 
         deltaB0_map = test_obj.deltaB0
 
         dims = deltaB0_map.shape
-        [X, Y] = np.meshgrid(
+        [X, _] = np.meshgrid(
             np.linspace(-dims[0], dims[0], dims[0]),
             np.linspace(-dims[1], dims[1], dims[1]),
         )
 
         assert np.allclose(
-            deltaB0_map[int(dims[0] / 2), int(dims[0] / 4)],
-            m * X[int(dims[0] / 2), int(dims[0] / 4)] / (test_obj.gamma / (2 * np.pi)),
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * X[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
+        )
+
+    def test_generate_deltaB0_y_slope_value(self):
+        test_obj = NumericalModel(model="shepp-logan")
+
+        m = 1
+        b = 0
+        test_obj.generate_deltaB0("y", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        dims = deltaB0_map.shape
+        [_, Y] = np.meshgrid(
+            np.linspace(-dims[0], dims[0], dims[0]),
+            np.linspace(-dims[1], dims[1], dims[1]),
+        )
+
+        assert np.allclose(
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * Y[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
+        )
+
+    def test_generate_deltaB0_z_slope_value(self):
+        test_obj = NumericalModel(model="shepp-logan", n_slices=4)
+
+        m = 1
+        b = 0
+        test_obj.generate_deltaB0("z", [m, b])
+
+        deltaB0_map = test_obj.deltaB0
+
+        dims = deltaB0_map.shape
+        [_, _, Z] = np.meshgrid(
+            np.linspace(-dims[0], dims[0], dims[0]),
+            np.linspace(-dims[1], dims[1], dims[1]),
+            np.linspace(-dims[2], dims[2], dims[2])
+        )
+
+        assert np.allclose(
+            deltaB0_map[int(dims[0] / 2), int(dims[1] / 4)],
+            m * Z[int(dims[0] / 2), int(dims[1] / 4)] / (test_obj.gamma / (2 * np.pi)),
         )
 
     # --------------simulate_signal method tests-------------- #
@@ -188,7 +263,7 @@ class TestCore(object):
         assert np.isreal(test_obj.get_real().all())
         assert np.isreal(test_obj.get_imaginary().all())
 
-    def test_simulate_signal_SNR_results_in_noisy_backgroun(self):
+    def test_simulate_signal_SNR_results_in_noisy_background(self):
         test_obj = NumericalModel(model="shepp-logan")
 
         FA = 15
@@ -214,7 +289,7 @@ class TestCore(object):
         test_obj = NumericalModel(model="shepp-logan")
 
         B0_hz = 13
-        test_obj.generate_deltaB0("linear", [0.0, B0_hz])
+        test_obj.generate_deltaB0("x", [0.0, B0_hz])
         TR = 0.025
         TE = [0.004, 0.008]
         test_obj.simulate_measurement(TR, TE)
@@ -233,7 +308,7 @@ class TestCore(object):
         test_obj.handedness = "right"
 
         B0_hz = 13
-        test_obj.generate_deltaB0("linear", [0.0, B0_hz])
+        test_obj.generate_deltaB0("x", [0.0, B0_hz])
         TR = 0.025
         TE = [0.004, 0.008]
         test_obj.simulate_measurement(TR, TE)
@@ -257,27 +332,31 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.test_filename)
-        # Default option for save is a NIfTI output.
+        # create temporary directory
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename), manufacturer="Siemens")
+            # Default option for save is a NIfTI output.
 
-        assert os.path.isfile(Path(self.test_filename + ".nii"))
+            assert os.path.isfile(os.path.join(tmp, self.test_filename + "_TE0" + ".nii"))
+            assert os.path.isfile(os.path.join(tmp, self.test_filename + "_TE1" + ".nii"))
 
-        # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.test_filename + ".json"))
+            fname0 = os.path.join(tmp, self.test_filename + "_TE0" + ".json")
+            fname1 = os.path.join(tmp, self.test_filename + "_TE1" + ".json")
+            # Verify that JSON was written correctly
+            assert os.path.isfile(fname0)
+            assert os.path.isfile(fname1)
 
-        file_name = Path(self.test_filename + ".json")
+            with open(str(fname0)) as f:
+                data0 = json.load(f)
+            with open(str(fname1)) as f:
+                data1 = json.load(f)
 
-        with open(str(file_name)) as f:
-            data = json.load(f)
-
-        np.testing.assert_equal(data["EchoTime"], TE)
-        np.testing.assert_equal(data["FlipAngle"], FA)
-
-        if os.path.isfile(Path(self.test_filename + ".nii")):
-            os.remove(str(Path(self.test_filename + ".nii")))
-
-        if os.path.isfile(Path(self.test_filename + ".json")):
-            os.remove(str(Path(self.test_filename + ".json")))
+            np.testing.assert_equal(data0["EchoTime"], TE[0])
+            np.testing.assert_equal(data0["FlipAngle"], FA)
+            np.testing.assert_equal(data0["Manufacturer"], 'Siemens')
+            np.testing.assert_equal(data1["EchoTime"], TE[1])
+            np.testing.assert_equal(data1["FlipAngle"], FA)
+            np.testing.assert_equal(data1["Manufacturer"], 'Siemens')
 
     def test_save_nii_with_extension(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -287,27 +366,23 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        # Default option for save is a NIfTI output.
-        test_obj.save("Magnitude", self.test_filename_nii)
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Default option for save is a NIfTI output.
+            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename_nii))
 
-        assert os.path.isfile(Path(self.test_filename_nii))
+            assert os.path.isfile(os.path.join(tmp, self.test_filename + "_TE0" + ".nii"))
 
-        # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.test_filename + ".json"))
+            fname = os.path.join(tmp, self.test_filename + "_TE0" + ".json")
 
-        file_name = Path(self.test_filename + ".json")
+            # Verify that JSON was written correctly
+            assert os.path.isfile(fname)
 
-        with open(str(file_name)) as f:
-            data = json.load(f)
+            with open(str(fname)) as f:
+                data = json.load(f)
 
-        np.testing.assert_equal(data["EchoTime"], TE)
-        np.testing.assert_equal(data["FlipAngle"], FA)
-
-        if os.path.isfile(Path(self.test_filename_nii)):
-            os.remove(str(Path(self.test_filename_nii)))
-
-        if os.path.isfile(Path(self.test_filename + ".json")):
-            os.remove(str(Path(self.test_filename + ".json")))
+            np.testing.assert_equal(data["EchoTime"], TE[0])
+            np.testing.assert_equal(data["FlipAngle"], FA)
+            np.testing.assert_equal(data["Manufacturer"], 'Simulated')
 
     def test_save_mat(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -317,26 +392,21 @@ class TestCore(object):
 
         test_obj.simulate_measurement(FA, TE)
 
-        test_obj.save("Magnitude", self.test_filename, "mat")
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename), "mat")
 
-        assert os.path.isfile(Path(self.test_filename + ".mat"))
+            assert os.path.isfile(os.path.join(tmp, self.test_filename + ".mat"))
 
-        # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.test_filename + ".json"))
+            fname = os.path.join(tmp, self.test_filename + ".json")
 
-        file_name = Path(self.test_filename + ".json")
+            # Verify that JSON was written correctly
+            assert os.path.isfile(fname)
 
-        with open(str(file_name)) as f:
-            data = json.load(f)
+            with open(str(fname)) as f:
+                data = json.load(f)
 
-        np.testing.assert_equal(data["EchoTime"], TE)
-        np.testing.assert_equal(data["FlipAngle"], FA)
-
-        if os.path.isfile(Path(self.test_filename + ".mat")):
-            os.remove(str(Path(self.test_filename + ".mat")))
-
-        if os.path.isfile(Path(self.test_filename + ".json")):
-            os.remove(str(Path(self.test_filename + ".json")))
+            np.testing.assert_equal(data["EchoTime"], TE)
+            np.testing.assert_equal(data["FlipAngle"], FA)
 
     def test_save_mat_with_extension(self):
         test_obj = NumericalModel(model="shepp-logan")
@@ -345,27 +415,21 @@ class TestCore(object):
         TE = [0.003, 0.015]
 
         test_obj.simulate_measurement(FA, TE)
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            test_obj.save("Magnitude", os.path.join(tmp, self.test_filename_mat), "mat")
 
-        test_obj.save("Magnitude", self.test_filename_mat, "mat")
+            assert os.path.isfile( os.path.join(tmp, self.test_filename_mat))
 
-        assert os.path.isfile(Path(self.test_filename_mat))
+            fname = os.path.join(tmp, self.test_filename + ".json")
 
-        # Verify that JSON was written correctly
-        assert os.path.isfile(Path(self.test_filename + ".json"))
+            # Verify that JSON was written correctly
+            assert os.path.isfile(fname)
 
-        file_name = Path(self.test_filename + ".json")
+            with open(str(fname)) as f:
+                data = json.load(f)
 
-        with open(str(file_name)) as f:
-            data = json.load(f)
-
-        np.testing.assert_equal(data["EchoTime"], TE)
-        np.testing.assert_equal(data["FlipAngle"], FA)
-
-        if os.path.isfile(Path(self.test_filename_mat)):
-            os.remove(str(Path(self.test_filename_mat)))
-
-        if os.path.isfile(Path(self.test_filename + ".json")):
-            os.remove(str(Path(self.test_filename + ".json")))
+            np.testing.assert_equal(data["EchoTime"], TE)
+            np.testing.assert_equal(data["FlipAngle"], FA)
 
     # --------------generate_signal method tests-------------- #
 

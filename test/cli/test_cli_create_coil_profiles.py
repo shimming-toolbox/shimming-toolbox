@@ -181,8 +181,7 @@ def test_create_coil_profiles_from_cad():
                             '--offset', '0', '-111', '-47',
                             '-o', fname_output],
                             catch_exceptions=False)
-        print(fname_txt)
-        print(res.output)
+
         assert res.exit_code == 0
 
         fname_cp = os.path.join(fname_output, coil_name + '_coil_profiles.nii.gz')
@@ -197,4 +196,5 @@ def test_create_coil_profiles_from_cad():
 
         with open(fname_config, 'rb') as f:
             config_test = json.load(f)
+
         assert are_jsons_equal(config_test, ref_config)

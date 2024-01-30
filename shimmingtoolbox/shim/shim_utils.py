@@ -9,12 +9,9 @@ import numpy as np
 import logging
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
-from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix
+from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
 
 logger = logging.getLogger(__name__)
-
-shim_cs = {'SIEMENS': 'LAI',
-           'GE': 'LPI'}
 
 
 def get_phase_encode_direction_sign(fname_nii):
@@ -156,7 +153,7 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     return output
 
 
-def phys_to_shim_cs(coefs, manufacturer):
+def phys_to_shim_cs(coefs, manufacturer, orders):
     """Convert a list of coefficients from RAS to the Shim Coordinate System
 
     Args:
@@ -165,20 +162,21 @@ def phys_to_shim_cs(coefs, manufacturer):
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. i.e. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
+        orders (tuple): Tuple containing the spherical harmonic orders
 
     Returns:
         np.ndarray: Coefficients in the shim coordinate system of the manufacturer
     """
     manufacturer = manufacturer.upper()
 
-    if manufacturer.upper() in shim_cs:
+    if manufacturer.upper() in SHIM_CS:
         flip_mat = np.ones(len(coefs))
         # Order 1
         if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer, xyz=True)
+            flip_mat[:3] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
         # Order 2
         elif len(coefs) >= 8:
-            flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], manufacturer=manufacturer)
+            flip_mat[:8] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
         else:
             logger.warning("Order not supported")
 
@@ -190,7 +188,7 @@ def phys_to_shim_cs(coefs, manufacturer):
     return coefs
 
 
-def shim_to_phys_cs(coefs, manufacturer):
+def shim_to_phys_cs(coefs, manufacturer, orders):
     """ Convert coefficients from the shim coordinate system to the physical RAS coordinate system
 
     Args:
@@ -199,12 +197,15 @@ def shim_to_phys_cs(coefs, manufacturer):
                             more coefficients, they are of higher order and must correspond to the implementation of the
                             manufacturer. Siemens: *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
         manufacturer (str): Name of the manufacturer
+        orders (tuple): Tuple containing the spherical harmonic orders
 
     Returns:
         np.ndarray: Coefficients in the physical RAS coordinate system
+
     """
+
     # It's sign flips so the same function can be used for shimCS <--> phys RAS
-    coefs = phys_to_shim_cs(coefs, manufacturer)
+    coefs = phys_to_shim_cs(coefs, manufacturer, orders)
 
     return coefs
 
@@ -222,26 +223,26 @@ def get_scanner_shim_settings(bids_json_dict):
     """
 
     scanner_shim = {
-        'f0': None,
-        'order1': None,
-        'order2': None,
-        'order3': None,
+        '0': None,
+        '1': None,
+        '2': None,
+        '3': None,
         'has_valid_settings': False
     }
 
     # get_imaging_frequency
     if bids_json_dict.get('ImagingFrequency'):
-        scanner_shim['f0'] = int(bids_json_dict.get('ImagingFrequency') * 1e6)
+        scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
 
     # get_shim_orders
     if bids_json_dict.get('ShimSetting'):
         n_shim_values = len(bids_json_dict.get('ShimSetting'))
         if n_shim_values == 3:
-            scanner_shim['order1'] = bids_json_dict.get('ShimSetting')
+            scanner_shim['1'] = bids_json_dict.get('ShimSetting')
             scanner_shim['has_valid_settings'] = True
         elif n_shim_values == 8:
-            scanner_shim['order2'] = bids_json_dict.get('ShimSetting')[3:]
-            scanner_shim['order1'] = bids_json_dict.get('ShimSetting')[:3]
+            scanner_shim['2'] = bids_json_dict.get('ShimSetting')[3:]
+            scanner_shim['1'] = bids_json_dict.get('ShimSetting')[:3]
             scanner_shim['has_valid_settings'] = True
         else:
             logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
@@ -269,28 +270,28 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
     scanner_shim_mp = shim_settings
 
     if manufacturers_model_name == "Prisma_fit":
-        if shim_settings.get('order1'):
+        if shim_settings.get('1'):
             # One can use the Siemens commandline AdjValidate tool to get all the values below:
             max_current_mp_order1 = np.array([2300] * 3)
             max_current_dcm_order1 = np.array([14436, 14265, 14045])
-            order1_mp = np.array(shim_settings['order1']) * max_current_mp_order1 / max_current_dcm_order1
+            order1_mp = np.array(shim_settings['1']) * max_current_mp_order1 / max_current_dcm_order1
 
             if np.any(np.abs(order1_mp) > max_current_mp_order1):
                 scanner_shim_mp['has_valid_settings'] = False
                 raise ValueError("Multipole values exceed known system limits.")
             else:
-                scanner_shim_mp['order1'] = order1_mp
+                scanner_shim_mp['1'] = order1_mp
 
-        if shim_settings.get('order2'):
+        if shim_settings.get('2'):
             max_current_mp_order2 = np.array([4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
             max_current_dcm_order2 = np.array([9998, 9998, 9998, 9998, 9998])
-            order2_mp = np.array(shim_settings['order2']) * max_current_mp_order2 / max_current_dcm_order2
+            order2_mp = np.array(shim_settings['2']) * max_current_mp_order2 / max_current_dcm_order2
 
             if np.any(np.abs(order2_mp) > max_current_mp_order2):
                 scanner_shim_mp['has_valid_settings'] = False
                 raise ValueError("Multipole values exceed known system limits.")
             else:
-                scanner_shim_mp['order2'] = order2_mp
+                scanner_shim_mp['2'] = order2_mp
 
     else:
         logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, could not convert shim settings")
@@ -304,24 +305,19 @@ class ScannerShimSettings:
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict)
         self.shim_settings = convert_to_mp(bids_json_dict.get('ManufacturersModelName'), shim_settings_dac)
 
-    def concatenate_shim_settings(self, order=2):
+    def concatenate_shim_settings(self, orders=[2]):
         coefs = []
         if not self.shim_settings['has_valid_settings']:
             logger.warning("Invalid Shim Settings")
             return coefs
 
-        if self.shim_settings.get('f0') is not None and order >= 0:
-            # Concatenate 2 lists
-            coefs = [self.shim_settings.get('f0')]
-        else:
-            coefs = [0]
-
-        for i_order in range(1, order + 1):
-            if self.shim_settings.get(f'order{i_order}') is not None:
-                # Concatenate 2 lists
-                coefs.extend(self.shim_settings.get(f'order{i_order}'))
-            else:
-                n_coefs = (i_order + 1) * 2
-                coefs.extend([0] * n_coefs)
+        if any(order >= 0 for order in orders):
+            for order in sorted(orders):
+                if self.shim_settings.get(str(order)) is not None:
+                    # Concatenate 2 lists
+                    coefs.extend(self.shim_settings.get(str(order)))
+                else:
+                    n_coefs = (order + 1) * 2
+                    coefs.extend([0] * n_coefs)
 
         return coefs

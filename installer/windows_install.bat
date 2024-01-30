@@ -42,7 +42,7 @@ REM Installing Shimming Toolbox
 copy "%ST_SOURCE_FILES%\config\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
 
 cd "%ST_SOURCE_FILES%"
-"%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install -e ".[docs,dev]" --no-warn-script-location || goto error
+"%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install . --no-warn-script-location || goto error
 
 REM Create launchers for Shimming Toolbox
 set "BIN_DIR=bin"
@@ -51,6 +51,17 @@ mkdir "%ST_DIR%\%BIN_DIR%"
 for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\st_*.*") do (
 	copy "%%f" "%ST_DIR%\%BIN_DIR%" || goto error
 )
+
+REM Copy dcm2niix to the bin directory, there are 2 places it might be
+set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Library\bin\dcm2niix.exe"
+if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
+    set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Scripts\dcm2niix.exe"
+    if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
+        echo "dcm2niix.exe not found"
+        goto error
+    )
+)
+
 
 REM Add scripts to the User's path
 for /F "skip=2 tokens=2,*" %%A in ('reg.exe query "HKEY_CURRENT_USER\Environment" /v path') do set "OLD_PATH=%%B"
