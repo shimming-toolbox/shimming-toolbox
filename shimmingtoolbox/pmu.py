@@ -188,6 +188,7 @@ class PmuResp(object):
             numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
         """
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
+            # TODO: Explore why pmulog sequence raises an error for pmulog sequence
             raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()

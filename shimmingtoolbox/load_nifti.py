@@ -31,7 +31,7 @@ def get_acquisition_times(nii_data, json_data):
     # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
     deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
 
-    # json_data['AcquisitionTime'] Time the acquisition of data for this image started (ISO format)
+    # Time the acquisition of data for this image started (ISO format)
     acq_start_time_iso = json_data['AcquisitionTime']
     acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
 
@@ -42,7 +42,7 @@ def get_acquisition_times(nii_data, json_data):
 
     def get_middle_of_slice_timing(data, n_sli):
         """ Return the best guess of when the middle of k-space was acquired for each slice. Return an array of 0 if no
-            best guess is implemented
+            best guess is found
 
         Args:
             data (dict): Json dict corresponding to a nifti sidecar.
@@ -60,6 +60,7 @@ def get_acquisition_times(nii_data, json_data):
             return np.zeros(n_slices)
 
         # list containing the time at which each slice was acquired
+        # Todo: Does a SliTiming of 0 mean that it started acquiring at the same time as the beginning of the volume?
         slice_timing_start = data.get('SliceTiming')
         if slice_timing_start is None:
             if n_sli == 1:
@@ -83,7 +84,7 @@ def get_acquisition_times(nii_data, json_data):
         repetition_slice_excitation = repetition_slice_excitation * 1000  # [ms]
         # Remove slices that are at 0 ms (acquired during the first TR excitation)
         slice_timing_start_no_zero = slice_timing_start[slice_timing_start > 0]
-        # If there are other slices acquired that happen before the next TR excitation, then this is interleaved
+        # If there are other slices acquired before the next TR excitation, then this is interleaved
         # multi-slice
         if np.any(slice_timing_start_no_zero < repetition_slice_excitation):
             logger.warning("Interleaved multi-slice acquisition detected.")

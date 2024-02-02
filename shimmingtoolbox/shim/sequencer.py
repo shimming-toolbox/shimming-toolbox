@@ -1330,6 +1330,7 @@ class RealTimeSequencer(Sequencer):
             ax.plot(static[:, i_channel], label=f"Static channel {i_channel} currents through shim groups")
 
         if riro is not None:
+            n_channels = riro.shape[1]
             for i_channel in range(n_channels):
                 ax.plot(riro[:, i_channel], label=f"Riro channel {i_channel} currents through shim groups")
 
