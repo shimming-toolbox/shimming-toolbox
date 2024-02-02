@@ -131,7 +131,7 @@ class ScannerCoil(Coil):
 
         manufacturer = manufacturer.upper()
         if manufacturer in SHIM_CS:
-            self.coord_system = SHIM_CS[manufacturer.upper()]
+            self.coord_system = SHIM_CS[manufacturer]
         else:
             logger.warning(f"Unknown manufacturer {manufacturer}, assuming RAS")
             self.coord_system = 'RAS'
