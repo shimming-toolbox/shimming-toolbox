@@ -211,20 +211,27 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
         constraints["name"] = "Investigational_Device_7T"
         if 0 in orders:
             pass
-            # todo: f0 min and max are wrong
-        constraints["coef_channel_minmax"]["0"].append([None, None])
+        constraints["coef_channel_minmax"]["0"].append([296760000, 297250000])
         if 1 in orders:
             for _ in range(3):
-                constraints["coef_channel_minmax"]["1"].append([-5000, 5000])
+                constraints["coef_channel_minmax"]["1"].append([-3000, 3000])
+                # constraints["coef_channel_minmax"]["1"].append([-5000, 5000])
         if 2 in orders:
-            constraints["coef_channel_minmax"]["2"].extend([[-1839.63, 1839.63],
-                                                            [-791.84, 791.84],
-                                                            [-791.84, 791.84],
-                                                            [-615.87, 615.87],
-                                                            [-615.87, 615.87]])
+            constraints["coef_channel_minmax"]["2"].extend([[-9360.0, 9360.0],
+                                                            [-4680.0, 4680.0],
+                                                            [-4620.0, 4620.0],
+                                                            [-4620.0, 4620.0],
+                                                            [-4560.0, 4560.0]])
+            # constraints["coef_channel_minmax"]["2"].extend([[-1839.63, 1839.63],
+            #                                                 [-791.84, 791.84],
+            #                                                 [-791.84, 791.84],
+            #                                                 [-615.87, 615.87],
+            #                                                 [-615.87, 615.87]])
         if 3 in orders:
-            # Todo: Get 3rd order shim constraints
-            constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(channels_per_order(3, manufacturer))]
+            constraints["coef_channel_minmax"]["3"].extend([[-15232.0, 15232.0],
+                                                            [-14016.0, 14016.0],
+                                                            [-14016.0, 14016.0],
+                                                            [-14016.0, 14016.0]])
 
     else:
         logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "

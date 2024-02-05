@@ -8,6 +8,7 @@ import json
 import numpy as np
 import logging
 
+from shimmingtoolbox.coils.coil import get_scanner_constraints
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
 from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
 
@@ -262,31 +263,78 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
         dict: Same dictionary as the shim_settings input with coefficients of the first, second and third order
               converted according to the appropriate manufacturer model.
     """
+    # One can use the Siemens commandline AdjValidate tool to get all the values below
+
     scanner_shim_mp = shim_settings
 
     if manufacturers_model_name == "Prisma_fit":
         if shim_settings.get('1'):
-            # One can use the Siemens commandline AdjValidate tool to get all the values below:
-            max_current_mp_order1 = np.array([2300] * 3)
+            coefs_ui = get_scanner_constraints(manufacturers_model_name, [1],
+                                               'Siemens')['coef_channel_minmax']['1']
+            max_coef_ui = [cst[1] for cst in coefs_ui]
             max_current_dcm_order1 = np.array([14436, 14265, 14045])
-            order1_mp = np.array(shim_settings['1']) * max_current_mp_order1 / max_current_dcm_order1
+            order1_mp = np.array(shim_settings['1']) * max_coef_ui / max_current_dcm_order1
 
-            if np.any(np.abs(order1_mp) > max_current_mp_order1):
+            if np.any(np.abs(order1_mp) > max_coef_ui):
                 scanner_shim_mp['has_valid_settings'] = False
                 raise ValueError("Multipole values exceed known system limits.")
             else:
                 scanner_shim_mp['1'] = order1_mp
 
         if shim_settings.get('2'):
-            max_current_mp_order2 = np.array([4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
+            coefs_ui = get_scanner_constraints(manufacturers_model_name, [2],
+                                               'Siemens')['coef_channel_minmax']['2']
+            max_coef_ui = [cst[1] for cst in coefs_ui]
             max_current_dcm_order2 = np.array([9998, 9998, 9998, 9998, 9998])
-            order2_mp = np.array(shim_settings['2']) * max_current_mp_order2 / max_current_dcm_order2
+            order2_mp = np.array(shim_settings['2']) * max_coef_ui / max_current_dcm_order2
 
-            if np.any(np.abs(order2_mp) > max_current_mp_order2):
+            if np.any(np.abs(order2_mp) > max_coef_ui):
                 scanner_shim_mp['has_valid_settings'] = False
                 raise ValueError("Multipole values exceed known system limits.")
             else:
                 scanner_shim_mp['2'] = order2_mp
+
+    if manufacturers_model_name == "Investigational_Device_7T":
+        if shim_settings.get('1'):
+            coefs_ui = get_scanner_constraints(manufacturers_model_name, [1],
+                                               'Siemens')['coef_channel_minmax']['1']
+            max_coef_ui = [cst[1] for cst in coefs_ui]
+            max_current_dcm_order1 = np.array([17729.0, 18009.0, 17872.0])
+            order1_mp = np.array(shim_settings['1']) * max_coef_ui / max_current_dcm_order1
+
+            if np.any(np.abs(order1_mp) > max_coef_ui):
+                scanner_shim_mp['has_valid_settings'] = False
+                raise ValueError("Multipole values exceed known system limits.")
+            else:
+                scanner_shim_mp['1'] = order1_mp
+
+        if shim_settings.get('2'):
+            coefs_ui = get_scanner_constraints(manufacturers_model_name, [2],
+                                               'Siemens')['coef_channel_minmax']['2']
+            max_coef_ui = [cst[1] for cst in coefs_ui]
+            max_current_dcm_order2 = np.array([12500.0] * 5)
+            order2_mp = np.array(shim_settings['2']) * max_coef_ui / max_current_dcm_order2
+
+            if np.any(np.abs(order2_mp) > max_coef_ui):
+                scanner_shim_mp['has_valid_settings'] = False
+                raise ValueError("Multipole values exceed known system limits.")
+            else:
+                scanner_shim_mp['2'] = order2_mp
+
+        if shim_settings.get('3'):
+            # max_coef_ui = get_scanner_constraints(manufacturers_model_name, [3], 'Siemens')[3]
+            # max_current_dcm_order2 = np.array([10000.0] * 4)
+            # order2_mp = np.array(shim_settings['3']) * max_coef_ui / max_current_dcm_order2
+            #
+            # if np.any(np.abs(order2_mp) > max_coef_ui):
+            #     scanner_shim_mp['has_valid_settings'] = False
+            #     raise ValueError("Multipole values exceed known system limits.")
+            # else:
+            #     scanner_shim_mp['2'] = order2_mp
+
+            # This is a limitation of the BIDS Json sidecar only including up to 2nd order shim settings
+            logger.warning("3rd order shim DAC conversion not implemented, 3rd order constraints might not be "
+                           "respected")
 
     else:
         logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, could not convert shim settings")

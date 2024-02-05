@@ -20,6 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __dir_config_scanner_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -1096,10 +1097,7 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
     # Set the initial coefficients to 0
     initial_coefs = {}
     for order in orders:
-        if order == 3 and manufacturer == 'Siemens':
-            initial_coefs['3'] = [0] * 4
-        else:
-            initial_coefs[str(order)] = [0] * (order * 2 + 1)
+        initial_coefs[str(order)] = [0] * channels_per_order(order, manufacturer)
     if initial_coefs == {}:
         initial_coefs = None
 
