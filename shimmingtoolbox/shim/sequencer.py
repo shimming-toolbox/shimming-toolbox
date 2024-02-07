@@ -816,17 +816,13 @@ class ShimSequencer(Sequencer):
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, shimmed_Gx, shimmed_Gy, mask):
     # Plot signal loss maps
         def calculate_signal_loss(B0_map):
-            signal_map = 1
-            for i in range(2,3):
-                G = np.gradient(B0_map, axis = i)
-                signal_map = signal_map * abs(np.sinc(self.epi_te * G))
+            G = np.gradient(B0_map, axis = 2)
+            signal_map = abs(np.sinc(self.epi_te * G))
             signal_loss_map = 1 - signal_map
             return signal_loss_map
 
         unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-        shimmed_signal_loss = 1 - (abs(np.sinc(self.epi_te * shimmed_Gz)) * \
-                                    abs(np.sinc(self.epi_te * shimmed_Gy) * \
-                                    abs(np.sinc(self.epi_te * shimmed_Gx))))
+        shimmed_signal_loss = 1 - abs(np.sinc(self.epi_te * shimmed_Gz))
 
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
         mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
@@ -2162,7 +2158,17 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
     leftover = 0
 
     if method == 'interleaved':
-        for i_shim in range(n_shims):
+        if n_slices % 2 == 0:
+            range_1 = range(1, n_slices, 2)
+            range_2 = range(0, n_slices, 2)
+        else:
+            range_1 = range(0, n_slices, 2)
+            range_2 = range(1, n_slices, 2)
+
+        for i_shim in range_1:
+            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
+
+        for i_shim in range_2:
             slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
         leftover = n_slices % factor

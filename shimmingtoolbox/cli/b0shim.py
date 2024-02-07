@@ -153,6 +153,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
 
+    logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
     scanner_coil_order = parse_orders(scanner_coil_order)
     # Set logger level
     set_all_loggers(verbose)
@@ -376,6 +377,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                               default_coefs=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
+    logger.info(f"Saving to text file with format: {o_format}")
     n_channels = coil.dim[3]
     list_fname_output = []
     if o_format[-5:] == '-coil':
