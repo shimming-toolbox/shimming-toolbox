@@ -237,8 +237,7 @@ class LsqOptimizer(OptimizerUtils):
             # regularization on the currents has no affect on the output stability factor.
             if self.opt_criteria == 'mse':
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
-                                                           np.zeros_like(
-                                                               coil_mat),
+                                                           np.zeros_like(coil_mat),
                                                            factor=1)
             else:
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
@@ -247,8 +246,7 @@ class LsqOptimizer(OptimizerUtils):
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
         if not currents_sp.success:
-            raise RuntimeError(
-                f"Optimization failed due to: {currents_sp.message}")
+            raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
 
         currents = currents_sp.x
 
@@ -277,8 +275,7 @@ class PmuLsqOptimizer(LsqOptimizer):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, opt_criteria,
-                         initial_guess_method='zeros', reg_factor=reg_factor)
+        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
 
