@@ -3,6 +3,7 @@
 
 import numpy as np
 import scipy.optimize as opt
+from scipy.special import pseudo_huber
 from typing import List
 import warnings
 
@@ -11,7 +12,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std']
+allowed_opt_criteria = ['mse', 'mae', 'std', 'ps_huber']
 
 
 class LsqOptimizer(OptimizerUtils):
@@ -37,15 +38,18 @@ class LsqOptimizer(OptimizerUtils):
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
+        self._delta = 1  # Initialize delta for pseudo huber function
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
-            allowed_opt_criteria[2]: self._residuals_std
+            allowed_opt_criteria[2]: self._residuals_std,
+            allowed_opt_criteria[3]: self._residuals_ps_huber
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
-            allowed_opt_criteria[2]: None
+            allowed_opt_criteria[2]: None,
+            allowed_opt_criteria[3]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -72,6 +76,14 @@ class LsqOptimizer(OptimizerUtils):
 
         # MAE regularized to minimize currents
         return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+
+    def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
+        residuals = unshimmed_vec + coil_mat @ coef
+        print(self._delta)
+        if self._delta == 1:
+            self._delta = np.quantile(np.sort(residuals), 0.75)
+
+        return np.sum(pseudo_huber(self._delta, np.abs(residuals))) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
@@ -190,6 +202,14 @@ class LsqOptimizer(OptimizerUtils):
                                        jac=self._jacobian_func,
                                        options={'maxiter': 1000})
 
+        elif self.opt_criteria == 'ps_huber':
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       options={'maxiter': 1000})
+
         else:
 
             currents_sp = opt.minimize(self._criteria_func, currents_0,
@@ -217,7 +237,8 @@ class LsqOptimizer(OptimizerUtils):
             # regularization on the currents has no affect on the output stability factor.
             if self.opt_criteria == 'mse':
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
-                                                           np.zeros_like(coil_mat),
+                                                           np.zeros_like(
+                                                               coil_mat),
                                                            factor=1)
             else:
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
@@ -226,7 +247,8 @@ class LsqOptimizer(OptimizerUtils):
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
         if not currents_sp.success:
-            raise RuntimeError(f"Optimization failed due to: {currents_sp.message}")
+            raise RuntimeError(
+                f"Optimization failed due to: {currents_sp.message}")
 
         currents = currents_sp.x
 
@@ -255,7 +277,8 @@ class PmuLsqOptimizer(LsqOptimizer):
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
         """
 
-        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
+        super().__init__(coils, unshimmed, affine, opt_criteria,
+                         initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
 
