@@ -218,7 +218,7 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
             - 1 milli-T/m for *X,Y,Z* gradients (= 42.576 Hz/mm)
             - 1 milli-T/m^2 for 2nd order terms (= 0.042576 Hz/mm^2)
 
-        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, 2XY, Z3, Z2X, Z2Y, Z(X2-Y2), 2XYZ, X3, Y3*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
