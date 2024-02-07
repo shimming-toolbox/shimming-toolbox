@@ -17,6 +17,7 @@ import json
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.optimizer.gradient_optimizer import gradientOpt, allowed_opt_criteria
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
@@ -36,7 +37,8 @@ supported_optimizers = {
     'least_squares': LsqOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
-    'pseudo_inverse': Optimizer
+    'pseudo_inverse': Optimizer,
+    'gradient': gradientOpt
 }
 
 
@@ -132,11 +134,11 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'gradient'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                            'mae': mean absolute error, 'std': standard deviation.
+                            'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
         nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         fmap_is_extended (bool) : Tells whether the fieldmap has been extended by the object.
@@ -162,11 +164,11 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'gradient'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation.
+                                'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
                                         more details.
@@ -179,8 +181,10 @@ class ShimSequencer(Sequencer):
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
                                 artefacts.
         """
-        super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
-        self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
+        super().__init__(slices, mask_dilation_kernel,
+                         mask_dilation_kernel_size, reg_factor, path_output)
+        self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(
+            nii_fieldmap)
         self.nii_anat = self.get_anat(nii_anat)
         self.nii_mask_anat = self.get_mask(nii_mask_anat)
         self.coils = coils
@@ -240,9 +244,11 @@ class ShimSequencer(Sequencer):
         if anat.ndim == 3:
             pass
         elif anat.ndim == 4:
-            logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+            logger.info(
+                "Target anatomical is 4d, taking the average and converting to 3d")
             anat = np.mean(anat, axis=3)
-            nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
+            nii_anat = nib.Nifti1Image(
+                anat, nii_anat.affine, header=nii_anat.header)
         else:
             raise ValueError("Target anatomical image must be in 3d or 4d")
 
@@ -279,20 +285,24 @@ class ShimSequencer(Sequencer):
             nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), nii_mask_anat.affine,
                                             header=nii_mask_anat.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_mask_anat, os.path.join(self.path_output, "fig_3d_mask.nii.gz"))
+                nib.save(nii_mask_anat, os.path.join(
+                    self.path_output, "fig_3d_mask.nii.gz"))
         else:
             raise ValueError("Mask must be in 3d or 4d")
 
         if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(
                 nii_mask_anat.affine == self.nii_anat.affine):
             logger.debug("Resampling mask on the target anat")
-            nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
+            nii_mask_anat_soft = resample_from_to(
+                nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
             tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
-            nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
+            nii_mask_anat = nib.Nifti1Image(
+                tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
+                nib.save(nii_mask_anat, os.path.join(
+                    self.path_output, "mask_static_resampled_on_anat.nii.gz"))
 
         return nii_mask_anat
 
@@ -313,7 +323,8 @@ class ShimSequencer(Sequencer):
         dilation_kernel_size = self.mask_dilation_kernel_size
         path_output = self.path_output
         n_shims = len(slices)
-        nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
+        nii_unshimmed = nib.Nifti1Image(
+            optimizer.unshimmed, optimizer.unshimmed_affine)
         if self.fmap_is_extended:
             # Joblib multiprocessing to resampled the mask
             dilated_mask = Parallel(-1, backend='loky')(
@@ -327,8 +338,10 @@ class ShimSequencer(Sequencer):
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
-            masks_fmap_dilated = np.array([dilated_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
-            masks_fmap = np.array([mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap_dilated = np.array(
+                [dilated_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap = np.array([mask[it].get_fdata()
+                                  for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
         else:
             # Joblib multiprocessing to resampled the mask
@@ -340,7 +353,8 @@ class ShimSequencer(Sequencer):
             # We need to transpose the mask to have the good dimensions
             masks_fmap_dilated = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3,
                                                                                                                 0)
-            masks_fmap = np.array([results_mask[it][0].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+            masks_fmap = np.array([results_mask[it][0].get_fdata()
+                                  for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
         return masks_fmap_dilated, masks_fmap
 
@@ -375,6 +389,10 @@ class ShimSequencer(Sequencer):
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor)
+            elif self.method == 'gradient':
+                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
+                                                              self.nii_fieldmap.affine, self.opt_criteria,
+                                                              reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, reg_factor=self.reg_factor)
@@ -382,7 +400,8 @@ class ShimSequencer(Sequencer):
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine)
         else:
-            raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
+            raise KeyError(
+                f"Method: {self.method} is not part of the supported optimizers")
 
         self.optimizer = optimizer
 
@@ -399,24 +418,28 @@ class ShimSequencer(Sequencer):
             # Save coils
             nii_merged_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap_orig.affine,
                                                header=self.nii_fieldmap_orig.header)
-            nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
+            nib.save(nii_merged_coils, os.path.join(
+                self.path_output, "merged_coils.nii.gz"))
 
         unshimmed = self.nii_fieldmap_orig.get_fdata()
 
         # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
         if self.fmap_is_extended:
-            merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap_orig.affine)
+            merged_coils, _ = self.optimizer.merge_coils(
+                unshimmed, self.nii_fieldmap_orig.affine)
 
         else:
             merged_coils = self.optimizer.merged_coils
 
-        shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coef, merged_coils)
+        shimmed, corrections, list_shim_slice = self.evaluate_shimming(
+            unshimmed, coef, merged_coils)
 
         if self.path_output is not None:
             # fmap space
             # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on
             # the fieldmap)
-            shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
+            shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(
+                unshimmed, corrections)
 
             if len(self.slices) == 1:
                 # TODO: Output json sidecar
@@ -424,19 +447,22 @@ class ShimSequencer(Sequencer):
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
+                fname_shimmed_fmap = os.path.join(
+                    self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
+                fname_shimmed_fmap = os.path.join(
+                    self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
             # Figure that shows unshimmed vs shimmed for each slice
-            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, self.path_output)
+            plot_full_mask(unshimmed, shimmed_masked,
+                           mask_full_binary, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -447,17 +473,23 @@ class ShimSequencer(Sequencer):
             if logger.level <= getattr(logging, 'DEBUG'):
 
                 # Save to a NIfTI
-                fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
-                nii_correction_3d = nib.Nifti1Image(corrections, self.optimizer.unshimmed_affine)
+                fname_correction = os.path.join(
+                    self.path_output, 'fig_correction_i_shim.nii.gz')
+                nii_correction_3d = nib.Nifti1Image(
+                    corrections, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction_3d, fname_correction)
 
-                fname_correction = os.path.join(self.path_output, 'fig_correction.nii.gz')
-                nii_correction_3d = nib.Nifti1Image(np.sum(corrections, axis=3), self.optimizer.unshimmed_affine)
+                fname_correction = os.path.join(
+                    self.path_output, 'fig_correction.nii.gz')
+                nii_correction_3d = nib.Nifti1Image(
+                    np.sum(corrections, axis=3), self.optimizer.unshimmed_affine)
                 nib.save(nii_correction_3d, fname_correction)
 
                 # 4th dimension is i_shim
-                fname_correction = os.path.join(self.path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
-                nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
+                fname_correction = os.path.join(
+                    self.path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
+                nii_correction = nib.Nifti1Image(
+                    self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
@@ -485,7 +517,8 @@ class ShimSequencer(Sequencer):
         # for i_shim in range(len(slices)):
         # corrections[..., i_shim] = merged_coils @ coef[i_shim]
         # shimmed[..., i_shim] = corrections[..., i_shim] + unshimmed
-        corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
+        corrections = np.einsum(
+            'ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
         shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
         self.display_shimmed_results(shimmed, unshimmed, coef)
 
@@ -503,7 +536,8 @@ class ShimSequencer(Sequencer):
 
         for i_shim in range(len(self.slices)):
             mask = np.where(self.masks_fmap[..., i_shim], False, True)
-            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask, dtype=np.float32)
+            ma_shimmed = np.ma.array(
+                shimmed[..., i_shim], mask=mask, dtype=np.float32)
             ma_unshimmed = np.ma.array(unshimmed, mask=mask, dtype=np.float32)
 
             if logger.level <= getattr(logging, 'DEBUG'):
@@ -578,14 +612,17 @@ class ShimSequencer(Sequencer):
         # This is the same as this but in a faster way:
         # for i_shim in range(len(slices)):
         #   full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
-        full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
+        full_correction = np.einsum(
+            'ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
         # Calculate the weighted whole mask
         mask_weight = np.sum(self.masks_fmap, axis=3)
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+        full_correction_scaled = np.divide(
+            full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
         # Apply the correction to the unshimmed image
-        shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
+        shimmed_masked = (full_correction_scaled +
+                          unshimmed) * mask_full_binary
 
         return shimmed_masked, mask_full_binary
 
@@ -599,13 +636,15 @@ class ShimSequencer(Sequencer):
             shimmed (np.ndarray): Shimmed fieldmap
         """
         a_slice = 0
-        unshimmed_repeated = unshimmed[..., np.newaxis] * np.ones(self.masks_fmap.shape[-1])
+        unshimmed_repeated = unshimmed[..., np.newaxis] * \
+            np.ones(self.masks_fmap.shape[-1])
         mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
         mt_shimmed = montage(shimmed[:, :, a_slice, :])
 
         unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0)
         mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
-        mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
+        mt_shimmed_masked = montage(
+            shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
 
         min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
         max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
@@ -614,11 +653,14 @@ class ShimSequencer(Sequencer):
         max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
         fig = Figure(figsize=(8, 5))
-        fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
+        fig.suptitle(
+            f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
+        ax.imshow(mt_unshimmed, vmin=min_fmap_value,
+                  vmax=max_fmap_value, cmap='gray')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value,
+                       vmax=max_masked_value, cmap='viridis')
         ax.set_title("Unshimmed")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -627,8 +669,10 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
-        im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
+        ax.imshow(mt_shimmed, vmin=min_fmap_value,
+                  vmax=max_fmap_value, cmap='gray')
+        im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value,
+                       vmax=max_masked_value, cmap='viridis')
         ax.set_title("Shimmed")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -637,7 +681,8 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
+        fname_figure = os.path.join(
+            self.path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_currents(self, static):
@@ -651,7 +696,8 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(111)
         n_channels = static.shape[1]
         for i_channel in range(n_channels):
-            ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
+            ax.plot(
+                static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
         ax.set_xlabel('Shim group')
         ax.set_ylabel('Coefficients (Physical CS [RAS])')
         ax.legend()
@@ -684,10 +730,12 @@ class ShimSequencer(Sequencer):
 
         shimmed_anat_orient = copy.deepcopy(fieldmap_anat)
         for i_shim in list_shim_slice:
-            corr = np.sum(coefs[i_shim] * coils_anat[:, :, self.slices[i_shim], :], axis=3, keepdims=False)
+            corr = np.sum(coefs[i_shim] * coils_anat[:, :,
+                          self.slices[i_shim], :], axis=3, keepdims=False)
             shimmed_anat_orient[..., self.slices[i_shim]] += corr
 
-        fname_shimmed_anat_orient = os.path.join(self.path_output, 'fig_shimmed_anat_orient.nii.gz')
+        fname_shimmed_anat_orient = os.path.join(
+            self.path_output, 'fig_shimmed_anat_orient.nii.gz')
         nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * self.nii_mask_anat.get_fdata(),
                                                   self.nii_mask_anat.affine,
                                                   header=self.nii_mask_anat.header)
@@ -744,8 +792,8 @@ class RealTimeSequencer(Sequencer):
             acq_timestamps (np.ndarray) : 1D array that contains the acquisitions timestamps
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_static,
-                 coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
+                 coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
                  mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
         """
         Initialization of the RealTimeSequencer class
@@ -786,7 +834,8 @@ class RealTimeSequencer(Sequencer):
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
 
         """
-        super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output)
+        super().__init__(slices, mask_dilation_kernel,
+                         mask_dilation_kernel_size, reg_factor, path_output)
         self.json_fmap = json_fmap
         self.pmu = pmu
         self.coils_static = coils_static
@@ -798,14 +847,16 @@ class RealTimeSequencer(Sequencer):
             raise ValueError("Criteria for optimization not supported")
 
         self.opt_criteria = opt_criteria
-        self.nii_fieldmap, self.nii_fieldmap_orig = self.get_fieldmap(nii_fieldmap)
+        self.nii_fieldmap, self.nii_fieldmap_orig = self.get_fieldmap(
+            nii_fieldmap)
 
         # Check if anat has the good dimensions
         if nii_anat.get_fdata().ndim != 3:
             raise ValueError("Anatomical image must be in 3d")
 
         self.nii_anat = nii_anat
-        self.nii_static_mask, self.nii_riro_mask = self.get_mask(nii_static_mask, nii_riro_mask)
+        self.nii_static_mask, self.nii_riro_mask = self.get_mask(
+            nii_static_mask, nii_riro_mask)
         self.acq_timestamps = None
         self.acq_pressures = self.get_acq_pressures()
         self.optimizer_riro = None
@@ -871,7 +922,8 @@ class RealTimeSequencer(Sequencer):
         if not np.all(nii_static_mask.shape == anat.shape) or not np.all(
                 nii_static_mask.affine == self.nii_anat.affine):
             logger.debug("Resampling static mask on the target anat")
-            nii_static_mask_soft = resample_from_to(nii_static_mask, self.nii_anat, order=1, mode='grid-constant')
+            nii_static_mask_soft = resample_from_to(
+                nii_static_mask, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_static_mask_soft.get_fdata()
             # Change soft mask into binary mask
             tmp_mask = threshold(tmp_mask, thr=0.001)
@@ -879,19 +931,23 @@ class RealTimeSequencer(Sequencer):
                                               header=nii_static_mask_soft.header)
 
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_static_mask, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
+                nib.save(nii_static_mask, os.path.join(
+                    self.path_output, "mask_static_resampled_on_anat.nii.gz"))
 
         if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(
                 nii_riro_mask.affine == self.nii_anat.affine):
             logger.debug("Resampling riro mask on the target anat")
-            nii_riro_mask_soft = resample_from_to(nii_riro_mask, self.nii_anat, order=1, mode='grid-constant')
+            nii_riro_mask_soft = resample_from_to(
+                nii_riro_mask, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_riro_mask_soft.get_fdata()
             # Change soft mask into binary mask
             tmp_mask = threshold(tmp_mask, thr=0.001)
-            nii_riro_mask = nib.Nifti1Image(tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
+            nii_riro_mask = nib.Nifti1Image(
+                tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
 
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_riro_mask, os.path.join(self.path_output, "mask_riro_resampled_on_anat.nii.gz"))
+                nib.save(nii_riro_mask, os.path.join(
+                    self.path_output, "mask_riro_resampled_on_anat.nii.gz"))
 
         return nii_static_mask, nii_riro_mask
 
@@ -903,7 +959,8 @@ class RealTimeSequencer(Sequencer):
             np.ndarray: 1D array that contains the acquisitions pressures
         """
         # Fetch PMU timing
-        self.acq_timestamps = get_acquisition_times(self.nii_fieldmap, self.json_fmap)
+        self.acq_timestamps = get_acquisition_times(
+            self.nii_fieldmap, self.json_fmap)
         # TODO: deal with saturation
         # fit PMU and fieldmap values
         acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
@@ -938,13 +995,16 @@ class RealTimeSequencer(Sequencer):
         fmap_mask_riro = resample_mask(self.nii_riro_mask, nii_3dfmap, tuple(range(anat.shape[2])),
                                        dilation_kernel=self.mask_dilation_kernel,
                                        dilation_size=self.mask_dilation_kernel_size).get_fdata()
-        masked_fieldmap_riro = np.repeat(fmap_mask_riro[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
+        masked_fieldmap_riro = np.repeat(
+            fmap_mask_riro[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
         y = masked_fieldmap_riro.reshape(-1, fieldmap.shape[-1]).T
 
         reg_riro = LinearRegression().fit(x, y)
         # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
-        score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
-        logger.debug(f"Linear fit of the RIRO masked fieldmap and pressure got a R2 score of: {score_riro}")
+        score_riro = 1 - (1 - reg_riro.score(x, y)) * \
+            (len(y) - 1) / (len(y) - x.shape[1] - 1)
+        logger.debug(
+            f"Linear fit of the RIRO masked fieldmap and pressure got a R2 score of: {score_riro}")
 
         # Warn if lower than a threshold
         # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
@@ -960,17 +1020,22 @@ class RealTimeSequencer(Sequencer):
 
         # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
         static = reg.intercept_.reshape(fieldmap.shape[:-1])
-        riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+        # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+        riro = reg.coef_.reshape(fieldmap.shape[:-1])
 
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # Save static
-            nii_static = nib.Nifti1Image(static, self.nii_fieldmap.affine, header=self.nii_fieldmap.header)
-            nib.save(nii_static, os.path.join(self.path_output, 'fig_static_fmap_component.nii.gz'))
+            nii_static = nib.Nifti1Image(
+                static, self.nii_fieldmap.affine, header=self.nii_fieldmap.header)
+            nib.save(nii_static, os.path.join(
+                self.path_output, 'fig_static_fmap_component.nii.gz'))
 
             # Save riro
-            nii_riro = nib.Nifti1Image(riro, self.nii_fieldmap.affine, header=self.nii_fieldmap.header)
-            nib.save(nii_riro, os.path.join(self.path_output, 'fig_riro_fmap_component.nii.gz'))
+            nii_riro = nib.Nifti1Image(
+                riro, self.nii_fieldmap.affine, header=self.nii_fieldmap.header)
+            nib.save(nii_riro, os.path.join(
+                self.path_output, 'fig_riro_fmap_component.nii.gz'))
 
         return static, riro, mean_p, pressure_rms
 
@@ -1009,8 +1074,8 @@ class RealTimeSequencer(Sequencer):
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
-        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds, self.coils_static,
-                                                              self.coils_riro)
+        self.bounds = new_bounds_from_currents_static_to_riro(
+            coef_static, self.optimizer.merged_bounds, self.coils_static, self.coils_riro)
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(riro_mask_resampled)
@@ -1037,8 +1102,8 @@ class RealTimeSequencer(Sequencer):
         # global supported_optimizers
         if self.method in supported_optimizers:
             if self.method == 'least_squares':
-                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine, self.opt_criteria,
-                                                                   reg_factor=self.reg_factor)
+                self.optimizer = supported_optimizers[self.method](
+                    self.coils_static, unshimmed, affine, self.opt_criteria, reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
@@ -1046,7 +1111,8 @@ class RealTimeSequencer(Sequencer):
             elif self.method == 'least_squares_rt':
                 # Make sure pmu is defined
                 if pmu is None:
-                    raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
+                    raise ValueError(
+                        f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
                 self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine,
@@ -1055,7 +1121,8 @@ class RealTimeSequencer(Sequencer):
             elif self.method == 'quad_prog_rt':
                 # Make sure pmu is defined
                 if pmu is None:
-                    raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
+                    raise ValueError(
+                        f"pmu parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
                 self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine, pmu,
@@ -1063,12 +1130,15 @@ class RealTimeSequencer(Sequencer):
 
             else:
                 if pmu is None:
-                    self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine)
+                    self.optimizer = supported_optimizers[self.method](
+                        self.coils_static, unshimmed, affine)
                 else:
-                    self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine)
+                    self.optimizer_riro = supported_optimizers[self.method](
+                        self.coils_riro, unshimmed, affine)
 
         else:
-            raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
+            raise KeyError(
+                f"Method: {self.method} is not part of the supported optimizers")
 
     def get_riro_and_static_resampled_masks(self):
         """
@@ -1089,8 +1159,10 @@ class RealTimeSequencer(Sequencer):
         nii_riro_mask = self.nii_riro_mask
         nii_static_mask = self.nii_static_mask
 
-        static_fieldmap = nib.Nifti1Image(self.optimizer.unshimmed, self.optimizer.unshimmed_affine)
-        riro_fieldmap = nib.Nifti1Image(self.optimizer_riro.unshimmed, self.optimizer_riro.unshimmed_affine)
+        static_fieldmap = nib.Nifti1Image(
+            self.optimizer.unshimmed, self.optimizer.unshimmed_affine)
+        riro_fieldmap = nib.Nifti1Image(
+            self.optimizer_riro.unshimmed, self.optimizer_riro.unshimmed_affine)
 
         static_mask = Parallel(-1, backend='loky')(
             delayed(resample_mask)(nii_static_mask, static_fieldmap, slices[i],
@@ -1103,8 +1175,10 @@ class RealTimeSequencer(Sequencer):
                                    dilation_kernel_size, path_output)
             for i in range(n_shims))
 
-        static_mask_resampled = np.array([static_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
-        riro_mask_resampled = np.array([riro_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        static_mask_resampled = np.array(
+            [static_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        riro_mask_resampled = np.array(
+            [riro_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
         return static_mask_resampled, riro_mask_resampled
 
@@ -1144,7 +1218,8 @@ class RealTimeSequencer(Sequencer):
             pressure_rms (float): rms of the acquisitions pressures
         """
 
-        logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
+        logger.debug(
+            "Calculating the sum of the shimmed vs unshimmed in the static ROI.")
         # Calculate theoretical shimmed map
         # shim
         unshimmed = self.nii_fieldmap.get_fdata()
@@ -1180,32 +1255,43 @@ class RealTimeSequencer(Sequencer):
                                                               self.slices[i_shim]).get_fdata())
             for i_t in range(self.nii_fieldmap.shape[3]):
                 # Apply the static and riro correction
-                correction_riro = riro_profile * (self.acq_pressures[i_t] - mean_p)
-                shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
-                shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
-                shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
+                correction_riro = riro_profile * \
+                    (self.acq_pressures[i_t] - mean_p)
+                shimmed_static[..., i_t, i_shim] = unshimmed[...,
+                                                             i_t] + correction_static
+                shimmed_static_riro[..., i_t, i_shim] = shimmed_static[...,
+                                                                       i_t, i_shim] + correction_riro
+                shimmed_riro[..., i_t, i_shim] = unshimmed[...,
+                                                           i_t] + correction_riro
 
                 # Calculate masked shim
-                masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
+                masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[...,
+                                                                    i_shim] * shimmed_static[..., i_t, i_shim]
                 masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
-                i_shim]
-                masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
-                masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
+                                                                                                            i_shim]
+                masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[...,
+                                                                  i_shim] * shimmed_riro[..., i_t, i_shim]
+                masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[...,
+                                                                  i_shim] * unshimmed[..., i_t]
 
                 # Calculate the sum over the ROI
                 # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If the roi is bigger due to
                 #  interpolation, it should not count more). Possibly use soft mask?
                 rmse_shimmed_static = calculate_metric_within_mask(masked_shim_static[..., i_t, i_shim],
-                                                                   mask_fmap_cs[..., i_shim].astype(bool),
+                                                                   mask_fmap_cs[..., i_shim].astype(
+                                                                       bool),
                                                                    metric='rmse')
                 rmse_shimmed_static_riro = calculate_metric_within_mask(masked_shim_static_riro[..., i_t, i_shim],
-                                                                        mask_fmap_cs[..., i_shim].astype(bool),
+                                                                        mask_fmap_cs[..., i_shim].astype(
+                                                                            bool),
                                                                         metric='rmse')
                 rmse_shimmed_riro = calculate_metric_within_mask(masked_shim_riro[..., i_t, i_shim],
-                                                                 mask_fmap_cs[..., i_shim].astype(bool),
+                                                                 mask_fmap_cs[..., i_shim].astype(
+                                                                     bool),
                                                                  metric='rmse')
                 rmse_unshimmed = calculate_metric_within_mask(masked_unshimmed[..., i_t, i_shim],
-                                                              mask_fmap_cs[..., i_shim].astype(bool),
+                                                              mask_fmap_cs[..., i_shim].astype(
+                                                                  bool),
                                                               metric='rmse')
 
                 if rmse_shimmed_static_riro > rmse_unshimmed:
@@ -1228,7 +1314,8 @@ class RealTimeSequencer(Sequencer):
         nt = unshimmed.shape[3]
         n_shim = len(self.slices)
         shim_trace_static = np.array(shim_trace_static).reshape(n_shim, nt)
-        shim_trace_static_riro = np.array(shim_trace_static_riro).reshape(n_shim, nt)
+        shim_trace_static_riro = np.array(
+            shim_trace_static_riro).reshape(n_shim, nt)
         shim_trace_riro = np.array(shim_trace_riro).reshape(n_shim, nt)
         unshimmed_trace = np.array(unshimmed_trace).reshape(n_shim, nt)
 
@@ -1237,10 +1324,12 @@ class RealTimeSequencer(Sequencer):
             shimmed_mask_avg = np.zeros(mask_full_binary.shape)
             np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3),
                       where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary, self.path_output)
+            plot_full_mask(np.mean(unshimmed, axis=3),
+                           shimmed_mask_avg, mask_full_binary, self.path_output)
 
             # Plot STD over time before and after shimming
-            self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
+            self.plot_full_time_std(
+                unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
 
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # plot results
@@ -1252,9 +1341,11 @@ class RealTimeSequencer(Sequencer):
                                   shimmed_static,
                                   shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
             self.plot_currents(coef_static, riro=coef_riro * pressure_rms)
-            self.plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
+            self.plot_shimmed_trace(
+                unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
             self.plot_pressure_and_unshimmed_field(unshimmed_trace)
-            self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
+            self.print_rt_metrics(unshimmed, shimmed_static,
+                                  shimmed_static_riro, shimmed_riro, mask_fmap_cs)
             # Save shimmed result
             nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nii_fieldmap.affine,
                                                       header=self.nii_fieldmap.header)
@@ -1264,7 +1355,8 @@ class RealTimeSequencer(Sequencer):
             # Save coils
             nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nii_fieldmap.affine,
                                                header=self.nii_fieldmap.header)
-            nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
+            nib.save(nii_merged_coils, os.path.join(
+                self.path_output, "merged_coils.nii.gz"))
 
     def plot_currents(self, static, riro=None):
         """
@@ -1279,11 +1371,13 @@ class RealTimeSequencer(Sequencer):
 
         n_channels = static.shape[1]
         for i_channel in range(n_channels):
-            ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
+            ax.plot(
+                static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
 
         if riro is not None:
             for i_channel in range(n_channels):
-                ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
+                ax.plot(
+                    riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
 
         ax.set_xlabel('Shim group')
         ax.set_ylabel('Coefficients (Physical CS [RAS])')
@@ -1320,17 +1414,21 @@ class RealTimeSequencer(Sequencer):
         index_slice_to_show = self.slices[i_shim][i_slice]
 
         fig = Figure(figsize=(15, 10))
-        fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
+        fig.suptitle(
+            f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
         ax = fig.add_subplot(2, 3, 1)
-        im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(np.rot90(
+            masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title("masked_shim static + riro")
         ax = fig.add_subplot(2, 3, 2)
-        im = ax.imshow(np.rot90(masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(np.rot90(
+            masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title("masked_shim static")
         ax = fig.add_subplot(2, 3, 3)
-        im = ax.imshow(np.rot90(masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(np.rot90(
+            masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title("masked_unshimmed")
 
@@ -1342,18 +1440,22 @@ class RealTimeSequencer(Sequencer):
                         unshimmed[..., i_slice, i_t, i_shim].max())
 
         ax = fig.add_subplot(2, 3, 4)
-        im = ax.imshow(np.rot90(shimmed_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(np.rot90(
+            shimmed_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title("shim static + riro")
         ax = fig.add_subplot(2, 3, 5)
-        im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(np.rot90(
+            shimmed_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title(f"shim static")
         ax = fig.add_subplot(2, 3, 6)
-        im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]), vmin=min_value, vmax=max_value)
+        im = ax.imshow(
+            np.rot90(unshimmed[..., i_slice, i_t]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
         ax.set_title(f"unshimmed")
-        fname_figure = os.path.join(self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
+        fname_figure = os.path.join(
+            self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
@@ -1378,7 +1480,8 @@ class RealTimeSequencer(Sequencer):
         # Get the b0 field in the same units as the pressure reading
         n_plots = len(self.index_shimmed)
 
-        max_diff_field_list = max(curated_unshimmed_trace, key=lambda x: abs(x.max() - x.min()))
+        max_diff_field_list = max(
+            curated_unshimmed_trace, key=lambda x: abs(x.max() - x.min()))
         min_field = max_diff_field_list.min()
         max_field = max_diff_field_list.max()
         max_diff_field = max_field - min_field
@@ -1397,7 +1500,8 @@ class RealTimeSequencer(Sequencer):
                 max(curated_unshimmed_trace_scaled.max(), self.pmu.max + perc))
 
         # Plot
-        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_noshim_vs_pressure')
+        path_pressure_and_unshimmed_field = os.path.join(
+            self.path_output, 'fig_noshim_vs_pressure')
         create_output_dir(path_pressure_and_unshimmed_field)
 
         for i_plot in range(n_plots):
@@ -1448,14 +1552,16 @@ class RealTimeSequencer(Sequencer):
             unshimmed_trace[self.index_shimmed, :].max()
         )
 
-        path_shimmed_trace = os.path.join(self.path_output, 'fig_trace_shimmed_vs_unshimmed')
+        path_shimmed_trace = os.path.join(
+            self.path_output, 'fig_trace_shimmed_vs_unshimmed')
         create_output_dir(path_shimmed_trace)
 
         # Calc ysize
         for i, i_shim in enumerate(self.index_shimmed):
             fig = Figure(figsize=(8, 4))
             ax = fig.add_subplot(1, 1, 1)
-            ax.plot(shim_trace_static_riro[i_shim, :], label='shimmed static + riro')
+            ax.plot(shim_trace_static_riro[i_shim, :],
+                    label='shimmed static + riro')
             ax.plot(shim_trace_static[i_shim, :], label='shimmed static')
             ax.plot(shim_trace_riro[i_shim, :], label='shimmed_riro')
             ax.plot(unshimmed_trace[i_shim, :], label='unshimmed')
@@ -1463,8 +1569,10 @@ class RealTimeSequencer(Sequencer):
             ax.set_ylabel('RMSE over the ROI (Hz)')
             ax.legend()
             ax.set_ylim([min_value, max_value])
-            ax.set_title(f"Unshimmed vs shimmed values: shim {self.slices[i_shim]}")
-            fname_figure = os.path.join(path_shimmed_trace, f'fig_trace_shimmed_vs_unshimmed_shimgroup_{i_shim:03}.png')
+            ax.set_title(
+                f"Unshimmed vs shimmed values: shim {self.slices[i_shim]}")
+            fname_figure = os.path.join(
+                path_shimmed_trace, f'fig_trace_shimmed_vs_unshimmed_shimgroup_{i_shim:03}.png')
             fig.savefig(fname_figure, bbox_inches='tight')
         logger.debug(f"Saved figures: {path_shimmed_trace}")
 
@@ -1484,11 +1592,16 @@ class RealTimeSequencer(Sequencer):
             mask (np.ndarray): Mask where the shimming was done
         """
 
-        unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], mask.shape[-1], axis=-1)
-        mask_repeats = np.repeat(mask[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
-        ma_unshimmed = np.ma.array(unshimmed_repeat, mask=mask_repeats == False)
-        ma_shim_static = np.ma.array(shimmed_static, mask=mask_repeats == False)
-        ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=mask_repeats == False)
+        unshimmed_repeat = np.repeat(
+            unshimmed[..., np.newaxis], mask.shape[-1], axis=-1)
+        mask_repeats = np.repeat(
+            mask[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
+        ma_unshimmed = np.ma.array(
+            unshimmed_repeat, mask=mask_repeats == False)
+        ma_shim_static = np.ma.array(
+            shimmed_static, mask=mask_repeats == False)
+        ma_shim_static_riro = np.ma.array(
+            shimmed_static_riro, mask=mask_repeats == False)
         ma_shim_riro = np.ma.array(shimmed_riro, mask=mask_repeats == False)
 
         # Temporal
@@ -1525,7 +1638,8 @@ class RealTimeSequencer(Sequencer):
         """
         # Transform shimmed field map to shape (x, y, z, time)
         sum_mask_fmap_cs = np.sum(mask_fmap_cs, axis=3)
-        mask_extended = np.repeat(mask[..., np.newaxis], masked_shim_static_riro.shape[-2], axis=-1)
+        mask_extended = np.repeat(
+            mask[..., np.newaxis], masked_shim_static_riro.shape[-2], axis=-1)
 
         # Transpose is used to cater to numpy division order
         # (3, 2, 4) / (3, 2) Does not work
@@ -1539,33 +1653,42 @@ class RealTimeSequencer(Sequencer):
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
 
         # Plot
-        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=mask == False, fill_value=np.nan)
-        nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=mask == False, fill_value=np.nan)
+        nan_unshimmed_masked = np.ma.array(
+            std_unshimmed, mask=mask == False, fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(
+            std_shimmed_masked, mask=mask == False, fill_value=np.nan)
 
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
         mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
         mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
-        metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
+        metric_unshimmed_mean = calculate_metric_within_mask(
+            std_unshimmed, mask, metric='mean')
+        metric_shimmed_mean = calculate_metric_within_mask(
+            std_shimmed_masked, mask, metric='mean')
 
         # Remove the outliers to calculate the colorbar limits
         # Necessary because some STD are much higher and are not visible on the heatmap, they are still considered in
         # the metric
-        shim_limit = np.nanpercentile(mt_shimmed_masked[mt_shimmed_masked != 0], 90)
-        unshim_limit = np.nanpercentile(mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
+        shim_limit = np.nanpercentile(
+            mt_shimmed_masked[mt_shimmed_masked != 0], 90)
+        unshim_limit = np.nanpercentile(
+            mt_unshimmed_masked[mt_unshimmed_masked != 0], 90)
 
-        min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
+        min_value = min(np.nanmin(mt_unshimmed_masked),
+                        np.nanmin(mt_shimmed_masked))
         max_value = max(np.nanmax(mt_unshimmed_masked[mt_unshimmed_masked < unshim_limit]),
                         np.nanmax(mt_shimmed_masked[mt_shimmed_masked < shim_limit]))
 
         fig = Figure(figsize=(9, 6))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
+        fig.suptitle(
+            f"Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value,
+                       vmax=max_value, cmap='viridis')
         ax.set_title(f"Before shimming\nmean: {metric_unshimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -1576,7 +1699,8 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_shimmed_masked, vmin=min_value,
+                       vmax=max_value, cmap='viridis')
         ax.set_title(f"After shimming\nmean: {metric_shimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -1588,7 +1712,8 @@ class RealTimeSequencer(Sequencer):
         fig.subplots_adjust(top=0.85)
 
         # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
+        fname_figure = os.path.join(
+            self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
@@ -1604,31 +1729,44 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     """
 
     # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=mask == False, fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=mask == False, fill_value=np.nan)
+    nan_unshimmed_masked = np.ma.array(
+        unshimmed, mask=mask == False, fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(
+        shimmed_masked, mask=mask == False, fill_value=np.nan)
 
     mt_unshimmed = montage(unshimmed)
     mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
     mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
+    metric_unshimmed_std = calculate_metric_within_mask(
+        unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(
+        shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(
+        unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(
+        shimmed_masked, mask, metric='mean')
+    metric_unshimmed_mae = calculate_metric_within_mask(
+        unshimmed, mask, metric='mae')
+    metric_shimmed_mae = calculate_metric_within_mask(
+        shimmed_masked, mask, metric='mae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(
+        unshimmed, mask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(
+        shimmed_masked, mask, metric='rmse')
 
-    min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
-    max_value = max(np.nanmax(mt_unshimmed_masked), np.nanmax(mt_shimmed_masked))
+    min_value = min(np.nanmin(mt_unshimmed_masked),
+                    np.nanmin(mt_shimmed_masked))
+    max_value = max(np.nanmax(mt_unshimmed_masked),
+                    np.nanmax(mt_shimmed_masked))
 
     fig = Figure(figsize=(15, 9))
     fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value,
+                   vmax=max_value, cmap='viridis')
     ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
                  f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
@@ -1639,7 +1777,8 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value,
+                   vmax=max_value, cmap='viridis')
     ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
                  f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
@@ -1653,7 +1792,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def new_bounds_from_currents(currents:dict, old_bounds:dict):
+def new_bounds_from_currents(currents: dict, old_bounds: dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
@@ -1676,7 +1815,8 @@ def new_bounds_from_currents(currents:dict, old_bounds:dict):
             elif bound[1] is None:
                 new_bounds[key].append([bound[0] - currents[key][i], None])
             else:
-                new_bounds[key].append([bound[0] - currents[key][i], bound[1] - currents[key][i]])
+                new_bounds[key].append(
+                    [bound[0] - currents[key][i], bound[1] - currents[key][i]])
     return new_bounds
 
 
@@ -1701,45 +1841,54 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     coil_indexes = {}
     for coil in coils_static:
         if type(coil) == Coil:
-            coil_indexes[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            coil_indexes[coil.name] = [index, index +
+                                       len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
             coil_indexes[coil.name] = {}
             for key in coil.coef_channel_minmax:
-                coil_indexes[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                coil_indexes[coil.name][key] = [
+                    index, index + len(coil.coef_channel_minmax[key])]
                 index += len(coil.coef_channel_minmax[key])
 
     for i, coil in enumerate(coils_riro):
         if coil.name in static_coil_names:
             if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
-                                          currents[:, coil_indexes[coil.name][0]:coil_indexes[coil.name][1]],
+                                          currents[:, coil_indexes[coil.name]
+                                                   [0]:coil_indexes[coil.name][1]],
                                           axis=1)
-                old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][0]:coil_indexes[coil.name][1]])
+                old_bounds_riro.extend(
+                    old_bounds[coil_indexes[coil.name][0]:coil_indexes[coil.name][1]])
             else:
                 for order in coil.coef_channel_minmax:
                     if order in coils_static[static_coil_names.index(coil.name)].coef_channel_minmax.keys():
                         currents_riro = np.append(currents_riro,
-                                                  currents[:, coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
-                                                  axis = 1)
-                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
+                                                  currents[:, coil_indexes[coil.name][order]
+                                                           [0]:coil_indexes[coil.name][order][1]],
+                                                  axis=1)
+                        old_bounds_riro.extend(
+                            old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
                     else:
                         currents_riro = np.append(currents_riro,
-                                                  np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                                  np.zeros((currents.shape[0], len(
+                                                      coil.coef_channel_minmax[order]))),
                                                   axis=1)
                         old_bounds_riro.extend(coil.coef_channel_minmax[order])
 
         else:
             if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
-                                        np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
-                                        axis=1)
+                                          np.zeros((currents.shape[0], len(
+                                              coil.coef_channel_minmax['coil']))),
+                                          axis=1)
                 old_bounds_riro.extend(coil.coef_channel_minmax['coil'])
 
             else:
                 for order in coil.coef_channel_minmax:
                     currents_riro = np.append(currents_riro,
-                                              np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
+                                              np.zeros((currents.shape[0], len(
+                                                  coil.coef_channel_minmax[order]))),
                                               axis=1)
                     old_bounds_riro.extend(coil.coef_channel_minmax[order])
 
@@ -1747,7 +1896,8 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     for i_shim in range(currents_riro.shape[0]):
         shim_bound = []
         for i_channel in range(len(old_bounds_riro)):
-            a_bound = old_bounds_riro[i_channel] - currents_riro[i_shim, i_channel]
+            a_bound = old_bounds_riro[i_channel] - \
+                currents_riro[i_shim, i_channel]
             shim_bound.append(tuple(a_bound))
         new_bounds.append(shim_bound)
 
@@ -1785,12 +1935,14 @@ def parse_slices(fname_nifti):
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
-        raise RuntimeError("No tag SliceTiming to automatically parse slice data, see --slices option")
+        raise RuntimeError(
+            "No tag SliceTiming to automatically parse slice data, see --slices option")
 
     # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
     if 'SliceEncodingDirection' in json_data:
         if json_data['SliceEncodingDirection'][-1] == '-':
-            logger.debug("SliceEncodeDirection is negative, SliceTiming parsed backwards")
+            logger.debug(
+                "SliceEncodeDirection is negative, SliceTiming parsed backwards")
             slice_timing.reverse()
 
     # Return the indexes of the sorted slice_timing
@@ -1801,7 +1953,8 @@ def parse_slices(fname_nifti):
     while len(list_slices) > 0:
         # Find if the first index has the same timing as other indexes
         # shim_group = tuple(list_slices[list_slices == list_slices[0]])
-        shim_group = tuple(np.where(slice_timing == slice_timing[list_slices[0]])[0])
+        shim_group = tuple(
+            np.where(slice_timing == slice_timing[list_slices[0]])[0])
         # Add this as a tuple
         slices.append(shim_group)
 
@@ -1850,7 +2003,8 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
 
     elif method == 'sequential':
         for i_shim in range(n_shims):
-            slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
+            slices.append(
+                tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
 
         leftover = n_slices % factor
 
@@ -1893,7 +2047,8 @@ def shim_max_intensity(nii_input, nii_mask=None):
             raise ValueError("Input mask must be 3d")
         # If the mask is of a different shape, resample it.
         elif not np.all(nii_mask.shape == nii_input.shape[:3]) or not np.all(nii_mask.affine == nii_input.affine):
-            nii_input_3d = nib.Nifti1Image(nii_input.get_fdata()[..., 0], nii_input.affine, header=nii_input.header)
+            nii_input_3d = nib.Nifti1Image(nii_input.get_fdata(
+            )[..., 0], nii_input.affine, header=nii_input.header)
             mask = resample_mask(nii_mask, nii_input_3d).get_fdata()
         else:
             mask = nii_mask.get_fdata()
@@ -1904,7 +2059,8 @@ def shim_max_intensity(nii_input, nii_mask=None):
     mean_values = np.zeros([n_slices, n_volumes])
     for i_volume in range(n_volumes):
         masked_epi_3d = nii_input.get_fdata()[..., i_volume] * mask
-        mean_per_slice = np.mean(masked_epi_3d, axis=(0, 1), where=mask.astype(bool))
+        mean_per_slice = np.mean(
+            masked_epi_3d, axis=(0, 1), where=mask.astype(bool))
         mean_values[:, i_volume] = mean_per_slice
 
     if np.any(np.isnan(mean_values)):
@@ -1937,7 +2093,8 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
         if fieldmap_shape[i_axis] < dilation_kernel_size:
             diff = float(dilation_kernel_size - fieldmap_shape[i_axis])
             n_slices_to_extend = math.ceil(diff / 2)
-            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis)
+            tmp_nii = extend_slice(
+                tmp_nii, n_slices=n_slices_to_extend, axis=i_axis)
 
     nii_fmap = tmp_nii
 
@@ -1945,7 +2102,8 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
     if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
         fname_new_fmap = os.path.join(path_output, 'tmp_extended_fmap.nii.gz')
         nib.save(nii_fmap, fname_new_fmap)
-        logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
+        logger.debug(
+            f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
 
     return nii_fmap
 
@@ -1978,13 +2136,16 @@ def extend_slice(nii_array, n_slices=1, axis=2):
 
     for i_slice in range(n_slices):
         if axis == 0:
-            extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
+            extended = np.insert(
+                extended, -1, extended[-1, :, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
         elif axis == 1:
-            extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
+            extended = np.insert(
+                extended, -1, extended[:, -1, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
         elif axis == 2:
-            extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
+            extended = np.insert(
+                extended, -1, extended[:, :, -1, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
         else:
             raise ValueError("Unsupported value for axis")
@@ -1994,7 +2155,8 @@ def extend_slice(nii_array, n_slices=1, axis=2):
     if nii_array.get_fdata().ndim == 3:
         extended = extended[..., 0]
 
-    nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
+    nii_extended = nib.Nifti1Image(
+        extended, new_affine, header=nii_array.header)
 
     return nii_extended
 
@@ -2015,7 +2177,8 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     index_shifted[axis] = n_slices
 
     # Difference of voxel in world coordinates
-    spacing = apply_affine(affine, index_shifted) - apply_affine(affine, [0, 0, 0])
+    spacing = apply_affine(affine, index_shifted) - \
+        apply_affine(affine, [0, 0, 0])
 
     # Calculate new affine
     new_affine = affine
