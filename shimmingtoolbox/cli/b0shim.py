@@ -70,18 +70,18 @@ def b0shim_cli():
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog']),
+@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'gradient']),
               required=False, default='quad_prog', show_default=True,
-              help="Method used by the optimizer. LS, and QP will respect the constraints,"
+              help="Method used by the optimizer. LS, QP and gradient will respect the constraints,"
                    "PS will not respect the constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'ps_huber']), required=False,
               default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+              help="Criteria of optimization for the optimizer 'least_squares' and 'gradient'."
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -95,7 +95,8 @@ def b0shim_cli():
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
-              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
+              type=click.Choice(
+                  ['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
               default='slicewise-coil',
               show_default=True, help="Syntax used to describe the sequence of shim events for custom coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -152,7 +153,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if nii_fmap_orig.get_fdata().ndim == 2:
             nii_fmap = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
                                        header=nii_fmap_orig.header)
-            nii_fmap = extend_fmap_to_kernel_size(nii_fmap, dilation_kernel_size, path_output)
+            nii_fmap = extend_fmap_to_kernel_size(
+                nii_fmap, dilation_kernel_size, path_output)
         else:
             raise ValueError("Fieldmap must be 2d or 3d")
     else:
@@ -168,7 +170,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                 break
 
         if extending:
-            nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+            nii_fmap = extend_fmap_to_kernel_size(
+                nii_fmap_orig, dilation_kernel_size, path_output)
         else:
             nii_fmap = copy.deepcopy(nii_fmap_orig)
 
@@ -204,7 +207,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
             # Slice must be the 3rd dimension of the file
             # TODO: Reorient nifti so that the slice is the 3rd dim
-            raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
+            raise RuntimeError(
+                "Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
     # Load anat json
     fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
@@ -216,7 +220,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         nii_mask_anat = nib.load(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
-        nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
+        nii_mask_anat = nib.Nifti1Image(np.ones_like(
+            nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -295,12 +300,15 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
-                logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
+                logger.debug(
+                    "Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
                 # First convert to RAS
-                orders = tuple([order for order in scanner_coil_order if order != 0])
+                orders = tuple(
+                    [order for order in scanner_coil_order if order != 0])
                 for i_shim in range(coefs.shape[0]):
                     # Convert coefficient
-                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(coefs_coil[i_shim, 1:], manufacturer, orders)
+                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(
+                        coefs_coil[i_shim, 1:], manufacturer, orders)
 
                 # Convert coef of 1st order sph harmonics to Gradient coord system
                 coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
@@ -315,10 +323,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
-                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
+                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(
+                        scanner_coil_order)
                     for i_channel in range(n_channels):
                         # abs_coef = delta + initial
-                        coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
+                        coefs_coil[:, i_channel] = coefs_coil[:,
+                                                              i_channel] + initial_coefs[i_channel]
 
                     list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
                                                                    o_format_sph, options, coil_number=i_coil,
@@ -332,7 +342,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            options, coil_number=i_coil)
 
-    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(
+        f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
     sequencer.eval(coefs)
     logger.info(f" Plotting currents")
@@ -363,7 +374,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
     list_fname_output = []
     if o_format[-5:] == '-coil':
 
-        fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+        fname_output = os.path.join(
+            path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
 
@@ -391,7 +403,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                 # volume
                 n_slices = np.sum([len(a_shim) for a_shim in list_slices])
                 for i_slice in range(n_slices):
-                    i_shim = [list_slices.index(a_shim) for a_shim in list_slices if i_slice in a_shim][0]
+                    i_shim = [list_slices.index(
+                        a_shim) for a_shim in list_slices if i_slice in a_shim][0]
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
@@ -422,9 +435,11 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
             if o_format == 'slicewise-ch':
                 with open(fname_output, 'w', encoding='utf-8') as f:
                     # Each row will have one coef representing the shim in slicewise order
-                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                    n_slices = np.sum([len(a_tuple)
+                                      for a_tuple in list_slices])
                     for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                        i_shim = [list_slices.index(
+                            i) for i in list_slices if i_slice in i][0]
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
@@ -433,18 +448,21 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
         for i_channel in range(n_channels):
             # Make sure there are 4 channels
             if n_channels != 4:
-                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
+                raise RuntimeError(
+                    "Gradient output format should only be used with 1st order scanner coils")
 
             name = {0: 'f0',
                     1: 'x',
                     2: 'y',
                     3: 'z'}
 
-            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
+            fname_output = os.path.join(
+                path_output, f"{name[i_channel]}shim_gradients.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                 for i_slice in range(n_slices):
-                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                    i_shim = [list_slices.index(
+                        i) for i in list_slices if i_slice in i][0]
 
                     if i_channel == 0:
                         # f0, Output is in Hz
@@ -615,7 +633,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             break
 
     if extending:
-        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
+        nii_fmap = extend_fmap_to_kernel_size(
+            nii_fmap_orig, dilation_kernel_size, path_output)
     else:
         nii_fmap = copy.deepcopy(nii_fmap_orig)
 
@@ -625,7 +644,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     if dim_info[2] != 2:
         # Slice must be the 3rd dimension of the file
         # TODO: Reorient nifti so that the slice is the 3rd dim
-        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
+        raise RuntimeError(
+            "Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
     # Load anat json
     fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
@@ -685,7 +705,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_fname = [fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro]
+        list_fname = [fname_fmap, fname_anat,
+                      fname_mask_anat_static, fname_mask_anat_riro]
         _save_nii_to_new_dir(list_fname, path_output)
 
     # Get the shim slice ordering
@@ -717,9 +738,12 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
 
     # Get common coils between static and riro // Comparison based on coil name
-    coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
-    coil_riro_only = [coil for coil in list_coils_riro if coil not in list_coils_static]
-    list_coils_common = [coil for coil in list_coils_static if coil in list_coils_riro]
+    coil_static_only = [
+        coil for coil in list_coils_static if coil not in list_coils_riro]
+    coil_riro_only = [
+        coil for coil in list_coils_riro if coil not in list_coils_static]
+    list_coils_common = [
+        coil for coil in list_coils_static if coil in list_coils_riro]
     # Create a list of all coils used in optimization
     all_coils = list_coils_common + coil_static_only + coil_riro_only
 
@@ -727,24 +751,28 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     coil_indexes_static = {}
     for coil in list_coils_static:
         if type(coil) == Coil:
-            coil_indexes_static[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            coil_indexes_static[coil.name] = [
+                index, index + len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
             coil_indexes_static[coil.name] = {}
             for key in coil.coef_channel_minmax:
-                coil_indexes_static[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                coil_indexes_static[coil.name][key] = [
+                    index, index + len(coil.coef_channel_minmax[key])]
                 index += len(coil.coef_channel_minmax[key])
 
     index = 0
     coil_indexes_riro = {}
     for coil in list_coils_riro:
         if type(coil) == Coil:
-            coil_indexes_riro[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
+            coil_indexes_riro[coil.name] = [
+                index, index + len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
             coil_indexes_riro[coil.name] = {}
             for key in coil.coef_channel_minmax:
-                coil_indexes_riro[coil.name][key] = [index, index + len(coil.coef_channel_minmax[key])]
+                coil_indexes_riro[coil.name][key] = [
+                    index, index + len(coil.coef_channel_minmax[key])]
                 index += len(coil.coef_channel_minmax[key])
 
     list_fname_output = []
@@ -771,7 +799,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                             coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
                     else:
                         coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                        coil_indexes_static[coil.name][key][1]])
+                                                                     coil_indexes_static[coil.name][key][1]])
                 else:
                     coefs_coil_riro = np.zeros_like(
                         coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
@@ -779,7 +807,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 if coil in list_coils_static:
                     if key in coil_indexes_static[coil.name]:
                         coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                          coil_indexes_static[coil.name][key][1]])
+                                                                       coil_indexes_static[coil.name][key][1]])
                     else:
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
                 else:
@@ -800,18 +828,23 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         has0 = True
                         continue
                     elif key == '1' and has0:
-                        save_coefs_static = np.concatenate((save_coefs_static, coefs_coil_static), axis=1)
+                        save_coefs_static = np.concatenate(
+                            (save_coefs_static, coefs_coil_static), axis=1)
                         if save_coefs_riro is not None:
-                            save_coefs_riro = np.concatenate((save_coefs_riro, coefs_coil_riro), axis=1)
+                            save_coefs_riro = np.concatenate(
+                                (save_coefs_riro, coefs_coil_riro), axis=1)
                         elif coefs_coil_riro is not None:
                             save_coefs_riro = coefs_coil_riro
                         else:
                             raise ValueError("Orders do not match gradient")
                     coefs_coil_static = save_coefs_static
                     coefs_coil_riro = save_coefs_riro
-                    logger.debug("Converting scanner coil from Shim CS to Gradient CS")
-                    orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
-                    orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
+                    logger.debug(
+                        "Converting scanner coil from Shim CS to Gradient CS")
+                    orders_static = tuple(
+                        [order for order in scanner_coil_order_static if order != 0])
+                    orders_riro = tuple(
+                        [order for order in scanner_coil_order_riro if order != 0])
                     # First convert coefficients from Shim CS to RAS
                     for i_shim in range(coefs_coil_static.shape[0]):
                         # Convert coefficient
@@ -843,15 +876,18 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
                     # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
-                        initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
+                        initial_coefs = scanner_shim_settings.concatenate_shim_settings(
+                            scanner_coil_order_static)
                         for i_channel in range(coefs_coil_static.shape[-1]):
                             # abs_coef = delta + initial
-                            coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
+                            coefs_coil_static[:, i_channel] = coefs_coil_static[:,
+                                                                                i_channel] + initial_coefs[i_channel]
                             # riro does not change
 
                             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
                                                                        list_slices, path_output, o_format_sph, options,
-                                                                       i_coil, int(key) ** 2,
+                                                                       i_coil, int(
+                                                                           key) ** 2,
                                                                        default_st_coefs=initial_coefs)
                         continue
 
@@ -875,7 +911,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
                                                        path_output, o_format_coil, options, i_coil, 0)
 
-    logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(
+        f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
     logger.info(f"Plotting Currents")
@@ -928,7 +965,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                             f.write(f"{0:.1f}, {0:.1f}, {mean_p:.4f},\n")
                         else:
                             # Output initial coefs (absolute)
-                            f.write(f"{default_st_coefs[i_channel]:.1f}, {0:.1f}, {mean_p:.4f},\n")
+                            f.write(
+                                f"{default_st_coefs[i_channel]:.1f}, {0:.1f}, {mean_p:.4f},\n")
                     if currents_static is not None:
                         f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
                     if currents_riro is not None:
@@ -942,7 +980,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                 # Each row will have one coef representing the static, riro and mean_p in slicewise order
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                 for i_slice in range(n_slices):
-                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                    i_shim = [list_slices.index(
+                        i) for i in list_slices if i_slice in i][0]
 
                     if currents_static is not None:
                         f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
@@ -954,18 +993,21 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
 
             # Make sure there are 4 channels
             if n_channels != 4:
-                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
+                raise RuntimeError(
+                    "Gradient output format should only be used with 1st order scanner coils")
 
             name = {0: 'f0',
                     1: 'x',
                     2: 'y',
                     3: 'z'}
 
-            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
+            fname_output = os.path.join(
+                path_output, f"{name[i_channel]}shim_gradients.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
                 n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
                 for i_slice in range(n_slices):
-                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                    i_shim = [list_slices.index(
+                        i) for i in list_slices if i_slice in i][0]
 
                     if i_channel == 0:
                         # f0, Output is in Hz
@@ -998,10 +1040,12 @@ def parse_orders(orders: str):
         orders = [int(order) for order in orders]
         orders.sort()
         if any(order not in AVAILABLE_ORDERS for order in orders):
-            raise ValueError(f'Orders must be selected from: {AVAILABLE_ORDERS}')
+            raise ValueError(
+                f'Orders must be selected from: {AVAILABLE_ORDERS}')
         return orders
     except ValueError:
-        raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
+        raise ValueError(
+            f"Invalid orders: {orders}\n Orders must be integers ")
 
 
 def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
@@ -1028,10 +1072,12 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         nii_coil_profiles = nib.load(coil[0])
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
-        list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
+        list_coils.append(Coil(nii_coil_profiles.get_fdata(),
+                          nii_coil_profiles.affine, constraints))
 
     if len(list_coils) != len(set(list_coils)):
-        raise ValueError("Coils must be unique. Make sure different coils have different names.")
+        raise ValueError(
+            "Coils must be unique. Make sure different coils have different names.")
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
@@ -1046,16 +1092,19 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
             for key in orders_to_delete:
                 del sph_contraints['coef_channel_minmax'][key]
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders)
+            sph_contraints = get_scanner_constraints(
+                manufacturers_model_name, orders)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders)
+        sph_contraints_calc = calculate_scanner_constraints(
+            sph_contraints, scanner_shim_settings, orders)
         scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
                                    manufacturer=manufacturer)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
     if len(list_coils) == 0:
-        raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
+        raise RuntimeError(
+            "No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
 
@@ -1078,9 +1127,11 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
     def _initial_in_bounds(coefs: dict, bounds: dict):
         """Makes sure the initial values are within the bounds of the constraints"""
         if coefs.keys() != bounds.keys():
-            raise RuntimeError("The scanner coil's orders is not the same length as the initial orders")
+            raise RuntimeError(
+                "The scanner coil's orders is not the same length as the initial orders")
         if any(len(coefs[key]) != len(bounds[key]) for key in bounds):
-            raise RuntimeError("The scanner coil's bounds is not the same length as the initial bounds")
+            raise RuntimeError(
+                "The scanner coil's bounds is not the same length as the initial bounds")
 
         for key in coefs:
             for (bound, coef) in zip(bounds[key], coefs[key]):
@@ -1103,7 +1154,8 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
         initial_coefs = None
 
     # Restrict the constraints to the provided order
-    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
+    constraints['coef_channel_minmax'] = restrict_sph_constraints(
+        constraints['coef_channel_minmax'], orders)
 
     # If the scanner coefficients are valid, update the initial coefficients
     if scanner_shim_settings['has_valid_settings']:
@@ -1240,11 +1292,15 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
             for i_channel in range(n_channels):
                 coef = rt_coefs[i_shim, i_channel]
                 if coef > 0:
-                    temp_min = static_coefs[i_shim, i_channel] + coef * pres_probe_min
-                    temp_max = static_coefs[i_shim, i_channel] + coef * pres_probe_max
+                    temp_min = static_coefs[i_shim,
+                                            i_channel] + coef * pres_probe_min
+                    temp_max = static_coefs[i_shim,
+                                            i_channel] + coef * pres_probe_max
                 else:
-                    temp_min = static_coefs[i_shim, i_channel] + coef * pres_probe_max
-                    temp_max = static_coefs[i_shim, i_channel] + coef * pres_probe_min
+                    temp_min = static_coefs[i_shim,
+                                            i_channel] + coef * pres_probe_max
+                    temp_max = static_coefs[i_shim,
+                                            i_channel] + coef * pres_probe_min
 
                 if min_y is None or min_y > temp_min:
                     min_y = temp_min
@@ -1279,12 +1335,14 @@ def _plot_coefs(coil, slices, static_coefs, path_output, coil_number, rt_coefs=N
     # Add a subplot for all the non shimmed slices
     if unused_slice:
         i_unshimmed_slice = slices_index_wo_shim[0]
-        slices_wo_shim = tuple(j for i in slices_index_wo_shim for j in slices[i])
+        slices_wo_shim = tuple(
+            j for i in slices_index_wo_shim for j in slices[i])
         _add_sub_figure(fig, n_plots, n_plots, static_coefs[i_unshimmed_slice], bounds,
                         min_y, max_y, units, slices_wo_shim)
 
     # Save the figure
-    fname_figure = os.path.join(path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
+    fname_figure = os.path.join(
+        path_output, f"fig_currents_per_slice_group_coil{coil_number}_{coil.name}.png")
     fig.savefig(fname_figure, bbox_inches='tight')
     logger.debug(f"Saved figure: {fname_figure}")
 
@@ -1302,8 +1360,10 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
     if rt_coefs is not None:
         riro = np.zeros((2, rt_coefs.shape[0]))
         for i_slice in range(rt_coefs.shape[0]):
-            riro[0, i_slice] = np.abs(min(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
-            riro[1, i_slice] = np.abs(max(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
+            riro[0, i_slice] = np.abs(
+                min(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
+            riro[1, i_slice] = np.abs(
+                max(rt_coefs[i_slice] * -pres_probe_min, rt_coefs[i_slice] * pres_probe_max))
         ax.errorbar(range(n_channels), static_coefs, yerr=riro, fmt='o', elinewidth=4, capsize=6,
                     label='static-riro')
     # Add static component
@@ -1333,7 +1393,8 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
             ax.vlines(len_hline_bounds, bounds[0, 0], bounds[0, 0] + (delta_y * len_vline_bounds), colors='r',
                       capstyle='projecting')
             # max
-            ax.hlines(bounds[0, 1], -len_hline_bounds, len_hline_bounds, colors='r', capstyle='projecting')
+            ax.hlines(bounds[0, 1], -len_hline_bounds,
+                      len_hline_bounds, colors='r', capstyle='projecting')
             ax.vlines(-len_hline_bounds, bounds[0, 1] - (delta_y * len_vline_bounds), bounds[0, 1], colors='r',
                       capstyle='projecting')
             ax.vlines(len_hline_bounds, bounds[0, 1] - (delta_y * len_vline_bounds), bounds[0, 1], colors='r',
@@ -1359,7 +1420,8 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
            xticks=range(n_channels))
     ax.legend()
 
-    ax.set_title(f"Slices: {slice_number}, Total static current: {np.abs(static_coefs).sum()}")
+    ax.set_title(
+        f"Slices: {slice_number}, Total static current: {np.abs(static_coefs).sum()}")
     ax.set_xlabel('Channels')
     ax.set_ylabel(f"Coefficients {units}")
 
@@ -1371,7 +1433,8 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
               help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
                    "considered.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
+              default=os.path.join(os.path.abspath(
+                  os.curdir), 'shim_index.txt'),
               show_default=True, help="Filename to output shim text file.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def max_intensity(fname_input, fname_mask, fname_output, verbose):
