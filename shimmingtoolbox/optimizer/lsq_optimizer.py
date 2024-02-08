@@ -95,7 +95,7 @@ class LsqOptimizer(OptimizerUtils):
         """
         residuals = unshimmed_vec + coil_mat @ coef
         if self._delta == 1:
-            self._delta = np.quantile(np.sort(residuals), 0.75)
+            self._delta = np.max(residuals)
         return np.sum(pseudo_huber(self._delta, np.abs(residuals))) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
