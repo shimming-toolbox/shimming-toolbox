@@ -37,7 +37,8 @@ supported_optimizers = {
     'least_squares': LsqOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
-    'pseudo_inverse': Optimizer
+    'pseudo_inverse': Optimizer,
+    'gradient': gradientOpt
 }
 
 
