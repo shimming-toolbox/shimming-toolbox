@@ -18,7 +18,7 @@ import json
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
-from shimmingtoolbox.optimizer.gradient_optimizer import gradientOpt, allowed_opt_criteria
+from shimmingtoolbox.optimizer.gradient_optimizer import GradientOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -38,7 +38,7 @@ supported_optimizers = {
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
     'pseudo_inverse': Optimizer,
-    'gradient': gradientOpt
+    'gradient': GradientOpt
 }
 
 
