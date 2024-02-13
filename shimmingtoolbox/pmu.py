@@ -5,8 +5,10 @@
 # Adapted from https://gist.github.com/rtrhd/6172344
 #
 
+import logging
 import numpy as np
-from scipy import signal
+
+logger = logging.getLogger(__name__)
 
 
 class PmuResp(object):
@@ -228,3 +230,28 @@ class PmuResp(object):
         mean_p = self.mean(start_time=start_time, stop_time=stop_time)
 
         return np.sqrt(np.mean((pressures - mean_p)**2))
+
+    def get_trigger_times(self, start_time=None, stop_time=None):
+        """
+        Returns the trigger times in ms of the resp trace
+
+        Returns:
+            numpy.ndarray: Array with the trigger times in ms of the resp trace
+        """
+        times = self._get_all_times()
+        index_start, index_stop = self._get_time_indexes(start_time, stop_time)
+
+        trigger_times = []
+        i = 0
+        for data in self.data_triggers:
+            if data > 4096:
+                if data != 5000:
+                    logger.warning(f"Trigger value {data} not recognized")
+                if index_start <= i <= index_stop:
+                    trigger_times.append(times[i])
+            else:
+                i += 1
+
+        logger.debug(f"Trigger times: {trigger_times}")
+
+        return trigger_times

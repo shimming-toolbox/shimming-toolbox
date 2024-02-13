@@ -14,16 +14,20 @@ logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 
 
-def get_acquisition_times(nii_data, json_data):
+def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
         nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
         json_data (dict): Json dict corresponding to a nifti sidecar.
+        when (str): When to get the acquisition time. Can be 'slice-middle'/'volume-start'/'volume-middle'
 
     Returns:
         numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
     """
+    if when not in ['slice-middle', 'volume-start', 'volume-middle']:
+        raise ValueError("Invalid 'when' parameter. Must be 'slice-middle', 'volume-start' or 'volume-middle'.")
+
     # Get number of volumes
     n_volumes = nii_data.header['dim'][4]
     n_slices = nii_data.shape[2]
@@ -39,6 +43,11 @@ def get_acquisition_times(nii_data, json_data):
     volume_start_times = np.linspace(acq_start_time_ms,
                                      ((n_volumes - 1) * deltat_volume) + acq_start_time_ms,
                                      n_volumes)
+
+    if when == 'volume-start':
+        return volume_start_times
+    if when == 'volume-middle':
+        return volume_start_times + (deltat_volume / 2)
 
     def get_middle_of_slice_timing(data, n_sli):
         """ Return the best guess of when the middle of k-space was acquired for each slice. Return an array of 0 if no
