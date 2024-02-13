@@ -294,7 +294,7 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
             else:
                 scanner_shim_mp['2'] = order2_mp
 
-    if manufacturers_model_name == "Investigational_Device_7T":
+    if manufacturers_model_name == "Terra":
         if shim_settings.get('1'):
             coefs_ui = get_scanner_constraints(manufacturers_model_name, [1],
                                                'Siemens')['coef_channel_minmax']['1']

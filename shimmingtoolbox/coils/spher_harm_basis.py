@@ -27,7 +27,7 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
             - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
 
-        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY*
+        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -53,7 +53,7 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', orders=[1, ])
     spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
 
-    # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
+    # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)
     reordered_spher = reorder_to_manufacturer(spher_harm, manufacturer='SIEMENS')
 
     # Convert back to an array
@@ -68,7 +68,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     order spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``.
     *Following GE convention*, ``basis`` is then:
 
-        - Reordered along the 4th dimension as *x, y, z, xy, zy, zx, X2-Y2, z2*
+        - Reordered along the 4th dimension as *X, Y, Z, XY, ZY, ZX, X2-Y2, Z2*
 
         - Rescaled:
 
@@ -153,12 +153,12 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
             def _reorder_shim_to_scaling(coefs):
                 # Reorder 2nd order terms
                 # 1. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
-                # 2. * xy, zy, zx, X2 - Y2, z2 * (scaling matrix)
+                # 2. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
                 return coefs[..., [4, 2, 1, 3, 0]]
 
             def _reorder_scaling_to_shim(coefs):
                 # Reorder 2nd order terms
-                # 1. * xy, zy, zx, X2 - Y2, z2 * (scaling matrix)
+                # 1. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
                 # 2. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
                 return coefs[..., [4, 2, 1, 3, 0]]
 
@@ -174,7 +174,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
             orders_to_order2_ut[0] = orders_to_order2[8]
 
             # Reorder 2nd order terms to the scaling matrix order
-            # *xy, zy, zx, X2 - Y2, z2 * (scaling matrix)
+            # * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
             reordered_spher[2] = _reorder_shim_to_scaling(reordered_spher[2])
 
             scaled[2] = np.zeros_like(reordered_spher[2])
@@ -282,6 +282,8 @@ def scaled_spher_harm(x, y, z, orders=(1, 2)):
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
             - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
 
+        - Ordered: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2
+
     Args:
         x (numpy.ndarray): 3-D arrays of grid coordinates, "Left->Right" grid coordinates in the patient coordinate
                            system (i.e. NIfTI reference (RAS), units of mm)
@@ -354,10 +356,10 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
     """
     Reorder 1st - 2nd - 3rd order coefficients, if specified. From
 
-    Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, y(x2 - y2), xyz, yz2, z3, xz^2, z(x2 - y2), x(x2 - y2)
+    Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
     (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
 
-    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, z3,  xz^2, yz2, z(x2 - y2) (in line with Siemens shims) or
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2) (in line with Siemens shims) or
 
     X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with GE shims) or
 
@@ -438,7 +440,7 @@ def _get_scaling_factors(orders):
     """
 
     [x_iso, y_iso, z_iso] = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
-                                        indexing='xy')
+                                        indexing='ij')
     sh = spherical_harmonics(orders, x_iso, y_iso, z_iso)
 
     n_channels = np.array([channels_per_order(order) for order in orders]).sum()
@@ -460,12 +462,12 @@ def _get_scaling_factors(orders):
 
     # order the reference indices like the sh field terms
     # TODO: Find out the polarity of the terms
-    # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, YZ2, Z3, XZ^2, Z(X2 - Y2), X(X2 - Y2)
+    # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
     # (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics)
     iref = {0: [i_x1],
             1: [i_y1, i_z1, i_x1],
             2: [i_x1y1, i_y1z1, i_z1, i_x1z1, i_x1],
-            3: [i_y1, i_x1y1z1, i_y1, i_z1, i_x1, i_x1z1, i_x1],
+            3: [i_x1y1, i_x1y1z1, i_y1z1, i_z1, i_x1z1, i_x1z1, i_x1],
             # 4: [i_x2y1, i_y1z1, i_x1y1, i_y1z1, i_x1, i_x1z1, i_x1, i_x1z1, i_x1]
             }
 
@@ -473,7 +475,7 @@ def _get_scaling_factors(orders):
     r = {0: [1],
          1: [1, 1, 1],
          2: [np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1],
-         3: [1, np.sqrt(3), 1, 1, 1, np.sqrt(2), 1],
+         3: [np.sqrt(2), np.sqrt(3), np.sqrt(2), 1, np.sqrt(2), np.sqrt(2), 1],
          # 4: [np.sqrt(5), np.sqrt(2), np.sqrt(2), np.sqrt(2), 1, np.sqrt(2), 1, np.sqrt(2), 1]
          }
 
@@ -560,7 +562,7 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
     if shim_cs[2] == 'I':
         xyz_cs[2] = -1
 
-    # Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, YZ2, Z3, XZ^2, Z(X2 - Y2), X(X2 - Y2)
+    # Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
     out_dict = {}
     for order in orders:
         if order == 1:
@@ -586,8 +588,8 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
     for i_order in sorted(orders):
         out_list += out_dict[i_order].tolist()
 
-    # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, YZ2, Z3, XZ^2, Z(X2 - Y2), X(X2 - Y2)
+    # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
     # GE: x, y, z, xy, zy, zx, X2 - Y2, z2, 3rd order not implemented
-    # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3,  XZ^2, YZ2, Z(X2 - Y2)
+    # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3,  XZ2, YZ2, Z(X2 - Y2)
     # Philips: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, 3rd order not implemented
     return out_list
