@@ -40,7 +40,19 @@ class TestSiemensBasis:
         assert np.allclose(basis[:, :, 1, 8], np.array([[-8.51549570e-05, 0, 8.51549570e-05],
                                                         [0, 0, 0],
                                                         [8.51549570e-05, -0.00000000e+00, -8.51549570e-05]]))
-        # TODO: add tests for order 3
+        assert np.allclose(basis[1, :, :, 9], np.array([[-2.12887393e-08, -2.17259887e-24, 2.12887393e-08],
+                                                        [4.25774785e-08, 0.00000000e+00, -4.25774785e-08],
+                                                        [-2.12887393e-08, -2.17259887e-24, 2.12887393e-08]]))
+        assert np.allclose(basis[:, 1, :, 10], np.array([[1.20427295e-07, -4.01424317e-08, 1.20427295e-07],
+                                                         [-0.00000000e+00, -0.00000000e+00, -0.00000000e+00],
+                                                         [-1.20427295e-07, 4.01424317e-08, -1.20427295e-07]]))
+        assert np.allclose(basis[1, :, :, 11], np.array([[-1.20427295e-07, 4.01424317e-08, -1.20427295e-07],
+                                                         [-0.00000000e+00, -0.00000000e+00, -0.00000000e+00],
+                                                         [1.20427295e-07, -4.01424317e-08, 1.20427295e-07]]))
+        assert np.allclose(basis[:2, :2, :2, 12], np.array([[[1.47480902e-23, -0.00000000e+00],
+                                                            [1.20427295e-07, -0.00000000e+00]],
+                                                           [[-1.20427295e-07, 0.00000000e+00],
+                                                            [0.00000000e+00, 0.00000000e+00]]]))
 
     def test_siemens_basis_order1(self, x, y, z):
         basis = siemens_basis(x, y, z, orders=(1,))
@@ -73,6 +85,19 @@ class TestSiemensBasis:
     def test_create_siemens_basis_order3(self, x, y, z):
         basis = siemens_basis(x, y, z, orders=(3,))
         assert np.all(basis.shape == (3, 3, 3, 4))
+        assert np.allclose(basis[1, :, :, 0], np.array([[-2.12887393e-08, -2.17259887e-24, 2.12887393e-08],
+                                                        [4.25774785e-08, 0.00000000e+00, -4.25774785e-08],
+                                                        [-2.12887393e-08, -2.17259887e-24, 2.12887393e-08]]))
+        assert np.allclose(basis[:, 1, :, 1], np.array([[1.20427295e-07, -4.01424317e-08, 1.20427295e-07],
+                                                         [-0.00000000e+00, -0.00000000e+00, -0.00000000e+00],
+                                                         [-1.20427295e-07, 4.01424317e-08, -1.20427295e-07]]))
+        assert np.allclose(basis[1, :, :, 2], np.array([[-1.20427295e-07, 4.01424317e-08, -1.20427295e-07],
+                                                         [-0.00000000e+00, -0.00000000e+00, -0.00000000e+00],
+                                                         [1.20427295e-07, -4.01424317e-08, 1.20427295e-07]]))
+        assert np.allclose(basis[:2, :2, :2, 3], np.array([[[1.47480902e-23, -0.00000000e+00],
+                                                            [1.20427295e-07, -0.00000000e+00]],
+                                                           [[-1.20427295e-07, 0.00000000e+00],
+                                                            [0.00000000e+00, 0.00000000e+00]]]))
 
     def test_create_siemens_basis_order4(self, x, y, z):
         with pytest.raises(NotImplementedError, match="Spherical harmonics not implemented for order 4 and up"):
@@ -106,7 +131,7 @@ class TestGEBasis:
         assert np.allclose(basis[1, 1, :, 8], [0.00040881, 0.00042614, 0.00044346])
 
     def test_ge_basis_order1(self, x, y, z):
-        basis = ge_basis(x, y, z, orders=(1, ))
+        basis = ge_basis(x, y, z, orders=(1,))
 
         # Test for shape
         assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 3)))
@@ -116,7 +141,7 @@ class TestGEBasis:
         assert np.allclose(basis[1, 1, :, 2], [0.00425775, 0, -0.00425775])
 
     def test_ge_basis_order2(self, x, y, z):
-        basis = ge_basis(x, y, z, orders=(2, ))
+        basis = ge_basis(x, y, z, orders=(2,))
 
         # Test for shape
         assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 5)))
@@ -165,7 +190,7 @@ class TestPhilipsBasis:
 
     def test_philips_basis_order1(self, x, y, z):
         # Off center z axis
-        basis = philips_basis(x, y, z, orders=(1, ))
+        basis = philips_basis(x, y, z, orders=(1,))
         # Test for shape
         assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 3)))
         # X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
@@ -176,7 +201,7 @@ class TestPhilipsBasis:
 
     def test_philips_basis_order2(self, x, y, z):
         # Off center z axis
-        basis = philips_basis(x, y, z, orders=(2, ))
+        basis = philips_basis(x, y, z, orders=(2,))
         # Test for shape
         assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 5)))
         # X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
