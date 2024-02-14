@@ -311,12 +311,12 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
                        "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
                        "folder. Return an output nifti file to be used as a mask for MRS shimming.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-               help="Input path of the fieldmap to be shimmed.")
+              help="Input path of the fieldmap to be shimmed.")
 @click.option('-r', '--raw_data', type=click.Path(),
               help="Input path of the of the twix raw-data (supported extention .dat)")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
               show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz. (default: "
-                   "(os.curdir, 'mask_mrs.nii.gz'))")
+              "(os.curdir, 'mask_mrs.nii.gz'))")
 @click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
               "the scanner's coordinate")
 @click.option('-s', '--size', nargs=3, type=click.FLOAT, help="Voxel size in mm of the x, y and z of the scanner's "
@@ -331,7 +331,7 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     create_output_dir(output, is_file=True)
 
     nii = nib.load(fname_input)
-    output_mask = mask_mrs(fname_input, raw_data, center, size) # creation of the MRS mask
+    output_mask = mask_mrs(fname_input, raw_data, center, size)  # creation of the MRS mask
     output_mask = output_mask.astype(np.int32)
     nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
     nib.save(nii_img, output)
