@@ -19,25 +19,25 @@ def mask_mrs(fname_input, raw_data, center, size):
     Create a mask to shim single voxel MRS
 
     Args:
-        fname_input (str): Input path of the fieldmap to be shimmed (supported extention .nii and .nii.gz)
-        raw_data (str): Input path of the of the twix raw-data (supported extention .dat)
-        center (list): voxel's center position in mm of the x, y and z of the scanner's coordinate
-        size (list): voxel size in mm of the x, y and z of the scanner's coordinate
+        fname_input (str): Input path of the fieldmap to be shimmed (supported extension .nii and .nii.gz)
+        raw_data (str): Input path of the twix raw-data (supported extension .dat)
+        center (list): Voxel's center position in mm of the x, y and z scanner coordinates
+        size (list): Voxel size in mm of the x, y and z scanner coordinates
     Returns:
-        numpy.ndarray: Cubic mask with same dimensions as MRS voxel.
+        numpy.ndarray: Cubic mask with the same dimensions as the MRS voxel.
     """
 
     if fname_input is None:
-        raise TypeError(f"The fname_input cannot be None.")
+        raise TypeError(f"The input field map needs to be specified")
 
     if raw_data is None:
-        logger.info(" The raw_data is not provided, creating the mask with the given voxel position and size info")
+        logger.info("MRS raw data not provided, creating the mask with the given voxel position and size info")
         if center is None or size is None:
             raise TypeError('The raw_data is not provided; the voxel position and size are required to proceed')
         else:
             mrs_voxel_size = size
             logger.debug('center:', center)
-            scanner_coordinate = np.array(center + (1,))
+            scanner_coordinate = np.array(center + (1, ))
             logger.debug(f"Scanner position is: {scanner_coordinate}")
 
     else:
