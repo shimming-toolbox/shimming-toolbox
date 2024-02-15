@@ -13,23 +13,6 @@ class GradientOpt(LsqOptimizer):
         of the channels.
     """
 
-    def __init__(self, coils: List, unshimmed, affine, opt_criteria='mse', initial_guess_method='mean',
-                 reg_factor=0):
-        """
-        Initializes coils according to input list of Coil
-
-        Args:
-            coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
-            unshimmed (np.ndarray): 3d array of unshimmed volume
-            affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-            'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
-            reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
-                                penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred).
-        """
-        super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method, reg_factor)
-
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         if self.opt_criteria == 'mse':
             a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
