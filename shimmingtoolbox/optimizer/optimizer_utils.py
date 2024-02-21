@@ -190,15 +190,10 @@ class OptimizerUtils(Optimizer):
         c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
 
         # Combining the terms
-        a = a1 + a2
-        b = b1 + b2
-        c = c1 + c2
+        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
+        b = b1 + b2 + b3 + b4
+        c = c1 + c2 + c3 + c4
         e = self.reg_vector
-
-        # Add x and y terms
-        a += a3 + a4
-        b += b3 + b4
-        c += c3 + c4
 
         return a, b, c, e
 

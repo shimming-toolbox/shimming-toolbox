@@ -355,20 +355,21 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     sequencer.eval(coefs)
     logger.info(f" Plotting currents")
 
+    #! Add back later
     # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
-        # Figure out the start and end channels for a coil to be able to select it from the coefs
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
+    # end_channel = 0
+    # for i_coil, coil in enumerate(list_coils):
+    #     # Figure out the start and end channels for a coil to be able to select it from the coefs
+    #     n_channels = coil.dim[3]
+    #     start_channel = end_channel
+    #     end_channel = start_channel + n_channels
 
-        if type(coil) != ScannerCoil:
-            # Select the coefficients for a coil
-            coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
-            # Plot a figure of the coefficients
-            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
-                        bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
+    #     if type(coil) != ScannerCoil:
+    #         # Select the coefficients for a coil
+    #         coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
+    #         # Plot a figure of the coefficients
+    #         _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
+    #                     bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
     logger.info(f"Finished plotting figure(s)")
 
@@ -383,6 +384,14 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
     if o_format[-5:] == '-coil':
 
         fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+        if options['fatsat']:
+            fname_output_no_fatsat = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}_no_fatsat.txt")
+            f_no_fatsat = open(fname_output_no_fatsat, 'w', encoding='utf-8')
+
+        # Print the average shim coefficients without considering slices with 0s
+        logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs!=0)), axis=0)}")
+
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
 
@@ -398,11 +407,16 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-
                         f.write(f"\n")
+
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+                        if options['fatsat']:
+                            f_no_fatsat.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+
                     f.write("\n")
+                    if options['fatsat']:
+                        f_no_fatsat.write("\n")
 
             elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
@@ -415,6 +429,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
+        if options['fatsat']:
+            f_no_fatsat.close()
         list_fname_output.append(os.path.abspath(fname_output))
 
     elif o_format[-3:] == '-ch':
