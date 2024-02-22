@@ -81,7 +81,7 @@ def b0shim_cli():
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'ps_huber']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares' and 'gradient'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function ")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, ps-huber: pseudo huber cost function ")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
