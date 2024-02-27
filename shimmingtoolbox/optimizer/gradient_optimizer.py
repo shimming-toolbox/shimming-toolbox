@@ -11,8 +11,7 @@ from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer
 class GradientOpt(LsqOptimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize (args) to optimize a given mask. The algorithm uses a gradient based solver (L-BFGS-B)
-        to find the best shim. It supports bounds for each channel as well as a bound for the absolute sum
-        of the channels.
+        to find the best shim. It supports bounds for each shim channel.
     """
 
     def __init__(self, coils: List, unshimmed, affine, opt_criteria='mse', initial_guess_method='mean',
