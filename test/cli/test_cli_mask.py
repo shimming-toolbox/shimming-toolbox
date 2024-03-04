@@ -180,3 +180,25 @@ def test_cli_mask_sct_4d():
         # There should be 2 files left since we remove tmp files: the input 4d file and the mask.
         assert len(os.listdir(tmp)) == 2
         assert os.path.isfile(fname_output)
+
+
+def test_cli_mask_mrs():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        out = os.path.join(tmp, 'mask.nii.gz')
+
+        # Assuming a voxel size of a 10 mm isotropic and Voxel's center position in mm of the x, y and
+        # z scanner coordinates being {0, 0, -20},
+        result = runner.invoke(mask_cli, ['mrs', '--input', inp, '--output', out,
+                               '--size', 10, 10, 10, '--center', 0, 0, -20])
+
+        # Knowing that the input test data has a pixel size of 2.2, 2.2, 3 mm, the expected mask will have a size of
+        # (6, 6, 4). center of the created mask on each slice is the isocenter position.
+        expected = np.ones((6, 6, 4))
+
+        nii = nib.load(out)
+        mask = nii.get_fdata()
+
+        assert result.exit_code == 0
+        assert np.all(mask[61:67, 34:40, 4:8] == expected)
