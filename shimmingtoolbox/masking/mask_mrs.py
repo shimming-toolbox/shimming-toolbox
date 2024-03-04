@@ -20,7 +20,7 @@ def mask_mrs(fname_input, raw_data, center, size):
 
     Args:
         fname_input (str): Input path of the fieldmap to be shimmed (supported extension .nii and .nii.gz)
-        raw_data (str): Input path of the twix raw-data (supported extension .dat)
+        raw_data (str): Input path of the siemens raw-data (supported extension .rda)
         center (list): Voxel's center position in mm of the x, y and z scanner coordinates
         size (list): Voxel size in mm of the x, y and z scanner coordinates
     Returns:
@@ -41,20 +41,20 @@ def mask_mrs(fname_input, raw_data, center, size):
             logger.debug(f"Scanner position is: {scanner_coordinate}")
 
     else:
-        logger.info("Reading the twix raw_data")
-        run_subprocess(['spec2nii', 'twix', raw_data, '-e', 'image'])
+        logger.info("Reading the raw_data")
+        run_subprocess(['spec2nii', 'rda', raw_data])
         name_nii, ext = splitext(raw_data)
         nii = nib.load(name_nii + '.nii.gz')
-        header_twix = nii.header
+        header_raw_data = nii.header
         affine = nii.affine
-        position_sag = header_twix['qoffset_x']
-        position_cor = header_twix['qoffset_y']
-        position_tra = header_twix['qoffset_z']
-        logger.debug(f"twix header: {header_twix}")
+        position_sag = header_raw_data['qoffset_x']
+        position_cor = header_raw_data['qoffset_y']
+        position_tra = header_raw_data['qoffset_z']
+        logger.debug(f"raw_data header: {header_raw_data}")
         logger.debug(f"affine: {affine}")
         scanner_coordinate = np.array([position_sag, position_cor, position_tra, 1])
         logger.debug(f"Scanner position is: {scanner_coordinate}")
-        mrs_voxel_size = header_twix['pixdim'][1:4]
+        mrs_voxel_size = header_raw_data['pixdim'][1:4]
 
     logger.debug('mrs_voxel_size is:', mrs_voxel_size)
     fmap_nii = nib.load(fname_input)
