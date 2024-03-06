@@ -111,6 +111,9 @@ class CheckboxComponent(Component):
             if checkbox.GetValue():
                 label = checkbox.GetLabel()
                 args += option_values[label] + ','
+        if args == "":
+            return "-1"
+        
         return args[:-1]
     
     def get_command(self):

@@ -21,7 +21,7 @@ def test_st_plugin_b0shim_dyn_lsq_mse():
     options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Squared Error',
                'slices': 'Auto detect',
-               'scanner-coil-order': '0',
+               'scanner-coil-order': 'f0',
                'output-file-format-scanner': 'Slicewise per Channel',
                'output-file-format-coil': 'Slicewise per Channel',
                'fatsat': 'Auto detect',
@@ -46,6 +46,21 @@ def test_st_plugin_b0shim_dyn_lsq_mae():
     def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
         __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
+    
+    
+def test_st_plugin_b0shim_dyn_lsq_mse_coil_only():
+    options = {'optimizer-method': 'Least Squares',
+               'optimizer-criteria': 'Mean Absolute Error',
+               'slices': 'Auto detect',
+               'scanner-coil-order': '',
+               'output-file-format-scanner': 'Slicewise per Channel',
+               'output-file-format-coil': 'Slicewise per Channel',
+               'output-value-format': 'delta'
+               }
+
+    def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
+        __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
+    run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
 def test_st_plugin_b0shim_dyn_pi():
@@ -60,8 +75,8 @@ def test_st_plugin_b0shim_dyn_pi():
     def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
         __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
-
-
+    
+    
 def test_st_plugin_b0shim_dyn_qp():
     options = {'optimizer-method': 'Quad Prog',
                'optimizer-criteria': 'Mean Squared Error',
@@ -133,7 +148,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         get_all_children(b0shim_tab.sizer_run, list_widgets)
         for widget in list_widgets:
             if isinstance(widget, wx.CheckBox) and widget.IsShown():
-                if widget.GetName() == 'check':
+                if widget.Label in options['scanner-coil-order']:
                     assert set_checkbox(widget)
             
         # Select the dropdowns that are nested
