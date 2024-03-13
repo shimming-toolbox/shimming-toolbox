@@ -355,7 +355,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     sequencer.eval(coefs)
     logger.info(f" Plotting currents")
 
-    #! Add back later
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
         end_channel = 0
