@@ -9,12 +9,9 @@ import numpy as np
 import logging
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
-from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix
+from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
 
 logger = logging.getLogger(__name__)
-
-shim_cs = {'SIEMENS': 'LAI',
-           'GE': 'LPI'}
 
 
 def get_phase_encode_direction_sign(fname_nii):
@@ -172,14 +169,14 @@ def phys_to_shim_cs(coefs, manufacturer, orders):
     """
     manufacturer = manufacturer.upper()
 
-    if manufacturer.upper() in shim_cs:
+    if manufacturer.upper() in SHIM_CS:
         flip_mat = np.ones(len(coefs))
         # Order 1
         if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer)
+            flip_mat[:3] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
         # Order 2
         elif len(coefs) >= 8:
-            flip_mat[:8] = get_flip_matrix(shim_cs[manufacturer], orders, manufacturer=manufacturer)
+            flip_mat[:8] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
         else:
             logger.warning("Order not supported")
 
@@ -235,7 +232,7 @@ def get_scanner_shim_settings(bids_json_dict):
 
     # get_imaging_frequency
     if bids_json_dict.get('ImagingFrequency'):
-        scanner_shim['0'] = int(bids_json_dict.get('ImagingFrequency') * 1e6)
+        scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
 
     # get_shim_orders
     if bids_json_dict.get('ShimSetting'):
@@ -314,18 +311,13 @@ class ScannerShimSettings:
             logger.warning("Invalid Shim Settings")
             return coefs
 
-        if self.shim_settings.get('0') is not None and any(order>=0 for order in orders):
-            # Concatenate 2 lists
-            coefs = [self.shim_settings.get('0')]
-        else:
-            coefs = [0]
-
-        for order in orders:
-            if self.shim_settings.get(order) is not None:
-                # Concatenate 2 lists
-                coefs.extend(self.shim_settings.get(order))
-            else:
-                n_coefs = (order + 1) * 2
-                coefs.extend([0] * n_coefs)
+        if any(order >= 0 for order in orders):
+            for order in sorted(orders):
+                if self.shim_settings.get(str(order)) is not None:
+                    # Concatenate 2 lists
+                    coefs.extend(self.shim_settings.get(str(order)))
+                else:
+                    n_coefs = (order + 1) * 2
+                    coefs.extend([0] * n_coefs)
 
         return coefs

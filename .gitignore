@@ -5,6 +5,7 @@
 .pytest_cache/
 .ipynb_checkpoints/
 .vscode/
+build/
 
 # Project's data
 testing_data
