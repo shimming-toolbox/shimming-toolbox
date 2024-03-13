@@ -39,7 +39,12 @@ AVAILABLE_ORDERS = [-1, 0, 1, 2]
 def b0shim_cli():
     pass
 
-
+#required_options = {
+#    'grad': ['w_signal_loss', 'reg_factor'],
+#    'mse': 'reg_factor',
+#    'mae': 'reg_factor',
+#}
+#@click.command(context_settings=CONTEXT_SETTINGS, cls=command_required_option_from_option('opt_criteria', required_options))
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -78,10 +83,18 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae','grad']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery")
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
+              " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
+              " and Gradient in z, x, y direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+@click.option('--epi-echo-time', 'epi_te', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="EPI acquistion parameter Echo Time (TE) in seconds. Relevant for signal recovery")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -132,7 +145,7 @@ def b0shim_cli():
 @timeit
 def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-            o_format_sph, output_value_format, reg_factor, verbose):
+            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -140,6 +153,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
 
+    logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
     scanner_coil_order = parse_orders(scanner_coil_order)
     # Set logger level
     set_all_loggers(verbose)
@@ -268,7 +282,11 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               mask_dilation_kernel='sphere',
                               mask_dilation_kernel_size=dilation_kernel_size,
                               reg_factor=reg_factor,
+                              w_signal_loss=w_signal_loss,
+                              w_signal_loss_xy=w_signal_loss_xy,
+                              epi_te=epi_te,
                               path_output=path_output)
+
     # 2) Launch shim sequencer
     coefs = sequencer.shim()
     # Output
@@ -337,33 +355,43 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     sequencer.eval(coefs)
     logger.info(f" Plotting currents")
 
-    # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
-        # Figure out the start and end channels for a coil to be able to select it from the coefs
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
+    if logger.level <= getattr(logging, 'DEBUG'):
+        # Plot the coefs after outputting the currents to the text file
+        end_channel = 0
+        for i_coil, coil in enumerate(list_coils):
+            # Figure out the start and end channels for a coil to be able to select it from the coefs
+            n_channels = coil.dim[3]
+            start_channel = end_channel
+            end_channel = start_channel + n_channels
 
-        if type(coil) != ScannerCoil:
-            # Select the coefficients for a coil
-            coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
-            # Plot a figure of the coefficients
-            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
-                        bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
+            if type(coil) != ScannerCoil:
+                # Select the coefficients for a coil
+                coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
+                # Plot a figure of the coefficients
+                _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
+                            bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+        logger.info(f"Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
                               default_coefs=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
+    logger.info(f"Saving to text file with format: {o_format}")
     n_channels = coil.dim[3]
     list_fname_output = []
     if o_format[-5:] == '-coil':
 
         fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+        if options['fatsat']:
+            fname_output_no_fatsat = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}_no_fatsat.txt")
+            f_no_fatsat = open(fname_output_no_fatsat, 'w', encoding='utf-8')
+
+        # Print the average shim coefficients without considering slices with 0s
+        logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs!=0)), axis=0)}")
+
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
 
@@ -379,11 +407,16 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-
                         f.write(f"\n")
+
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+                        if options['fatsat']:
+                            f_no_fatsat.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+
                     f.write("\n")
+                    if options['fatsat']:
+                        f_no_fatsat.write("\n")
 
             elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
@@ -396,6 +429,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
+        if options['fatsat']:
+            f_no_fatsat.close()
         list_fname_output.append(os.path.abspath(fname_output))
 
     elif o_format[-3:] == '-ch':
@@ -522,10 +557,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               default='quad_prog', show_default=True,
               help="Method used by the optimizer. LS and QP will respect the constraints,"
                    "PS will not respect the constraints")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae','grad']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: MSE of Bz and Gz, i.e., Signal Loss")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
