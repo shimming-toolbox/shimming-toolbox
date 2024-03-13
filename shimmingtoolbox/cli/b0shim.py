@@ -356,22 +356,23 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     logger.info(f" Plotting currents")
 
     #! Add back later
-    # Plot the coefs after outputting the currents to the text file
-    # end_channel = 0
-    # for i_coil, coil in enumerate(list_coils):
-    #     # Figure out the start and end channels for a coil to be able to select it from the coefs
-    #     n_channels = coil.dim[3]
-    #     start_channel = end_channel
-    #     end_channel = start_channel + n_channels
+    if logger.level <= getattr(logging, 'DEBUG'):
+        # Plot the coefs after outputting the currents to the text file
+        end_channel = 0
+        for i_coil, coil in enumerate(list_coils):
+            # Figure out the start and end channels for a coil to be able to select it from the coefs
+            n_channels = coil.dim[3]
+            start_channel = end_channel
+            end_channel = start_channel + n_channels
 
-    #     if type(coil) != ScannerCoil:
-    #         # Select the coefficients for a coil
-    #         coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
-    #         # Plot a figure of the coefficients
-    #         _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
-    #                     bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
+            if type(coil) != ScannerCoil:
+                # Select the coefficients for a coil
+                coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
+                # Plot a figure of the coefficients
+                _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
+                            bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+        logger.info(f"Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
