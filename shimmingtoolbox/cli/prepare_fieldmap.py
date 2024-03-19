@@ -116,6 +116,9 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
             * nib.Nifti1Image: Nibabel object containing the fieldmap in hz.
             * dict: Dictionary containing the json sidecar associated with the nibabel object fieldmap.
     """
+    # Check if phase is empty
+    if len(phase) < 1:
+        raise ValueError("At least one phase image is required")
 
     # Save mask
     if fname_save_mask is not None:
@@ -128,6 +131,8 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
     echo_times = []
     for i_echo in range(len(phase)):
         nii_phase, json_phase, phase_img = read_nii(phase[i_echo], auto_scale=autoscale)
+        if i_echo == 0:
+            json_fieldmap = json_phase
 
         list_nii_phase.append(nii_phase)
         # Special case for echo_times if input is a phasediff
@@ -162,7 +167,6 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)
 
     # Create fieldmap json
-    json_fieldmap = json_phase
     if len(phase) > 1:
         for i_echo in range(len(echo_times)):
             json_fieldmap[f'EchoTime{i_echo + 1}'] = echo_times[i_echo]
