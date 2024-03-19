@@ -114,6 +114,15 @@ class PmuResp(object):
         # That is we assume they do *not* occupy a raster position.
         data_cleaned = data[data < 4096]
 
+        # start_time_mdh += 1070
+        # stop_time_mdh += 1070
+        # start_time_mpcu -= 8370
+        # stop_time_mpcu -= 8370
+
+        # GRE
+        # start_time_mdh += 1000
+        # stop_time_mdh += 1000
+
         attributes = {
             'fname': fname_pmu,
             'data': data_cleaned,
@@ -189,9 +198,14 @@ class PmuResp(object):
         Returns:
             numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
         """
+        start_offset = np.min(acquisition_times - self.start_time_mdh)
+        stop_offset = np.min(self.stop_time_mdh - acquisition_times)
+        print(f"start_offset: {start_offset}")
+        print(f"stop_offset: {stop_offset}")
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             # TODO: Explore why pmulog sequence raises an error for pmulog sequence
-            raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
+            pass
+            # raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()
         interp_data = np.interp(acquisition_times, times, self.data)
@@ -233,7 +247,8 @@ class PmuResp(object):
 
     def get_trigger_times(self, start_time=None, stop_time=None):
         """
-        Returns the trigger times in ms of the resp trace
+        Returns the trigger times in ms of the resp trace. These triggers estimate the beginning of a new respiratory
+        cycle
 
         Returns:
             numpy.ndarray: Array with the trigger times in ms of the resp trace

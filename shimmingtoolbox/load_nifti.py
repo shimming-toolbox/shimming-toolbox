@@ -38,7 +38,12 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
 
     # Time the acquisition of data for this image started (ISO format)
     acq_start_time_iso = json_data['AcquisitionTime']
-    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+    # todo: dummy scans?
+    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]
+    # acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0] + 500
+    # acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0] - 700  # [ms]
+    # acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0] - 1070  # [ms]
+    # acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0] + 1000  # [ms]
 
     # Start time for each volume [ms]
     volume_start_times = np.linspace(acq_start_time_ms,
