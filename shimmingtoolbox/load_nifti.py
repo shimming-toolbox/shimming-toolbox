@@ -25,8 +25,9 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     Returns:
         numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
     """
-    if when not in ['slice-middle', 'volume-start', 'volume-middle']:
-        raise ValueError("Invalid 'when' parameter. Must be 'slice-middle', 'volume-start' or 'volume-middle'.")
+    possible_timings = ['slice-middle', 'volume-start', 'volume-middle']
+    if when not in possible_timings:
+        raise ValueError(f"Invalid 'when' parameter. Must be within {possible_timings}")
 
     # Get number of volumes
     n_volumes = nii_data.header['dim'][4]
@@ -120,7 +121,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             return np.zeros(n_slices)
         deltat_vol = float(volume_tr) * 1000  # [ms]
         if (deltat_slice * n_sli) > deltat_vol:
-            logger.warning("Slice timing is longer than volume timing.")
+            logger.warning("Slice timing of slices is longer than the volume timing.")
 
         # Get when the middle of k-space was acquired
         manufacturer = data.get('Manufacturer')
