@@ -15,6 +15,9 @@ from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, creat
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+H_GYROMAGNETIC_RATIO = 42.577478518e+6  # [Hz/T]
+ALLOWED_UNITS = ['Hz', 'rad/s', 'T', 'mT', 'G']  # ppm?
 FILE_OUTPUT_DEFAULT = 'unwrapped.nii.gz'
 MASK_OUTPUT_DEFAULT = 'mask_unwrap.nii.gz'
 
@@ -28,11 +31,12 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Input path of data nifti file")
 @click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=True,
               help="Input path of mag nifti file")
-@click.option('--range', "extent", type=click.FLOAT, required=False,
-              help="Range of the input data. Data that can range from [1000, 4095] would have a --range of 2095. If "
-                   "not provided, the maximum and minimum of the data will be used to calculate it. A slight offset in "
-                   "the resulting unwrapped image can be introduced if --range is wrong or if it is not provided. "
-                   "Offset at every wrap is: true_range - (max(data) - min(data)) or true_range - provided_range")
+@click.option('--unit', type=click.Choice(ALLOWED_UNITS, case_sensitive=False), required=False,
+              help="Unit of the input data. Used along with --dte to scale the input data.")
+@click.option('--dte', type=click.FLOAT, required=False,
+              help="Delta TE (in seconds). Used along with --unit to scale the input data.")
+@click.option('--range', 'extent', type=click.FLOAT, required=False,
+              help="Range of the input data. Data that can range from [1000, 4095] would have a --range of 3095.")
 @click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude',
               show_default=True,
               help="Algorithm for unwrapping. skimage is installed by default, prelude requires FSL to be installed.")
@@ -48,14 +52,57 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Filename of the mask calculated by the unwrapper")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
-def unwrap_cli(fname_data, fname_mag, extent, unwrapper, fname_output, fname_mask, threshold, fname_save_mask, verbose):
+def unwrap_cli(fname_data, fname_mag, unit, dte, extent, unwrapper, fname_output, fname_mask, threshold,
+               fname_save_mask, verbose):
     """
-    Unwraps images. This algorithm expects the input to have wraps. Edge cases might occur if no wraps are present.
-    The unwrapper tries to correct 2pi ambiguity when unwrapping by bringing the mean closest to 0 in increments of 2pi
-    jumps.
+    Unwraps images. This program assumes wraps occur at min() and max() of the data. The unwrapper tries to correct
+    2npi ambiguity when unwrapping by bringing the mean closest to 0 in increments of 2pi jumps.
     """
     # Set logger level
     set_all_loggers(verbose)
+
+    # Load data
+    nii_data = nib.load(fname_data)
+    data = nii_data.get_fdata()
+
+    # Convert 'unit' to upper()
+    if unit is not None:
+        unit_up = unit.upper()
+    else:
+        unit_up = None
+    units_upper = [a_unit.upper() for a_unit in ALLOWED_UNITS]
+
+    # Scale the input from -pi to pi
+    if unit_up in units_upper and dte is not None:
+        logger.info(f"Scaling the input data from {unit} to radians using dte: {dte} seconds.")
+
+        if unit_up == units_upper[0]:
+            # Hz
+            scalar = 2 * math.pi * dte
+        elif unit_up == units_upper[1]:
+            # rad/s
+            scalar = 1 * dte
+        elif unit_up == units_upper[2]:
+            # T
+            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO
+        elif unit_up == units_upper[3]:
+            # mT
+            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO * 1e-3
+        elif unit_up == units_upper[4]:
+            # G
+            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO * 1e-4
+
+    elif extent is not None:
+        logger.info(f"Scaling the input data to radians using the --range: {extent}.")
+        scalar = _get_scalar_to_fit_2pi(data, extent)
+
+    else:
+        raise ValueError("Neither --unit and --dte nor --range were provided."
+                         "Use whichever is more convenient for you.")
+
+    data_mean = np.mean(data * scalar)
+    data_scaled = (data * scalar) - data_mean  # [-pi, pi]
+    nii_scaled = nib.Nifti1Image(data_scaled, nii_data.affine, header=nii_data.header)
 
     # Create filename for the output if it's a path
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
@@ -68,17 +115,6 @@ def unwrap_cli(fname_data, fname_mag, extent, unwrapper, fname_output, fname_mas
         # If it is a path, add the default filename and create output directory
         fname_save_mask = create_fname_from_path(fname_save_mask, MASK_OUTPUT_DEFAULT)
         create_output_dir(fname_save_mask, is_file=True)
-
-    # Scale to radians
-    nii_data = nib.load(fname_data)
-    data = nii_data.get_fdata()
-
-    # Scale the input from -pi to pi
-    # If the input is wrapped, the unwrapper will unwrap normally, if not, no unwrapping will be done
-    scalar = _get_scalar_to_fit_2pi(data, extent)
-    data_mean = np.mean(data * scalar)
-    data_scaled = (data * scalar) - data_mean  # [-pi, pi]
-    nii_scaled = nib.Nifti1Image(data_scaled, nii_data.affine, header=nii_data.header)
 
     # Load magnitude
     mag = nib.load(fname_mag).get_fdata()
@@ -100,7 +136,7 @@ def unwrap_cli(fname_data, fname_mag, extent, unwrapper, fname_output, fname_mas
 
     # Scale back to original range
     unwrapped = (unwrapped_rad + data_mean) / scalar
-    nii_unwrapped = nib.Nifti1Image(unwrapped.astype(nii_data.get_data_dtype()),
+    nii_unwrapped = nib.Nifti1Image(unwrapped,
                                     nii_data.affine,
                                     header=nii_data.header)
 
@@ -125,9 +161,12 @@ def _get_scalar_to_fit_2pi(data, extent=None):
 
     if extent is None:
         extent = np.max(data) - np.min(data)
+        logger.debug(f"--range not provided, using max() - min() to calculate the range: {extent}")
+        # A slight offset in the resulting unwrapped image can be introduced if --range is wrong or if it is not
+        # provided. Offset at every wrap is: true_range - (max(data) - min(data)) or true_range - provided_range
     else:
         if extent < (np.max(data) - np.min(data)):
-            raise ValueError("The provided --extent is smaller than the range of the data.")
+            raise ValueError("The provided --range is smaller than the range of the data.")
 
     # Scale to radians
     scale = 2 * math.pi / extent
