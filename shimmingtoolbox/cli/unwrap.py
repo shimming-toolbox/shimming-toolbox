@@ -9,8 +9,8 @@ import nibabel as nib
 import numpy as np
 import os
 
-from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.prepare_fieldmap import get_mask, correct_2pi_offset, VALIDITY_THRESHOLD
+from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, create_output_dir, save_nii_json
 
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +28,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Input path of data nifti file")
 @click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=True,
               help="Input path of mag nifti file")
+@click.option('--range', "extent", type=click.FLOAT, required=False,
+              help="Range of the input data. Data that can range from [1000, 4095] would have a --range of 2095. If "
+                   "not provided, the maximum and minimum of the data will be used to calculate it. A slight offset in "
+                   "the resulting unwrapped image can be introduced if --range is wrong or if it is not provided. "
+                   "Offset at every wrap is: true_range - (max(data) - min(data)) or true_range - provided_range")
 @click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude',
               show_default=True,
               help="Algorithm for unwrapping. skimage is installed by default, prelude requires FSL to be installed.")
@@ -36,14 +41,14 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               show_default=True, help="Output filename for the unwrapped data, supported types : '.nii', '.nii.gz'")
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True),
               help="Input path for a mask.")
-@click.option('--threshold', 'threshold', type=float, show_default=True, default=0.05,
+@click.option('--threshold', 'threshold', type=click.FLOAT, show_default=True, default=0.05,
               help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower "
                    "than the threshold are set to 0.")
 @click.option('--savemask', 'fname_save_mask', type=click.Path(),
               help="Filename of the mask calculated by the unwrapper")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
-def unwrap_cli(fname_data, fname_mag, unwrapper, fname_output, fname_mask, threshold, fname_save_mask, verbose):
+def unwrap_cli(fname_data, fname_mag, extent, unwrapper, fname_output, fname_mask, threshold, fname_save_mask, verbose):
     """
     Unwraps images. This algorithm expects the input to have wraps. Edge cases might occur if no wraps are present.
     The unwrapper tries to correct 2pi ambiguity when unwrapping by bringing the mean closest to 0 in increments of 2pi
@@ -70,7 +75,7 @@ def unwrap_cli(fname_data, fname_mag, unwrapper, fname_output, fname_mask, thres
 
     # Scale the input from -pi to pi
     # If the input is wrapped, the unwrapper will unwrap normally, if not, no unwrapping will be done
-    scalar = get_scalar_to_fit_2pi(data)
+    scalar = _get_scalar_to_fit_2pi(data, extent)
     data_mean = np.mean(data * scalar)
     data_scaled = (data * scalar) - data_mean  # [-pi, pi]
     nii_scaled = nib.Nifti1Image(data_scaled, nii_data.affine, header=nii_data.header)
@@ -115,9 +120,15 @@ def unwrap_cli(fname_data, fname_mag, unwrapper, fname_output, fname_mask, thres
     logger.info(f"Filename of the unwrapped data is located: {fname_output_v2}")
 
 
-def get_scalar_to_fit_2pi(data):
+def _get_scalar_to_fit_2pi(data, extent=None):
     """Return the scalar that scales the data to a range of 2pi"""
+
+    if extent is None:
+        extent = np.max(data) - np.min(data)
+    else:
+        if extent < (np.max(data) - np.min(data)):
+            raise ValueError("The provided --extent is smaller than the range of the data.")
+
     # Scale to radians
-    extent = np.max(data) - np.min(data)
     scale = 2 * math.pi / extent
     return scale
