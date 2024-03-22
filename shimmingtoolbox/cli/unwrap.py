@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*
 
 import click
+from cloup import command, option, option_group
+from cloup.constraints import RequireAtLeast, mutually_exclusive, all_or_none, constraint
 import json
 import logging
 import math
@@ -24,34 +26,47 @@ MASK_OUTPUT_DEFAULT = 'mask_unwrap.nii.gz'
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
-@click.command(
+@command(
     context_settings=CONTEXT_SETTINGS,
 )
-@click.option('-i', '--input', 'fname_data', type=click.Path(exists=True), required=True,
-              help="Input path of data nifti file")
-@click.option('--mag', 'fname_mag', type=click.Path(exists=True), required=True,
-              help="Input path of mag nifti file")
-@click.option('--unit', type=click.Choice(ALLOWED_UNITS, case_sensitive=False), required=False,
-              help="Unit of the input data. Used along with --dte to scale the input data.")
-@click.option('--dte', type=click.FLOAT, required=False,
-              help="Delta TE (in seconds). Used along with --unit to scale the input data.")
-@click.option('--range', 'extent', type=click.FLOAT, required=False,
-              help="Range of the input data. Data that can range from [1000, 4095] would have a --range of 3095.")
-@click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude',
-              show_default=True,
-              help="Algorithm for unwrapping. skimage is installed by default, prelude requires FSL to be installed.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT),
-              show_default=True, help="Output filename for the unwrapped data, supported types : '.nii', '.nii.gz'")
-@click.option('--mask', 'fname_mask', type=click.Path(exists=True),
-              help="Input path for a mask.")
-@click.option('--threshold', 'threshold', type=click.FLOAT, show_default=True, default=0.05,
-              help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values lower "
-                   "than the threshold are set to 0.")
-@click.option('--savemask', 'fname_save_mask', type=click.Path(),
-              help="Filename of the mask calculated by the unwrapper")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
-              help="Be more verbose")
+@option_group("Input/Output",
+              option('-i', '--input', 'fname_data', type=click.Path(exists=True), required=True,
+                     help="Input path of data nifti file"),
+              option('--mag', 'fname_mag', type=click.Path(exists=True), required=True,
+                     help="Input path of mag nifti file"),
+              option('-o', '--output', 'fname_output', type=click.Path(),
+                     default=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT),
+                     show_default=True,
+                     help="Output filename for the unwrapped data, supported types : '.nii', '.nii.gz'")
+              )
+@option_group("Scaling options, use either --unit and --dte, or --range.",
+              option('--unit', type=click.Choice(ALLOWED_UNITS, case_sensitive=False),
+                     required=False,
+                     help="Unit of the input data. Used along with --dte to scale the input data."),
+              option('--dte', type=click.FLOAT, required=False,
+                     help="Delta TE (in seconds). Used along with --unit to scale the input data."),
+              option('--range', 'extent', type=click.FLOAT, required=False,
+                     help="Range of the input data. Data that can range from [1000, 4095] would have a "
+                          "--range of 3095."),
+              constraint=RequireAtLeast(1)
+              )
+@constraint(mutually_exclusive, ['unit', 'extent'])
+@constraint(mutually_exclusive, ['dte', 'extent'])
+@constraint(all_or_none, ['dte', 'unit'])
+@option_group("Mask options",
+              option('--mask', 'fname_mask', type=click.Path(exists=True),
+                     help="Input path for a mask."),
+              option('--threshold', 'threshold', type=click.FLOAT, show_default=True, default=0.05,
+                     help="Threshold for masking if no mask is provided. Allowed range: [0, 1] where all scaled values "
+                          "lower than the threshold are set to 0."),
+              option('--savemask', 'fname_save_mask', type=click.Path(),
+                     help="Filename of the mask calculated by the unwrapper")
+              )
+@option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude',
+        show_default=True,
+        help="Algorithm for unwrapping. skimage is installed by default, prelude requires FSL to be installed.")
+@option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+        help="Be more verbose")
 def unwrap_cli(fname_data, fname_mag, unit, dte, extent, unwrapper, fname_output, fname_mask, threshold,
                fname_save_mask, verbose):
     """
