@@ -161,7 +161,7 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--output', tmp,
                                              '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'grad'],
+                                             '--optimizer-criteria', 'mse'],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0

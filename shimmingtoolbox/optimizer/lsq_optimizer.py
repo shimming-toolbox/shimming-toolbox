@@ -91,9 +91,14 @@ class LsqOptimizer(OptimizerUtils):
 
         self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
 
-        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
-        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
-        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+        if self.opt_criteria == 'grad':
+            self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+            self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+            self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+
+            if len(self.unshimmed_Gz_vec) == 0:
+                raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
+                                 'Make sure to include at least 3 voxels in the slice direction.')
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
