@@ -73,39 +73,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
     if not (0 <= threshold <= 1):
         raise ValueError(f"Threshold should range from 0 to 1. Input value was: {threshold}")
 
-    # Make sure mask has the right shape
-    if nii_mask is None:
-        # Define the mask using the threshold
-        mask = mask_threshold(mag, threshold, scaled_thr=True)
-    else:
-        # Check that the mask is the right shape
-        if not np.all(nii_mask.shape == list_nii_phase[0].shape) or not np.all(
-                nii_mask.affine == list_nii_phase[0].affine):
-            logger.debug("Resampling mask on the target anat")
-            if list_nii_phase[0].ndim == 4:
-                nii_tmp_target = nib.Nifti1Image(list_nii_phase[0].get_fdata()[..., 0], list_nii_phase[0].affine,
-                                                 header=list_nii_phase[0].header)
-                if nii_mask.ndim == 3:
-                    tmp_mask = np.repeat(nii_mask.get_fdata()[..., np.newaxis], list_nii_phase[0].shape[-1], axis=-1)
-                    nii_tmp_mask = nib.Nifti1Image(tmp_mask, nii_mask.affine, header=nii_mask.header)
-                elif nii_mask.ndim == 4:
-                    nii_tmp_mask = nii_mask
-                else:
-                    raise ValueError("Mask must be 3D or 4D")
-            else:
-                # If it's not in 4d, assume it's a 3d mask
-                nii_tmp_target = list_nii_phase[0]
-                nii_tmp_mask = nii_mask
-
-            nii_mask_soft = resample_from_to(nii_tmp_mask, nii_tmp_target, order=1, mode='grid-constant')
-            tmp_mask = nii_mask_soft.get_fdata()
-            # Change soft mask into binary mask
-            mask = mask_threshold(tmp_mask, thr=0.001, scaled_thr=True)
-        else:
-            mask = nii_mask.get_fdata()
-
-
-        logger.debug("A mask was provided, ignoring threshold value")
+    mask = get_mask(list_nii_phase[0], mag, nii_mask=nii_mask, threshold=threshold)
 
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
@@ -194,6 +162,55 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
     return fieldmap_hz, mask
 
 
+def get_mask(nii_target, mag, nii_mask=None, threshold=None):
+    """ Return a mask resampled (if required) to nii_target. If nii_mask is None, a mask is created using the threshold.
+        This functions hanles 3D and 4D nii_targets.
+
+    Args:
+        nii_target (nib.Nifti1Image): Target nifti image to resample the mask to.
+        nii_mask (nib.Nifti1Image): Mask to be resampled to nii_target. If None, a mask is created using the threshold.
+        mag (np.ndarray): Magnitude data to create the mask from.
+        threshold (float): Threshold to create the mask. If nii_mask is not None, this value is ignored.
+
+    Returns:
+        np.ndarray: Mask resampled to nii_target.
+    """
+    # Make sure mask has the right shape
+    if nii_mask is None:
+        # Define the mask using the threshold
+        mask = mask_threshold(mag, threshold, scaled_thr=True)
+    else:
+        # Check that the mask is the right shape
+        if not np.all(nii_mask.shape == nii_target.shape) or not np.all(
+                nii_mask.affine == nii_target.affine):
+            logger.debug("Resampling mask on the target anat")
+            if nii_target.ndim == 4:
+                nii_tmp_target = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine,
+                                                 header=nii_target.header)
+                if nii_mask.ndim == 3:
+                    tmp_mask = np.repeat(nii_mask.get_fdata()[..., np.newaxis], nii_target.shape[-1], axis=-1)
+                    nii_tmp_mask = nib.Nifti1Image(tmp_mask, nii_mask.affine, header=nii_mask.header)
+                elif nii_mask.ndim == 4:
+                    nii_tmp_mask = nii_mask
+                else:
+                    raise ValueError("Mask must be 3D or 4D")
+            else:
+                # If it's not in 4d, assume it's a 3d mask
+                nii_tmp_target = nii_target
+                nii_tmp_mask = nii_mask
+
+            nii_mask_soft = resample_from_to(nii_tmp_mask, nii_tmp_target, order=1, mode='grid-constant')
+            tmp_mask = nii_mask_soft.get_fdata()
+            # Change soft mask into binary mask
+            mask = mask_threshold(tmp_mask, thr=0.001, scaled_thr=True)
+        else:
+            mask = nii_mask.get_fdata()
+
+        logger.debug("A mask was provided, ignoring threshold value")
+
+    return mask
+
+
 def complex_difference(phase1, phase2):
     """ Calculates the complex difference between 2 phase arrays (phase2 - phase1)
 
@@ -235,7 +252,15 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     validity_masks = np.logical_and(mask, validity_masks)
 
     if unwrapped.ndim == 4:
-        for i_time in range(1, unwrapped_cp.shape[3]):
+        for i_time in range(0, unwrapped_cp.shape[3]):
+            # Correct the first time point and bring closest to the mean
+            if i_time == 0:
+                unwrapped_cp[..., i_time] = correct_2pi_offset(unwrapped_cp[..., i_time],
+                                                               mag[..., i_time],
+                                                               mask[..., i_time],
+                                                               validity_threshold)
+                continue
+
             # Take the region where both masks intersect
             validity_mask = np.logical_and(validity_masks[..., i_time - 1], validity_masks[..., i_time])
 
