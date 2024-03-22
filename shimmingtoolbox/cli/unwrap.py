@@ -11,6 +11,8 @@ import nibabel as nib
 import numpy as np
 import os
 
+from shimmingtoolbox.conversion import hz_to_rad, rad_per_sec_to_rad, tesla_to_rad, milli_tesla_to_rad, gauss_to_rad
+from shimmingtoolbox.conversion import rad_to_hz, rad_to_rad_per_sec, rad_to_tesla, rad_to_milli_tesla, rad_to_gauss
 from shimmingtoolbox.prepare_fieldmap import get_mask, correct_2pi_offset, VALIDITY_THRESHOLD
 from shimmingtoolbox.unwrap.unwrap_phase import unwrap_phase
 from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, create_output_dir, save_nii_json
@@ -18,8 +20,16 @@ from shimmingtoolbox.utils import create_fname_from_path, set_all_loggers, creat
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-H_GYROMAGNETIC_RATIO = 42.577478518e+6  # [Hz/T]
-ALLOWED_UNITS = ['Hz', 'rad/s', 'T', 'mT', 'G']  # ppm?
+ALLOWED_UNITS = ['Hz', 'rad/s', 'T', 'mT', 'G']
+UNIT_CONVERSIONS = {
+    ALLOWED_UNITS[0].upper(): (hz_to_rad, rad_to_hz),
+    ALLOWED_UNITS[1].upper(): (rad_per_sec_to_rad, rad_to_rad_per_sec),
+    ALLOWED_UNITS[2].upper(): (tesla_to_rad, rad_to_tesla),
+    ALLOWED_UNITS[3].upper(): (milli_tesla_to_rad, rad_to_milli_tesla),
+    ALLOWED_UNITS[4].upper(): (gauss_to_rad, rad_to_gauss)
+}
+# Add ppm?
+
 FILE_OUTPUT_DEFAULT = 'unwrapped.nii.gz'
 MASK_OUTPUT_DEFAULT = 'mask_unwrap.nii.gz'
 
@@ -81,43 +91,30 @@ def unwrap_cli(fname_data, fname_mag, unit, dte, extent, unwrapper, fname_output
     data = nii_data.get_fdata()
 
     # Convert 'unit' to upper()
-    if unit is not None:
-        unit_up = unit.upper()
-    else:
-        unit_up = None
     units_upper = [a_unit.upper() for a_unit in ALLOWED_UNITS]
 
     # Scale the input from -pi to pi
-    if unit_up in units_upper and dte is not None:
+    if unit is not None and dte is not None:
         logger.info(f"Scaling the input data from {unit} to radians using dte: {dte} seconds.")
-
-        if unit_up == units_upper[0]:
-            # Hz
-            scalar = 2 * math.pi * dte
-        elif unit_up == units_upper[1]:
-            # rad/s
-            scalar = 1 * dte
-        elif unit_up == units_upper[2]:
-            # T
-            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO
-        elif unit_up == units_upper[3]:
-            # mT
-            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO * 1e-3
-        elif unit_up == units_upper[4]:
-            # G
-            scalar = 2 * math.pi * dte * H_GYROMAGNETIC_RATIO * 1e-4
+        # Convert 'unit' to upper()
+        unit = unit.upper()
+        if unit not in units_upper:
+            raise ValueError(f"Unit {unit} not supported. Supported units: {units_upper}")
+        data_scaled = UNIT_CONVERSIONS[unit][0](data, dte)
 
     elif extent is not None:
         logger.info(f"Scaling the input data to radians using the --range: {extent}.")
         scalar = _get_scalar_to_fit_2pi(data, extent)
+        data_scaled = data * scalar
 
     else:
         raise ValueError("Neither --unit and --dte nor --range were provided."
                          "Use whichever is more convenient for you.")
 
-    data_mean = np.mean(data * scalar)
-    data_scaled = (data * scalar) - data_mean  # [-pi, pi]
-    nii_scaled = nib.Nifti1Image(data_scaled, nii_data.affine, header=nii_data.header)
+    data_mean = np.mean(data_scaled)
+    data_scaled_demeaned = data_scaled - data_mean  # [-pi, pi]
+
+    nii_scaled_demeaned = nib.Nifti1Image(data_scaled_demeaned, nii_data.affine, header=nii_data.header)
 
     # Create filename for the output if it's a path
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
@@ -141,16 +138,22 @@ def unwrap_cli(fname_data, fname_mag, unit, dte, extent, unwrapper, fname_output
         nii_mask = None
 
     # Returns a mask. If a mask is provided, use that mask. If not, create a mask using the threshold.
-    mask = get_mask(nii_scaled, mag, nii_mask, threshold)
+    mask = get_mask(nii_scaled_demeaned, mag, nii_mask, threshold)
 
     # Unwrap
-    unwrapped_rad = unwrap_phase(nii_scaled, unwrapper, mag, mask, fname_save_mask=fname_save_mask)
+    unwrapped_rad = unwrap_phase(nii_scaled_demeaned, unwrapper, mag, mask, fname_save_mask=fname_save_mask)
 
     # Correct for 2pi offset between timepoints if in 4d, bring closest to the mean if in 3D
     unwrapped_rad = correct_2pi_offset(unwrapped_rad, mag, mask, VALIDITY_THRESHOLD)
 
     # Scale back to original range
-    unwrapped = (unwrapped_rad + data_mean) / scalar
+    unwrapped_rad = unwrapped_rad + data_mean
+    if unit is not None and dte is not None:
+        unwrapped = UNIT_CONVERSIONS[unit][1](unwrapped_rad, dte)
+    else:
+        # elif extent is not None:
+        unwrapped = unwrapped_rad / scalar
+
     nii_unwrapped = nib.Nifti1Image(unwrapped,
                                     nii_data.affine,
                                     header=nii_data.header)
