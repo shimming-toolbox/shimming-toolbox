@@ -5,10 +5,12 @@ import logging
 import numpy as np
 
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
+from shimmingtoolbox.conversion import (hz_per_cm_to_micro_tesla_per_m, hz_per_cm2_to_micro_tesla_per_m2,
+                                        metric_unit_to_metric_unit, unit_per_metric_unit_to_unit_per_metric_unit,
+                                        tesla_to_hz)
 
 logger = logging.getLogger(__name__)
 
-GYROMAGNETIC_RATIO = 42.5774785178325552  # [MHz/T] or equivalently [Hz/uT]
 SHIM_CS = {'SIEMENS': 'LAI',
            'GE': 'LPI',
            'PHILIPS': 'RPI'}
@@ -164,12 +166,10 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
 
             # Scale
             orders_to_order2_ut = np.zeros_like(orders_to_order2)
-            # Hz/cm2/A, -> uT/m2/A = order2_to_order2 * 1e6 * (100 ** 2) / (GYROMAGNETIC_RATIO * 1e6)
-            # = order2_to_order2 * (100 ** 2) / GYROMAGNETIC_RATIO
-            orders_to_order2_ut[4:] = orders_to_order2[0:5] * (100 ** 2) / GYROMAGNETIC_RATIO
-            # Hz/cm/A, -> uT/m/A = order1_to_order2 * 1e6 * 100 / (GYROMAGNETIC_RATIO * 1e6)
-            # = order2_to_order2 * 100 / GYROMAGNETIC_RATIO
-            orders_to_order2_ut[1:4] = orders_to_order2[5:8] * 100 / GYROMAGNETIC_RATIO
+            # Hz/cm2/A, -> uT/m2/A = order2_to_order2 * 1e6 * (100 ** 2) / GYROMAGNETIC_RATIO
+            orders_to_order2_ut[4:] = hz_per_cm2_to_micro_tesla_per_m2(orders_to_order2[:5])
+            # Hz/cm/A, -> uT/m/A = order1_to_order2 * 1e6 * 100 / GYROMAGNETIC_RATIO
+            orders_to_order2_ut[1:4] = hz_per_cm_to_micro_tesla_per_m(orders_to_order2[5:8])
             # Hz/A
             orders_to_order2_ut[0] = orders_to_order2[8]
 
@@ -187,8 +187,10 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
                 reordered_spher_necessary = {key: reordered_spher[key] for key in (0, 1, 2)}
                 reordered_spher_array = convert_spher_harm_to_array(reordered_spher_necessary)
 
-                scaled[2][..., i_channel] = np.matmul(reordered_spher_array,
-                                                      orders_to_order2_ut[:, i_channel]) / 1000
+                scaled[2][..., i_channel] = np.matmul(reordered_spher_array, orders_to_order2_ut[:, i_channel])
+                scaled[2][..., i_channel] = unit_per_metric_unit_to_unit_per_metric_unit(scaled[2][..., i_channel],
+                                                                                         '',
+                                                                                         'm')
                 # Todo: We need a /2 between expected zx, zy, xy results and calculated results
                 if i_channel in [0, 1, 2]:
                     scaled[2][..., i_channel] /= 2
@@ -253,7 +255,8 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
 
     # Scale according to Philips convention
     # milli-T/m for order 1, milli-T/m^2 for order 2
-    # uT/m * 1e3 = mT/m, uT/m^2 * 1e3 = mT/m^2
+    # We currently have 1uT/m scaled to Hz/m. We want the equivalent Hz/m for 1mT/m
+    # order1: *1e3, order2: *1e3
     for order in orders:
         if order == 0:
             continue
@@ -423,7 +426,7 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
 def _get_scaling_factors(orders):
     """
     Get scaling factors for the 1st/2nd/3rd order spherical harmonic
-    fields for rescaling them to 1 uT/unit-shim in units of Hz/mm:
+    fields for rescaling them to 1 uT/unit-shim in units of Hz/mm^x:
 
     Gx, Gy, and Gz should yield 1 micro-T of field shift per metre: equivalently, 0.042576 Hz/mm
 
@@ -488,8 +491,10 @@ def _get_scaling_factors(orders):
         for i in range(channels_per_order(order)):
             field = sh[:, :, :, i_ch]
             if order != 0:
-                scaling_factors[i_ch] = (GYROMAGNETIC_RATIO * ((r[order][i] * 0.001) ** order) /
-                                         field[iref[order][i]][0])
+                # 1uT in Hz
+                hz = tesla_to_hz(metric_unit_to_metric_unit(1, 'u', ''))
+                # 1 mm^order in m^order
+                scaling_factors[i_ch] = hz * ((r[order][i] * 0.001) ** order) / field[iref[order][i]][0]
             else:
                 # B0 term needs to be flipped. Producing a 300 Hz in f means that the coil profile should be negative.
                 # (f0 - f)
