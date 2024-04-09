@@ -6,8 +6,7 @@ import numpy as np
 
 from shimmingtoolbox.coils.spherical_harmonics import spherical_harmonics
 from shimmingtoolbox.conversion import (hz_per_cm_to_micro_tesla_per_m, hz_per_cm2_to_micro_tesla_per_m2,
-                                        metric_unit_to_metric_unit, unit_per_metric_unit_to_unit_per_metric_unit,
-                                        tesla_to_hz)
+                                        metric_unit_to_metric_unit, tesla_to_hz)
 
 logger = logging.getLogger(__name__)
 
@@ -188,9 +187,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
                 reordered_spher_array = convert_spher_harm_to_array(reordered_spher_necessary)
 
                 scaled[2][..., i_channel] = np.matmul(reordered_spher_array, orders_to_order2_ut[:, i_channel])
-                scaled[2][..., i_channel] = unit_per_metric_unit_to_unit_per_metric_unit(scaled[2][..., i_channel],
-                                                                                         '',
-                                                                                         'm')
+                scaled[2][..., i_channel] = metric_unit_to_metric_unit(scaled[2][..., i_channel], '', 'm', power=-1)
                 # Todo: We need a /2 between expected zx, zy, xy results and calculated results
                 if i_channel in [0, 1, 2]:
                     scaled[2][..., i_channel] /= 2

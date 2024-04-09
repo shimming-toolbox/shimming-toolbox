@@ -11,7 +11,7 @@ from shimmingtoolbox.conversion import (hz_to_rad_per_sec, rad_per_sec_to_hz, hz
                                         rad_to_gauss, hz_to_micro_tesla, micro_tesla_to_hz,
                                         hz_per_cm2_to_micro_tesla_per_m2, micro_tesla_per_m2_to_hz_per_cm2,
                                         hz_per_cm_to_micro_tesla_per_m, micro_tesla_per_m_to_hz_per_cm,
-                                        metric_unit_to_metric_unit, unit_per_metric_unit_to_unit_per_metric_unit)
+                                        metric_unit_to_metric_unit)
 
 
 def test_hz_to_rad_per_sec():
@@ -109,11 +109,11 @@ def test_m2_to_cm2():
 
 
 def test_unit_per_cm_to_unit_per_m():
-    assert unit_per_metric_unit_to_unit_per_metric_unit(1, 'c', '') == 1e2
+    assert metric_unit_to_metric_unit(1, 'c', '', power=-1) == 1e2
 
 
 def test_unit_per_m_to_unit_per_cm():
-    assert unit_per_metric_unit_to_unit_per_metric_unit(1e2, '', 'c') == 1
+    assert metric_unit_to_metric_unit(1e2, '', 'c', power=-1) == 1
 
 
 def test_hz_per_cm_to_micro_tesla_per_m():
@@ -125,11 +125,11 @@ def test_micro_tesla_per_m_to_hz_per_cm():
 
 
 def test_unit_per_cm2_to_unit_per_m2():
-    assert unit_per_metric_unit_to_unit_per_metric_unit(1, 'c', '', 2) == 1e4
+    assert metric_unit_to_metric_unit(1, 'c', '', power=-2) == 1e4
 
 
 def test_unit_per_m2_to_unit_per_cm2():
-    assert unit_per_metric_unit_to_unit_per_metric_unit(1e4, '', 'c', 2) == 1
+    assert metric_unit_to_metric_unit(1e4, '', 'c', power=-2) == 1
 
 
 def test_hz_per_cm2_to_micro_tesla_per_m2():

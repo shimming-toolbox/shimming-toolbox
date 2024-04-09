@@ -19,13 +19,13 @@ METRIC_PREFIXES = {
 
 
 def metric_unit_to_metric_unit(x, prefix_in, prefix_out, power=1):
-    """ Convert units with metric prefixes to other metric prefixes (i.e. T to uT)
+    """ Convert units with metric prefixes to other metric prefixes (i.e. T to uT, 1/cm^2 to 1/m^2).
 
     Args:
         x: Float or array of floats
         prefix_in (str): Prefix of the input unit
         prefix_out (str): Prefix of the output unit
-        power (int): Power of the unit, use 2 for squared units (i.e. m^2)
+        power (int): Power of the unit, use 2 for squared units (i.e. m^2), to convert x/cm to x/m, use a negative power
 
     Returns:
         Float or array of floats converted
@@ -33,25 +33,6 @@ def metric_unit_to_metric_unit(x, prefix_in, prefix_out, power=1):
     if prefix_in not in METRIC_PREFIXES or prefix_out not in METRIC_PREFIXES:
         raise ValueError('Invalid prefix')
     factor = (METRIC_PREFIXES[prefix_in] / METRIC_PREFIXES[prefix_out]) ** power
-    return x * factor
-
-
-def unit_per_metric_unit_to_unit_per_metric_unit(x, prefix_in, prefix_out, power=1):
-    """ Convert units per metric prefixes to other metric prefixes (i.e. unit/cm to unit/m)
-
-    Args:
-        x: Float or array of floats
-        prefix_in (str): Prefix of the input unit
-        prefix_out (str): Prefix of the output unit
-        power (int): Power of the unit, use 2 for squared units (i.e. m^2)
-
-    Returns:
-        Float or array of floats converted
-    """
-    if prefix_in not in METRIC_PREFIXES or prefix_out not in METRIC_PREFIXES:
-        raise ValueError('Invalid prefix')
-
-    factor = (METRIC_PREFIXES[prefix_out] / METRIC_PREFIXES[prefix_in]) ** power
     return x * factor
 
 
@@ -168,13 +149,13 @@ def rad_to_gauss(rad, dt):
 def hz_per_cm_to_micro_tesla_per_m(hz_per_cm):
     """ Convert Hz/cm to microTesla/m """
     micro_tesla_per_cm = hz_to_micro_tesla(hz_per_cm)
-    micro_tesla_per_m = unit_per_metric_unit_to_unit_per_metric_unit(micro_tesla_per_cm, 'c', '')
+    micro_tesla_per_m = metric_unit_to_metric_unit(micro_tesla_per_cm, 'c', '', power=-1)
     return micro_tesla_per_m
 
 
 def micro_tesla_per_m_to_hz_per_cm(micro_tesla_per_m):
     """ Convert microTesla/m to Hz/cm """
-    micro_tesla_per_cm = unit_per_metric_unit_to_unit_per_metric_unit(micro_tesla_per_m, '', 'c')
+    micro_tesla_per_cm = metric_unit_to_metric_unit(micro_tesla_per_m, '', 'c', power=-1)
     hz_per_cm = micro_tesla_to_hz(micro_tesla_per_cm)
     return hz_per_cm
 
@@ -182,12 +163,12 @@ def micro_tesla_per_m_to_hz_per_cm(micro_tesla_per_m):
 def hz_per_cm2_to_micro_tesla_per_m2(hz_per_cm2):
     """ Convert Hz/cm^2 to microTesla/m^2 """
     micro_tesla_per_cm2 = hz_to_micro_tesla(hz_per_cm2)
-    micro_tesla_per_m2 = unit_per_metric_unit_to_unit_per_metric_unit(micro_tesla_per_cm2, 'c', '', 2)
+    micro_tesla_per_m2 = metric_unit_to_metric_unit(micro_tesla_per_cm2, 'c', '', power=-2)
     return micro_tesla_per_m2
 
 
 def micro_tesla_per_m2_to_hz_per_cm2(micro_tesla_per_m2):
     """ Convert microTesla/m^2 to Hz/cm^2 """
-    micro_tesla_per_cm2 = unit_per_metric_unit_to_unit_per_metric_unit(micro_tesla_per_m2, '', 'c', 2)
+    micro_tesla_per_cm2 = metric_unit_to_metric_unit(micro_tesla_per_m2, '', 'c', -2)
     hz_per_cm2 = micro_tesla_to_hz(micro_tesla_per_cm2)
     return hz_per_cm2
