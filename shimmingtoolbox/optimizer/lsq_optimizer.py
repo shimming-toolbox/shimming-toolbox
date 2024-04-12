@@ -254,7 +254,7 @@ class LsqOptimizer(OptimizerUtils):
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
-                                       options={'maxiter': 1000})
+                                       options={'maxiter': 10000})
 
         elif self.opt_criteria == 'grad':
             a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
@@ -265,7 +265,7 @@ class LsqOptimizer(OptimizerUtils):
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
-                                       options={'maxiter': 1000})
+                                       options={'maxiter': 10000})
 
         else:
             currents_sp = opt.minimize(self._criteria_func, currents_0,
