@@ -6,7 +6,8 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, SHIM_CS, channels_per_order
+from shimmingtoolbox.coils.spher_harm_basis import (basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
+                                                    channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 logger = logging.getLogger(__name__)
@@ -94,7 +95,7 @@ class Coil(object):
                     if sum([len(constraints["coef_channel_minmax"][key]) for key in
                             constraints["coef_channel_minmax"]]) != self.dim[3]:
                         raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
-                                         f"{self.dim[3]} {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
+                                         f"{self.dim[3]}, currently:  {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
 
                     for key in constraints["coef_channel_minmax"]:
                         for i in range(len(constraints["coef_channel_minmax"][key])):
@@ -160,8 +161,7 @@ class ScannerCoil(Coil):
         else:
             logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
                            "order 0, 1, 2 and 3 respectively")
-            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
-                                             shim_cs=self.coord_system)
+            sph_coil_profile = basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
 
         return sph_coil_profile
 
@@ -188,7 +188,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
         "coef_channel_minmax": {"0": [], "1": [], "2": [], "3": []},
         "coef_sum_max": None
     }
-    if manufacturers_model_name == "Prisma_fit":
+    if manufacturers_model_name == "Prisma_fit" and manufacturer == "Siemens":
         constraints["name"] = "Prisma_fit"
         if 0 in orders:
             constraints["coef_channel_minmax"]["0"].append([123100100, 123265000])
@@ -207,7 +207,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
                            "unbounded 3rd order shim terms")
             constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(n_channels)]
 
-    elif manufacturers_model_name == "Investigational_Device_7T":
+    elif manufacturers_model_name == "Investigational_Device_7T" and manufacturer == "Siemens":
         constraints["name"] = "Investigational_Device_7T"
         if 0 in orders:
             constraints["coef_channel_minmax"]["0"].append([None, None])
@@ -223,7 +223,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
         if 3 in orders:
             constraints["coef_channel_minmax"]["3"] = [[None, None] for _ in range(channels_per_order(3, manufacturer))]
 
-    elif manufacturers_model_name == "Terra":
+    elif manufacturers_model_name == "Terra" and manufacturer == "Siemens":
         constraints["name"] = "Terra"
         if 0 in orders:
             constraints["coef_channel_minmax"]["0"].append([296760000, 297250000])
@@ -242,9 +242,9 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
                                                             [-14016.0, 14016.0],
                                                             [-14016.0, 14016.0]])
     else:
-        logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-                       "respected.")
-        constraints["name"] = "Unknown"
+        logger.warning(f"Scanner: {manufacturers_model_name} constraints for {manufacturer} not implemented, "
+                       f"constraints might not be respected.")
+        constraints["name"] = manufacturers_model_name
         for order in orders:
             constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(
                 channels_per_order(order, manufacturer))]

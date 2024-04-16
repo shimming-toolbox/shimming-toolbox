@@ -10,9 +10,58 @@ from shimmingtoolbox.conversion import (hz_per_cm_to_micro_tesla_per_m, hz_per_c
 
 logger = logging.getLogger(__name__)
 
+MANUFACTURERS = ('SIEMENS', 'GE', 'PHILIPS')
 SHIM_CS = {'SIEMENS': 'LAI',
            'GE': 'LPI',
            'PHILIPS': 'RPI'}
+
+
+def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
+    """
+    The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order
+    spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``. ``basis`` is then:
+
+        - Rescaled to Hz/unit-shim, where "unit-shim" refers to:
+
+            - 1 micro-T/m for *X,Y,Z* gradients (= 0.042576 Hz/mm)
+            - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
+            - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
+
+        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)*
+
+    The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
+
+    Args:
+        x (numpy.ndarray): 3-D arrays of grid coordinates, "Left->Right" grid coordinates in the patient coordinate
+                           system (i.e. NIfTI reference (RAS), units of mm)
+        y (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Posterior->Anterior" grid coordinates in
+                           the patient coordinate system (i.e. NIfTI reference (RAS), units of mm)
+        z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
+                           the patient coordinate system (i.e. NIfTI reference, units of mm)
+        orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
+                        integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
+        shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or 'I'.
+
+    Returns:
+        numpy.ndarray: 4-D array of spherical harmonic basis fields
+    """
+
+    # Check inputs
+    _check_basis_inputs(x, y, z, orders)
+
+    # Create spherical harmonics
+    flip = get_flip_matrix(shim_cs, manufacturer='PHILIPS', orders=[1, ])
+    spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
+
+    # Reorder according to Philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, 2XY, Z3, Z2X, Z2Y, Z(X2-Y2), 2XYZ, X3, Y3
+    logger.warning("Outputting coefficients using the following convention: "
+                   "Order 1: X, Y, Z, Order 2: Z2, ZX, ZY, X2-Y2, XY, Order 3: Z3, Z2X, Z2Y, Z(X2-Y2), 2XYZ, X3, Y3")
+    reordered_spher = reorder_to_manufacturer(spher_harm, manufacturer='PHILIPS')
+
+    # Convert back to an array
+    output = convert_spher_harm_to_array(reordered_spher)
+
+    return output
 
 
 def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
@@ -372,6 +421,9 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
     Returns:
         dict: Coefficients ordered following the manufacturer's convention
     """
+    if manufacturer not in MANUFACTURERS:
+        # Do not reorder if the manufacturer is not in the implemented manufacturers
+        return spher_harm
 
     def _reorder_order0(sph, manuf):
         if sph.shape[-1] != 1:
@@ -525,7 +577,10 @@ def channels_per_order(order, manufacturer=None):
     Returns:
 
     """
-    if manufacturer == 'Siemens' and order == 3:
+    if manufacturer is not None:
+        manufacturer = manufacturer.upper()
+
+    if manufacturer == 'SIEMENS' and order == 3:
         return 4
     return 2 * order + 1
 
@@ -579,12 +634,7 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
     if manufacturer is not None:
         manufacturer = manufacturer.upper()
 
-    if manufacturer in ['SIEMENS', 'GE', 'PHILIPS']:
-        out_dict = reorder_to_manufacturer(out_dict, manufacturer)
-    else:
-        # Do not reorder if the manufacturer is not specified
-        logger.warning(f"Flip matrix not implemented for manufacturer: {manufacturer}")
-        pass
+    out_dict = reorder_to_manufacturer(out_dict, manufacturer)
 
     out_list = []
     for i_order in sorted(orders):
