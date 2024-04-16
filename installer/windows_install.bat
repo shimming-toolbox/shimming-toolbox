@@ -36,7 +36,7 @@ del "%UNIQUE_TMP_INSTALLER%"
 
 REM Installing dcm2niix and python
 echo Installing dcm2niix and python
-call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge dcm2niix python=3.9 || goto error
+call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge dcm2niix python=3.10 || goto error
 
 REM Installing Shimming Toolbox
 copy "%ST_SOURCE_FILES%\config\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
