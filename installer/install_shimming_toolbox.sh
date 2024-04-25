@@ -51,9 +51,13 @@ print info "Creating launchers for Python scripts. List of functions available:"
 mkdir -p "$ST_DIR/$BIN_DIR"
 
 for file in "$ST_DIR"/"$PYTHON_DIR"/bin/*st_*; do
-  cp "$file" "$ST_DIR/$BIN_DIR/" # || die "Problem creating launchers!"
+  cp "$file" "$ST_DIR/$BIN_DIR/" || die "Problem creating launchers!"
   print list "$file"
 done
+
+# Dcm2niix is called by dcm2bids through subprocess, we need to create a launcher for it to be found when called from
+# outside the environment (when using st_dicom_to_nifti)
+cp ""$ST_DIR"/"$PYTHON_DIR"/bin/dcm2niix" "$ST_DIR/$BIN_DIR/" || die "Problem creating launchers!"
 
 # Activate the launchers
 export PATH="$ST_DIR/$BIN_DIR:$PATH"
