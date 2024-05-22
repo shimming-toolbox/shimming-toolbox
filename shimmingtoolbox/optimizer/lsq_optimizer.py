@@ -215,14 +215,6 @@ class LsqOptimizer(OptimizerUtils):
                                        jac=self._jacobian_func,
                                        options={'maxiter': 1000})
 
-        elif self.opt_criteria == 'ps_huber':
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor),
-                                       method='SLSQP',
-                                       bounds=self.merged_bounds,
-                                       constraints=tuple(scipy_constraints),
-                                       options={'maxiter': 1000})
-
         else:
 
             currents_sp = opt.minimize(self._criteria_func, currents_0,

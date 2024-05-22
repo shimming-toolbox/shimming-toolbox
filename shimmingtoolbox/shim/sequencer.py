@@ -373,11 +373,7 @@ class ShimSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method == 'least_squares':
-                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
-                                                              self.nii_fieldmap.affine, self.opt_criteria,
-                                                              reg_factor=self.reg_factor)
-            elif self.method == 'gradient':
+            if self.method in ['least_squares', 'gradient']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor)
