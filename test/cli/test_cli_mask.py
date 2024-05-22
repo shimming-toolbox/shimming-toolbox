@@ -13,6 +13,7 @@ from shimmingtoolbox import __dir_testing__
 
 inp = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
 fname_input = os.path.join(__dir_testing__, 'ds_spine', 'sub-01', 'anat', 'sub-01_t2.nii.gz')
+mrs_raw_data = os.path.join(__dir_testing__, 'ds_mrs', 'sub-1_acq-press-siemens-shim_nuc-H_echo-135_svs.rda')
 
 
 def test_cli_mask_box():
@@ -185,20 +186,31 @@ def test_cli_mask_sct_4d():
 def test_cli_mask_mrs():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
-
+        # The MRS voxel size and its center coordinate is extracitng from the raw data by first converting the raw data
+        # to nifti file and then reading the header of that file.
         out = os.path.join(tmp, 'mask.nii.gz')
+        run_subprocess(['spec2nii', 'rda', mrs_raw_data])
+        name_nii, ext = splitext(mrs_raw_data)
+        nii = nib.load(name_nii + '.nii.gz')
+        header_raw_data = nii.header
+        affine = nii.affine
+        position_sag = header_raw_data['qoffset_x']
+        position_cor = header_raw_data['qoffset_y']
+        position_tra = header_raw_data['qoffset_z']
 
-        # Assuming a voxel size of a 10 mm isotropic and Voxel's center position in mm of the x, y and
-        # z scanner coordinates being {0, 0, -20},
+        mrs_center = np.array([position_sag, position_cor, position_tra, 1])
+        mrs_voxel_size = header_raw_data['pixdim'][1:4]
+
         result = runner.invoke(mask_cli, ['mrs', '--input', inp, '--output', out,
-                               '--size', 10, 10, 10, '--center', 0, 0, -20])
+                               '--size', mrs_voxel_size, '--center', mrs_center])
 
-        # Knowing that the input test data has a pixel size of 2.2, 2.2, 3 mm, the expected mask will have a size of
-        # (6, 6, 4). center of the created mask on each slice is the isocenter position.
-        expected = np.ones((6, 6, 4))
+        # Knowing that the input magnitude data (mag) has a pixel size of 4.4, 4.4, 4.4 mm, and the mrs voxel size in
+        # the raw data was originally chosen to be 20X20X20 mm. Therefore, dividing 20 to 4.4, roounding it up and
+        # adding one margin pixel to the mask, the expected mask will have the size of (6, 6, 6) pixels.
+        expected = np.ones((6, 6, 6))
 
         nii = nib.load(out)
         mask = nii.get_fdata()
 
         assert result.exit_code == 0
-        assert np.all(mask[61:67, 34:40, 4:8] == expected)
+        assert np.all(mask[29:34, 37:42, 6:11] == expected)
