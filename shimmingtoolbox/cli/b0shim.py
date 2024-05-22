@@ -72,9 +72,9 @@ def b0shim_cli():
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
               type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'gradient']),
-              help="Method used by the optimizer. LS, QP will respect the constraints, "
-              "gradient method only accepts bounds for each channel "
-              "PS will not respect the constraints")
+              help="Method used by the optimizer. LS and QP will respect the constraints, "
+              "the gradient method only accepts constraints for each channel (not constraints on the total current), "
+              "PS will not respect any constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
