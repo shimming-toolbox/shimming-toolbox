@@ -473,7 +473,7 @@ class ShimSequencer(Sequencer):
             # TODO: Add in anat space?
             if self.opt_criteria == 'grad':
                 # Plot gradient realted results
-                self._plot_static_signal_recovery_mask(unshimmed, full_Gz, full_Gx, full_Gy, mask_full_binary)
+                self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
                 self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
                 self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
                 self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
@@ -824,7 +824,7 @@ class ShimSequencer(Sequencer):
                                                   header=self.nii_mask_anat.header)
         nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
 
-    def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, shimmed_Gx, shimmed_Gy, mask):
+    def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
     # Plot signal loss maps
         def calculate_signal_loss(B0_map):
             G = np.gradient(B0_map, axis = 2)
@@ -843,6 +843,11 @@ class ShimSequencer(Sequencer):
         mt_unshimmed = montage(unshimmed_signal_loss[:,:,nonzero_indices])
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
+
+        # Save the signal loss maps
+        nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
+        nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
+        nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'mask_erode.nii.gz'))
 
         temp_unshimmed_signal_loss = unshimmed_signal_loss.copy()
         temp_unshimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan
