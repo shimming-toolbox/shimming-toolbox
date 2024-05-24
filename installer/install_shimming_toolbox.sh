@@ -6,9 +6,9 @@ source "$SCRIPT_DIR/utils.sh"
 
 set -e
 
-ST_DIR=$HOME/shimming-toolbox
-PYTHON_DIR=python
-BIN_DIR=bin
+ST_DIR="${HOME}/shimming-toolbox"
+PYTHON_DIR="python"
+BIN_DIR="bin"
 
 print info "Beginning shimming-toolbox install in $ST_DIR/$PYTHON_DIR"
 
@@ -39,7 +39,7 @@ function edit_shellrc() {
 source "$ST_DIR/$PYTHON_DIR/bin/activate"
 
 print info "Installing dcm2niix"
-"$ST_DIR"/"$PYTHON_DIR"/bin/mamba install -y -c conda-forge dcm2niix python=3.9
+"$ST_DIR"/"$PYTHON_DIR"/bin/mamba install -y -c conda-forge dcm2niix python=3.10
 
 print info "Installing shimming-toolbox"
 cd "$ST_PACKAGE_DIR"
@@ -50,8 +50,8 @@ cp "config/dcm2bids.json" "$ST_DIR/dcm2bids.json"
 print info "Creating launchers for Python scripts. List of functions available:"
 mkdir -p "$ST_DIR/$BIN_DIR"
 
-for file in "$ST_DIR"/"$PYTHON_DIR"/bin/*st_*; do
-  cp "$file" "$ST_DIR/$BIN_DIR/" # || die "Problem creating launchers!"
+for file in "$ST_DIR"/"$PYTHON_DIR"/bin/st_*; do
+  cp "$file" "$ST_DIR/$BIN_DIR/" || die "Problem creating launchers!"
   print list "$file"
 done
 

@@ -46,12 +46,18 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
                          gaussian_filter, sigma, verbose):
     """Creates fieldmap (in Hz) from phase images.
 
-    This function accommodates multiple echoes (2 or more) and phase difference. This function also
+    This function accommodates multiple echoes (2 or more) and phase difference. It also
     accommodates 4D phase inputs, where the 4th dimension represents the time, in case multiple
     field maps are acquired across time for the purpose of real-time shimming experiments.
     For non Siemens phase data, see --autoscale-phase option.
 
-    PHASE: Input path of phase nifti file(s), in ascending order: echo1, echo2, etc.
+    PHASE: Input path of phase NIfTI file(s), in ascending order: echo1, echo2, etc. The BIDS metadata JSON file
+    associated with each phase file is required, it will be fetched automatically using the same name as the NIfTI file.
+
+    Example of use (Multiple echoes) : st_prepare_fieldmap phase_echo1.nii.gz phase_echo2.nii.gz phase_echo3.nii.gz
+    --mag mag.nii.gz
+
+    Example of use (Phase difference): st_prepare_fieldmap phasediff.nii.gz --mag mag.nii.gz
     """
     # Set logger level
     set_all_loggers(verbose)
