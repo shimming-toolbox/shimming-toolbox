@@ -6,7 +6,7 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import (basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
+from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
                                                     channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
@@ -126,16 +126,36 @@ class Coil(object):
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
 
-    def __init__(self, dim_volume, affine, constraints, orders, manufacturer=""):
+    def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None):
+        """
+        Args:
+            dim_volume (tuple): x, y and z dimensions.
+            affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
+            constraints (dict): dict containing the constraints for the coil profiles. Required keys:
 
+                * name (str): Name of the coil.
+                * coef_sum_max (float): Contains the maximum value for the sum of the coefficients. None is used to
+                  specify no bounds
+                * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
+                  used to specify no bounds.
+
+            orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
+                            integers (``(0:1:n)`` yields harmonics up to n-th order)
+            manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
+            shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or
+                           'I'. Only relevant if the manufacturer is unknown. Default: 'RAS'.
+        """
         self.orders = orders
 
         manufacturer = manufacturer.upper()
         if manufacturer in SHIM_CS:
             self.coord_system = SHIM_CS[manufacturer]
         else:
-            logger.warning(f"Unknown manufacturer {manufacturer}, assuming RAS")
-            self.coord_system = 'RAS'
+            logger.warning(f"Unknown manufacturer {manufacturer}")
+            if shim_cs is None:
+                self.coord_system = 'RAS'
+            else:
+                self.coord_system = shim_cs
 
         self.affine = affine
 
@@ -150,18 +170,15 @@ class ScannerCoil(Coil):
         # f0, orders
         mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
         if manufacturer == 'SIEMENS':
-            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
-                                             shim_cs=self.coord_system)
+            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         elif manufacturer == 'GE':
-            sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
-                                        shim_cs=self.coord_system)
+            sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         elif manufacturer == 'PHILIPS':
-            sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders),
-                                             shim_cs=self.coord_system)
+            sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         else:
             logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
                            "order 0, 1, 2 and 3 respectively")
-            sph_coil_profile = basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
+            sph_coil_profile = sh_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders), shim_cs=self.coord_system)
 
         return sph_coil_profile
 

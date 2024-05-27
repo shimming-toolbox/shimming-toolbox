@@ -16,7 +16,7 @@ SHIM_CS = {'SIEMENS': 'LAI',
            'PHILIPS': 'RPI'}
 
 
-def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
+def sh_basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order
     spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``. ``basis`` is then:
@@ -27,7 +27,10 @@ def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
             - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
 
-        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)*
+        - Reordered along the 4th dimension as
+          *X, Y, Z,
+          Z2, ZX, ZY, X2 - Y2, XY,
+          Z3, Z2X, Z2Y, Z(X2 - Y2), XYZ, X(X2 - Y2), Y(X2 - Y2)*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -39,7 +42,7 @@ def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
                            the patient coordinate system (i.e. NIfTI reference, units of mm)
         orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
-                        integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
+                        integers (``(0:1:n)`` yields harmonics up to n-th order)
         shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or 'I'.
 
     Returns:
@@ -53,9 +56,10 @@ def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
     flip = get_flip_matrix(shim_cs, manufacturer='PHILIPS', orders=[1, ])
     spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
 
-    # Reorder according to Philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, 2XY, Z3, Z2X, Z2Y, Z(X2-Y2), 2XYZ, X3, Y3
+    # Reorder according to Philips convention
     logger.warning("Outputting coefficients using the following convention: "
-                   "Order 1: X, Y, Z, Order 2: Z2, ZX, ZY, X2-Y2, XY, Order 3: Z3, Z2X, Z2Y, Z(X2-Y2), 2XYZ, X3, Y3")
+                   "Order 1: X, Y, Z, Order 2: Z2, ZX, ZY, X2-Y2, XY, Order 3: Z3, Z2X, Z2Y, Z(X2-Y2), XYZ, X(X2-Y2), "
+                   "Y(X2-Y2)")
     reordered_spher = reorder_to_manufacturer(spher_harm, manufacturer='PHILIPS')
 
     # Convert back to an array
@@ -64,7 +68,7 @@ def basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
     return output
 
 
-def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
+def siemens_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order
     spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``. *Following Siemens convention*,
@@ -77,7 +81,10 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
             - 1 micro-T/m^2 for 2nd order terms (= 0.000042576 Hz/mm^2)
             - 1 micro-T/m^3 for 3rd order terms (= 0.000000042576 Hz/mm^3)
 
-        - Reordered along the 4th dimension as *X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)*
+        - Reordered along the 4th dimension as
+          *Y, Z, X,
+          XY, ZY, Z2, ZX, X2 - Y2,
+          Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -89,8 +96,7 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
         z (numpy.ndarray): 3-D arrays of grid coordinates (same shape as x). "Inferior->Superior" grid coordinates in
                            the patient coordinate system (i.e. NIfTI reference, units of mm)
         orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
-                        integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
-        shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or 'I'.
+                        integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st, 2nd and 3rd order)
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
@@ -100,7 +106,7 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics
-    flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', orders=[1, ])
+    flip = get_flip_matrix(SHIM_CS['SIEMENS'], manufacturer='SIEMENS', orders=[1, ])
     spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)
@@ -112,18 +118,18 @@ def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     return output
 
 
-def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
+def ge_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spher_harm_basis.scaled_spher_harm`` to generate the specified
     order spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``.
     *Following GE convention*, ``basis`` is then:
 
-        - Reordered along the 4th dimension as *X, Y, Z, XY, ZY, ZX, X2-Y2, Z2*
-
         - Rescaled:
 
             - 1 XXXXX for *X,Y,Z* gradients (= Hz/mm)
             - Hz/mm^2 / 1 mA for the 2nd order terms (See details below for the different channels)
+
+        - Reordered along the 4th dimension as *X, Y, Z, XY, ZY, ZX, X2-Y2, Z2*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -136,7 +142,6 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
                            the patient coordinate system (i.e. NIfTI reference, units of mm)
         orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
                         integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
-        shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or 'I'.
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
@@ -146,7 +151,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics
-    flip = get_flip_matrix(shim_cs, manufacturer='GE', orders=[1, ])
+    flip = get_flip_matrix(SHIM_CS['GE'], manufacturer='GE', orders=[1, ])
 
     # 2nd order cross terms require the calculation of the 0, 1, 2nd order
     required_calculated_orders = orders
@@ -255,7 +260,7 @@ def ge_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['GE']):
     return output
 
 
-def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
+def philips_basis(x, y, z, orders=(1, 2)):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order spherical
     harmonic ``basis`` fields at the grid positions given by arrays ``X,Y,Z``. *Following Philips convention*,
@@ -279,7 +284,6 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
                            the patient coordinate system (i.e. NIfTI reference, units of mm)
         orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
                         integers (``(0:1:n)`` yields harmonics up to n-th order, implemented 1st and 2nd order)
-        shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or 'I'.
 
     Returns:
         numpy.ndarray: 4-D array of spherical harmonic basis fields
@@ -293,7 +297,7 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
 
     # Create spherical harmonics
     # Philips' y and x axis are flipped (x is AP, y is RL)
-    flip = get_flip_matrix(shim_cs, manufacturer='Philips', orders=[1, ])
+    flip = get_flip_matrix(SHIM_CS['PHILIPS'], manufacturer='Philips', orders=[1, ])
     spher_harm = scaled_spher_harm(y * flip[0], x * flip[1], z * flip[2], orders)
 
     # Reorder according to philips convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY
@@ -313,7 +317,7 @@ def philips_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['PHILIPS']):
             # Todo: We need a /2 between expected zx, zy results and calculated results (Similar to GE but not with XY)
             reordered_spher[order][..., 1] /= 2
             reordered_spher[order][..., 2] /= 2
-        else:
+        elif order > 2:
             logger.warning(f"Scaling spherical harmonics of order {order} not implemented for Philips")
 
     output = convert_spher_harm_to_array(reordered_spher)
@@ -412,7 +416,7 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
 
     X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with GE shims) or
 
-    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with Philips shims)
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2), XYZ, X(X2 - Y2), Y(X2 - Y2) (in line with Philips shims)
 
     Args:
         spher_harm (dict): 3D array of spherical harmonics coefficients with key corresponding to the order
@@ -454,6 +458,11 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
             raise ValueError("Input arrays should have 4th dimension's shape equal to 7")
         if manufacturer == 'SIEMENS':
             return sph[..., [3, 4, 2, 5]]
+        elif manufacturer == 'PHILIPS':
+            # Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
+            # Z3, Z2X, Z2Y, Z(X2 - Y2), XYZ, X(X2 - Y2), Y(X2 - Y2)
+            return sph[..., [3, 4, 2, 5, 1, 6, 0]]
+
         else:
             logger.warning(f"3rd order spherical harmonics not implemented for: {manuf}")
             return sph

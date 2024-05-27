@@ -6,13 +6,27 @@ import numpy as np
 import os
 import pytest
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, get_flip_matrix
+from shimmingtoolbox.coils.spher_harm_basis import sh_basis, siemens_basis, ge_basis, philips_basis, get_flip_matrix
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox import __dir_testing__
 
 dummy_data = [
     np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)), indexing='ij'),
 ]
+
+
+@pytest.mark.parametrize('x,y,z', dummy_data)
+class TestBasis:
+    def test_basis(self, x, y, z):
+        basis = sh_basis(x, y, z, orders=(0, 1), shim_cs="RAS")
+
+        # Test for shape
+        assert (np.all(basis.shape == (x.shape[0], x.shape[1], x.shape[2], 4)))
+        # X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY
+        assert np.allclose(basis[:, 1, 1, 0], [-1, -1, -1])
+        assert np.allclose(basis[:, 1, 1, 1], [-4.25774785e-02, 0, 4.25774785e-02])
+        assert np.allclose(basis[1, :, 1, 2], [-4.25774785e-02, 0, 4.25774785e-02])
+        assert np.allclose(basis[1, 1, :, 3], [-4.25774785e-02, 0, 4.25774785e-02])
 
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
@@ -219,6 +233,10 @@ class TestPhilipsBasis:
         assert np.allclose(basis[:, :, 1, 4], np.array([[-8.51549570e-02, 0, 8.51549570e-02],
                                                         [0, 0, 0],
                                                         [8.51549570e-02, 0, -8.51549570e-02]]))
+
+    def test_create_philips_basis_order3(self, x, y, z):
+        pass
+        # todo: implement test
 
 
 def test_siemens_basis_resample():
