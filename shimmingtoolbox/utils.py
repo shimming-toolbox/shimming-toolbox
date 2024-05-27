@@ -279,6 +279,7 @@ def are_niis_equal(nii1:nib.nifti1.Nifti1Image, nii2:nib.nifti1.Nifti1Image):
            hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
            hashlib.sha256(nii2.affine.tobytes()).hexdigest()
 
+
 def are_jsons_equal(json1:dict, json2:dict):
     json1_bytes = json.dumps(json1).encode('utf-8')
     json2_bytes = json.dumps(json2).encode('utf-8')

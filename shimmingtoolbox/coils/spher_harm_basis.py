@@ -84,7 +84,7 @@ def siemens_basis(x, y, z, orders=(1, 2)):
         - Reordered along the 4th dimension as
           *Y, Z, X,
           XY, ZY, Z2, ZX, X2 - Y2,
-          Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)*
+          Y(X2 - Y2), XYZ, Z2Y, Z3*
 
     The returned ``basis`` is thereby in the form of ideal "shim reference maps", ready for optimization.
 
@@ -522,7 +522,6 @@ def _get_scaling_factors(orders):
     # i_x2y1 = np.nonzero((x_iso == 2) & (y_iso == 1) & (z_iso == 0))
 
     # order the reference indices like the sh field terms
-    # TODO: Find out the polarity of the terms
     # 1. Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
     # (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics)
     iref = {0: [i_x1],
@@ -595,7 +594,7 @@ def channels_per_order(order, manufacturer=None):
 
 
 def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
-    """
+    f"""
     Return a matrix to flip the spherical harmonics basis set from RAS to the desired coordinate system.
 
     Args:
@@ -603,7 +602,7 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
         orders (list): List of orders of the spherical harmonics. Default to None (all orders)
         manufacturer (str): Manufacturer of the scanner. The flipping matrix is different for each manufacturer.
                             If None is selected, it will output according to
-                            ``shimmingtoolbox.coils.spherical_harmonics``. Possible values: SIEMENS, GE, PHILIPS.
+                            ``shimmingtoolbox.coils.spherical_harmonics``. Possible values: {MANUFACTURERS}.
 
     Returns:
         numpy.ndarray: Matrix (len: 8) to flip the spherical harmonics basis set from ras to the desired coordinate
@@ -636,7 +635,6 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
         if order == 2:
             out_dict[2] = np.array([xyz_cs[0] * xyz_cs[1], xyz_cs[2] * xyz_cs[1], 1, xyz_cs[2] * xyz_cs[0], 1])
         if order == 3:
-            # TODO: Verify
             out_dict[3] = np.array([xyz_cs[1], xyz_cs[0] * xyz_cs[1] * xyz_cs[2], xyz_cs[1], xyz_cs[2], xyz_cs[0],
                                     xyz_cs[2], xyz_cs[0]])
 
