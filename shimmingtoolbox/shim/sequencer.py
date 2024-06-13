@@ -531,6 +531,8 @@ class ShimSequencer(Sequencer):
                              f"unshimmed: {mae_unshimmed}, shimmed: {mae_shimmed}\n"
                              f"MSE:\n"
                              f"unshimmed: {mse_unshimmed}, shimmed: {mse_shimmed}\n"
+                             f"RMSE:\n"
+                             f"unshimmed: {np.sqrt(mse_unshimmed)}, shimmed: {np.sqrt(mse_shimmed)}\n"
                              f"STD:\n"
                              f"unshimmed: {std_unshimmed}, shimmed: {std_shimmed}\n"
                              f"current: \n{coef[i_shim, :]}")
