@@ -79,10 +79,10 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -524,10 +524,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               default='quad_prog', show_default=True,
               help="Method used by the optimizer. LS and QP will respect the constraints,"
                    "PS will not respect the constraints")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
-              default='mse', show_default=True,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']),
+              required=False, default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "

@@ -166,7 +166,7 @@ class ShimSequencer(Sequencer):
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation.
+                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
                                         more details.
@@ -725,7 +725,7 @@ class RealTimeSequencer(Sequencer):
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation.
+                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
