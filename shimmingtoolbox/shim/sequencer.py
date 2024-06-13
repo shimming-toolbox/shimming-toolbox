@@ -2107,6 +2107,9 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
     n_shims = n_slices // factor
     leftover = 0
 
+    if n_slices % factor != 0:
+        raise ValueError("SMS method does not support leftover slices")
+
     if method == 'interleaved':
         if n_slices % 2 == 0:
             range_1 = range(1, n_slices, 2)
@@ -2115,17 +2118,40 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
             range_1 = range(0, n_slices, 2)
             range_2 = range(1, n_slices, 2)
 
-        for i_shim in range_1:
-            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
+        if factor == 1:
+            for i_shim in range_1:
+                slices.append((i_shim,))
 
-        for i_shim in range_2:
-            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
+            for i_shim in range_2:
+                slices.append((i_shim,))
 
-        leftover = n_slices % factor
+            leftover = n_slices % factor
+
+        else:
+            if n_slices // factor % 2 != 0:
+                mid = n_slices // 2
+                for i_shim in range(1, n_slices//2, 2):
+                    slices.append((i_shim, mid + i_shim - 1))
+
+                for i_shim in range(0, n_slices//2, 2):
+                    slices.append((i_shim, mid + i_shim))
+
+            if n_slices // factor % 2 == 0:
+                mid = n_slices // 2
+                special_index = n_shims // 2 // 2
+                for i, i_shim in enumerate(range(1, n_slices//2 - 1, 2)):
+                    if i == special_index:
+                        slices.append((n_slices//2 - 1, n_slices - 1))
+                    slices.append((i_shim, mid + i_shim))
+
+                for i, i_shim in enumerate(range(2, n_slices//2, 2)):
+                    if i == special_index:
+                        slices.append((0, n_slices//2))
+                    slices.append((i_shim, mid + i_shim))
 
     elif method == 'sequential':
         for i_shim in range(n_shims):
-            slices.append(tuple(range(i_shim * factor, (i_shim + 1) * factor, 1)))
+            slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
         leftover = n_slices % factor
 

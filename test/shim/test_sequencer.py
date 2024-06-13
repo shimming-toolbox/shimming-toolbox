@@ -757,12 +757,12 @@ class TestDefineSlices(object):
         assert np.all(output == [(0,), (1,), (2,), (3,), (4,)])
 
     def test_define_slices_interleaved(self):
-        output = define_slices(5, 2, "interleaved")
-        assert np.all(output == [(0, 2), (1, 3), (4,)])
+        output = define_slices(12, 2, "interleaved")
+        assert np.all(output == [(1, 7), (3, 9), (5, 11), (0, 6), (2, 8), (4, 10)])
 
     def test_define_slices_sequential(self):
-        output = define_slices(5, 2, "sequential")
-        assert np.all(output == [(0, 1), (2, 3), (4,)])
+        output = define_slices(6, 2, "sequential")
+        assert np.all(output == [(0, 3), (1, 4), (2, 5)])
 
     def test_define_slices_volume(self):
         output = define_slices(5, method="volume")
