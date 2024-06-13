@@ -4,7 +4,7 @@
 import numpy as np
 import json
 
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, SCANNER_CONSTRAINTS
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox import __dir_config_scanner_constraints__
 
@@ -76,3 +76,23 @@ def test_create_scanner_coil_ge():
     assert np.allclose(scanner_coil.profile[1, :, :, 5], np.array([[-5.6703165e-05, -5.0049942e-05, -4.3501609e-05],
                                                                    [-5.9169445e-05, -5.2430000e-05, -4.5795445e-05],
                                                                    [-6.1538609e-05, -5.4712942e-05, -4.7992165e-05]]))
+
+
+def test_get_scanner_constraints():
+    orders = [0, 1, 2, 3]
+    for manufacturer in SCANNER_CONSTRAINTS.keys():
+        for model in SCANNER_CONSTRAINTS[manufacturer].keys():
+            constraints = get_scanner_constraints(model, orders, manufacturer)
+            for order in orders:
+                if SCANNER_CONSTRAINTS[manufacturer][model][str(order)]:
+                    assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
+                                             SCANNER_CONSTRAINTS[manufacturer][model][str(order)]))
+
+
+def test_get_scanner_constraints_specific_orders():
+    orders = [0, 2]
+    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens")
+    for order in orders:
+        assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
+                                 SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit"][str(order)]))
+    assert not constraints['coef_channel_minmax']["1"]
