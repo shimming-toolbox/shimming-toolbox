@@ -2129,15 +2129,15 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
 
         else:
             if n_slices // factor % 2 != 0:
-                mid = n_slices // 2
-                for i_shim in range(1, n_slices//2, 2):
-                    slices.append((i_shim, mid + i_shim - 1))
+                special_indexes = [i * n_shims for i in range(0, factor)]
+                for i_shim in range(0, n_shims, 2):
+                    slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
 
-                for i_shim in range(0, n_slices//2, 2):
-                    slices.append((i_shim, mid + i_shim))
+                for i_shim in range(1, n_shims, 2):
+                    slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
 
             if n_slices // factor % 2 == 0:
-                mid = n_slices // 2
+                mid = n_slices // factor
                 special_index = n_shims // 2 // 2
                 for i, i_shim in enumerate(range(1, n_slices//2 - 1, 2)):
                     if i == special_index:

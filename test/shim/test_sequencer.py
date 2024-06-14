@@ -758,7 +758,11 @@ class TestDefineSlices(object):
 
     def test_define_slices_interleaved(self):
         output = define_slices(12, 2, "interleaved")
-        assert np.all(output == [(1, 7), (3, 9), (5, 11), (0, 6), (2, 8), (4, 10)])
+        assert np.all(output == [(1, 7),(5, 11), (3, 9), (2, 8), (0, 6), (4, 10)])
+
+    def test_define_slices_interleaved_sms3_odd(self):
+        output = define_slices(21, 3, "interleaved")
+        assert np.all(output == [(0, 7, 14), (2, 9, 16), (4, 11, 18), (6, 13, 20), (1, 8, 15), (3, 10, 17), (5, 12, 19)])
 
     def test_define_slices_sequential(self):
         output = define_slices(6, 2, "sequential")
