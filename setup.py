@@ -57,11 +57,7 @@ setup(
         "raven",
         "joblib",
         "quadprog",
-<<<<<<< bv/shim_MRS
-        "spec2nii",
-=======
-        "cloup"
->>>>>>> master
+        "spec2nii"
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],
