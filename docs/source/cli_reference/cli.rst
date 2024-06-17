@@ -15,6 +15,10 @@ Field mapping
 .. click:: shimmingtoolbox.cli.prepare_fieldmap:prepare_fieldmap_cli
    :prog: st_prepare_fieldmap
 
+.. click:: shimmingtoolbox.cli.unwrap:unwrap_cli
+   :prog: st_unwrap
+
+
 Shimming
 --------
 

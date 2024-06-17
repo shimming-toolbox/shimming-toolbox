@@ -20,7 +20,7 @@ class QuadProgOpt(OptimizerUtils):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, initial_guess_method='mean', opt_criteria=None):
+    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, initial_guess_method='zeros'):
         """
         Initializes coils according to input list of Coil
 
@@ -37,7 +37,6 @@ class QuadProgOpt(OptimizerUtils):
             raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
                             f" If you want to keep this reg_factor please use lsq_optimizer")
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
-        self.opt_criteria = opt_criteria
 
     def _get_linear_inequality_matrices(self):
         """

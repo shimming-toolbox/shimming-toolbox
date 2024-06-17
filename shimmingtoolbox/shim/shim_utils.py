@@ -8,6 +8,7 @@ import json
 import numpy as np
 import logging
 
+from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
 from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
 
@@ -170,17 +171,11 @@ def phys_to_shim_cs(coefs, manufacturer, orders):
     manufacturer = manufacturer.upper()
 
     if manufacturer.upper() in SHIM_CS:
-        flip_mat = np.ones(len(coefs))
-        # Order 1
-        if len(coefs) == 3:
-            flip_mat[:3] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
-        # Order 2
-        elif len(coefs) >= 8:
-            flip_mat[:8] = get_flip_matrix(SHIM_CS[manufacturer], orders, manufacturer=manufacturer)
+        flip_mat = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=orders)
+        if len(flip_mat) != len(coefs):
+            logger.warning("Could not convert between shim and physical coordinate system")
         else:
-            logger.warning("Order not supported")
-
-        coefs = flip_mat * coefs
+            coefs = flip_mat * coefs
 
     else:
         logger.warning(f"Manufacturer: {manufacturer} not implemented for the Shim CS. Coefficients might be wrong.")
@@ -241,6 +236,7 @@ def get_scanner_shim_settings(bids_json_dict):
             scanner_shim['1'] = bids_json_dict.get('ShimSetting')
             scanner_shim['has_valid_settings'] = True
         elif n_shim_values == 8:
+            pass
             scanner_shim['2'] = bids_json_dict.get('ShimSetting')[3:]
             scanner_shim['1'] = bids_json_dict.get('ShimSetting')[:3]
             scanner_shim['has_valid_settings'] = True
@@ -252,11 +248,12 @@ def get_scanner_shim_settings(bids_json_dict):
     return scanner_shim
 
 
-def convert_to_mp(manufacturers_model_name, shim_settings):
-    """ Converts the ShimSettings tag from the json BIDS sidecar to the scanner units.
+def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
+    """ Converts the ShimSettings tag from the json BIDS sidecar to the ui units.
         (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
 
     Args:
+        manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
         manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
                                         ManufacturersModelName'. Supported names: 'Prisma_fit'.
         shim_settings (dict): Dictionary with keys: 'order1', 'order2', 'has_valid_settings'. 'order1' is a list of 3
@@ -269,32 +266,39 @@ def convert_to_mp(manufacturers_model_name, shim_settings):
     """
     scanner_shim_mp = shim_settings
 
-    if manufacturers_model_name == "Prisma_fit":
-        if shim_settings.get('1'):
-            # One can use the Siemens commandline AdjValidate tool to get all the values below:
-            max_current_mp_order1 = np.array([2300] * 3)
-            max_current_dcm_order1 = np.array([14436, 14265, 14045])
-            order1_mp = np.array(shim_settings['1']) * max_current_mp_order1 / max_current_dcm_order1
+    # Check if the manufacturer is implemented
+    if manufacturer not in SCANNER_CONSTRAINTS_DAC.keys():
+        logger.warning(f"{manufacturer} not implemented or does not include enough metadata information")
 
-            if np.any(np.abs(order1_mp) > max_current_mp_order1):
-                scanner_shim_mp['has_valid_settings'] = False
-                raise ValueError("Multipole values exceed known system limits.")
+    # Check if the manufacturer model is implemented
+    elif manufacturers_model_name in SCANNER_CONSTRAINTS_DAC[manufacturer].keys():
+        scanner_constraints_dac = SCANNER_CONSTRAINTS_DAC[manufacturer][manufacturers_model_name]
+        scanner_constraints = SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name]
+
+        # Do all the orders except f0
+        for order in ['1', '2', '3']:
+            # Make sure the order is available in the metadata
+            if shim_settings.get(order):
+                # Check if the order is implemented
+                if not scanner_constraints_dac.get(order):
+                    logger.warning(f"Order {order} conversion of {manufacturers_model_name} not implemented.")
+                    continue
+
+                # Convert to ui units
+                coefs_dac = shim_settings[order]
+                max_coef_ui = np.array([cst[1] for cst in scanner_constraints[order]])
+                coefs_ui = (np.array(coefs_dac) * max_coef_ui / np.array(scanner_constraints_dac[order]))
+                tolerance = 0.001 * max_coef_ui
+                if np.any(np.abs(coefs_ui) > (max_coef_ui + tolerance)):
+                    scanner_shim_mp['has_valid_settings'] = False
+                    raise ValueError("Current shim settings exceed known system limits.")
+                else:
+                    scanner_shim_mp[order] = coefs_ui
             else:
-                scanner_shim_mp['1'] = order1_mp
-
-        if shim_settings.get('2'):
-            max_current_mp_order2 = np.array([4959.01, 3551.29, 3503.299, 3551.29, 3487.302])
-            max_current_dcm_order2 = np.array([9998, 9998, 9998, 9998, 9998])
-            order2_mp = np.array(shim_settings['2']) * max_current_mp_order2 / max_current_dcm_order2
-
-            if np.any(np.abs(order2_mp) > max_current_mp_order2):
-                scanner_shim_mp['has_valid_settings'] = False
-                raise ValueError("Multipole values exceed known system limits.")
-            else:
-                scanner_shim_mp['2'] = order2_mp
-
+                logger.warning(f"Order {order} not available in the metadata, constraints might not be respected.")
     else:
-        logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, could not convert shim settings")
+        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented,"
+                       f"could not convert shim settings")
 
     return scanner_shim_mp
 
@@ -303,7 +307,9 @@ class ScannerShimSettings:
     def __init__(self, bids_json_dict):
 
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict)
-        self.shim_settings = convert_to_mp(bids_json_dict.get('ManufacturersModelName'), shim_settings_dac)
+        manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
+        manufacturer = bids_json_dict.get('Manufacturer')
+        self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):
         coefs = []
