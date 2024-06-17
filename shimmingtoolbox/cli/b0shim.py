@@ -155,7 +155,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     """
 
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
-    scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Set logger level
     set_all_loggers(verbose)

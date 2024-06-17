@@ -388,8 +388,7 @@ class ShimSequencer(Sequencer):
                                                               w_signal_loss_xy=self.w_signal_loss_xy, epi_te=self.epi_te)
             elif self.method == 'quad_prog':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
-                                                              self.nii_fieldmap.affine, reg_factor=self.reg_factor,
-                                                              opt_criteria='qp')
+                                                              self.nii_fieldmap.affine, reg_factor=self.reg_factor)
             else:
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine)
