@@ -2077,15 +2077,15 @@ def parse_slices(fname_nifti):
     return slices
 
 
-def define_slices(n_slices: int, factor=1, method='sequential'):
+def define_slices(n_slices: int, factor=1, method='ascending'):
     """
     Define the slices to shim according to the output convention. (list of tuples)
 
     Args:
         n_slices (int): Number of total slices.
         factor (int): Number of slices per shim.
-        method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'sequential',
-                      'volume'. See Examples for more details.
+        method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'ascending',
+                      'descending', 'volume'. See Examples for more details.
 
     Returns:
         list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
@@ -2094,7 +2094,7 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
         ::
             slices = define_slices(10, 2, 'interleaved')
             print(slices)  # [(0, 5), (1, 6), (2, 7), (3, 8), (4, 9)]
-            slices = define_slices(20, 5, 'sequential')
+            slices = define_slices(20, 5, 'ascending')
             print(slices)  # [(0, 1, 2, 3, 4), (5, 6, 7, 8, 9), (10, 11, 12, 13, 14), (15, 16, 17, 18, 19)]
             slices = define_slices(20, method='volume')
             # 'volume' ignores the 'factor' option
@@ -2111,14 +2111,14 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
         raise ValueError("SMS method does not support leftover slices")
 
     if method == 'interleaved':
-        if n_slices % 2 == 0:
-            range_1 = range(1, n_slices, 2)
-            range_2 = range(0, n_slices, 2)
-        else:
-            range_1 = range(0, n_slices, 2)
-            range_2 = range(1, n_slices, 2)
-
         if factor == 1:
+            if n_slices % 2 == 0:
+                range_1 = range(1, n_slices, 2)
+                range_2 = range(0, n_slices, 2)
+            else:
+                range_1 = range(0, n_slices, 2)
+                range_2 = range(1, n_slices, 2)
+
             for i_shim in range_1:
                 slices.append((i_shim,))
 
@@ -2128,32 +2128,43 @@ def define_slices(n_slices: int, factor=1, method='sequential'):
             leftover = n_slices % factor
 
         else:
+            if n_slices % 2 == 0:
+                range_1 = range(1, n_shims, 2)
+                range_2 = range(0, n_shims, 2)
+            else:
+                range_1 = range(0, n_shims, 2)
+                range_2 = range(1, n_shims, 2)
+
             if n_slices // factor % 2 != 0:
                 special_indexes = [i * n_shims for i in range(0, factor)]
-                for i_shim in range(0, n_shims, 2):
+                for i_shim in range_1:
                     slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
 
-                for i_shim in range(1, n_shims, 2):
+                for i_shim in range_2:
                     slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
 
             if n_slices // factor % 2 == 0:
-                mid = n_slices // factor
-                special_index = n_shims // 2 // 2
-                for i, i_shim in enumerate(range(1, n_slices//2 - 1, 2)):
-                    if i == special_index:
-                        slices.append((n_slices//2 - 1, n_slices - 1))
-                    slices.append((i_shim, mid + i_shim))
+                replace_index = n_shims // 2 // 2
+                special_indexes = [i * n_shims for i in range(0, factor)]
 
-                for i, i_shim in enumerate(range(2, n_slices//2, 2)):
-                    if i == special_index:
-                        slices.append((0, n_slices//2))
-                    slices.append((i_shim, mid + i_shim))
+                for i, i_shim in enumerate(range_1[:-1]):
+                    if i == replace_index:
+                        slices.append(tuple([range_1[-1] + special_index for special_index in special_indexes]))
+                    slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
 
-    elif method == 'sequential':
+                for i, i_shim in enumerate(range_2[1:]):
+                    if i == replace_index:
+                        slices.append(tuple([range_2[0] + special_index for special_index in special_indexes]))
+                    slices.append(tuple([i_shim + special_index for special_index in special_indexes]))
+
+    elif method == 'ascending':
         for i_shim in range(n_shims):
             slices.append(tuple(range(i_shim, n_shims * factor, n_shims)))
 
-        leftover = n_slices % factor
+    elif method == 'descending':
+        for i_shim in range(n_shims):
+            slices.append(tuple(range(n_shims - i_shim - 1, n_slices, n_shims)))
+
 
     elif method == 'volume':
         slices.append(tuple(range(n_shims)))

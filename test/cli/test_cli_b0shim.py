@@ -1031,8 +1031,8 @@ def test_cli_define_slices_def():
         runner = CliRunner()
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', '12',
-                                                '--factor', '5',
-                                                '--method', 'sequential',
+                                                '--factor', '6',
+                                                '--method', 'ascending',
                                                 '-o', fname_output],
                             catch_exceptions=False)
 
@@ -1048,7 +1048,7 @@ def test_cli_define_slices_anat():
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', fname_anat,
                                                 '--factor', '5',
-                                                '--method', 'sequential',
+                                                '--method', 'ascending',
                                                 '-o', fname_output],
                             catch_exceptions=False)
 
@@ -1065,7 +1065,7 @@ def test_cli_define_slices_wrong_input():
         with pytest.raises(ValueError, match="Could not get the number of slices"):
             runner.invoke(define_slices_cli, ['--slices', fname_anat,
                                               '--factor', '5',
-                                              '--method', 'sequential',
+                                              '--method', 'ascending',
                                               '-o', fname_output],
                           catch_exceptions=False)
 
@@ -1078,7 +1078,7 @@ def test_cli_define_slices_wrong_output():
         with pytest.raises(ValueError, match="Filename of the output must be a json file"):
             runner.invoke(define_slices_cli, ['--slices', "10",
                                               '--factor', '5',
-                                              '--method', 'sequential',
+                                              '--method', 'ascending',
                                               '-o', fname_output],
                           catch_exceptions=False)
 

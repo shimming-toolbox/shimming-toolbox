@@ -67,12 +67,12 @@ def b0shim_cli():
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode ('ascending' or 'descending'), shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog']),
@@ -420,7 +420,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
             elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
-                # Assumes all slices are in list_slices once which is the case for sequential, interleaved and
+                # Assumes all slices are in list_slices once which is the case for ascending, descending, interleaved and
                 # volume
                 n_slices = np.sum([len(a_shim) for a_shim in list_slices])
                 for i_slice in range(n_slices):
@@ -544,12 +544,12 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "'--slice-factor' value is '3', then with the 'sequential' ('ascending' or 'descending') mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
@@ -1201,7 +1201,7 @@ def _get_fatsat_option(json_anat, fatsat):
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")
-@click.option('--method', type=click.Choice(['interleaved', 'sequential', 'volume']), required=True,
+@click.option('--method', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume']), required=True,
               help="Defines how the slices should be sorted")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'slices.json'),
               show_default=True, help="Output filename for the json file")
