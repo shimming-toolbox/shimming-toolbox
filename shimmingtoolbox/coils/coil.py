@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import copy
-import logging
 
+import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import siemens_basis, ge_basis, philips_basis, SHIM_CS
+from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
+                                                    channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 logger = logging.getLogger(__name__)
@@ -16,6 +16,57 @@ required_constraints = [
     "coef_channel_minmax",
     "coef_sum_max"
 ]
+
+SCANNER_CONSTRAINTS = {
+    "Siemens": {
+        "Prisma_fit": {
+            "0": [[123100100, 123265000]],
+            "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
+            "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
+                  [-3487.302, 3487.302]],
+            "3": []
+        },
+        "Investigational_Device_7T": {
+            "0": [[296490000, 297490000]],
+            "1": [[-4999.976, 4999.976], [-4999.980, 4999.980], [-4999.957, 4999.957]],
+            "2": [[-6163.2, 6163.2], [-2592.0, 2592.0], [-2592.0, 2592.0], [-2476.8, 2476.8], [-2476.8, 2476.8]],
+            "3": []
+        },
+        "Terra": {
+            "0": [[296760000, 297250000]],
+            "1": [[-3000, 3000], [-3000, 3000], [-3000, 3000]],
+            "2": [[-9360.0, 9360.0], [-4680.0, 4680.0], [-4620.0, 4620.0], [-4620.0, 4620.0], [-4560.0, 4560.0]],
+            "3": [[-15232.0, 15232.0], [-14016.0, 14016.0], [-14016.0, 14016.0], [-14016.0, 14016.0]],
+        }
+    },
+    "GE": {
+
+    },
+    "Philips": {
+
+    }
+}
+
+# One can use the Siemens commandline AdjValidate tool to get all the values below
+SCANNER_CONSTRAINTS_DAC = {
+    "Siemens": {
+        "Prisma_fit": {
+            "1": [14436.0, 14265.0, 14045.0],
+            "2": [9998.0] * 5,
+            "3": []
+        },
+        "Investigational_Device_7T": {
+            "1": [62479.0, 62264.0, 54082.0],
+            "2": [18000.0] * 5,
+            "3": []
+        },
+        "Terra": {
+            "1": [17729.0, 18009.0, 17872.0],
+            "2": [12500.0] * 5,
+            "3": []
+        }
+    }
+}
 
 
 class Coil(object):
@@ -94,18 +145,18 @@ class Coil(object):
                     if sum([len(constraints["coef_channel_minmax"][key]) for key in
                             constraints["coef_channel_minmax"]]) != self.dim[3]:
                         raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
-                                         f"{self.dim[3]} {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
+                                         f"{self.dim[3]}, currently:  {sum([len(constraints['coef_channel_minmax'][key]) for key in constraints['coef_channel_minmax']])}")
 
                     for key in constraints["coef_channel_minmax"]:
                         for i in range(len(constraints["coef_channel_minmax"][key])):
                             if constraints["coef_channel_minmax"][key][i] is None:
-                                constraints["coef_channel_minmax"][key][i] = (-np.inf, np.inf)
+                                constraints["coef_channel_minmax"][key][i] = [-np.inf, np.inf]
                             if constraints["coef_channel_minmax"][key][i][0] is None:
                                 constraints["coef_channel_minmax"][key][i] = \
-                                    (-np.inf, constraints["coef_channel_minmax"][key][i][1])
+                                    [-np.inf, constraints["coef_channel_minmax"][key][i][1]]
                             if constraints["coef_channel_minmax"][key][i][1] is None:
                                 constraints["coef_channel_minmax"][key][i] = \
-                                    (constraints["coef_channel_minmax"][key][i][0], np.inf)
+                                    [constraints["coef_channel_minmax"][key][i][0], np.inf]
 
                 if key_name == "coef_sum_max":
                     if constraints["coef_sum_max"] is None:
@@ -125,16 +176,36 @@ class Coil(object):
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
 
-    def __init__(self, dim_volume, affine, constraints, orders, manufacturer=""):
+    def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None):
+        """
+        Args:
+            dim_volume (tuple): x, y and z dimensions.
+            affine (np.ndarray): 4x4 array containing the qform affine transformation for the coil profiles
+            constraints (dict): dict containing the constraints for the coil profiles. Required keys:
 
+                * name (str): Name of the coil.
+                * coef_sum_max (float): Contains the maximum value for the sum of the coefficients. None is used to
+                  specify no bounds
+                * coef_channel_max (list): List of ``(min, max)`` pairs for each coil channels. (None, None) is
+                  used to specify no bounds.
+
+            orders (tuple): Degrees of the desired terms in the series expansion, specified as a vector of non-negative
+                            integers (``(0:1:n)`` yields harmonics up to n-th order)
+            manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
+            shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or
+                           'I'. Only relevant if the manufacturer is unknown. Default: 'RAS'.
+        """
         self.orders = orders
 
         manufacturer = manufacturer.upper()
         if manufacturer in SHIM_CS:
-            self.coord_system = SHIM_CS[manufacturer.upper()]
+            self.coord_system = SHIM_CS[manufacturer]
         else:
-            logger.warning(f"Unknown manufacturer {manufacturer}, assuming RAS")
-            self.coord_system = 'RAS'
+            logger.warning(f"Unknown manufacturer {manufacturer}")
+            if shim_cs is None:
+                self.coord_system = 'RAS'
+            else:
+                self.coord_system = shim_cs
 
         self.affine = affine
 
@@ -142,42 +213,22 @@ class ScannerCoil(Coil):
         sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
         constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.orders)
-
         super().__init__(sph_coil_profile, affine, constraints)
 
     def _create_coil_profile(self, dim, manufacturer=None):
-        # Define profile for Tx (constant volume)
-        if 0 in self.orders:
-            profile_order_0 = -np.ones(dim)
+        # Create spherical harmonics coil profiles
+        # f0, orders
+        mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
+        if manufacturer == 'SIEMENS':
+            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
+        elif manufacturer == 'GE':
+            sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
+        elif manufacturer == 'PHILIPS':
+            sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         else:
-            profile_order_0 = None
-        # define the coil profiles
-        if self.orders == [0]:
-            # f0 --> [1]
-            sph_coil_profile = profile_order_0[..., np.newaxis]
-        else:
-            # f0, orders
-            temp_orders = [order for order in self.orders if order != 0]
-            mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
-
-            if manufacturer == 'SIEMENS':
-                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
-                                               shim_cs=self.coord_system)
-            elif manufacturer == 'GE':
-                profile_orders = ge_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
-                                          shim_cs=self.coord_system)
-            elif manufacturer == 'PHILIPS':
-                profile_orders = philips_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
-                                               shim_cs=self.coord_system)
-            else:
-                logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2 for order "
-                               f"0, 1 and 2 respectively")
-                profile_orders = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(temp_orders),
-                                               shim_cs=self.coord_system)
-            if profile_order_0 is None:
-                sph_coil_profile = profile_orders
-            else:
-                sph_coil_profile = np.concatenate((profile_order_0[..., np.newaxis], profile_orders), axis=3)
+            logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
+                           "order 0, 1, 2 and 3 respectively")
+            sph_coil_profile = sh_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders), shim_cs=self.coord_system)
 
         return sph_coil_profile
 
@@ -188,76 +239,46 @@ class ScannerCoil(Coil):
         return super().__eq__(__value)
 
 
-def get_scanner_constraints(manufacturers_model_name, orders):
+def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
 
     Args:
         manufacturers_model_name (str): Name of the scanner
         orders (list): List of all orders of the shim system to be used
+        manufacturer (str): Manufacturer of the scanner
 
     Returns:
         dict: The constraints including the scanner name, bounds and the maximum sum of currents.
     """
+    constraints = {
+        "coef_channel_minmax": {"0": [], "1": [], "2": [], "3": []},
+        "coef_sum_max": None
+    }
 
-    if manufacturers_model_name == "Prisma_fit":
-        constraints = {
-            "name": "Prisma_fit",
-            "coef_channel_minmax": {"0": [], "1": [], "2": []},
-            "coef_sum_max": None
-        }
-        if 0 in orders:
-            constraints["coef_channel_minmax"]["0"].append([123100100, 123265000])
-        if 1 in orders:
-            for _ in range(3):
-                constraints["coef_channel_minmax"]["1"].append([-2300, 2300])
-        if 2 in orders:
-            constraints["coef_channel_minmax"]["2"].extend([[-4959.01, 4959.01],
-                                                            [-3551.29, 3551.29],
-                                                            [-3503.299, 3503.299],
-                                                            [-3551.29, 3551.29],
-                                                            [-3487.302, 3487.302]])
+    # If the manufacturer and scanner is implemented
+    if (manufacturer in SCANNER_CONSTRAINTS.keys() and
+            manufacturers_model_name in SCANNER_CONSTRAINTS[manufacturer].keys()):
+        constraints["name"] = manufacturers_model_name
+        for order in orders:
+            constrs = SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name][str(order)]
+            if constrs:
+                constraints["coef_channel_minmax"][str(order)] = constrs
+            else:
+                n_channels = channels_per_order(order, manufacturer)
+                constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
+                logger.warning(
+                    f"Order {order} not available on the {manufacturers_model_name}, unconstrained optimization for "
+                    f"this order.")
 
-    elif manufacturers_model_name == "Investigational_Device_7T":
-        constraints = {
-            "name": "Investigational_Device_7T",
-            "coef_channel_minmax": {"0": [], "1": [], "2": []},
-            "coef_sum_max": None
-        }
-        if 0 in orders:
-            pass
-            # todo: f0 min and max is wrong
-        constraints["coef_channel_minmax"]["0"].append([None, None])
-        if 1 in orders:
-            for _ in range(3):
-                constraints["coef_channel_minmax"]["1"].append([-5000, 5000])
-        if 2 in orders:
-            constraints["coef_channel_minmax"]["2"].extend([[-1839.63, 1839.63],
-                                                            [-791.84, 791.84],
-                                                            [-791.84, 791.84],
-                                                            [-615.87, 615.87],
-                                                            [-615.87, 615.87]])
     else:
-        logger.warning(f"Scanner: {manufacturers_model_name} constraints not yet implemented, constraints might not be "
-                       "respected.")
-        constraints = {
-            "name": "Unknown",
-            "coef_channel_minmax": {"0": [], "1": [], "2": []},
-            "coef_sum_max": None
-        }
-
-        if 0 in orders:
-            constraints["coef_channel_minmax"]["0"] = [[None, None]]
-        if 1 in orders:
-            constraints["coef_channel_minmax"]["1"] = [[None, None] for _ in range(3)]
-        if 2 in orders:
-            constraints["coef_channel_minmax"]["2"] = [[None, None] for _ in range(5)]
+        logger.warning(f"Scanner: {manufacturers_model_name} not implemented, constraints might not be respected.")
+        constraints["name"] = "Unknown"
 
     return constraints
 
 
 def restrict_sph_constraints(bounds: dict, orders):
-    # ! Modify description if everything works
     """ Select bounds according to the order specified
 
     Args:
@@ -278,6 +299,9 @@ def restrict_sph_constraints(bounds: dict, orders):
     if 2 in orders:
         # f0, ch1, ch2, ch3, ch4, ch5, ch6, ch7, ch8 -- > [9]
         minmax_out["2"] = bounds["2"]
+    if 3 in orders:
+        minmax_out["3"] = bounds["3"]
+
     if minmax_out == {}:
         raise NotImplementedError("Order must be between 0 and 2")
 
