@@ -473,6 +473,8 @@ class ShimSequencer(Sequencer):
             if self.opt_criteria == 'grad':
                 # Plot gradient realted results
                 self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
+
+                # x, y, z are in the patient's coordinate system
                 self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
                 self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
                 self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
@@ -619,14 +621,12 @@ class ShimSequencer(Sequencer):
                                                             order=0,
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
-        # mask_full_binary = erode_binary_mask(mask_full_binary,shape='sphere',size=9)
-        # Find the correction
-        # This is the same as this but in a faster way:
-        # for i_shim in range(len(slices)):
-        #   full_correction += correction[..., i_shim] * masks_fmap[..., i_shim]
+
         full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
+
         # Calculate the weighted whole mask
         mask_weight = np.sum(self.masks_fmap, axis=3)
+
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
         full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
@@ -846,9 +846,12 @@ class ShimSequencer(Sequencer):
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
 
         # Save the signal loss maps
-        nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header), os.path.join(self.path_output, 'mask_erode.nii.gz'))
+        nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+                 os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
+        nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+                 os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
+        nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+                 os.path.join(self.path_output, 'mask_erode.nii.gz'))
 
         temp_unshimmed_signal_loss = unshimmed_signal_loss.copy()
         temp_unshimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan

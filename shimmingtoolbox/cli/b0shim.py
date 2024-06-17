@@ -40,12 +40,6 @@ AVAILABLE_ORDERS = [-1, 0, 1, 2, 3]
 def b0shim_cli():
     pass
 
-#required_options = {
-#    'grad': ['w_signal_loss', 'reg_factor'],
-#    'mse': 'reg_factor',
-#    'mae': 'reg_factor',
-#}
-#@click.command(context_settings=CONTEXT_SETTINGS, cls=command_required_option_from_option('opt_criteria', required_options))
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -87,13 +81,14 @@ def b0shim_cli():
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
+                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
 @click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
               " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
-              " and Gradient in z, x, y direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+              " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--epi-echo-time', 'epi_te', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="EPI acquistion parameter Echo Time (TE) in seconds. Relevant for signal recovery")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
@@ -564,7 +559,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: MSE of Bz and Gz, i.e., Signal Loss")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: MSE of Bz and Gz, i.e., Signal Loss, "
+                   "rmse: Root Mean Squared Error")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
