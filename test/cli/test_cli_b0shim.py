@@ -91,6 +91,7 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.1',
+                                             '--slices', 'ascending',
                                              '--output', tmp],
                                 catch_exceptions=False)
 

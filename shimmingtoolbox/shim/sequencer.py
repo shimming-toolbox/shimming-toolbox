@@ -64,7 +64,7 @@ class Sequencer(object):
     """
 
     def __init__(self, slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor,
-                 w_signal_loss=0, w_signal_loss_xy=0, epi_te=0, path_output=None):
+                w_signal_loss=0, w_signal_loss_xy=0, epi_te=0, path_output=None):
         """
         Constructor of the sequencer class
 
@@ -2080,7 +2080,7 @@ def parse_slices(fname_nifti):
     return slices
 
 
-def define_slices(n_slices: int, factor=1, method='ascending'):
+def define_slices(n_slices: int, factor=1, method='ascending', software_version=None):
     """
     Define the slices to shim according to the output convention. (list of tuples)
 
@@ -2131,9 +2131,14 @@ def define_slices(n_slices: int, factor=1, method='ascending'):
             leftover = n_slices % factor
 
         else:
+            if software_version != 'syngo MR E11':
+                logger.warning("SMS has only been tested with syngo MR E11. If you are using a different software "
+                               "version, the slices might not be interleaved or grouped correctly.")
+
             if n_slices % 2 == 0:
                 range_1 = range(1, n_shims, 2)
                 range_2 = range(0, n_shims, 2)
+
             else:
                 range_1 = range(0, n_shims, 2)
                 range_2 = range(1, n_shims, 2)

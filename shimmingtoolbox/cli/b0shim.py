@@ -271,7 +271,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices)
+        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
@@ -728,7 +728,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices)
+        list_slices = define_slices(n_slices, json_fm_data.get('SoftwareVersions'), slice_factor, slices, json_fm_data.get('SoftwareVersions'))
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
