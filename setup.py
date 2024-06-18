@@ -57,6 +57,7 @@ setup(
         "raven",
         "joblib",
         "quadprog",
+        "cloup",
         "spec2nii"
     ],
     extras_require={
