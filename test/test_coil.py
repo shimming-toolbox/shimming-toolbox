@@ -4,7 +4,7 @@
 import numpy as np
 import json
 
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, SCANNER_CONSTRAINTS
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox import __dir_config_scanner_constraints__
 
@@ -50,7 +50,7 @@ def test_create_scanner_coil_order1():
 
 def test_create_scanner_coil_siemens_order2():
     sph_contraints = json.load(open(__dir_config_scanner_constraints__))
-    affine= np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
+    affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'SIEMENS')
 
     assert np.allclose(scanner_coil.profile[:, 1, :, 5], np.array([[8.5154957e-05, 0.0000000e+00, -8.5154957e-05],
@@ -73,6 +73,26 @@ def test_create_scanner_coil_ge():
     affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'GE')
 
-    assert np.allclose(scanner_coil.profile[1, :, :, 5], np.array([[1.009365e-07, 3.446500e-09, 3.974650e-08],
-                                                                   [6.689500e-08, 0.000000e+00, 6.689500e-08],
-                                                                   [3.974650e-08, 3.446500e-09, 1.009365e-07]]))
+    assert np.allclose(scanner_coil.profile[1, :, :, 5], np.array([[-5.6703165e-05, -5.0049942e-05, -4.3501609e-05],
+                                                                   [-5.9169445e-05, -5.2430000e-05, -4.5795445e-05],
+                                                                   [-6.1538609e-05, -5.4712942e-05, -4.7992165e-05]]))
+
+
+def test_get_scanner_constraints():
+    orders = [0, 1, 2, 3]
+    for manufacturer in SCANNER_CONSTRAINTS.keys():
+        for model in SCANNER_CONSTRAINTS[manufacturer].keys():
+            constraints = get_scanner_constraints(model, orders, manufacturer)
+            for order in orders:
+                if SCANNER_CONSTRAINTS[manufacturer][model][str(order)]:
+                    assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
+                                             SCANNER_CONSTRAINTS[manufacturer][model][str(order)]))
+
+
+def test_get_scanner_constraints_specific_orders():
+    orders = [0, 2]
+    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens")
+    for order in orders:
+        assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
+                                 SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit"][str(order)]))
+    assert not constraints['coef_channel_minmax']["1"]

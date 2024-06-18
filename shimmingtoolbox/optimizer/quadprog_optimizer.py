@@ -20,7 +20,7 @@ class QuadProgOpt(OptimizerUtils):
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, initial_guess_method='mean'):
+    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, initial_guess_method='zeros'):
         """
         Initializes coils according to input list of Coil
 
