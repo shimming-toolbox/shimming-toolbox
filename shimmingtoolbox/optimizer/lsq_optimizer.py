@@ -332,6 +332,43 @@ class LsqOptimizer(OptimizerUtils):
 
         return currents
 
+    def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
+        len_unshimmed = len(unshimmed_vec)
+        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
+        len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
+
+        inv_factor = 1 / (len_unshimmed * factor)
+        w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
+        w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
+
+        # MSE term for unshimmed_vec and coil_mat
+        a1 = inv_factor * (coil_mat.T @ coil_mat)
+        b1 = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        c1 = inv_factor * (unshimmed_vec @ unshimmed_vec)
+
+        # MSE term for unshimmed_Gz_vec and coil_Gz_mat
+        a2 = w_inv_factor_Gz * (self.coil_Gz_mat.T @ self.coil_Gz_mat)
+        b2 = 2 * w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
+        c2 = w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
+
+        # MSE term for unshimmed_Gx_vec and coil_Gx_mat
+        a3 = w_inv_factor_Gxy * (self.coil_Gx_mat.T @ self.coil_Gx_mat)
+        b3 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.coil_Gx_mat)
+        c3 = w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.unshimmed_Gx_vec)
+
+        # MSE term for unshimmed_Gy_vec and coil_Gy_mat
+        a4 = w_inv_factor_Gxy * (self.coil_Gy_mat.T @ self.coil_Gy_mat)
+        b4 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.coil_Gy_mat)
+        c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
+
+        # Combining the terms
+        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
+        b = b1 + b2 + b3 + b4
+        c = c1 + c2 + c3 + c4
+        e = self.reg_vector
+
+        return a, b, c, e
+
 
 class PmuLsqOptimizer(LsqOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
@@ -467,40 +504,3 @@ class PmuLsqOptimizer(LsqOptimizer):
                                        options={'maxiter': 1000, 'ftol': 1e-9})
 
         return currents_sp
-
-    def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
-        len_unshimmed = len(unshimmed_vec)
-        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
-        len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
-
-        inv_factor = 1 / (len_unshimmed * factor)
-        w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
-        w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
-
-        # MSE term for unshimmed_vec and coil_mat
-        a1 = inv_factor * (coil_mat.T @ coil_mat)
-        b1 = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        c1 = inv_factor * (unshimmed_vec @ unshimmed_vec)
-
-        # MSE term for unshimmed_Gz_vec and coil_Gz_mat
-        a2 = w_inv_factor_Gz * (self.coil_Gz_mat.T @ self.coil_Gz_mat)
-        b2 = 2 * w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
-        c2 = w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
-
-        # MSE term for unshimmed_Gx_vec and coil_Gx_mat
-        a3 = w_inv_factor_Gxy * (self.coil_Gx_mat.T @ self.coil_Gx_mat)
-        b3 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.coil_Gx_mat)
-        c3 = w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.unshimmed_Gx_vec)
-
-        # MSE term for unshimmed_Gy_vec and coil_Gy_mat
-        a4 = w_inv_factor_Gxy * (self.coil_Gy_mat.T @ self.coil_Gy_mat)
-        b4 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.coil_Gy_mat)
-        c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
-
-        # Combining the terms
-        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
-        b = b1 + b2 + b3 + b4
-        c = c1 + c2 + c3 + c4
-        e = self.reg_vector
-
-        return a, b, c, e
