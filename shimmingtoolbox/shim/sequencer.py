@@ -862,7 +862,6 @@ class ShimSequencer(Sequencer):
         metric_shimmed_std = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(temp_unshimmed_signal_loss), mask_erode, metric='mean')
         metric_shimmed_absmean = calculate_metric_within_mask(np.abs(temp_shimmed_signal_loss), mask_erode, metric='mean')
 
         fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
@@ -878,7 +877,7 @@ class ShimSequencer(Sequencer):
         #
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                    f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
+                    , fontsize=20)
         # Change title font size
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -1889,15 +1888,15 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
     metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
-    min_value = min(np.nanmin(mt_unshimmed_masked), np.nanmin(mt_shimmed_masked))
-    max_value = max(np.nanmax(mt_unshimmed_masked), np.nanmax(mt_shimmed_masked))
+    min_value = -100
+    max_value = 100
 
     fig = Figure(figsize=(15, 9))
     fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
                  f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
@@ -1908,7 +1907,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
 
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
                  f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
