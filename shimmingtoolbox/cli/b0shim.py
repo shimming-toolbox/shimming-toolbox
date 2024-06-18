@@ -71,18 +71,19 @@ def b0shim_cli():
                    "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog']),
-              required=False, default='quad_prog', show_default=True,
-              help="Method used by the optimizer. LS, and QP will respect the constraints,"
-                   "PS will not respect the constraints")
+@click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
+              type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'gradient']),
+              help="Method used by the optimizer. LS and QP will respect the constraints, "
+              "the gradient method only accepts constraints for each channel (not constraints on the total current), "
+              "PS will not respect any constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'ps_huber']), required=False,
               default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
+              help="Criteria of optimization for the optimizer 'least_squares' and 'gradient'."
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, ps-huber: pseudo huber cost function ")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -773,7 +774,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                             coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
                     else:
                         coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                        coil_indexes_static[coil.name][key][1]])
+                                                                     coil_indexes_static[coil.name][key][1]])
                 else:
                     coefs_coil_riro = np.zeros_like(
                         coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
@@ -781,7 +782,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 if coil in list_coils_static:
                     if key in coil_indexes_static[coil.name]:
                         coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                          coil_indexes_static[coil.name][key][1]])
+                                                                       coil_indexes_static[coil.name][key][1]])
                     else:
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
                 else:

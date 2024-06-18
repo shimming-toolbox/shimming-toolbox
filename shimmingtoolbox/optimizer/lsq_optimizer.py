@@ -4,6 +4,7 @@
 import numpy as np
 from numpy.linalg import norm
 import scipy.optimize as opt
+from scipy.special import pseudo_huber
 from typing import List
 import warnings
 
@@ -12,7 +13,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'rmse']
+allowed_opt_criteria = ['mse', 'mae', 'std', 'rmse', 'ps_huber']
 
 
 class LsqOptimizer(OptimizerUtils):
@@ -38,11 +39,13 @@ class LsqOptimizer(OptimizerUtils):
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
+        self._delta = 1  # Initialize delta for pseudo huber function
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
             allowed_opt_criteria[3]: self._residuals_rmse,
+            allowed_opt_criteria[4]: self._residuals_ps_huber,
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
@@ -75,6 +78,27 @@ class LsqOptimizer(OptimizerUtils):
 
         # MAE regularized to minimize currents
         return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+
+    def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Pseudo huber objective function to minimize mean squared error or mean absolute error.
+        The delta parameter defines a threshold between the linear (mae) vs. quadratic (mse) behavior and
+        is calculated from the residuals of the field.
+
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            float: Residuals for least squares optimization
+        """
+        residuals = unshimmed_vec + coil_mat @ coef
+        if self._delta == 1:
+            self._delta = np.max(residuals)
+        return np.sum(pseudo_huber(self._delta, np.abs(residuals))) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
