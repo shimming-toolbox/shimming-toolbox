@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import time
 import numpy as np
 from numpy.linalg import norm
 import scipy.optimize as opt
