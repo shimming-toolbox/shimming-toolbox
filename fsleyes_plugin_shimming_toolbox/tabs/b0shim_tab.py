@@ -233,6 +233,10 @@ class B0ShimTab(Tab):
             {
                 "label": "2",
                 "option_value": "2"
+            },
+            {
+                "label": "3",
+                "option_value": "3"
             }
         ]
 
@@ -241,8 +245,8 @@ class B0ShimTab(Tab):
             label="Scanner Order",
             checkbox_metadata=checkbox_scanner_order_metadata,
             option_name='scanner-coil-order',
-            components_dict=[{'object': dropdown_scanner_format, 'checkbox': ['f0', '1', '2']},
-                             {'object': component_scanner, 'checkbox': ['f0', '1', '2']}],
+            components_dict=[{'object': dropdown_scanner_format, 'checkbox': ['f0', '1', '2', '3']},
+                             {'object': component_scanner, 'checkbox': ['f0', '1', '2', '3']}],
         )
 
         dropdown_ovf_metadata = [
@@ -283,6 +287,10 @@ class B0ShimTab(Tab):
                 "label": "Mean Absolute Error",
                 "option_value": "mae",
             },
+            {
+                "label": "Root Mean Squared Error",
+                "option_value": "rmse",
+            }
         ]
 
         dropdown_crit = DropdownComponent(
@@ -520,7 +528,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_scanner_format_metadata,
             label="Scanner Output Format",
-            option_name = 'output-file-format-scanner',
+            option_name='output-file-format-scanner',
             cli=realtime_cli
         )
 
@@ -531,12 +539,17 @@ class B0ShimTab(Tab):
             },
             {
                 "label": "1",
-                "option_value": "0,1"
+                "option_value": "1"
             },
             {
                 "label": "2",
-                "option_value": "0,1,2"
-            }
+                "option_value": "2"
+            },
+            {
+                "label": "3",
+                "option_value": "3"
+            },
+
         ]
 
         input_text_box_metadata_scanner = [
@@ -547,14 +560,14 @@ class B0ShimTab(Tab):
             },
         ]
         component_scanner = InputComponent(self, input_text_box_metadata_scanner, cli=realtime_cli)
-            
+
         self.checkbox_scanner_order_rt = CheckboxComponent(
             panel=self,
             label="Scanner Order",
             checkbox_metadata=checkbox_scanner_order_metadata,
             option_name='scanner-coil-order',
-            components_dict=[{'object': dropdown_scanner_format, 'checkbox': ['f0', '1', '2']},
-                             {'object': component_scanner, 'checkbox': ['f0', '1', '2']}],
+            components_dict=[{'object': dropdown_scanner_format, 'checkbox': ['f0', '1', '2', '3']},
+                             {'object': component_scanner, 'checkbox': ['f0', '1', '2', '3']}],
             additional_sizer_dict={'info text': None, 'label': 'Scanner Order RIRO',
                                    'option name': 'scanner-coil-order-riro',
                                    'checkbox metadata': checkbox_scanner_order_metadata}
@@ -575,7 +588,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_ovf_metadata,
             label="Output Value Format",
-            option_name = 'output-value-format',
+            option_name='output-value-format',
             cli=realtime_cli
         )
 
@@ -598,6 +611,10 @@ class B0ShimTab(Tab):
                 "label": "Mean Absolute Error",
                 "option_value": "mae",
             },
+            {
+                "label": "Root Mean Squared Error",
+                "option_value": "rmse",
+            }
         ]
 
         dropdown_crit = DropdownComponent(
@@ -659,7 +676,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_slice_metadata,
             label="Slice Ordering",
-            option_name = 'slices',
+            option_name='slices',
             list_components=[self.create_empty_component(),
                              component_slice_seq,
                              component_slice_int,
@@ -686,7 +703,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_fatsat_metadata,
             label="Fat Saturation",
-            option_name = 'fatsat',
+            option_name='fatsat',
             cli=realtime_cli
         )
 
@@ -705,7 +722,7 @@ class B0ShimTab(Tab):
             panel=self,
             dropdown_metadata=dropdown_coil_format_metadata,
             label="Custom Coil Output Format",
-            option_name = 'output-file-format-coil',
+            option_name='output-file-format-coil',
             cli=realtime_cli,
             list_components=[self.create_empty_component(),
                              dropdown_fatsat]

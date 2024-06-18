@@ -4,7 +4,8 @@ setup(
     name='fsleyes-plugin-shimming-toolbox',
     install_requires=[
         "imageio",
-        'pre-commit>=2.10.0'
+        'pre-commit>=2.10.0',
+        'numpy<2.0'
     ],
     packages=find_packages(exclude=['.git']),
     include_package_data=True,
