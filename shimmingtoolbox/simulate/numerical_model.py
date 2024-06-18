@@ -207,9 +207,9 @@ class NumericalModel:
         vol_dims = deltaB0.shape
 
         if len(vol_dims) == 2:
-            signal = np.zeros((vol_dims[0], vol_dims[1], 1), dtype="complex_")
+            signal = np.zeros((vol_dims[0], vol_dims[1], 1), dtype=np.complex128)
         elif len(vol_dims) == 3:
-            signal = np.zeros((vol_dims[0], vol_dims[1], vol_dims[2]), dtype="complex_")
+            signal = np.zeros((vol_dims[0], vol_dims[1], vol_dims[2]), dtype=np.complex128)
 
         signal = (
             proton_density
