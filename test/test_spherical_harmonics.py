@@ -13,7 +13,7 @@ dummy_data = [
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
 def test_normal_use(x, y, z):
-    orders = np.array(range(0, 2, 1))
+    orders = np.array(range(2))
     basis = spherical_harmonics(orders, x, y, z)
 
     assert(basis.ndim == 4)
@@ -22,7 +22,7 @@ def test_normal_use(x, y, z):
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
 def test_wrong_input_dimension(x, y, z):
-    orders = np.array(range(0, 2, 1))
+    orders = np.array(range(2))
 
     with pytest.raises(RuntimeError, match="Input arrays X, Y, and Z must be identically sized"):
         spherical_harmonics(orders, x[:, :, 0], y, z)
@@ -30,7 +30,7 @@ def test_wrong_input_dimension(x, y, z):
 
 @pytest.mark.parametrize('x,y,z', dummy_data)
 def test_negative_order(x, y, z):
-    orders = np.array(range(-1, 2, 1))
+    orders = np.array(range(-1, 2))
 
     with pytest.raises(RuntimeError, match="Orders must be positive"):
         spherical_harmonics(orders, x, y, z)

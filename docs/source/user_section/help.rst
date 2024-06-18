@@ -1,7 +1,5 @@
 Help
 ====
 
-If you need help using the ``shimming-toolbox``, please contact the
-developer team via a `GitHub
-Issue <https://github.com/shimming-toolbox/shimming-toolbox/issues>`__, or by starting a
-`GitHub Discussion <https://github.com/shimming-toolbox/shimming-toolbox/discussions>`__.
+If you need any help using the ``shimming-toolbox``, or if you have questions about the methods, please post your question in the 
+`Discussion Forum <https://github.com/shimming-toolbox/shimming-toolbox/discussions>`__. We will be happy to assist you 😊

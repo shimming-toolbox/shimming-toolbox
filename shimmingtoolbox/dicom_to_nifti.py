@@ -14,7 +14,7 @@ import shutil
 
 from shimmingtoolbox import __dir_config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
-from shimmingtoolbox.utils import create_output_dir, run_subprocess
+from shimmingtoolbox.utils import create_output_dir
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -57,6 +57,13 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
     # Copy original dicom files into nifti_path/sourcedata
     copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
+
+    # Update the PATH environment variable to include the dcm2niix executable
+    # TODO: Try this out on Windows, path could be Scripts instead of bin
+    if 'ST_DIR' in os.environ and os.path.exists(os.environ['ST_DIR']):
+        os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'bin') + os.pathsep + os.environ['PATH']
+    else:
+        logger.warning("Environment variable ST_DIR not found. Using default path.")
 
     # Run dcm2bids
     check_latest('dcm2bids')

@@ -17,9 +17,10 @@ import logging
 import os
 from matplotlib.figure import Figure
 
-from shimmingtoolbox import __dir_config_scanner_constraints__
+from shimmingtoolbox import __dir_config_scanner_constraints__, __dir_config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -31,7 +32,7 @@ from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-AVAILABLE_ORDERS = [-1, 0, 1, 2]
+AVAILABLE_ORDERS = [-1, 0, 1, 2, 3]
 
 
 @click.group(context_settings=CONTEXT_SETTINGS,
@@ -48,7 +49,7 @@ def b0shim_cli():
                    "profiles must be in Hz/unit_shim). If using the scanner's gradient/shim coils, the coil profiles "
                    "must be in Hz/unit_shim and fieldmaps must be in Hz. If you want to shim using the scanner's "
                    "gradient/shim coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_scanner_constraints__}")
+                   f"see: {__dir_config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
@@ -140,10 +141,11 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     Example of use: st_b0shim dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
-
-    scanner_coil_order = parse_orders(scanner_coil_order)
     # Set logger level
     set_all_loggers(verbose)
+
+    # Parse scanner_coil_order
+    scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
@@ -474,7 +476,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
                    "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_scanner_constraints__}")
+                   f"see: {__dir_config_custom_coil_constraints__}")
 @click.option('--coil-riro', 'coils_riro', nargs=2, multiple=True,
               type=(click.Path(exists=True), click.Path(exists=True)), required=False,
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -484,7 +486,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "the RIRO optimization, otherwise, the coils from the --coil options will be used."
                    "If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_scanner_constraints__}")
+                   f"see: {__dir_config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
@@ -523,10 +525,10 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               default='quad_prog', show_default=True,
               help="Method used by the optimizer. LS and QP will respect the constraints,"
                    "PS will not respect the constraints")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae']), required=False,
-              default='mse', show_default=True,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']),
+              required=False, default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
@@ -1007,7 +1009,6 @@ def parse_orders(orders: str):
 
 def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
                 manufacturers_model_name):
-    # ! Modify description if everything works
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1047,9 +1048,9 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
             for key in orders_to_delete:
                 del sph_contraints['coef_channel_minmax'][key]
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders)
+            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders)
+        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
         scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
                                    manufacturer=manufacturer)
         list_coils.append(scanner_coil)
@@ -1061,8 +1062,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
     return list_coils
 
 
-def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orders):
-    # ! Modify description if everything works
+def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orders, manufacturer):
     """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
         absolute bounds
 
@@ -1071,7 +1071,6 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
         orders (list): Order of the scanner coils (0 or 1 or 2)
         manufacturer (str): Name of the MRI manufacturer
-
     Returns:
         dict: Updated constraints of the scanner
     """
@@ -1099,7 +1098,7 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
     # Set the initial coefficients to 0
     initial_coefs = {}
     for order in orders:
-        initial_coefs[str(order)] = [0] * (order * 2 + 1)
+        initial_coefs[str(order)] = [0] * channels_per_order(order, manufacturer)
     if initial_coefs == {}:
         initial_coefs = None
 
@@ -1114,6 +1113,8 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
             initial_coefs['1'] = scanner_shim_settings['1']
         if scanner_shim_settings['2'] is not None and 2 in orders:
             initial_coefs['2'] = scanner_shim_settings['2']
+        if scanner_shim_settings['3'] is not None and 3 in orders:
+            initial_coefs['3'] = scanner_shim_settings['3']
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])

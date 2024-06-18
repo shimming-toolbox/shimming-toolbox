@@ -31,7 +31,8 @@ setup(
             "st_maths=shimmingtoolbox.cli.maths:maths_cli",
             "st_b0shim=shimmingtoolbox.cli.b0shim:b0shim_cli",
             "st_create_coil_profiles=shimmingtoolbox.cli.create_coil_profiles:coil_profiles_cli",
-            "st_sort_dicoms=shimmingtoolbox.cli.sort_dicoms:sort_dicoms"
+            "st_sort_dicoms=shimmingtoolbox.cli.sort_dicoms:sort_dicoms",
+            "st_unwrap=shimmingtoolbox.cli.unwrap:unwrap_cli"
         ]
     },
     packages=find_packages(exclude=["docs"]),
@@ -39,7 +40,7 @@ setup(
         "click",
         "dcm2bids>=3.0.1",
         'importlib-metadata ~= 4.0 ; python_version < "3.8"',
-        "numpy>=1.21",
+        "numpy<2",
         "phantominator~=0.6.4",
         "nibabel>=3.2.1",
         "requests",
@@ -56,6 +57,7 @@ setup(
         "raven",
         "joblib",
         "quadprog",
+        "cloup"
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],
