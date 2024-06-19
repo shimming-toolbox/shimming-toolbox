@@ -24,7 +24,6 @@ def _define_inputs(fmap_dim):
     # fname for fmap
     fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
-
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
 
     fm_data = json.load(open(fname_json))
@@ -103,6 +102,46 @@ class TestCliDynamic(object):
                 values = [float(val) for val in line if val.strip()]
 
             assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
+
+    def test_cli_dynamic_signal_recovery(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+
+        # Duplicate nii_fmap's third dimension
+        fmap = nii_fmap.get_fdata()
+        fmap = np.repeat(fmap, 5, axis=2)
+        nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.3',
+                                             '--slices', 'ascending',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'grad',
+                                             '--weighting-signal-loss', '0.01',
+                                             '--epi-echo-time', '0.02',
+                                             '--mask-dilation-kernel-size', '5',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
 
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
