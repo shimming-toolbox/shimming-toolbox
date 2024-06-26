@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 import matplotlib as plt
-from shimmingtoolbox.masking.mask_utils import erode_binary_mask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
@@ -50,7 +50,7 @@ class Sequencer(object):
         slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape
                        of anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
         mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                    'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for more
+                                    'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for more
                                     details.
         mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                          For example, a kernel of size 3 will dilate the mask by 1 pixel.
@@ -73,7 +73,7 @@ class Sequencer(object):
                            of anat is: (dim1, dim2, dim3). Refer to
                            :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
@@ -175,7 +175,7 @@ class ShimSequencer(Sequencer):
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                               For example, a kernel of size 3 will dilate the mask by 1 pixel.
@@ -452,7 +452,6 @@ class ShimSequencer(Sequencer):
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
 
-            # eroded_mask_binary = erode_binary_mask(mask_full_binary,shape='sphere',size=3)
             if len(self.slices) == 1:
                 # TODO: Output json sidecar
                 # TODO: Update the shim settings if Scanner coil?
@@ -672,7 +671,6 @@ class ShimSequencer(Sequencer):
             shimmed_masked(np.ndarray): Masked shimmed fieldmap
             mask (np.ndarray): Binary mask in the fieldmap space
         """
-        # mask = erode_binary_mask(shimmed_masked, shape='sphere', size=3)
         # Plot
         mt_unshimmed = montage(unshimmed)
         mt_unshimmed_masked = montage(unshimmed * mask)
@@ -687,16 +685,13 @@ class ShimSequencer(Sequencer):
         metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
         metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
-        min_value = min(shimmed_masked.min(), mt_shimmed_masked.min())
-        max_value = max(shimmed_masked.max(), mt_shimmed_masked.max())
-
         fig = Figure(figsize=(15, 9))
         fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=-100, vmax=100, cmap='jet') #! FLAG: Had to change vmin and vmax
+        im = ax.imshow(mt_unshimmed_masked, vmin=-100, vmax=100, cmap='jet')
         ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
                      f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
@@ -837,7 +832,7 @@ class ShimSequencer(Sequencer):
         shimmed_signal_loss = 1 - abs(np.sinc(self.epi_te * shimmed_Gz))
 
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
-        mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
+        mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
 
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
@@ -906,7 +901,7 @@ class ShimSequencer(Sequencer):
         # Plot Gradient maps
 
         #shimmed_Gz = np.gradient(shimmed, axis = 2)
-        mask_erode = erode_binary_mask(mask,shape='sphere',size=3)
+        mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
 
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
@@ -997,7 +992,7 @@ class RealTimeSequencer(Sequencer):
                                 regularization. A negative value will favour high currents (not preferred).
                                 Only relevant for 'least_squares' opt_method.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
@@ -1048,7 +1043,7 @@ class RealTimeSequencer(Sequencer):
                                 regularization. A negative value will favour high currents (not preferred).
                                 Only relevant for 'least_squares' opt_method.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.dilate_binary_mask` for
+                                        'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.

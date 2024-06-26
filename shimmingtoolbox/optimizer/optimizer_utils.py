@@ -122,8 +122,6 @@ class OptimizerUtils(Optimizer):
         """
         self.mask = mask
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
-        if self.opt_criteria == 'grad':
-            self._prepare_data(mask)
         # Set up output currents
         currents_0 = self.get_initial_guess()
         # If what to shim is already 0s

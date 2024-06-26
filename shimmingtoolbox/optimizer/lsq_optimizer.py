@@ -6,7 +6,7 @@ from numpy.linalg import norm
 import scipy.optimize as opt
 from typing import List
 import warnings
-from shimmingtoolbox.masking.mask_utils import erode_binary_mask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
@@ -71,8 +71,7 @@ class LsqOptimizer(OptimizerUtils):
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
         # Personalized parameters to LSQ
-        mask_vec = mask.reshape((-1,))
-        mask_erode = erode_binary_mask(mask, shape='sphere', size=3)
+        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='dilate')
         mask_erode_vec = mask_erode.reshape((-1,))
 
         temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
@@ -102,6 +101,32 @@ class LsqOptimizer(OptimizerUtils):
                 raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
                                  'Make sure to include at least 3 voxels in the slice direction.')
 
+    def optimize(self, mask):
+        """
+        Wrapper for the optimization function. This function prepares the data and calls the optimizer.
+        Optimize unshimmed volume by varying current to each channel
+
+        Args:
+            mask (np.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+
+        Returns:
+            np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                            The shape of the array returned has shape corresponding to the total number of channels
+        """
+        if self.opt_criteria == 'grad':
+            self._prepare_data(mask)
+
+        self.mask = mask
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        # Set up output currents
+        currents_0 = self.get_initial_guess()
+        # If what to shim is already 0s
+        if np.all(unshimmed_vec == 0):
+            return np.zeros(np.shape(currents_0))
+        currents = self._get_currents(unshimmed_vec, coil_mat, currents_0)
+
+        return currents
+
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
 
@@ -118,7 +143,6 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # MAE regularized to minimize currents
-        result = np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
         return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):

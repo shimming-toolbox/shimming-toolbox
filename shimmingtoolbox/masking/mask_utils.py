@@ -10,6 +10,7 @@ from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, gener
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
+mask_operations = {'dilate': binary_dilation, 'erode': binary_erosion}
 
 
 def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='None', dilation_size=3,
@@ -22,7 +23,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         nii_target (nib.Nifti1Image): Target image to resample onto.
         from_slices (tuple): Tuple containing the slices to select from nii_mask_from. None selects all the slices.
         dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                               'cube'. See :func:`dilate_binary_mask` for more details.
+                               'cube'. See :func:`modify_binary_mask` for more details.
         dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
                                          a kernel of size 3 will dilate the mask by 1 pixel.
         path_output (str): Path to output debug artefacts.
@@ -51,7 +52,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     # Look into dilation of soft mask
 
     # Dilate the mask to add more pixels in particular directions
-    mask_dilated = dilate_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size)
+    mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
     # Make sure the mask is within the original ROI
     mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
@@ -72,7 +73,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         return nii_mask_dilated
 
 
-def dilate_binary_mask(mask, shape='sphere', size=3):
+def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     """
     Dilates a binary mask according to different shapes and kernel size
 
@@ -82,6 +83,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
                      'line' uses 3 line kernels to extend in each directions by "(size - 1) / 2" only if that direction
                      is smaller than (size - 1) / 2
         size (int): Length of a side of the 3d kernel. Must be odd.
+        operation (str): Operation to perform. Allowed operations are: 'dilate', 'erode'.
 
     Returns:
         numpy.ndarray: Dilated mask.
@@ -162,6 +164,10 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
 
     if size % 2 == 0 or size < 3:
         raise ValueError("Size must be odd and greater or equal to 3")
+
+    if operation not in mask_operations:
+        raise ValueError(f"Operation <{operation}> not supported. Supported operations are: {list(mask_operations.keys())}")
+
     # Find the middle pixel, will always work since we check size is odd
     mid_pixel = int((size - 1) / 2)
 
@@ -171,7 +177,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         struct = iterate_structure(struct_sphere_size1, mid_pixel)
 
         # Dilate
-        mask_dilated = binary_dilation(mask, structure=struct)
+        mask_dilated = mask_operations[operation](mask, structure=struct)
 
     elif shape == 'cross':
         struct = np.zeros([size, size, size])
@@ -180,7 +186,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         struct[mid_pixel, mid_pixel, :] = 1
 
         # Dilate
-        mask_dilated = binary_dilation(mask, structure=struct)
+        mask_dilated = mask_operations[operation](mask, structure=struct)
 
     elif shape == 'cube':
         # Define kernel to perform the dilation
@@ -188,7 +194,7 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         struct = iterate_structure(struct_cube_size1, mid_pixel)
 
         # Dilate
-        mask_dilated = binary_dilation(mask, structure=struct)
+        mask_dilated = mask_operations[operation](mask, structure=struct)
 
     elif shape == 'line':
 
@@ -197,173 +203,21 @@ def dilate_binary_mask(mask, shape='sphere', size=3):
         # Finds where the structure fits
         open1 = binary_opening(mask, structure=struct_dim1)
         # Select Everything that does not fit within the structure and erode along a dim
-        dim1 = binary_dilation(np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
+        dim1 = mask_operations[operation](np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
 
         struct_dim2 = np.zeros([size, size, size])
         struct_dim2[mid_pixel, :, mid_pixel] = 1
         # Finds where the structure fits
         open2 = binary_opening(mask, structure=struct_dim2)
         # Select Everything that does not fit within the structure and erode along a dim
-        dim2 = binary_dilation(np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
+        dim2 = mask_operations[operation](np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
 
         struct_dim3 = np.zeros([size, size, size])
         struct_dim3[mid_pixel, mid_pixel, :] = 1
         # Finds where the structure fits
         open3 = binary_opening(mask, structure=struct_dim3)
         # Select Everything that does not fit within the structure and erode along a dim
-        dim3 = binary_dilation(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
-
-        mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
-
-    elif shape == 'None':
-        mask_dilated = mask
-
-    else:
-        raise ValueError("Use of non supported algorithm for dilating the mask")
-
-    return mask_dilated
-
-
-def erode_binary_mask(mask, shape='sphere', size=3):
-    """
-    Erode a binary mask according to different shapes and kernel size
-
-    Args:
-        mask (numpy.ndarray): 3d array containing the binary mask.
-        shape (str): 3d kernel to perform the erosion. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.
-                     'line' uses 3 line kernels to extend in each directions by "(size - 1) / 2" only if that direction
-                     is smaller than (size - 1) / 2
-        size (int): Length of a side of the 3d kernel. Must be odd.
-
-    Returns:
-        numpy.ndarray: Dilated mask.
-
-    Notes:
-
-        Kernels for
-
-            * 'cross' size 3:
-                ::
-
-                      np.array([[[0, 0, 0],
-                                 [0, 1, 0],
-                                 [0, 0, 0]],
-                                [[0, 1, 0],
-                                 [1, 1, 1],
-                                 [0, 1, 0]],
-                                [[0, 0, 0],
-                                 [0, 1, 0],
-                                 [0, 0, 0]]])
-
-            * 'sphere' size 5:
-                ::
-
-                    np.array([[[0 0 0 0 0],
-                               [0 0 0 0 0],
-                               [0 0  1 0 0],
-                               [0 0 0 0 0],
-                               [0 0 0 0 0]],
-                              [[0 0 0 0 0],
-                               [0 0 1 0 0],
-                               [0 1 1 1 0],
-                               [0 0 1 0 0],
-                               [0 0 0 0 0]],
-                              [[0 0 1 0 0],
-                               [0 1 1 1 0],
-                               [1 1 1 1 1],
-                               [0 1 1 1 0],
-                               [0 0 1 0 0]],
-                              [[0 0 0 0 0],
-                               [0 0 1 0 0],
-                               [0 1 1 1 0],
-                               [0 0 1 0 0],
-                               [0 0 0 0 0]],
-                              [[0 0 0 0 0],
-                               [0 0 0 0 0],
-                               [0 0 1 0 0],
-                               [0 0 0 0 0],
-                               [0 0 0 0 0]]]
-
-            * 'cube' size 3:
-                ::
-
-                    np.array([[[1, 1, 1],
-                               [1, 1, 1],
-                               [1, 1, 1]],
-                              [[1, 1, 1],
-                               [1, 1, 1],
-                               [1, 1, 1]],
-                              [[1, 1, 1],
-                               [1, 1, 1],
-                               [1, 1, 1]]])
-
-            * 'line' size 3:
-                ::
-
-                  np.array([[[0, 0, 0],
-                             [0, 1, 0],
-                             [0, 0, 0]],
-                            [[0, 0, 0],
-                             [0, 1, 0],
-                             [0, 0, 0]],
-                            [[0, 0, 0],
-                             [0, 1, 0],
-                             [0, 0, 0]]])
-
-    """
-
-    if size % 2 == 0 or size < 3:
-        raise ValueError("Size must be odd and greater or equal to 3")
-    # Find the middle pixel, will always work since we check size is odd
-    mid_pixel = int((size - 1) / 2)
-
-    if shape == 'sphere':
-        # Define kernel to perform the dilation
-        struct_sphere_size1 = generate_binary_structure(3, 1)
-        struct = iterate_structure(struct_sphere_size1, mid_pixel)
-
-        # Dilate
-        mask_dilated = binary_erosion(mask, structure=struct)
-
-    elif shape == 'cross':
-        struct = np.zeros([size, size, size])
-        struct[:, mid_pixel, mid_pixel] = 1
-        struct[mid_pixel, :, mid_pixel] = 1
-        struct[mid_pixel, mid_pixel, :] = 1
-
-        # Dilate
-        mask_dilated = binary_erosion(mask, structure=struct)
-
-    elif shape == 'cube':
-        # Define kernel to perform the dilation
-        struct_cube_size1 = generate_binary_structure(3, 3)
-        struct = iterate_structure(struct_cube_size1, mid_pixel)
-
-        # Dilate
-        mask_dilated = binary_erosion(mask, structure=struct)
-
-    elif shape == 'line':
-
-        struct_dim1 = np.zeros([size, size, size])
-        struct_dim1[:, mid_pixel, mid_pixel] = 1
-        # Finds where the structure fits
-        open1 = binary_opening(mask, structure=struct_dim1)
-        # Select Everything that does not fit within the structure and erode along a dim
-        dim1 = binary_erosion(np.logical_and(np.logical_not(open1), mask), structure=struct_dim1)
-
-        struct_dim2 = np.zeros([size, size, size])
-        struct_dim2[mid_pixel, :, mid_pixel] = 1
-        # Finds where the structure fits
-        open2 = binary_opening(mask, structure=struct_dim2)
-        # Select Everything that does not fit within the structure and erode along a dim
-        dim2 = binary_erosion(np.logical_and(np.logical_not(open2), mask), structure=struct_dim2)
-
-        struct_dim3 = np.zeros([size, size, size])
-        struct_dim3[mid_pixel, mid_pixel, :] = 1
-        # Finds where the structure fits
-        open3 = binary_opening(mask, structure=struct_dim3)
-        # Select Everything that does not fit within the structure and erode along a dim
-        dim3 = binary_erosion(np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
+        dim3 = mask_operations[operation](np.logical_and(np.logical_not(open3), mask), structure=struct_dim3)
 
         mask_dilated = np.logical_or(np.logical_or(np.logical_or(dim1, dim2), dim3), mask)
 

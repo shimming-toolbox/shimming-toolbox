@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from shimmingtoolbox.masking.mask_utils import dilate_binary_mask, resample_mask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
@@ -24,7 +24,7 @@ dummy_image[2, 6:8, 6:8] = 1
 class TestDilateBinaryMask(object):
     def test_dilate_binary_mask_cross(self, input_mask):
         """Default is the cross"""
-        dilated = dilate_binary_mask(input_mask[0], shape='cross')
+        dilated = modify_binary_mask(input_mask[0], shape='cross', operation='dilate')
 
         # Expected slice 7
         expected_slice = np.zeros([10, 10])
@@ -36,7 +36,7 @@ class TestDilateBinaryMask(object):
 
     def test_dilate_binary_mask_sphere(self, input_mask):
 
-        dilated = dilate_binary_mask(input_mask[0], shape='sphere', size=5)
+        dilated = modify_binary_mask(input_mask[0], shape='sphere', size=5, operation='dilate')
 
         # Expected slice 8
         expected_slice = np.zeros([10, 10])
@@ -47,7 +47,7 @@ class TestDilateBinaryMask(object):
 
     def test_dilate_binary_mask_cube(self, input_mask):
 
-        dilated = dilate_binary_mask(input_mask[0], shape='cube')
+        dilated = modify_binary_mask(input_mask[0], shape='cube', operation='dilate')
 
         # Expected slice 7
         expected_slice = np.zeros([10, 10])
@@ -57,7 +57,7 @@ class TestDilateBinaryMask(object):
 
     def test_dilate_binary_mask_line(self, input_mask):
 
-        dilated = dilate_binary_mask(input_mask[0], shape='line')
+        dilated = modify_binary_mask(input_mask[0], shape='line', operation='dilate')
 
         # Expected slice in x,z plane 2
         expected_slice = np.zeros([10, 10])
@@ -67,21 +67,30 @@ class TestDilateBinaryMask(object):
 
         assert np.all(expected_slice == dilated[:, 2, :])
 
-    def test_dilate_binary_mask_none(self, input_mask):
+    def test_erode_binary_mask_cube(self, input_mask):
 
-        dilated = dilate_binary_mask(input_mask[0], shape='None')
+        dilated = modify_binary_mask(input_mask[0], shape='cube', operation='erode')
+
+        # Expected slice in x,z plane 2
+        expected_slice = np.zeros([10, 10])
+
+        assert np.all(expected_slice == dilated[:, 2, :])
+
+    def test_modify_binary_mask_none(self, input_mask):
+
+        dilated = modify_binary_mask(input_mask[0], shape='None', operation='dilate')
 
         assert np.all(input_mask[0] == dilated)
 
-    def test_dilate_binary_mask_wrong_size(self, input_mask):
+    def test_modify_binary_mask_wrong_size(self, input_mask):
 
         with pytest.raises(ValueError, match="Size must be odd and greater or equal to 3"):
-            dilate_binary_mask(input_mask[0], size=4)
+            modify_binary_mask(input_mask[0], size=4, operation='dilate')
 
-    def test_dilate_binary_mask_wrong_shape(self, input_mask):
+    def test_modify_binary_mask_wrong_shape(self, input_mask):
 
         with pytest.raises(ValueError, match="Use of non supported algorithm for dilating the mask"):
-            dilate_binary_mask(input_mask[0], 'abc')
+            modify_binary_mask(input_mask[0], 'abc', operation='dilate')
 
 
 def test_resample_mask():
