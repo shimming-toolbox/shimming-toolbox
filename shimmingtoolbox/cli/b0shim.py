@@ -89,8 +89,6 @@ def b0shim_cli():
 @click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
               " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
-@click.option('--epi-echo-time', 'epi_te', type=click.FLOAT, required=False, default=0.0, show_default=True,
-              help="EPI acquistion parameter Echo Time (TE) in seconds. Relevant for signal recovery")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -141,7 +139,7 @@ def b0shim_cli():
 @timeit
 def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te, verbose):
+            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -244,6 +242,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             json_fm_data = json.load(json_file)
     else:
         raise OSError("Missing fieldmap json file")
+
+    # Get the EPI echo time if optimization criteria is grad
+    if opt_criteria == 'grad':
+        epi_te = json_fm_data.get('EchoTime')
+    else:
+        epi_te = None
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta. Only Siemens gradient coordinate system has been defined
@@ -728,7 +732,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, json_fm_data.get('SoftwareVersions'), slice_factor, slices, json_fm_data.get('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
+
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU

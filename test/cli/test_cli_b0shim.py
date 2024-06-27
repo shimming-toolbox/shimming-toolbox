@@ -136,7 +136,6 @@ class TestCliDynamic(object):
                                              '--optimizer-method', 'least_squares',
                                              '--optimizer-criteria', 'grad',
                                              '--weighting-signal-loss', '0.01',
-                                             '--epi-echo-time', '0.02',
                                              '--mask-dilation-kernel-size', '5',
                                              '--output', tmp],
                                 catch_exceptions=False)
