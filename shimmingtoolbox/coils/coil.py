@@ -282,20 +282,18 @@ def restrict_sph_constraints(bounds: dict, orders):
     """ Select bounds according to the order specified
 
     Args:
-        bounds (dict): Dictionary containing the min and max currents for multiple spherical harmonics
-                       orders
+        bounds (dict): Dictionary containing the min and max currents for multiple spherical harmonics orders
         orders (list): List of all spherical harmonics orders to be used
 
     Returns:
         dict: Dictionary with the bounds of all specified orders
     """
     minmax_out = {}
-    retrict_to = np.array([0, 1, 2, 3])
-    for order in retrict_to:
-        if order in orders and f"{order}" in bounds:
+    for order in orders:
+        if f"{order}" in bounds:
             minmax_out[f"{order}"] = bounds[f"{order}"]
 
     if minmax_out == {}:
-        raise NotImplementedError(f"Order must be between {retrict_to.min()} and {retrict_to.max()}")
+        raise NotImplementedError(f"Order must be between 0 and 3")
 
     return minmax_out
