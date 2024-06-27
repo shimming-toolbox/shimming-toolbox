@@ -222,6 +222,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     with open(fname_anat_json) as json_file:
         json_anat_data = json.load(json_file)
 
+    # Get the EPI echo time if optimization criteria is grad
+    if opt_criteria == 'grad':
+        epi_te = json_anat_data.get('EchoTime')
+    else:
+        epi_te = None
+
     # Load mask
     if fname_mask_anat is not None:
         nii_mask_anat = nib.load(fname_mask_anat)
@@ -242,12 +248,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             json_fm_data = json.load(json_file)
     else:
         raise OSError("Missing fieldmap json file")
-
-    # Get the EPI echo time if optimization criteria is grad
-    if opt_criteria == 'grad':
-        epi_te = json_fm_data.get('EchoTime')
-    else:
-        epi_te = None
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta. Only Siemens gradient coordinate system has been defined
