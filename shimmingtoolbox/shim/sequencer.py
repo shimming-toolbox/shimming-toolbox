@@ -451,7 +451,6 @@ class ShimSequencer(Sequencer):
                 full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
-
             if len(self.slices) == 1:
                 # TODO: Output json sidecar
                 # TODO: Update the shim settings if Scanner coil?
