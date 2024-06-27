@@ -263,7 +263,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                       f"format: {o_format_sph}")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
@@ -711,7 +711,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                              f"{o_format_sph}")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
+    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=all_scanner_orders)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils

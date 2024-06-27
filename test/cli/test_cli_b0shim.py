@@ -20,13 +20,17 @@ from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 
-def _define_inputs(fmap_dim):
+def _define_inputs(fmap_dim, manufacturers_model_name=None):
     # fname for fmap
     fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
 
-    fm_data = json.load(open(fname_json))
+    with open(fname_json) as f:
+        fm_data = json.load(f)
+
+    if manufacturers_model_name is not None:
+        fm_data['ManufacturersModelName'] = manufacturers_model_name
 
     if fmap_dim == 4:
         nii_fmap = nii
@@ -43,7 +47,9 @@ def _define_inputs(fmap_dim):
     nii_anat = nib.load(fname_anat)
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
-    anat_data = json.load(open(fname_anat_json))
+    with open(fname_anat_json) as f:
+        anat_data = json.load(f)
+
     anat_data['ScanOptions'] = ['FS']
 
     anat = nii_anat.get_fdata()

@@ -10,7 +10,7 @@ import logging
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
-from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
+from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS, channels_per_order
 
 logger = logging.getLogger(__name__)
 
@@ -205,15 +205,16 @@ def shim_to_phys_cs(coefs, manufacturer, orders):
     return coefs
 
 
-def get_scanner_shim_settings(bids_json_dict):
+def get_scanner_shim_settings(bids_json_dict, orders):
     """ Get the scanner's shim settings using the BIDS tag ShimSetting and ImagingFrequency and returns it in a
-        dictionary
+        dictionary. 'orders' is used to check if the different orders are available in the metadata.
 
     Args:
         bids_json_dict (dict): Bids sidecar as a dictionary
+        orders (tuple): Tuple containing the spherical harmonic orders
 
     Returns:
-        dict: Dictionary containing the following keys: 'f0', 'order1' 'order2', 'order3'. The different orders are
+        dict: Dictionary containing the following keys: '0', '1' '2', '3'. The different orders are
               lists unless the different values could not be populated.
     """
 
@@ -224,7 +225,6 @@ def get_scanner_shim_settings(bids_json_dict):
         '3': None,
         'has_valid_settings': False
     }
-
     # get_imaging_frequency
     if bids_json_dict.get('ImagingFrequency'):
         scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
@@ -244,6 +244,12 @@ def get_scanner_shim_settings(bids_json_dict):
             logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
     else:
         logger.warning("ShimSetting tag is not available")
+
+    # Check if the orders to shim are available in the metadata
+    for order in orders:
+        if scanner_shim.get(str(order)) is None:
+            logger.warning(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
+                           f"respected.")
 
     return scanner_shim
 
@@ -294,8 +300,7 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                     raise ValueError("Current shim settings exceed known system limits.")
                 else:
                     scanner_shim_mp[order] = coefs_ui
-            else:
-                logger.warning(f"Order {order} not available in the metadata, constraints might not be respected.")
+
     else:
         logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented,"
                        f"could not convert shim settings")
@@ -304,9 +309,9 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
 
 
 class ScannerShimSettings:
-    def __init__(self, bids_json_dict):
+    def __init__(self, bids_json_dict, orders=None):
 
-        shim_settings_dac = get_scanner_shim_settings(bids_json_dict)
+        shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
         manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
         manufacturer = bids_json_dict.get('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
@@ -323,7 +328,7 @@ class ScannerShimSettings:
                     # Concatenate 2 lists
                     coefs.extend(self.shim_settings.get(str(order)))
                 else:
-                    n_coefs = (order + 1) * 2
+                    n_coefs = channels_per_order(order)
                     coefs.extend([0] * n_coefs)
 
         return coefs
