@@ -120,7 +120,7 @@ class OptimizerUtils(Optimizer):
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
-
+        self.mask = mask
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
         # Set up output currents
         currents_0 = self.get_initial_guess()

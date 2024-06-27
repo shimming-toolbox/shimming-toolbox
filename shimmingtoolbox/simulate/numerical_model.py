@@ -162,11 +162,12 @@ class NumericalModel:
 
         if len(vol_dims) == 2:
             self.measurement = np.zeros(
-                (vol_dims[0], vol_dims[1], 1, numTE), dtype="complex_"
+                (vol_dims[0], vol_dims[1], 1, numTE), dtype=np.complex128
+
             )
         elif len(vol_dims) == 3:
             self.measurement = np.zeros(
-                (vol_dims[0], vol_dims[1], vol_dims[2], numTE), dtype="complex_"
+                (vol_dims[0], vol_dims[1], vol_dims[2], numTE), np.complex128
             )
 
         for ii in range(0, numTE):
@@ -206,9 +207,9 @@ class NumericalModel:
         vol_dims = deltaB0.shape
 
         if len(vol_dims) == 2:
-            signal = np.zeros((vol_dims[0], vol_dims[1], 1), dtype="complex_")
+            signal = np.zeros((vol_dims[0], vol_dims[1], 1), dtype=np.complex128)
         elif len(vol_dims) == 3:
-            signal = np.zeros((vol_dims[0], vol_dims[1], vol_dims[2]), dtype="complex_")
+            signal = np.zeros((vol_dims[0], vol_dims[1], vol_dims[2]), dtype=np.complex128)
 
         signal = (
             proton_density

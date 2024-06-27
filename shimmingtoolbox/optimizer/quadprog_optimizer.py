@@ -36,6 +36,7 @@ class QuadProgOpt(OptimizerUtils):
         if reg_factor < 0:
             raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
                             f" If you want to keep this reg_factor please use lsq_optimizer")
+        self.opt_criteria = None
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
     def _get_linear_inequality_matrices(self):

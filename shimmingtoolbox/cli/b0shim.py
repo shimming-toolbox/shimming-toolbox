@@ -40,7 +40,6 @@ AVAILABLE_ORDERS = [-1, 0, 1, 2, 3]
 def b0shim_cli():
     pass
 
-
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -63,12 +62,12 @@ def b0shim_cli():
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "'--slice-factor' value is '3', then with the 'sequential' mode ('ascending' or 'descending'), shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog']),
@@ -79,10 +78,17 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
+                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
+              " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
+              help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
+              " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -133,13 +139,16 @@ def b0shim_cli():
 @timeit
 def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-            o_format_sph, output_value_format, reg_factor, verbose):
+            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
     Example of use: st_b0shim dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
+
+    logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
+
     # Set logger level
     set_all_loggers(verbose)
 
@@ -213,6 +222,12 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     with open(fname_anat_json) as json_file:
         json_anat_data = json.load(json_file)
 
+    # Get the EPI echo time if optimization criteria is grad
+    if opt_criteria == 'grad':
+        epi_te = json_anat_data.get('EchoTime')
+    else:
+        epi_te = None
+
     # Load mask
     if fname_mask_anat is not None:
         nii_mask_anat = nib.load(fname_mask_anat)
@@ -248,7 +263,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                       f"format: {o_format_sph}")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
@@ -260,7 +275,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices)
+        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
@@ -270,7 +285,11 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               mask_dilation_kernel='sphere',
                               mask_dilation_kernel_size=dilation_kernel_size,
                               reg_factor=reg_factor,
+                              w_signal_loss=w_signal_loss,
+                              w_signal_loss_xy=w_signal_loss_xy,
+                              epi_te=epi_te,
                               path_output=path_output)
+
     # 2) Launch shim sequencer
     coefs = sequencer.shim()
     # Output
@@ -339,33 +358,43 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     sequencer.eval(coefs)
     logger.info(f" Plotting currents")
 
-    # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
-    for i_coil, coil in enumerate(list_coils):
-        # Figure out the start and end channels for a coil to be able to select it from the coefs
-        n_channels = coil.dim[3]
-        start_channel = end_channel
-        end_channel = start_channel + n_channels
+    if logger.level <= getattr(logging, 'DEBUG'):
+        # Plot the coefs after outputting the currents to the text file
+        end_channel = 0
+        for i_coil, coil in enumerate(list_coils):
+            # Figure out the start and end channels for a coil to be able to select it from the coefs
+            n_channels = coil.dim[3]
+            start_channel = end_channel
+            end_channel = start_channel + n_channels
 
-        if type(coil) != ScannerCoil:
-            # Select the coefficients for a coil
-            coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
-            # Plot a figure of the coefficients
-            _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
-                        bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
+            if type(coil) != ScannerCoil:
+                # Select the coefficients for a coil
+                coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
+                # Plot a figure of the coefficients
+                _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
+                            bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+        logger.info(f"Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
                               default_coefs=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
+    logger.info(f"Saving to text file with format: {o_format}")
     n_channels = coil.dim[3]
     list_fname_output = []
     if o_format[-5:] == '-coil':
 
         fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+        if options['fatsat']:
+            fname_output_no_fatsat = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}_no_fatsat.txt")
+            f_no_fatsat = open(fname_output_no_fatsat, 'w', encoding='utf-8')
+
+        # Print the average shim coefficients without considering slices with 0s
+        logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs!=0)), axis=0)}")
+
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
 
@@ -381,15 +410,20 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-
                         f.write(f"\n")
+
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+                        if options['fatsat']:
+                            f_no_fatsat.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+
                     f.write("\n")
+                    if options['fatsat']:
+                        f_no_fatsat.write("\n")
 
             elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
-                # Assumes all slices are in list_slices once which is the case for sequential, interleaved and
+                # Assumes all slices are in list_slices once which is the case for ascending, descending, interleaved and
                 # volume
                 n_slices = np.sum([len(a_shim) for a_shim in list_slices])
                 for i_slice in range(n_slices):
@@ -398,6 +432,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
+        if options['fatsat']:
+            f_no_fatsat.close()
         list_fname_output.append(os.path.abspath(fname_output))
 
     elif o_format[-3:] == '-ch':
@@ -511,12 +547,12 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'sequential', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' mode, shimming will be performed "
+                   "'--slice-factor' value is '3', then with the 'sequential' ('ascending' or 'descending') mode, shimming will be performed "
                    "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
@@ -524,10 +560,11 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               default='quad_prog', show_default=True,
               help="Method used by the optimizer. LS and QP will respect the constraints,"
                    "PS will not respect the constraints")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']),
-              required=False, default='mse', show_default=True,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
+              default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, rmse: Root Mean Squared Error")
+                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: MSE of Bz and Gz, i.e., Signal Loss, "
+                   "rmse: Root Mean Squared Error")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
@@ -674,7 +711,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                              f"{o_format_sph}")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(json_fm_data)
+    all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
+    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=all_scanner_orders)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
@@ -695,7 +733,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices)
+        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
+
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
@@ -1167,7 +1206,7 @@ def _get_fatsat_option(json_anat, fatsat):
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")
-@click.option('--method', type=click.Choice(['interleaved', 'sequential', 'volume']), required=True,
+@click.option('--method', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume']), required=True,
               help="Defines how the slices should be sorted")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'slices.json'),
               show_default=True, help="Output filename for the json file")

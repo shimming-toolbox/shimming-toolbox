@@ -20,14 +20,17 @@ from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 
-def _define_inputs(fmap_dim):
+def _define_inputs(fmap_dim, manufacturers_model_name=None):
     # fname for fmap
     fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
-
     fname_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.json')
 
-    fm_data = json.load(open(fname_json))
+    with open(fname_json) as f:
+        fm_data = json.load(f)
+
+    if manufacturers_model_name is not None:
+        fm_data['ManufacturersModelName'] = manufacturers_model_name
 
     if fmap_dim == 4:
         nii_fmap = nii
@@ -44,7 +47,9 @@ def _define_inputs(fmap_dim):
     nii_anat = nib.load(fname_anat)
 
     fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
-    anat_data = json.load(open(fname_anat_json))
+    with open(fname_anat_json) as f:
+        anat_data = json.load(f)
+
     anat_data['ScanOptions'] = ['FS']
 
     anat = nii_anat.get_fdata()
@@ -91,6 +96,7 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.1',
+                                             '--slices', 'ascending',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -102,6 +108,45 @@ class TestCliDynamic(object):
                 values = [float(val) for val in line if val.strip()]
 
             assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
+
+    def test_cli_dynamic_signal_recovery(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+
+        # Duplicate nii_fmap's third dimension
+        fmap = nii_fmap.get_fdata()
+        fmap = np.repeat(fmap, 5, axis=2)
+        nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.3',
+                                             '--slices', 'ascending',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'grad',
+                                             '--weighting-signal-loss', '0.01',
+                                             '--mask-dilation-kernel-size', '5',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
 
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -158,7 +203,9 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--output', tmp],
+                                             '--output', tmp,
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'mse'],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -1055,8 +1102,8 @@ def test_cli_define_slices_def():
         runner = CliRunner()
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', '12',
-                                                '--factor', '5',
-                                                '--method', 'sequential',
+                                                '--factor', '6',
+                                                '--method', 'ascending',
                                                 '-o', fname_output],
                             catch_exceptions=False)
 
@@ -1072,7 +1119,7 @@ def test_cli_define_slices_anat():
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', fname_anat,
                                                 '--factor', '5',
-                                                '--method', 'sequential',
+                                                '--method', 'ascending',
                                                 '-o', fname_output],
                             catch_exceptions=False)
 
@@ -1089,7 +1136,7 @@ def test_cli_define_slices_wrong_input():
         with pytest.raises(ValueError, match="Could not get the number of slices"):
             runner.invoke(define_slices_cli, ['--slices', fname_anat,
                                               '--factor', '5',
-                                              '--method', 'sequential',
+                                              '--method', 'ascending',
                                               '-o', fname_output],
                           catch_exceptions=False)
 
@@ -1102,7 +1149,7 @@ def test_cli_define_slices_wrong_output():
         with pytest.raises(ValueError, match="Filename of the output must be a json file"):
             runner.invoke(define_slices_cli, ['--slices', "10",
                                               '--factor', '5',
-                                              '--method', 'sequential',
+                                              '--method', 'ascending',
                                               '-o', fname_output],
                           catch_exceptions=False)
 

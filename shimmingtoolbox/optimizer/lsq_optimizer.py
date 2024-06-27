@@ -6,13 +6,14 @@ from numpy.linalg import norm
 import scipy.optimize as opt
 from typing import List
 import warnings
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'rmse']
+allowed_opt_criteria = ['mse', 'mae', 'std', 'grad', 'rmse']
 
 
 class LsqOptimizer(OptimizerUtils):
@@ -22,7 +23,7 @@ class LsqOptimizer(OptimizerUtils):
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', initial_guess_method='zeros',
-                 reg_factor=0):
+                 reg_factor=0,  w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
@@ -37,18 +38,23 @@ class LsqOptimizer(OptimizerUtils):
                                 regularization. A negative value will favour high currents (not preferred).
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
-
+        self.w_signal_loss = w_signal_loss
+        self.w_signal_loss_xy = w_signal_loss_xy
+        self.epi_te = epi_te
+        self.counter = 0
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
-            allowed_opt_criteria[3]: self._residuals_rmse,
+            allowed_opt_criteria[3]: self._residuals_grad,
+            allowed_opt_criteria[4]: self._residuals_rmse
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
             allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: None
+            allowed_opt_criteria[3]: self._residuals_grad_jacobian,
+            allowed_opt_criteria[4]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -57,6 +63,69 @@ class LsqOptimizer(OptimizerUtils):
             self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
+
+    def _prepare_data(self, mask):
+        """ Prepares the data for the optimization.
+        """
+        self.counter += 1
+        # Define coil profiles
+        n_channels = self.merged_coils.shape[3]
+        # Personalized parameters to LSQ
+        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='dilate')
+        mask_erode_vec = mask_erode.reshape((-1,))
+
+        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        merged_coils_Gx = np.zeros(np.shape(temp))
+        merged_coils_Gy = np.zeros(np.shape(temp))
+        merged_coils_Gz = np.zeros(np.shape(temp))
+        for ch in range(n_channels):
+            merged_coils_Gx[ch] = np.gradient(temp[ch], axis=0)
+            merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
+            merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
+
+        self.coil_Gz_mat = np.reshape(merged_coils_Gz,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
+                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+
+        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
+
+        if self.opt_criteria == 'grad':
+            self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+            self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+            self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+
+            if len(self.unshimmed_Gz_vec) == 0:
+                raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
+                                 'Make sure to include at least 3 voxels in the slice direction.')
+
+    def optimize(self, mask):
+        """
+        Wrapper for the optimization function. This function prepares the data and calls the optimizer.
+        Optimize unshimmed volume by varying current to each channel
+
+        Args:
+            mask (np.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+
+        Returns:
+            np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
+                            The shape of the array returned has shape corresponding to the total number of channels
+        """
+        if self.opt_criteria == 'grad':
+            self._prepare_data(mask)
+
+        self.mask = mask
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        # Set up output currents
+        currents_0 = self.get_initial_guess()
+        # If what to shim is already 0s
+        if np.all(unshimmed_vec == 0):
+            return np.zeros(np.shape(currents_0))
+        currents = self._get_currents(unshimmed_vec, coil_mat, currents_0)
+
+        return currents
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
@@ -101,8 +170,11 @@ class LsqOptimizer(OptimizerUtils):
         # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
         # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
         # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
-
         return a @ coef @ coef + b @ coef + c
+
+    def _residuals_grad(self, coef, a, b, c, e):
+        result = coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
+        return result
 
     def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to find the initial guess for the mean squared error (MSE) optimization
@@ -178,6 +250,21 @@ class LsqOptimizer(OptimizerUtils):
         """
         return 2 * a @ coef + b
 
+    def _residuals_grad_jacobian(self, coef, a, b, c, e):
+        """ Jacobian of the function that we want to minimize
+
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            a (np.ndarray): 2D array using for the optimization
+            b (np.ndarray): 1D flattened array used for the optimization
+            c (float) : Float used for the optimization but not used here
+            e (np.ndarray): 1D array of the regularization vector
+
+        Returns:
+            np.ndarray : 1D array of the gradient of the mse function to minimize
+        """
+        return 2 * a @ coef + b + np.sign(coef) * e
+
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
 
@@ -209,10 +296,20 @@ class LsqOptimizer(OptimizerUtils):
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
-                                       options={'maxiter': 1000, 'ftol': 1e-9})
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
+
+        elif self.opt_criteria == 'grad':
+            a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
+
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(a, b, c, e),
+                                       method='SLSQP',
+                                       bounds=self.merged_bounds,
+                                       constraints=tuple(scipy_constraints),
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
 
         else:
-
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='SLSQP',
@@ -240,10 +337,15 @@ class LsqOptimizer(OptimizerUtils):
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
+            elif self.opt_criteria == 'grad':
+                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
+                                                           np.zeros_like(coil_mat),
+                                                           factor=1)
             else:
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
                                                        np.zeros_like(coil_mat),
                                                        factor=1)
+
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
         if not currents_sp.success:
@@ -252,6 +354,43 @@ class LsqOptimizer(OptimizerUtils):
         currents = currents_sp.x
 
         return currents
+
+    def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
+        len_unshimmed = len(unshimmed_vec)
+        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
+        len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
+
+        inv_factor = 1 / (len_unshimmed * factor)
+        w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
+        w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
+
+        # MSE term for unshimmed_vec and coil_mat
+        a1 = inv_factor * (coil_mat.T @ coil_mat)
+        b1 = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        c1 = inv_factor * (unshimmed_vec @ unshimmed_vec)
+
+        # MSE term for unshimmed_Gz_vec and coil_Gz_mat
+        a2 = w_inv_factor_Gz * (self.coil_Gz_mat.T @ self.coil_Gz_mat)
+        b2 = 2 * w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
+        c2 = w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
+
+        # MSE term for unshimmed_Gx_vec and coil_Gx_mat
+        a3 = w_inv_factor_Gxy * (self.coil_Gx_mat.T @ self.coil_Gx_mat)
+        b3 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.coil_Gx_mat)
+        c3 = w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.unshimmed_Gx_vec)
+
+        # MSE term for unshimmed_Gy_vec and coil_Gy_mat
+        a4 = w_inv_factor_Gxy * (self.coil_Gy_mat.T @ self.coil_Gy_mat)
+        b4 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.coil_Gy_mat)
+        c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
+
+        # Combining the terms
+        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
+        b = b1 + b2 + b3 + b4
+        c = c1 + c2 + c3 + c4
+        e = self.reg_vector
+
+        return a, b, c, e
 
 
 class PmuLsqOptimizer(LsqOptimizer):

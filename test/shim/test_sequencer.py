@@ -384,7 +384,7 @@ def define_rt_sim_inputs():
                        coil_affine, n_channel=3)
 
     # Define the slices to shim with the proper convention
-    slices = define_slices(nii_anat.shape[2], 1, method='sequential')
+    slices = define_slices(nii_anat.shape[2], 1, method='ascending')
 
     return nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu, coil
 
@@ -600,7 +600,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     coil = create_coil(150, 150, nz + 10, create_constraints(np.inf, -np.inf, np.inf), coil_affine)
 
     # Define the slices to shim with the proper convention
-    slices = define_slices(nii_anat.shape[2], 5, method='sequential')
+    slices = define_slices(nii_anat.shape[2], 5, method='ascending')
 
     # Find optimal currents
     output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu,
@@ -756,13 +756,29 @@ class TestDefineSlices(object):
         output = define_slices(5)
         assert np.all(output == [(0,), (1,), (2,), (3,), (4,)])
 
-    def test_define_slices_interleaved(self):
-        output = define_slices(5, 2, "interleaved")
-        assert np.all(output == [(0, 2), (1, 3), (4,)])
+    def test_define_slices_interleaved_sms2_even(self):
+        output = define_slices(12, 2, "interleaved")
+        assert np.all(output == [(1, 7),(5, 11), (3, 9), (2, 8), (0, 6), (4, 10)])
 
-    def test_define_slices_sequential(self):
-        output = define_slices(5, 2, "sequential")
-        assert np.all(output == [(0, 1), (2, 3), (4,)])
+    def test_define_slices_interleaved_sms3_even(self):
+        output = define_slices(24, 3, "interleaved")
+        assert np.all(output == [(1, 9, 17),(3, 11, 19), (7, 15, 23), (5, 13, 21), (2, 10, 18), (4, 12, 20), (0, 8, 16), (6, 14, 22)])
+
+    def test_define_slices_interleaved_sms2_odd(self):
+        output = define_slices(18, 2, "interleaved")
+        assert np.all(output == [(1, 10), (3, 12), (5, 14), (7, 16), (0, 9), (2, 11), (4, 13), (6, 15), (8, 17)])
+
+    def test_define_slices_interleaved_sms3_odd(self):
+        output = define_slices(21, 3, "interleaved")
+        assert np.all(output == [(0, 7, 14), (2, 9, 16), (4, 11, 18), (6, 13, 20), (1, 8, 15), (3, 10, 17), (5, 12, 19)])
+
+    def test_define_slices_ascending(self):
+        output = define_slices(6, 2, "ascending")
+        assert np.all(output == [(0, 3), (1, 4), (2, 5)])
+
+    def test_define_slices_descending(self):
+        output = define_slices(6, 2, "descending")
+        assert np.all(output == [(2, 5), (1, 4), (0, 3)])
 
     def test_define_slices_volume(self):
         output = define_slices(5, method="volume")
@@ -770,11 +786,15 @@ class TestDefineSlices(object):
 
     def test_define_slices_wrong_method(self):
         with pytest.raises(ValueError, match="Not a supported method to define slices"):
-            define_slices(5, 2, "abc")
+            define_slices(6, 2, "abc")
+
+    def test_leftover_slices(self):
+        with pytest.raises(ValueError, match="SMS method does not support leftover slices"):
+            define_slices(5, 2, "interleaved")
 
     def test_define_slices_wrong_n_slice(self):
         with pytest.raises(ValueError, match="Number of slices should be greater than 0"):
-            define_slices(0, 2, "sequential")
+            define_slices(0, 2, "ascending")
 
 
 class TestParseSlices(object):
