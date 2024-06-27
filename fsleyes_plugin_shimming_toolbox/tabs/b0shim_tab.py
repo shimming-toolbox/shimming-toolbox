@@ -169,7 +169,8 @@ class B0ShimTab(Tab):
             },
         ]
         component_slice_int = InputComponent(self, input_text_box_metadata_slice, cli=dynamic_cli)
-        component_slice_seq = InputComponent(self, input_text_box_metadata_slice, cli=dynamic_cli)
+        component_slice_asc = InputComponent(self, input_text_box_metadata_slice, cli=dynamic_cli)
+        component_slice_des = InputComponent(self, input_text_box_metadata_slice, cli=dynamic_cli)
 
         output_metadata = [
             {
@@ -277,7 +278,16 @@ class B0ShimTab(Tab):
         ]
         component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
         component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
-
+        
+        weighting_signal_loss_metadata = [
+            {
+                "button_label": "Weighting signal loss",
+                "name": "weighting-signal-loss",
+                "default_text": "0.01",
+            },
+        ]
+        component_slice_w_sig_loss = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
+        
         criteria_dropdown_metadata = [
             {
                 "label": "Mean Squared Error",
@@ -290,15 +300,23 @@ class B0ShimTab(Tab):
             {
                 "label": "Root Mean Squared Error",
                 "option_value": "rmse",
+            },
+            {
+                "label": "Mean Squared Error + Z gradient",
+                "option_value": "grad",
             }
-        ]
+        ]        
 
         dropdown_crit = DropdownComponent(
             panel=self,
             dropdown_metadata=criteria_dropdown_metadata,
             label="Optimizer Criteria",
             option_name='optimizer-criteria',
-            cli=dynamic_cli
+            cli=dynamic_cli,
+            list_components=[self.create_empty_component(),
+                            self.create_empty_component(),
+                            self.create_empty_component(),
+                            component_slice_w_sig_loss]
         )
 
         dropdown_opt_metadata = [
@@ -335,8 +353,12 @@ class B0ShimTab(Tab):
                 "option_value": "auto"
             },
             {
-                "label": "Sequential",
-                "option_value": "sequential"
+                "label": "Ascending",
+                "option_value": "ascending"
+            },
+            {
+                "label": "Descending",
+                "option_value": "descending"
             },
             {
                 "label": "Interleaved",
@@ -345,7 +367,7 @@ class B0ShimTab(Tab):
             {
                 "label": "Volume",
                 "option_value": "volume"
-            },
+            }
         ]
 
         self.dropdown_slice_dyn = DropdownComponent(
@@ -355,7 +377,8 @@ class B0ShimTab(Tab):
             cli=dynamic_cli,
             option_name='slices',
             list_components=[self.create_empty_component(),
-                             component_slice_seq,
+                             component_slice_asc,
+                             component_slice_des,
                              component_slice_int,
                              self.create_empty_component()]
         )

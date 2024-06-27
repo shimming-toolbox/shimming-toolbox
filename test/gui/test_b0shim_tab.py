@@ -36,6 +36,22 @@ def test_st_plugin_b0shim_dyn_lsq_mse():
 
 def test_st_plugin_b0shim_dyn_lsq_mae():
     options = {'optimizer-method': 'Least Squares',
+               'optimizer-criteria': 'Mean Squared Error + Z gradient',
+               'weighting-signal-loss': '0.01',
+               'slices': 'Auto detect',
+               'scanner-coil-order': '1',
+               'output-file-format-scanner': 'Slicewise per Channel',
+               'output-file-format-coil': 'Slicewise per Channel',
+               'output-value-format': 'delta'
+               }
+
+    def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
+        __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
+    run_with_orthopanel(_test_st_plugin_b0shim_dyn)
+    
+    
+def test_st_plugin_b0shim_dyn_lsq_grad():
+    options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Absolute Error',
                'slices': 'Auto detect',
                'scanner-coil-order': '1',
@@ -106,6 +122,13 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, _ = _define_inputs(fmap_dim=3)
+        
+        # Duplicate nii_fmap's last dimension
+        if 'weighting-signal-loss' in options.keys():
+            fmap = nii_fmap.get_fdata()
+            fmap = np.repeat(fmap, 5, axis=2)
+            nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+        
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
