@@ -186,14 +186,15 @@ def test_cli_mask_sct_4d():
 def test_cli_mask_mrs():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
-        # The MRS voxel size and its center coordinate (x,y,z) is extracitng from the raw data by first converting the raw data
-        # to a nifti file and then reading the header of that file.
+        # The MRS voxel size and its center coordinates (x, y, z) are extracted from the raw data by first converting
+        # the raw data to a NIfTI file and then reading the header of that file.
         mrs_raw_data = os.path.join(__dir_testing__, 'ds_mrs', 'sub-1_acq-press-siemens-shim_nuc-H_echo-135_svs.rda')
         gre = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-1_acq-gre_magnitude1.nii.gz')
         out = os.path.join(tmp, 'mask_mrs.nii.gz')
-        run_subprocess(['spec2nii', 'rda', mrs_raw_data])
-        name_nii, ext = splitext(mrs_raw_data)
-        nii = nib.load(name_nii + '.nii.gz')
+        run_subprocess(['spec2nii', 'rda', mrs_raw_data, '-o', tmp])
+        name_nii, ext = os.path.splitext(mrs_raw_data)
+        nii_path = os.path.join(tmp, 'sub-1_acq-press-siemens-shim_nuc-H_echo-135_svs.nii.gz')
+        nii = nib.load(nii_path)
         header_raw_data = nii.header
         position_sag = header_raw_data['qoffset_x']
         position_cor = header_raw_data['qoffset_y']
@@ -201,17 +202,18 @@ def test_cli_mask_mrs():
 
         mrs_center = np.array([position_sag, position_cor, position_tra])
         mrs_voxel_size = header_raw_data['pixdim'][1:4]
+        mrs_voxel_size_str = ' '.join(map(str, mrs_voxel_size))
+        mrs_center_str = ' '.join(map(str, mrs_center))
 
-        result = runner.invoke(mask_cli, ['mrs', '--input', gre, '--output', out,
-                               '--size', mrs_voxel_size, '--center', mrs_center])
+        result = runner.invoke(
+            mask_cli, f"mrs --input {gre} --output {out} --size {mrs_voxel_size_str} --center {mrs_center_str}")
+        # Knowing that the input magnitude data(GRE) has a pixel size of 4.4 x 4.4 x 4.4 mm, and the MRS voxel size
+        # was originally chosen to be 20 x 20 x 20 mm, we can calculate the expected mask size. By dividing 20 by 4.4,
+        # rounding up, and adding one margin pixel to the mask, the expected mask will have dimensions of 6 x 6 x 6 pixels.
 
-        # Knowing that the input magnitude data (gre) has a pixel size of 4.4, 4.4, 4.4 mm, and the mrs voxel size in
-        # originally chosen to be 20X20X20 mm. Therefore, dividing 20 to 4.4, roounding it up and
-        # adding one margin pixel to the mask, the expected mask will have the size of (6, 6, 6) pixels.
         expected = np.ones((6, 6, 6))
-
         nii = nib.load(out)
         mask = nii.get_fdata()
 
         assert result.exit_code == 0
-        assert np.all(mask[29:34, 37:42, 6:11] == expected)
+        assert np.all(mask[29:35, 37:43, 6:12] == expected)
