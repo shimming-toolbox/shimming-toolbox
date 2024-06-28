@@ -1144,24 +1144,17 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
     constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
 
     # If the scanner coefficients are valid, update the initial coefficients
-    if scanner_shim_settings['has_valid_settings']:
-        if scanner_shim_settings['0'] is not None and 0 in orders:
-            initial_coefs['0'] = np.array(scanner_shim_settings['0'])
-        if scanner_shim_settings['1'] is not None and 1 in orders:
-            initial_coefs['1'] = scanner_shim_settings['1']
-        if scanner_shim_settings['2'] is not None and 2 in orders:
-            initial_coefs['2'] = scanner_shim_settings['2']
-        if scanner_shim_settings['3'] is not None and 3 in orders:
-            initial_coefs['3'] = scanner_shim_settings['3']
+    for order in orders:
+        if scanner_shim_settings[f'order{order}_is_valid']:
+            initial_coefs[str(order)] = np.array(scanner_shim_settings[str(order)])
 
         # Make sure the initial coefficients are within the specified bounds
         _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
 
     # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
-    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs,
-                                                                  constraints['coef_channel_minmax']
-                                                                  )
+    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs, constraints['coef_channel_minmax'])
+
     return constraints
 
 
