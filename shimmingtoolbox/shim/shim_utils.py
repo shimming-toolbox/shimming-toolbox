@@ -341,13 +341,12 @@ class ScannerShimSettings:
 
     def concatenate_shim_settings(self, orders=[2]):
         coefs = []
-        if not self.shim_settings['has_valid_settings']:
-            logger.warning("Invalid Shim Settings")
-            return coefs
 
         if any(order >= 0 for order in orders):
             for order in sorted(orders):
                 if self.shim_settings.get(str(order)) is not None:
+                    if not self.shim_settings[f'order{order}_is_valid']:
+                        raise ValueError(f"Order {order} shim settings is not valid")
                     # Concatenate 2 lists
                     coefs.extend(self.shim_settings.get(str(order)))
                 else:
