@@ -1,0 +1,13 @@
+*.egg-info
+*.DS_Store
+*__pycache__
+build/
+dist/
+.vagrant/
+.idea
+dcm2bids.json
+output_*
+./vscode
+
+# Project's data
+testing_data
