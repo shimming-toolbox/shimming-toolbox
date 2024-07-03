@@ -2063,7 +2063,7 @@ def parse_slices(fname_nifti):
     while len(list_slices) > 0:
         # Find if the first index has the same timing as other indexes
         # shim_group = tuple(list_slices[list_slices == list_slices[0]])
-        shim_group = tuple(np.where(slice_timing == slice_timing[list_slices[0]])[0])
+        shim_group = tuple(np.where(slice_timing == slice_timing[list_slices[0]])[0].astype(np.int32).tolist())
         # Add this as a tuple
         slices.append(shim_group)
 
