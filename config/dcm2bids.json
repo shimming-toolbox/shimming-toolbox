@@ -137,6 +137,16 @@
             }
         },
         {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*fl3d1",
+                "ProtocolName": "GRE-T1w",
+                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+            }
+        },
+        {
             "datatype": "fmap",
             "suffix": "magnitude1",
             "criteria": {
