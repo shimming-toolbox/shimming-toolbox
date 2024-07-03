@@ -94,7 +94,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '1,2',
+                                             '--scanner-coil-order', '0,1,2',
                                              '--regularization-factor', '0.1',
                                              '--slices', 'ascending',
                                              '--output', tmp],
