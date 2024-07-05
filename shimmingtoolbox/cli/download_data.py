@@ -27,7 +27,7 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         "B0 dynamic shimming dataset.",
     ),
     "data_create_coil_profiles": (
-        ["https://github.com/shimming-toolbox/data-create-coil-profiles/releases/download/r20230929/dicoms.zip"],
+        ["https://github.com/shimming-toolbox/data-create-coil-profiles/releases/download/r20230815/dicoms.zip"],
         ["https://github.com/shimming-toolbox/data-create-coil-profiles/archive/refs/tags/r20230929.zip"],
         "B0 coil profile dataset.",
     ),
