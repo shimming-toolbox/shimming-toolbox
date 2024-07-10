@@ -7,8 +7,9 @@ REM Todo: Make the installation path a script argument so that users with spaces
 
 set "ST_DIR=%userprofile%\shimming-toolbox"
 set "PYTHON_DIR=python"
-for %%d in ("%~dp0..") do set "ST_SOURCE_FILES=%%~fd"
-echo %ST_SOURCE_FILES%
+for %%d in ("%~dp0..") do set "ST_REPO=%%~fd"
+echo %ST_REPO%
+set "ST_SOURCE_FILES=%ST_REPO%\shimming-toolbox"
 pushd "%CD%"
 
 echo Creating Shimming Toolbox directory

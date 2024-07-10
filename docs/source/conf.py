@@ -14,7 +14,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../shimmingtoolbox/"))
+sys.path.insert(0, os.path.abspath("../../shimming-toolbox/shimmingtoolbox/"))
 sys.path.insert(0, os.path.abspath("../../examples/"))
 
 # Project imports

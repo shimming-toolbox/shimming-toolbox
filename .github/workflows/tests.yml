@@ -24,7 +24,15 @@ jobs:
           - 'ubuntu-22.04'
           - 'ubuntu-20.04'
         python-version:
-          - '3.9'
+          - '3.10'
+        tests:
+          - 'fsleyes-plugin-shimming-toolbox'
+          - 'shimming-toolbox'
+        exclude:
+          - os: 'macos-12'
+            tests: 'fsleyes-plugin-shimming-toolbox'
+          - os: 'macos-13'
+            tests: 'fsleyes-plugin-shimming-toolbox'
 
     steps:
       - name: Get home directory
@@ -38,10 +46,17 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Package installation
+      - name: Package plugin installation
+        if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
         run: |
           echo "shimming-toolbox installation"
           make install
+
+      - name: Package ST installation
+        if: matrix.tests == 'shimming-toolbox'
+        run: |
+          echo "Plugin installation"
+          make install PLUGIN=false
 
       - name: Set path for Shimming Toolbox
         run: |
@@ -91,10 +106,17 @@ jobs:
       - name: Check dependencies
         run: st_check_dependencies
 
-      - name: Run unit tests
+      - name: Run unit tests for ST
+        if: matrix.tests == 'shimming-toolbox'
         run: |
           source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
-          py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
+          py.test ./shimming-toolbox -v --cov ./shimming-toolbox/shimmingtoolbox/ --cov-report term-missing
+
+      - name: Run unit tests for the plugin
+        if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
+        run: |
+          source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
+          xvfb-run -a -s "-screen 0 1920x1200x24" py.test ./fsleyes-plugin-shimming-toolbox -v
 
       - name: macOS Shellcheck
         if: contains(matrix.os, 'macos')

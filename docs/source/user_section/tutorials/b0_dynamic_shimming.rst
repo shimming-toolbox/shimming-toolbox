@@ -35,12 +35,6 @@ In your terminal, run the command:
 
     shimming-toolbox
 
-Then, open ``Shimming Toolbox`` plugin:
-
-.. code:: bash
-
-    Settings --> OrthoView --> Shimming Toolbox
-
 The plugin should open as a new panel in ``FSLeyes``.
 
 
