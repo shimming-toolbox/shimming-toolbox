@@ -71,7 +71,7 @@ class LsqOptimizer(OptimizerUtils):
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
         # Personalized parameters to LSQ
-        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='dilate')
+        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='erode')
         mask_erode_vec = mask_erode.reshape((-1,))
 
         temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
