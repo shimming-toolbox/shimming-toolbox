@@ -18,6 +18,7 @@ from shimmingtoolbox.utils import check_exe
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
+
 class bcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -266,9 +267,6 @@ def get_git_version():
 
 
 def _get_branch():
-    """
-    """
-
     p = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
                          stderr=subprocess.PIPE, cwd=__dir_repo__)
     output, _ = p.communicate()
@@ -279,8 +277,6 @@ def _get_branch():
 
 
 def _get_commit(path_to_git_folder=None):
-    """
-    """
     if path_to_git_folder is None:
         path_to_git_folder = __dir_repo__
     else:
