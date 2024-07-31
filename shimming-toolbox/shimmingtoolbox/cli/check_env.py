@@ -57,9 +57,13 @@ def check_dependencies():
 
     # Shimming Toolbox
     print(f"Shimming Toolbox version: {__version__}")
-    print(f"Git version: {get_git_version()}")
 
     # Plugin
+    plugin_version = get_plugin_version()
+    print(f"Plugin version: {plugin_version}\n")
+
+    # Git
+    print(f"Git version: {get_git_version()}")
 
     # Prelude
     prelude_check_msg = check_name.format("prelude")
@@ -219,8 +223,10 @@ def dump_env_info():
     """
     env_info = get_env_info()
     git_version = get_git_version()
+    plugin_version = get_plugin_version()
 
-    print(f"PACKAGE INFO:\n{__version__}\n\nGIT INFO:\n{git_version}\n\nENVIRONMENT INFO:\n{env_info}")
+    print(f"Shimming Toolbox version:\n{__version__}\n\nPlugin version:\n{plugin_version}\n\nGit information:\n{git_version}\n\n"
+          f"Environment info:\n{env_info}")
     return
 
 
@@ -250,7 +256,7 @@ def get_env_info() -> str:
     env_info = (f"{os_name} {cpu_arch}\n" +
                 f"{platform_system} {platform_release}\n" +
                 f"{platform_version}\n" +
-                f"{python_implementation} {python_full_version}\n\n" +
+                f"{python_implementation} {python_full_version}\n" +
                 f"{cpu_usage}\n" +
                 f"{ram_usage}"
                 )
@@ -329,7 +335,7 @@ def get_plugin_version():
         string: version
     """
     try:
-        from fsleyes_plugin_shimming_toolbox import __version__
-        return __version__
+        from fsleyes_plugin_shimming_toolbox import __version__ as plugin_version
+        return plugin_version
     except ImportError:
         return "Not installed"
