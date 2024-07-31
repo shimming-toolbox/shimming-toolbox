@@ -13,7 +13,8 @@ import platform
 import psutil
 import sys
 
-from typing import Dict, Tuple, List
+from shimmingtoolbox import __version__, __dir_repo__
+from shimmingtoolbox.utils import check_exe
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -53,6 +54,12 @@ def check_dependencies():
     formatting output accordingly.
     """
     check_name = "Check if {} is installed"
+
+    # Shimming Toolbox
+    print(f"Shimming Toolbox version: {__version__}")
+    print(f"Git version: {get_git_version()}")
+
+    # Plugin
 
     # Prelude
     prelude_check_msg = check_name.format("prelude")
@@ -211,9 +218,9 @@ def dump_env_info():
     by calling helper functions to retrieve these details.
     """
     env_info = get_env_info()
-    pkg_version = get_pkg_info()
+    git_version = get_git_version()
 
-    print(f"ENVIRONMENT INFO:\n{env_info}\n\nPACKAGE INFO:\n{pkg_version}")
+    print(f"PACKAGE INFO:\n{__version__}\n\nGIT INFO:\n{git_version}\n\nENVIRONMENT INFO:\n{env_info}")
     return
 
 
@@ -250,14 +257,79 @@ def get_env_info() -> str:
     return env_info
 
 
-def get_pkg_info() -> str:
-    """Gets package version.
-
-    This function gets the version of shimming-toolbox.
-
+def get_git_version():
+    """ Get the git version of the repository
     Returns:
-        str: The version number of the shimming-toolbox installation.
+        string: branch-commit
     """
-    import shimmingtoolbox as st
-    pkg_version = st.__version__
-    return pkg_version
+    st_commit = None
+    st_branch = None
+    if check_exe("git") and os.path.isdir(os.path.join(__dir_repo__, ".git")):
+        st_commit = _get_commit() or st_commit
+        st_branch = _get_branch() or st_branch
+
+    if st_commit is None:
+        return "Not a Git repository"
+
+    return f"{st_branch}-{st_commit}"
+
+
+def _get_branch():
+    """
+    """
+
+    p = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, cwd=__dir_repo__)
+    output, _ = p.communicate()
+    status = p.returncode
+
+    if status == 0:
+        return output.decode().strip()
+
+
+def _get_commit(path_to_git_folder=None):
+    """
+    """
+    if path_to_git_folder is None:
+        path_to_git_folder = __dir_repo__
+    else:
+        path_to_git_folder = os.path.abspath(os.path.expanduser(path_to_git_folder))
+
+    p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         cwd=path_to_git_folder)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        commit = output.decode().strip()
+    else:
+        commit = "?!?"
+
+    p = subprocess.Popen(["git", "status", "--porcelain"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         cwd=path_to_git_folder)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        unclean = True
+        for line in output.decode().strip().splitlines():
+            line = line.rstrip()
+            if line.startswith("??"):  # ignore ignored files, they can't hurt
+                continue
+            break
+        else:
+            unclean = False
+        if unclean:
+            commit += "*"
+
+    return commit
+
+
+def get_plugin_version():
+    """ Get the version of the plugin
+    Returns:
+        string: version
+    """
+    try:
+        from fsleyes_plugin_shimming_toolbox import __version__
+        return __version__
+    except ImportError:
+        return "Not installed"
