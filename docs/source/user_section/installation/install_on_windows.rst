@@ -69,7 +69,7 @@ If your username contains spaces, you can create a new user account with no spac
 
     The installer will install ``Shimming Toolbox`` and ``dcm2niix`` into an isolated environment. It will not interfere if you already have ``dcm2niix`` installed.
 
-Open a ``cmd`` command prompt and run the following commands.
+Open a ``cmd`` command prompt. Navigate to where you want to download Shimming Toolbox and run the following commands.
 
 First, download Shimming Toolbox:
 
@@ -111,6 +111,7 @@ To run the testing suite, run ``pytest`` from the shimming-toolbox source direct
 
 .. code:: bat
 
+  cd <shimming-toolbox-dir>/shimming-toolbox
   %userprofile%\shimming-toolbox\python\Scripts\activate
   pytest -m "not prelude"
 
@@ -128,6 +129,7 @@ To test shimming-toolbox without ``SCT``:
 
 .. code:: bat
 
+  cd <shimming-toolbox-dir>/shimming-toolbox
   %userprofile%\shimming-toolbox\python\Scripts\activate
   pytest -m "not prelude and not sct"
 

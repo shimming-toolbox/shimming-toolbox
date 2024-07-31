@@ -5,7 +5,7 @@ Static B1+ shimming
 .. warning::
     This tutorial only covers static B1+ shimming applications performed on Siemens scanners. Shimming-Toolbox currently
     only handles B1+ maps acquired using Siemens' standard TurboFLASH B1+ mapping sequence.
-    This is the tfl_rfmap sequence, which can be found under Siemens/Service Sequences in the Protocols. Not to be confused      
+    This is the tfl_rfmap sequence, which can be found under Siemens/Service Sequences in the Protocols. Not to be confused
     with the tfl_b1map sequence, which will not create the channel-specific B1+ maps necessary for the shim process.
 
 Open a Terminal and run:
@@ -13,12 +13,6 @@ Open a Terminal and run:
 .. code:: bash
 
     shimming-toolbox
-
-Then, open the ``Shimming Toolbox`` plugin:
-
-.. code:: bash
-
-    Settings --> OrthoView --> Shimming Toolbox
 
 The plugin should open as a new panel in ``FSLeyes``.
 
@@ -66,7 +60,7 @@ Static B1+ shimming: CV reduction
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/B1shim_button.jpg
   :width: 400
   :alt: B1 shim option location
-  
+
 Copy the SarDataUser.mat file from C:/Medcom/MriProduct/PhysConfig/ to the laptop on which Shimming Tooolbox is run
 
 

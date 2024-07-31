@@ -1,7 +1,8 @@
 SHELL := /bin/bash
 ST_DIR := $(HOME)/shimming-toolbox
 PYTHON_DIR := python
-CLEAN := false
+CLEAN := true
+PLUGIN := true
 
 .SILENT: install
 
@@ -19,6 +20,14 @@ install: ## Run 'make install' to install Shimming Toolbox [Use flag CLEAN=true 
 		bash installer/install_conda.sh; \
 	else \
 		echo "$(ST_DIR) and conda install found, skipping install"; \
-        fi
-	bash installer/create_venv.sh
-	bash installer/install_shimming_toolbox.sh
+    fi; \
+    bash installer/create_venv.sh; \
+    if [[ $(PLUGIN) == false ]]; then \
+        echo "Installing Shimming Toolbox"; \
+	    bash installer/install_shimming_toolbox.sh; \
+	else \
+	  	echo "Installing Shimming Toolbox Plugin"; \
+		bash installer/install_plugin.sh; \
+		echo "Installing Shimming Toolbox"; \
+		bash installer/install_shimming_toolbox.sh; \
+	fi
