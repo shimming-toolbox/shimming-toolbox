@@ -60,10 +60,10 @@ def check_dependencies():
 
     # Plugin
     plugin_version = get_plugin_version()
-    print(f"Plugin version: {plugin_version}\n")
+    print(f"Plugin version: {plugin_version}")
 
     # Git
-    print(f"Git version: {get_git_version()}")
+    print(f"Git version: {get_git_version()}\n")
 
     # Prelude
     prelude_check_msg = check_name.format("prelude")
@@ -93,20 +93,14 @@ def check_prelude_installation():
     Returns:
         bool: True if prelude is installed, False if not.
     """
-    try:
-        if sys.platform == 'win32':
-            subprocess.check_call(['where', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    except subprocess.CalledProcessError as error:
-        print_fail()
-        print(f"Error {error.returncode}: prelude is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('prelude'):
         print_ok()
         print("    " + get_prelude_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: prelude is not installed or not in your PATH.")
+        return False
 
 
 def check_dcm2niix_installation():
@@ -117,20 +111,14 @@ def check_dcm2niix_installation():
     Returns:
         bool: True if dcm2niix is installed, False if not.
     """
-    try:
-        if sys.platform == 'win32':
-            subprocess.check_call(['where', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as error:
-        print(error)
-        print_fail()
-        print(f"Error {error.returncode}: dcm2niix is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('dcm2niix'):
         print_ok()
         print("    " + get_dcm2niix_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: dcm2niix is not installed or not in your PATH.")
+        return False
 
 
 def check_sct_installation():
@@ -141,17 +129,14 @@ def check_sct_installation():
     Returns:
         bool: True if sct is installed, False if not.
     """
-    try:
-        subprocess.check_call(['sct_check_dependencies', '-short'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL, shell=True)
-    except subprocess.CalledProcessError as error:
-        print_fail()
-        print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('sct_check_dependencies'):
         print_ok()
         print("    " + get_sct_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: Spinal Cord Toolbox is not installed or not in your PATH.")
+        return False
 
 
 def get_prelude_version() -> str:
