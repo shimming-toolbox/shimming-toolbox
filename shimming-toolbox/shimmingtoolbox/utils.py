@@ -13,6 +13,7 @@ import time
 import functools
 from scipy import ndimage as nd
 import hashlib
+import shutil
 
 logger = logging.getLogger(__name__)
 
@@ -285,3 +286,18 @@ def are_jsons_equal(json1:dict, json2:dict):
     json2_bytes = json.dumps(json2).encode('utf-8')
     return hashlib.sha256(json1_bytes).hexdigest() == \
            hashlib.sha256(json2_bytes).hexdigest()
+
+
+def check_exe(name):
+    """
+    Ensure that a program exists and can be executed
+    """
+    _, filename = os.path.split(name)
+    # Case 1: Check full filepath directly (which may point to a location not on the PATH)
+    if os.path.isfile(name) and os.access(name, os.X_OK):
+        return True
+    # Case 2: Check filename only via the PATH
+    elif shutil.which(filename) and os.access(shutil.which(filename), os.X_OK):
+        return True
+    else:
+        return False

@@ -2,6 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='fsleyes-plugin-shimming-toolbox',
+    version="1.0.0",
     install_requires=[
         "imageio",
         'pre-commit>=2.10.0'
