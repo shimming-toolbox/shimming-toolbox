@@ -308,7 +308,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
                   help="Wrapper for BET, please see https://fsl.fmrib.ox.ac.uk/fsl/docs/#/structural/bet. "
                     "Create a brain mask in the coordinates of the input file. The mask is stored by default "
                        "under the name 'mask.nii.gz' in the output folder.")
-@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
               help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
                    "extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
@@ -354,7 +354,7 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
                    "extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+@click.option('-o', '--output', 'fname_output', type=click.Path(exists=True), default=os.path.join(os.curdir, 'mask.nii.gz'),
               show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--shape', 'shape', required=False, type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), default='sphere',
               help="3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.")

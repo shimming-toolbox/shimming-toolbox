@@ -254,7 +254,7 @@ class MaskTab(Tab):
                 "button_label": "fractional intensity threshold",
                 "name": "f_param",
                 "default_text": "0.5",
-                "required": True
+                "required": False
             },
             {
                 "button_label": "Vertical gradient",
