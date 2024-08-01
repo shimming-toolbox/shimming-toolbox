@@ -120,7 +120,7 @@ class RunComponent(Component):
             if self.st_function == "st_mask bet":
                 # If its mask threshold, output the mask
                 # Remove extension from output
-                fname_output = self.output_paths[0]
+                fname_output = self.output
                 path = pathlib.Path(fname_output)
                 while path.suffix:
                     path = path.with_suffix('')

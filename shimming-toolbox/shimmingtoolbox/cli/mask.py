@@ -9,6 +9,7 @@ import os
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -302,6 +303,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
     click.echo(f"The path for the output mask is: {os.path.abspath(fname_output)}")
     return fname_output
 
+
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Wrapper for BET, please see https://fsl.fmrib.ox.ac.uk/fsl/docs/#/structural/bet. "
                     "Create a brain mask in the coordinates of the input file. The mask is stored by default "
@@ -346,6 +348,41 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
     
     return fname_output
 
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Wrapper for modify_binary_mask. Lets the user dilate or erode their masks")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('--shape', 'shape', required=False, type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), default='sphere',
+              help="3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.")
+@click.option('--size', 'size', type=float, required=True, default=1,
+              help="Kernel size for the dilation or erosion. Must be odd.")
+@click.option('--operation', 'operation', type=str, required=True, default="dilate",
+              help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def modify_binary_mask_cli(fname_input, fname_output, shape, size, operation, verbose):
+    set_all_loggers(verbose)
+    
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+    
+    # Make sure input path exists
+    if not os.path.exists(fname_input):
+        raise RuntimeError("Input file does not exist")
+    
+    # Run modify_binary_mask
+    nii = nib.load(fname_input)
+    array = nii.get_fdata()
+    mask = modify_binary_mask(array, shape, size, operation)
+    
+    nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
+    nib.save(nii_mask, fname_output)
+    
+    return fname_output
+    
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):
 #     """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
