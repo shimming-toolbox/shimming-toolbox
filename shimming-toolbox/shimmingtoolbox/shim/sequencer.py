@@ -1004,7 +1004,7 @@ class RealTimeSequencer(Sequencer):
             bounds (list) : List of the bounds for the currents for the real time optimization
             acq_pressures (np.ndarray) : 1D array that contains the acquisitions pressures
             acq_timestamps (np.ndarray) : 1D array that contains the acquisitions timestamps
-            extended_fma (bool): True if the fieldmap was extended to be able to shim only 1 slice
+            extended_fmap (bool): True if the fieldmap was extended to be able to shim only 1 slice
     """
 
     def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_static,
@@ -1677,12 +1677,9 @@ class RealTimeSequencer(Sequencer):
             unshimmed_trace (np.ndarray): field in the ROI for each shim volume
         """
         # Get the pmu data values in the range of the acquisition
-        pmu_timestamps = self.pmu.get_times()
-        pmu_pressures = self.pmu.data
-        indexes = np.where(np.logical_and(pmu_timestamps >= (self.acq_timestamps[0].min() - 1000),
-                                          pmu_timestamps <= self.acq_timestamps[-1].max() + 1000))
-        pmu_timestamps_curated = pmu_timestamps[indexes]
-        pmu_pressures_curated = pmu_pressures[indexes]
+        pmu_timestamps = self.pmu.get_times(self.acq_timestamps[0].min() - 1000, self.acq_timestamps[-1].max() + 1000)
+        pmu_pressures = self.pmu.get_resp_trace(self.acq_timestamps[0].min() - 1000,
+                                                self.acq_timestamps[-1].max() + 1000)
 
         # Select slices shimmed
         curated_unshimmed_trace = unshimmed_trace[self.index_shimmed]
@@ -1695,9 +1692,9 @@ class RealTimeSequencer(Sequencer):
         max_field = max_diff_field_list.max()
         max_diff_field = max_field - min_field
 
-        diff_pressure = pmu_pressures_curated.max() - pmu_pressures_curated.min()
+        diff_pressure = pmu_pressures.max() - pmu_pressures.min()
         scaling = max_diff_field / diff_pressure
-        avg_pressure = np.mean(pmu_pressures_curated)
+        avg_pressure = np.mean(pmu_pressures)
 
         # Scale
         curated_unshimmed_trace_scaled = np.array([(x - np.mean(x)) / scaling + avg_pressure
@@ -1715,17 +1712,17 @@ class RealTimeSequencer(Sequencer):
         for i_plot in range(n_plots):
             fig = Figure(figsize=(8, 4))
             ax = fig.add_subplot(111)
-            ax.plot((pmu_timestamps_curated - pmu_timestamps_curated[0]) / 1000, pmu_pressures_curated,
+            ax.plot((pmu_timestamps - pmu_timestamps[0]) / 1000, pmu_pressures,
                     label='Pressure Trace')
-            ax.plot((self.acq_timestamps_orig - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
+            ax.plot((self.acq_timestamps_orig - pmu_timestamps[0]).mean(axis=1) / 1000, curated_unshimmed_trace_scaled[i_plot],
                     label='Unshimmed RMSE over the ROI')
-            ax.scatter((np.mean(self.acq_timestamps_orig, axis=1) - pmu_timestamps_curated[0]) / 1000,
+            ax.scatter((np.mean(self.acq_timestamps_orig, axis=1) - pmu_timestamps[0]) / 1000,
                        np.mean(self.acq_pressures_orig, axis=1),
                        color='red',
                        label='Field map timepoints')
             ax.legend()
             ax.set_ylim(ylim)
-            ax.set_yticks([pmu_pressures_curated.min(), pmu_pressures_curated.max()],
+            ax.set_yticks([pmu_pressures.min(), pmu_pressures.max()],
                           [min_field.astype(int), max_field.astype(int)])
             ax.set_xlabel('Time (s)')
             ax.set_ylabel('RMSE (Hz)')
