@@ -19,6 +19,7 @@ class MaskTab(Tab):
         self.run_component_box = None
         self.run_component_rect = None
         self.run_component_thr = None
+        self.run_component_bet = None
         self.choice_box = None
 
         description = "Create a mask.\n\n" \
@@ -258,15 +259,15 @@ class MaskTab(Tab):
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
-                "default_text": os.path.join(path_output, "mask.nii.gz"),
+                "default_text": os.path.join(path_output, "anat.nii.gz"),
                 "name": "output",
             }
         ]
         component = InputComponent(self, input_text_box_metadata, bet)
-        self.run_component_sphere = RunComponent(
+        self.run_component_bet = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask bet"
         )
-        sizer = self.run_component_sphere.sizer
+        sizer = self.run_component_bet.sizer
         return sizer

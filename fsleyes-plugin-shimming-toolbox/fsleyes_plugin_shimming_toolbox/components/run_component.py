@@ -115,6 +115,13 @@ class RunComponent(Component):
                     self.panel.terminal_component.log_to_terminal(
                         "Could not fetch subject and/or path to load to overlay"
                     )
+                    
+            if self.st_function == "st_mask bet":
+                # If its mask threshold, output the mask
+                mask = self.output_paths[0][:-7] + "_mask.nii.gz"
+                self.output_paths.clear()
+                self.output_paths.append(mask)
+                
             self.send_output_to_overlay()
 
             self.output_paths.clear()
