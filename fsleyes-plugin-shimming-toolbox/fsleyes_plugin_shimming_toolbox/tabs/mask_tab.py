@@ -9,7 +9,7 @@ from fsleyes_plugin_shimming_toolbox.tabs.tab import Tab
 from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
 from fsleyes_plugin_shimming_toolbox.components.run_component import RunComponent
 
-from shimmingtoolbox.cli.mask import box, rect, threshold, sphere
+from shimmingtoolbox.cli.mask import box, rect, threshold, sphere, bet
 
 
 class MaskTab(Tab):
@@ -43,6 +43,10 @@ class MaskTab(Tab):
             {
                 "name": "Sphere",
                 "sizer_function": self.create_sizer_sphere
+            },
+            {
+                "name": "BET",
+                "sizer_function": self.create_sizer_bet
             }
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
@@ -226,6 +230,43 @@ class MaskTab(Tab):
             panel=self,
             list_components=[component],
             st_function="st_mask sphere"
+        )
+        sizer = self.run_component_sphere.sizer
+        return sizer
+    
+    def create_sizer_bet(self):
+        path_output = os.path.join(__CURR_DIR__, "output_mask_bet")
+        input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "button_function": "select_from_overlay",
+                "name": "input",
+                "required": True
+            },
+            {
+                "button_label": "fractional intensity threshold",
+                "name": "f_param",
+                "default_text": "0.5",
+                "required": True
+            },
+            {
+                "button_label": "Vertical gradient",
+                "name": "g_param",
+                "default_text": "0.0",
+                "required": True
+            },
+            {
+                "button_label": "Output File",
+                "button_function": "select_folder",
+                "default_text": os.path.join(path_output, "mask.nii.gz"),
+                "name": "output",
+            }
+        ]
+        component = InputComponent(self, input_text_box_metadata, bet)
+        self.run_component_sphere = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask bet"
         )
         sizer = self.run_component_sphere.sizer
         return sizer

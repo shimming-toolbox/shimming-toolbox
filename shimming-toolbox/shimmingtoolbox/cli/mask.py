@@ -5,6 +5,7 @@ import logging
 import nibabel as nib
 import numpy as np
 import os
+import pathlib
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
@@ -302,6 +303,56 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
     click.echo(f"The path for the output mask is: {os.path.abspath(fname_output)}")
     return fname_output
 
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Wrapper for BET, please see https://fsl.fmrib.ox.ac.uk/fsl/docs/#/structural/bet. "
+                    "Create a brain mask in the coordinates of the input file. The mask is stored by default "
+                       "under the name 'mask.nii.gz' in the output folder.")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-f', '--f_param', required=False, type=float, default=0.5,
+              help="fractional intensity threshold (0->1); default=0.5; smaller values give larger brain outline estimates")
+@click.option('-g', '--g_param', type=float, required=False, default=0,
+              help="vertical gradient in fractional intensity threshold (-1->1); positive values give larger brain outline at bottom, smaller at top")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def bet(fname_input, fname_output, f_param, g_param, verbose):
+
+    set_all_loggers(verbose)
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Make sure input path exists
+    if not os.path.exists(fname_input):
+        raise RuntimeError("Input file does not exist")
+
+    # Get the number of dimensions
+    nii_input = nib.load(fname_input)
+    ndim = nii_input.ndim
+    # If 4d, last dimension is time, average last dim for better SNR
+    if ndim == 4:
+        input_3d = np.mean(nii_input.get_fdata(), 3)
+        nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
+        fname_mean = os.path.join(os.path.dirname(fname_output), 'mean_3d.nii.gz')
+        nib.save(nii_3d, fname_mean)
+        fname_process = fname_mean
+    # If not then only set the processing filename
+    else:
+        fname_process = fname_input
+
+    # Run BET
+    # Create the mask
+    run_subprocess(['bet', fname_process, fname_output, '-f', str(f_param), '-g', str(g_param), '-m'])
+
+    # Remove extension from output
+    path = pathlib.Path(fname_output)
+    while path.suffix:
+        path = path.with_suffix('')
+
+    fname_output = str(path) + '_mask.nii.gz'
+    
+    return fname_output
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):
