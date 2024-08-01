@@ -8,6 +8,7 @@ import nibabel as nib
 import numpy as np
 import os
 import wx
+import pathlib
 
 from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.components.component import Component, RunArgumentErrorST
@@ -118,7 +119,13 @@ class RunComponent(Component):
                     
             if self.st_function == "st_mask bet":
                 # If its mask threshold, output the mask
-                mask = self.output_paths[0][:-7] + "_mask.nii.gz"
+                # Remove extension from output
+                fname_output = self.output_paths[0]
+                path = pathlib.Path(fname_output)
+                while path.suffix:
+                    path = path.with_suffix('')
+
+                mask = str(path) + '_mask.nii.gz'
                 self.output_paths.clear()
                 self.output_paths.append(mask)
                 

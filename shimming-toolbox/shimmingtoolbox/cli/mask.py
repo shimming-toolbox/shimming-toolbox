@@ -5,7 +5,6 @@ import logging
 import nibabel as nib
 import numpy as np
 import os
-import pathlib
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
@@ -344,13 +343,6 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
     # Run BET
     # Create the mask
     run_subprocess(['bet', fname_process, fname_output, '-f', str(f_param), '-g', str(g_param), '-m'])
-
-    # Remove extension from output
-    path = pathlib.Path(fname_output)
-    while path.suffix:
-        path = path.with_suffix('')
-
-    fname_output = str(path) + '_mask.nii.gz'
     
     return fname_output
 
