@@ -364,7 +364,7 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
 @click.option('--operation', 'operation', type=click.Choice(['erode', 'dilate']), required=True, default="dilate",
               help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def modify_binary_mask_cli(fname_input, fname_output, shape, size, operation, verbose):
+def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbose):
     set_all_loggers(verbose)
     
     # Prepare the output
