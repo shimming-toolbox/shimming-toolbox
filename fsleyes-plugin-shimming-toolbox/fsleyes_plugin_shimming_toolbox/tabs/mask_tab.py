@@ -10,7 +10,7 @@ from fsleyes_plugin_shimming_toolbox.components.input_component import InputComp
 from fsleyes_plugin_shimming_toolbox.components.run_component import RunComponent
 from fsleyes_plugin_shimming_toolbox.components.dropdown_component import DropdownComponent
 
-from shimmingtoolbox.cli.mask import box, rect, threshold, sphere, bet, modify_binary_mask_cli
+from shimmingtoolbox.cli.mask import box, rect, threshold, sphere, bet, modify_binary_mask
 
 
 class MaskTab(Tab):
@@ -335,21 +335,21 @@ class MaskTab(Tab):
             }
         ]
         
-        input_component = InputComponent(self, input_text_box_metadata_1, cli=modify_binary_mask_cli)
-        second_input_component = InputComponent(self, input_text_box_metadata_2, cli=modify_binary_mask_cli)
+        input_component = InputComponent(self, input_text_box_metadata_1, cli=modify_binary_mask)
+        second_input_component = InputComponent(self, input_text_box_metadata_2, cli=modify_binary_mask)
         dropdown_shape = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_shape_metadata,
             label="Shape",
             option_name='shape',
-            cli=modify_binary_mask_cli
+            cli=modify_binary_mask
         )
         dropdown_operation = DropdownComponent(
             panel=self,
             dropdown_metadata=dropdown_operation_metadata,
             label="Operation",
             option_name='operation',
-            cli=modify_binary_mask_cli
+            cli=modify_binary_mask
         )
         self.run_component_modify = RunComponent(
             panel=self,
