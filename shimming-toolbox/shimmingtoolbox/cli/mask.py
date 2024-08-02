@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pathlib
 import click
 import logging
 import nibabel as nib
@@ -354,13 +355,13 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
                    "extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(exists=True), default=os.path.join(os.curdir, 'mask.nii.gz'),
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
               show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('--shape', 'shape', required=False, type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), default='sphere',
               help="3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.")
 @click.option('--size', 'size', type=float, required=True, default=1,
               help="Kernel size for the dilation or erosion. Must be odd.")
-@click.option('--operation', 'operation', type=str, required=True, default="dilate",
+@click.option('--operation', 'operation', type=click.Choice(['erode', 'dilate']), required=True, default="dilate",
               help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def modify_binary_mask_cli(fname_input, fname_output, shape, size, operation, verbose):
@@ -380,6 +381,24 @@ def modify_binary_mask_cli(fname_input, fname_output, shape, size, operation, ve
     
     nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
     nib.save(nii_mask, fname_output)
+    
+    # Lool for a json file with the same name as the input file
+    path = pathlib.Path(fname_input)
+    while path.suffix:
+        path = path.with_suffix('')
+    fname_json = str(path.with_suffix('.json'))
+    click.echo(f"Looking for json file at {fname_json}")
+    if os.path.exists(fname_json):
+        path = pathlib.Path(fname_output)
+        while path.suffix:
+            path = path.with_suffix('')
+        fname_output_json = str(path.with_suffix('.json'))
+        click.echo(f"Found json file at {fname_json}")
+        with open(fname_json, 'r') as f:
+            json_data = f.read()
+        with open(fname_output_json, 'w') as f:
+            click.echo(f"Copying json file from {fname_json} to {fname_output_json}")
+            f.write(json_data)
     
     return fname_output
     
