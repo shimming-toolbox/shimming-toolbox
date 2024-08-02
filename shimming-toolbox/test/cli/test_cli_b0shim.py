@@ -647,7 +647,7 @@ class TestCliDynamic(object):
 def test_cli_dynamic_unknown_scanner():
     """Test cli with scanner coil profiles of order 1 with default constraints"""
     nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(fmap_dim=3,
-                                                                      manufacturers_model_name='unknown',
+                                                                      manufacturers_model_name='not_set',
                                                                       no_shim_settings=True)
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # Save the inputs to the new directory
@@ -673,7 +673,8 @@ def test_cli_dynamic_unknown_scanner():
                             catch_exceptions=False)
 
         assert res.exit_code == 0
-        assert os.path.isfile(os.path.join(tmp, "coefs_coil0_unknown.txt"))
+        assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Unknown.txt"))
+
 
 @pytest.mark.parametrize(
     "nii_fmap,nii_anat,nii_mask,fm_data,anat_data", [(
