@@ -11,7 +11,7 @@ import pathlib
 import tempfile
 import re
 
-from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern
+from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern, create_coil_config
 from shimmingtoolbox.coils.biot_savart import generate_coil_bfield
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
 from shimmingtoolbox.utils import create_output_dir, save_nii_json, set_all_loggers
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 @click.group(context_settings=CONTEXT_SETTINGS,
              help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_"
-                  "profiles xxxxx")
+                  "profiles xxxxx. A constraint file can also be generated using the `constraint` command.")
 def coil_profiles_cli():
     pass
 
@@ -448,6 +448,38 @@ def cad_to_pumcin(fname_txt, dims_to_flip, software):
     return ixyzw
 
 
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+)
+@click.option('--name', type=click.STRING, required=False, help="Name of the coil")
+@click.option('--channels', type=click.INT, required=True, help="Number of channels in the coil")
+@click.option('--min', 'min_current', type=click.FLOAT, required=True, help="Minimum coefficient possible")
+@click.option('--max', 'max_current', type=click.FLOAT, required=True, help="Maximum coefficient possible")
+@click.option('--max-sum', type=click.FLOAT, required=True, help="Maximum sum of coefficient possible")
+@click.option('--units', type=click.STRING, required=False, help="Units of the coefficients e.g. 'A'")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
+              default=os.path.join(os.path.curdir, 'custom_coil_config.json'),
+              help="Output filename of the coil profiles config file. Supported types : '.json''")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def constraint_file(name, channels, min_current, max_current, max_sum, units, fname_output, verbose):
+    """ Create a constraint file for the coil profiles"""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    coil_config = create_coil_config(name, channels, min_current, max_current, max_sum, units)
+
+    # write json
+    with open(fname_output, mode='w') as f:
+        json.dump(coil_config, f, indent=4)
+
+    logger.info(f"Config file written: {fname_output}")
+
+
 def _concat_and_save_nii(list_fnames_nii, fname_output):
     res = []
     for _, fname in enumerate(list_fnames_nii):
@@ -467,3 +499,4 @@ def _concat_and_save_nii(list_fnames_nii, fname_output):
 
 coil_profiles_cli.add_command(from_field_maps)
 coil_profiles_cli.add_command(from_cad)
+coil_profiles_cli.add_command(constraint_file)

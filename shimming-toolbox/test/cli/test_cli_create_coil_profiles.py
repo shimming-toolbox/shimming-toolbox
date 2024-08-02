@@ -198,3 +198,22 @@ def test_create_coil_profiles_from_cad():
             config_test = json.load(f)
 
         assert are_jsons_equal(config_test, ref_config)
+
+
+def test_create_coil_constraints():
+    runner = CliRunner()
+
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_output = os.path.join(tmp, 'constraints.json')
+        res = runner.invoke(coil_profiles_cli,
+                            ['constraint-file',
+                             '--name', 'dummy',
+                             '--channels', '8',
+                             '--min', '-2.5',
+                             '--max', '2.5',
+                             '--max-sum', '20',
+                             '--units', 'A',
+                             '-o', fname_output], catch_exceptions=False)
+
+        assert res.exit_code == 0
+        assert os.path.isfile(fname_output)
