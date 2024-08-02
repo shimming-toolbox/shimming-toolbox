@@ -265,7 +265,7 @@ class MaskTab(Tab):
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
-                "default_text": os.path.join(path_output, "anat.nii.gz"),
+                "default_text": os.path.join(path_output, "bet.nii.gz"),
                 "name": "output",
             }
         ]
