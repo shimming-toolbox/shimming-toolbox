@@ -87,7 +87,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     #   "name": "Awesome_coil",
     #   "n_channels": 7,
     #   "units": "A",
-    #   "coef_channel_minmax": [i_channel][2]
+    #   "coef_channel_minmax": {"coil": [i_channel][2]}
     #   "coef_sum_max": null
 
     # Get directory and set default name

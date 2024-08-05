@@ -11,6 +11,7 @@ import tempfile
 import pickle
 import numpy as np
 
+from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.utils import are_niis_equal, are_jsons_equal
 from shimmingtoolbox.cli.create_coil_profiles import coil_profiles_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -48,9 +49,7 @@ coil_profile_config = {
     "name": "test_coil",
     "n_channels": 1,
     "units": "A",
-    "coef_channel_minmax": [
-        [-2.5, 2.5],
-    ],
+    "coef_channel_minmax": {"coil": [[-2.5, 2.5],]},
     "coef_sum_max": None
 }
 
@@ -77,6 +76,36 @@ def test_create_coil_profiles():
         assert res.exit_code == 0
         assert os.path.isfile(fname_output)
         assert os.path.isfile(os.path.join(tmp, 'mask.nii.gz'))
+
+
+def test_integrate_coil_profile_load_constraints():
+    runner = CliRunner()
+
+    config = copy.deepcopy(coil_profile_config)
+
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_config = os.path.join(tmp, 'config.json')
+        with open(fname_config, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+        fname_output = os.path.join(tmp, 'profile.nii.gz')
+
+        res = runner.invoke(coil_profiles_cli,
+                            ['from-field-maps',
+                             '-i', fname_config,
+                             '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
+                             '--unwrapper', 'skimage',
+                             '--threshold', '0.4',
+                             '-o', fname_output], catch_exceptions=False)
+
+        assert res.exit_code == 0
+        fname_constraints = os.path.join(tmp, 'test_coil_config.json')
+        assert os.path.isfile(fname_constraints)
+        with open(fname_constraints) as json_file:
+            json_data = json.load(json_file)
+
+        nii_profile = nib.load(fname_output)
+        coil = Coil(nii_profile.get_fdata(), nii_profile.affine, json_data)
+        assert coil.coef_channel_minmax == {"coil": [[-2.5, 2.5],]}
 
 
 def test_create_coil_profiles_mask():
