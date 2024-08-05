@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import click
+from cloup import command, option, option_group, group
+from cloup.constraints import RequireExactly
 import json
 import os
 import logging
@@ -14,6 +16,7 @@ import re
 from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern
 from shimmingtoolbox.coils.biot_savart import generate_coil_bfield
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
+from shimmingtoolbox.prepare_fieldmap import get_mask
 from shimmingtoolbox.utils import create_output_dir, save_nii_json, set_all_loggers
 from shimmingtoolbox.masking.threshold import threshold as mask_threshold
 
@@ -24,39 +27,51 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-@click.group(context_settings=CONTEXT_SETTINGS,
-             help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_"
-                  "profiles xxxxx")
+@group(context_settings=CONTEXT_SETTINGS,
+       help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_"
+            "profiles xxxxx")
 def coil_profiles_cli():
     pass
 
 
-@click.command(
+@command(
     context_settings=CONTEXT_SETTINGS,
 )
-@click.option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
-              help="Input filename of json config file. "
-                   "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ "
-                   "for more details.")
-@click.option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
-              help="Path to add before each file in the config file. This allows to have relative paths in the config "
-                   "file. If this option is not specified, absolute paths must be provided in the config file.")
-@click.option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude', show_default=True,
-              help="Algorithm for unwrapping")
-@click.option('--threshold', type=float, required=True,
-              help="Threshold for masking. Allowed range: [0, 1] where all scaled values lower than the threshold are "
-                   "set to 0.")
-@click.option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
-              help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
-                   "standard data, it would be preferable to set this option to False and input your phase data from "
-                   "-pi to pi to avoid unwanted rescaling")
-@click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 maps")
-@click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
-              default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
-              help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, gaussian_filter, sigma,
+@option_group("Input/Output",
+              option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
+                     help="Input filename of json config file. "
+                          "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ "
+                          "for more details."),
+              option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
+                     help="Path to add before each file in the config file. This allows to have relative paths in the "
+                          "config file. If this option is not specified, absolute paths must be provided in the config "
+                          "file."),
+              option('-o', '--output', 'fname_output', type=click.Path(), required=False,
+                     default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
+                     help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
+              )
+@option_group("Masking",
+              option('--threshold', type=float,
+                     help="Threshold for masking. Allowed range: [0, 1] where all scaled values lower than the "
+                          "threshold areset to 0."),
+              option('--mask', 'fname_mask', type=click.Path(exists=True),
+                     help="Input path for a mask."),
+              constraint=RequireExactly(1)
+              )
+@option_group("Filtering",
+              option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True,
+                     help="Gaussian filter for B0 maps"),
+              option('--sigma', type=float, default=1,
+                     help="Standard deviation of gaussian filter. Used for: gaussian_filter")
+              )
+@option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude', show_default=True,
+        help="Algorithm for unwrapping")
+@option('--autoscale-phase', 'autoscale', type=click.BOOL, default=True, show_default=True,
+        help="Tells whether to auto rescale phase inputs according to manufacturer standards. If you have non "
+             "standard data, it would be preferable to set this option to False and input your phase data from "
+             "-pi to pi to avoid unwanted rescaling")
+@option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, fname_mask, gaussian_filter, sigma,
                     fname_output, verbose):
     """ Create \u0394B\u2080 coil profiles from acquisitions defined in the input json file. The output is in
     Hz/<current> where current depends on the value in the configuration file
@@ -123,45 +138,55 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
         raise ValueError("All channels are empty. Verify input.")
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # Create a mask containing the threshold of all channels and currents
-        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        # Get a magnitude image
         for i_channel in range(n_channels):
             if i_channel not in dead_channels:
                 fname_mag = mags[i_channel][0][0]
                 break
         nii_mag = nib.load(fname_mag)
-        mask = np.full_like(nii_mag.get_fdata(), True, bool)
 
-        for i_channel in range(n_channels):
+        if fname_mask is not None:
+            nii_mask_tmp = nib.load(fname_mask)
+            mask = get_mask(nii_mag, nii_mag.get_fdata(), nii_mask_tmp)
+            nii_mask = nib.Nifti1Image(mask, nii_mag.affine, header=nii_mag.header)
+        elif threshold is not None:
+            # Create a mask containing the threshold of all channels and currents
 
-            # If a channel is dead, don't include it in the mask
-            if i_channel in dead_channels:
-                continue
+            mask = np.full_like(nii_mag.get_fdata(), True, bool)
 
-            n_currents = len(phases[i_channel])
-            channel_mask = np.full_like(nii_mag.get_fdata(), True, bool)
-            for i_current in range(n_currents):
-                n_echoes = len(phases[i_channel][i_current])
-                # Calculate the average mag image
-                current_mean = np.zeros_like(nii_mag.get_fdata())
-                for i_echo in range(n_echoes):
-                    fname_mag = mags[i_channel][i_current][i_echo]
-                    mag = nib.load(fname_mag).get_fdata()
-                    current_mean += mag
+            for i_channel in range(n_channels):
 
-                # Threshold mask for i_channel, i_current and all echoes
-                current_mean /= n_echoes
-                tmp_mask = mask_threshold(current_mean, threshold, scaled_thr=True)
+                # If a channel is dead, don't include it in the mask
+                if i_channel in dead_channels:
+                    continue
 
-                # And mask for a i_channel but all currents
-                channel_mask = np.logical_and(tmp_mask, channel_mask)
+                n_currents = len(phases[i_channel])
+                channel_mask = np.full_like(nii_mag.get_fdata(), True, bool)
+                for i_current in range(n_currents):
+                    n_echoes = len(phases[i_channel][i_current])
+                    # Calculate the average mag image
+                    current_mean = np.zeros_like(nii_mag.get_fdata())
+                    for i_echo in range(n_echoes):
+                        fname_mag = mags[i_channel][i_current][i_echo]
+                        mag = nib.load(fname_mag).get_fdata()
+                        current_mean += mag
 
-            # And mask for all channels
-            mask = np.logical_and(channel_mask, mask)
+                    # Threshold mask for i_channel, i_current and all echoes
+                    current_mean /= n_echoes
+                    tmp_mask = mask_threshold(current_mean, threshold, scaled_thr=True)
 
-        # Mask contains the region where all channels get enough signal
-        nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
-        nib.save(nii_mask, fname_mask)
+                    # And mask for a i_channel but all currents
+                    channel_mask = np.logical_and(tmp_mask, channel_mask)
+
+                # And mask for all channels
+                mask = np.logical_and(channel_mask, mask)
+
+            # Mask contains the region where all channels get enough signal
+            nii_mask = nib.Nifti1Image(mask.astype(int), nii_mag.affine, header=nii_mag.header)
+            fname_mask = os.path.join(path_output, 'mask.nii.gz')
+            nib.save(nii_mask, fname_mask)
+        else:
+            raise ValueError("Either a mask or a threshold should be provided.")
 
         if dead_channels:
             logger.warning(f"Channels: {dead_channels} do(es) not have phase or magnitude data. They will be set to 0.")
@@ -194,8 +219,8 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
 
             # Repeat the mask along 4th dimension
             n_currents = len(phases[i_channel])
-            nii_mask_4d = nib.Nifti1Image(np.repeat(mask.astype(int)[..., np.newaxis], n_currents, -1), nii_mag.affine,
-                                          header=nii_mag.header)
+            nii_mask_4d = nib.Nifti1Image(np.repeat(mask.astype(int)[..., np.newaxis], n_currents, -1), nii_mask.affine,
+                                          header=nii_mask.header)
             fname_mask_4d = os.path.join(tmp, f"mask_4d.nii.gz")
             nib.save(nii_mask_4d, fname_mask_4d)
 
