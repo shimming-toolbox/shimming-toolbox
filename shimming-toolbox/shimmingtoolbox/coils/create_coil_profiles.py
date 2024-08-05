@@ -116,6 +116,11 @@ def create_coil_config(name, channels, min_current, max_current, max_sum, units)
     Returns:
         dict: Coil configuration
     """
+    if channels < 1:
+        raise ValueError("The number of channels must be at least 1")
+
+    if min_current >= max_current:
+        raise ValueError("The minimum current must be smaller than the maximum current")
 
     # Create coil config file
     config_coil = {
