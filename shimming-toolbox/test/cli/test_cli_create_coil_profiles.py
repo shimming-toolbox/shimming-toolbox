@@ -13,6 +13,7 @@ import numpy as np
 
 from shimmingtoolbox.utils import are_niis_equal, are_jsons_equal
 from shimmingtoolbox.cli.create_coil_profiles import coil_profiles_cli
+from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
 coil_profile_config = {
@@ -75,6 +76,44 @@ def test_create_coil_profiles():
 
         assert res.exit_code == 0
         assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'mask.nii.gz'))
+
+
+def test_create_coil_profiles_mask():
+    runner = CliRunner()
+
+    config = copy.deepcopy(coil_profile_config)
+
+    fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
+    nii_fmap = nib.load(fname_fmap)
+    nx, ny, nz = nii_fmap.shape
+    mask = shapes(nii_fmap.get_fdata(), 'cube',
+                  center_dim1=int(nx / 2),
+                  center_dim2=int(ny / 2),
+                  len_dim1=10, len_dim2=10, len_dim3=int(nz / 2))
+
+    nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_fmap.affine)
+
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_config = os.path.join(tmp, 'config.json')
+        with open(fname_config, 'w', encoding='utf-8') as f:
+            json.dump(config, f, ensure_ascii=False, indent=4)
+        fname_output = os.path.join(tmp, 'profile.nii.gz')
+
+        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        nib.save(nii_mask, fname_mask)
+
+        res = runner.invoke(coil_profiles_cli,
+                            ['from-field-maps',
+                             '-i', fname_config,
+                             '--relative-path', os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap'),
+                             '--mask', fname_mask,
+                             '--unwrapper', 'skimage',
+                             '-o', fname_output], catch_exceptions=False)
+
+        assert res.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert os.path.isfile(os.path.join(tmp, 'mask.nii.gz'))
 
 
 def test_create_coil_profiles_dead_channel1():
