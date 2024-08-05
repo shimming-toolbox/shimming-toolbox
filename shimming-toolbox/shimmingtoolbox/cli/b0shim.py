@@ -1148,8 +1148,8 @@ def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orde
         if scanner_shim_settings[f'order{order}_is_valid']:
             initial_coefs[str(order)] = np.array(scanner_shim_settings[str(order)])
 
-        # Make sure the initial coefficients are within the specified bounds
-        _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
+    # Make sure the initial coefficients are within the specified bounds
+    _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
 
     # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
     # shimming
