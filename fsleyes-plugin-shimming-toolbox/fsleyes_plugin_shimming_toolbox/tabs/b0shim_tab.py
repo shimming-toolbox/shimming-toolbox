@@ -51,6 +51,10 @@ class B0ShimTab(Tab):
                 "name": "Maximum Intensity",
                 "sizer_function": self.create_sizer_max_intensity
             },
+            {
+                "name": "Custom coil constraints",
+                "sizer_function": self.create_sizer_coil_constraints
+            },
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
 
@@ -278,7 +282,7 @@ class B0ShimTab(Tab):
         ]
         component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
         component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
-        
+
         weighting_signal_loss_metadata = [
             {
                 "button_label": "Weighting signal loss",
@@ -287,7 +291,7 @@ class B0ShimTab(Tab):
             },
         ]
         component_slice_w_sig_loss = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
-        
+
         criteria_dropdown_metadata = [
             {
                 "label": "Mean Squared Error",
@@ -305,7 +309,7 @@ class B0ShimTab(Tab):
                 "label": "Mean Squared Error + Z gradient",
                 "option_value": "grad",
             }
-        ]        
+        ]
 
         dropdown_crit = DropdownComponent(
             panel=self,
@@ -796,4 +800,55 @@ class B0ShimTab(Tab):
             output_paths=[]
         )
         sizer = self.run_component_mi.sizer
+        return sizer
+
+    def create_sizer_coil_constraints(self, metadata=None):
+        path_output = os.path.join(__CURR_DIR__, "output_coil_config")
+        input_metadata = [
+            {
+                "button_label": "Name",
+                "required": True,
+                "name": "name",
+            },
+            {
+                "button_label": "Number of channels",
+                "required": True,
+                "name": "channels",
+            },
+            {
+                "button_label": "Minimum current",
+                "required": True,
+                "name": "min",
+            },
+            {
+                "button_label": "Maximum current",
+                "required": True,
+                "name": "max",
+            },
+            {
+                "button_label": "Maximum sum of current",
+                "required": True,
+                "name": "max-sum",
+            },
+            {
+                "button_label": "Units",
+                "required": False,
+                "name": "units",
+            },
+            {
+                "button_label": "Output File",
+                "button_function": "select_folder",
+                "default_text": os.path.join(path_output, "config_file.nii.gz"),
+                "name": "output",
+                "required": True
+            }
+        ]
+        component_input = InputComponent(self, input_metadata)
+
+        run_component = RunComponent(
+            panel=self,
+            list_components=[component_input],
+            st_function="st_create_coil_profiles constraint-file",
+        )
+        sizer = run_component.sizer
         return sizer
