@@ -49,7 +49,7 @@ coil_profile_config = {
     "name": "test_coil",
     "n_channels": 1,
     "units": "A",
-    "coef_channel_minmax": {"coil": [[-2.5, 2.5],]},
+    "coef_channel_minmax": {"coil": [[-2.5, 2.5], ]},
     "coef_sum_max": None
 }
 
@@ -105,7 +105,7 @@ def test_integrate_coil_profile_load_constraints():
 
         nii_profile = nib.load(fname_output)
         coil = Coil(nii_profile.get_fdata(), nii_profile.affine, json_data)
-        assert coil.coef_channel_minmax == {"coil": [[-2.5, 2.5],]}
+        assert coil.coef_channel_minmax == {"coil": [[-2.5, 2.5], ]}
 
 
 def test_create_coil_profiles_mask():
@@ -242,12 +242,12 @@ def test_create_coil_profiles_from_cad():
         fname_output = os.path.join(tmp, 'results')
         coil_name = "NP15ch"
 
-        res = runner.invoke(coil_profiles_cli,['from-cad',
-                            '-i', fname_txt,
-                            '--fmap', fname_fmap,
-                            '--coil_name', coil_name,
-                            '--offset', '0', '-111', '-47',
-                            '-o', fname_output],
+        res = runner.invoke(coil_profiles_cli, ['from-cad',
+                                                '-i', fname_txt,
+                                                '--fmap', fname_fmap,
+                                                '--coil_name', coil_name,
+                                                '--offset', '0', '-111', '-47',
+                                                '-o', fname_output],
                             catch_exceptions=False)
 
         assert res.exit_code == 0
@@ -285,3 +285,11 @@ def test_create_coil_constraints():
 
         assert res.exit_code == 0
         assert os.path.isfile(fname_output)
+        with open(fname_output) as json_file:
+            json_data = json.load(json_file)
+
+        expected = {"name": "dummy",
+                    "units": "A",
+                    "coef_channel_minmax": {"coil": [[-2.5, 2.5], ] * 8},
+                    "coef_sum_max": 20.0}
+        assert json_data == expected
