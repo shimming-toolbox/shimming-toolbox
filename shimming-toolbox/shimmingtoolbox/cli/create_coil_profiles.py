@@ -13,7 +13,7 @@ import pathlib
 import tempfile
 import re
 
-from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern
+from shimmingtoolbox.coils.create_coil_profiles import create_coil_profiles, get_wire_pattern, create_coil_constraints
 from shimmingtoolbox.coils.biot_savart import generate_coil_bfield
 from shimmingtoolbox.cli.prepare_fieldmap import prepare_fieldmap_uncli
 from shimmingtoolbox.prepare_fieldmap import get_mask
@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 @group(context_settings=CONTEXT_SETTINGS,
        help="Create coil profiles according to the specified algorithm as an argument e.g. st_create_coil_"
-            "profiles xxxxx")
+            "profiles xxxxx. A constraint file can also be generated using the `constraint` command.")
 def coil_profiles_cli():
     pass
 
@@ -39,13 +39,14 @@ def coil_profiles_cli():
 )
 @option_group("Input/Output",
               option('-i', '--input', 'fname_json', type=click.Path(exists=True), required=True,
-                     help="Input filename of json config file. "
+                     help="Input filename of the JSON coil profile creation configuration file. "
                           "See the `tutorial <https://shimming-toolbox.org/en/latest/user_section/tutorials/create_b0_coil_profiles.html#create-b0-coil-profiles.html>`_ "
                           "for more details."),
-              option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False, default=None,
-                     help="Path to add before each file in the config file. This allows to have relative paths in the "
-                          "config file. If this option is not specified, absolute paths must be provided in the config "
-                          "file."),
+              option('--relative-path', 'path_relative', type=click.Path(exists=True), required=False,
+                     default=None,
+                     help="Path to add before each file in the configuration file. This allows to have relative paths "
+                          "in the configuration file. If this option is not specified, absolute paths must be provided "
+                          "in the configuration file."),
               option('-o', '--output', 'fname_output', type=click.Path(), required=False,
                      default=os.path.join(os.path.curdir, 'coil_profiles.nii.gz'),
                      help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
@@ -87,7 +88,7 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     #   "name": "Awesome_coil",
     #   "n_channels": 7,
     #   "units": "A",
-    #   "coef_channel_minmax": [i_channel][2]
+    #   "coef_channel_minmax": {"coil": [i_channel][2]}
     #   "coef_sum_max": null
 
     # Get directory and set default name
@@ -309,10 +310,10 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     save_nii_json(nii_profiles, json_data_phase, fname_output)
     logger.info(f"Filename of the coil profiles is: {fname_output}")
 
-    # Create coil config file
+    # Create coil constraints file
     coil_name = json_data['name']
 
-    config_coil = {
+    constraints_coil = {
         'name': coil_name,
         'coef_channel_minmax': json_data['coef_channel_minmax'],
         'coef_sum_max': json_data['coef_sum_max'],
@@ -320,11 +321,11 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
     }
 
     # write json
-    fname_coil_config = os.path.join(path_output, coil_name + '_config.json')
-    with open(fname_coil_config, mode='w') as f:
-        json.dump(config_coil, f, indent=4)
+    fname_coil_constraints = os.path.join(path_output, coil_name + '_constraints.json')
+    with open(fname_coil_constraints, mode='w') as f:
+        json.dump(constraints_coil, f, indent=4)
 
-    logger.info(f"Filename of the coil config file is: {fname_coil_config}")
+    logger.info(f"Filename of the coil constraints file is: {fname_coil_constraints}")
 
 
 @click.command(
@@ -353,7 +354,8 @@ def from_field_maps(fname_json, path_relative, autoscale, unwrapper, threshold, 
 @click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
               default=os.path.join(os.path.curdir, '.'),
               help="Output filename of the coil profiles NIfTI file. Supported types : '.nii', '.nii.gz'")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
 def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, min_current, max_current,
              max_current_sum, fname_output, verbose):
     """Create \u0394B\u2080 coil profiles from CAD wire geometries."""
@@ -400,18 +402,13 @@ def from_cad(fname_txt, fname_fmap, offset, dims_to_flip, software, coil_name, m
     # Create the coil profiles json file
     if max_current_sum is None:
         max_current_sum = nb_channels
-    coef_channel_minmax = {"coil": [[min_current, max_current]] * nb_channels}
-    config_coil = {
-        'name': coil_name,
-        'coef_channel_minmax': coef_channel_minmax,
-        'coef_sum_max': max_current_sum,
-        'Units': "A"
-    }
+
+    constraints_coil = create_coil_constraints(coil_name, nb_channels, min_current, max_current, max_current_sum, "A")
 
     # Save the coil profiles json file
-    fname_coil_config = os.path.join(fname_output, coil_name + '_coil_config.json')
-    with open(fname_coil_config, mode='w') as f:
-        json.dump(config_coil, f, indent=4)
+    fname_coil_constraints = os.path.join(fname_output, coil_name + '_coil_constraints.json')
+    with open(fname_coil_constraints, mode='w') as f:
+        json.dump(constraints_coil, f, indent=4)
 
 
 def cad_to_pumcin(fname_txt, dims_to_flip, software):
@@ -473,6 +470,38 @@ def cad_to_pumcin(fname_txt, dims_to_flip, software):
     return ixyzw
 
 
+@click.command(
+    context_settings=CONTEXT_SETTINGS,
+)
+@click.option('--name', type=click.STRING, required=False, help="Name of the coil")
+@click.option('--channels', type=click.INT, required=True, help="Number of channels in the coil")
+@click.option('--min', 'min_current', type=click.FLOAT, required=True, help="Minimum coefficient possible")
+@click.option('--max', 'max_current', type=click.FLOAT, required=True, help="Maximum coefficient possible")
+@click.option('--max-sum', type=click.FLOAT, required=True, help="Maximum sum of coefficient possible")
+@click.option('--units', type=click.STRING, required=False, help="Units of the coefficients e.g. 'A'")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), required=False,
+              default=os.path.join(os.path.curdir, 'custom_coil_constraints.json'),
+              help="Output filename of the coil profiles constraint file. Supported types : '.json''")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def constraint_file(name, channels, min_current, max_current, max_sum, units, fname_output, verbose):
+    """ Create a constraint file for the coil profiles"""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    coil_config = create_coil_constraints(name, channels, min_current, max_current, max_sum, units)
+
+    # write json
+    with open(fname_output, mode='w') as f:
+        json.dump(coil_config, f, indent=4)
+
+    logger.info(f"Config file written: {fname_output}")
+
+
 def _concat_and_save_nii(list_fnames_nii, fname_output):
     res = []
     for _, fname in enumerate(list_fnames_nii):
@@ -492,3 +521,4 @@ def _concat_and_save_nii(list_fnames_nii, fname_output):
 
 coil_profiles_cli.add_command(from_field_maps)
 coil_profiles_cli.add_command(from_cad)
+coil_profiles_cli.add_command(constraint_file)

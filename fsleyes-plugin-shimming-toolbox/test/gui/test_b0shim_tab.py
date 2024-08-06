@@ -48,8 +48,8 @@ def test_st_plugin_b0shim_dyn_lsq_mae():
     def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
         __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
-    
-    
+
+
 def test_st_plugin_b0shim_dyn_lsq_grad():
     options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Absolute Error',
@@ -122,13 +122,13 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, _ = _define_inputs(fmap_dim=3)
-        
+
         # Duplicate nii_fmap's last dimension
         if 'weighting-signal-loss' in options.keys():
             fmap = nii_fmap.get_fdata()
             fmap = np.repeat(fmap, 5, axis=2)
             nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
-        
+
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
@@ -456,7 +456,7 @@ def _define_inputs(fmap_dim):
 
     fname_coil_nii = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_coil_profiles.nii.gz')
     nii_coil = nib.load(fname_coil_nii)
-    fname_coil_json = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_config.json')
+    fname_coil_json = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_constraints.json')
     coil_data = json.load(open(fname_coil_json))
 
     return nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, resp

@@ -11,7 +11,7 @@ import nibabel as nib
 import numpy as np
 import json
 
-from shimmingtoolbox import __dir_config_custom_coil_constraints__
+from shimmingtoolbox import __config_custom_coil_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -1231,7 +1231,7 @@ def _create_dummy_coil(nii_fmap):
     nii_dummy_coil = nib.Nifti1Image(sph_coil_profile, nii_fmap.affine, header=nii_fmap.header)
 
     # Dummy constraints
-    with open(__dir_config_custom_coil_constraints__, 'r', encoding='utf-8') as f:
+    with open(__config_custom_coil_constraints__, 'r', encoding='utf-8') as f:
         constraints = json.load(f)
 
     constraints['name'] = 'Dummy_coil'

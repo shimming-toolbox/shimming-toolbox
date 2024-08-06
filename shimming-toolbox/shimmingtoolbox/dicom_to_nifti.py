@@ -12,7 +12,7 @@ from dcm2bids.utils.tools import check_latest
 from dcm2bids import version
 import shutil
 
-from shimmingtoolbox import __dir_config_dcm2bids__
+from shimmingtoolbox import __config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
 from shimmingtoolbox.utils import create_output_dir
 
@@ -24,7 +24,7 @@ GAMMA = 2.675e8  # Proton's gyromagnetic ratio (rad/(T.s))
 SATURATION_FA = 90  # Saturation flip angle hard-coded in TFL B1 mapping sequence (deg)
 
 
-def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm2bids=__dir_config_dcm2bids__,
+def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm2bids=__config_dcm2bids__,
                    remove_tmp=False):
     """ Converts dicom files into nifti files by calling dcm2bids
 

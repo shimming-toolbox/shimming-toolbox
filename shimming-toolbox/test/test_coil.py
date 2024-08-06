@@ -6,7 +6,7 @@ import json
 
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, SCANNER_CONSTRAINTS
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
-from shimmingtoolbox import __dir_config_scanner_constraints__
+from shimmingtoolbox import __config_scanner_constraints__
 
 
 def test_coil_siemens_basis():
@@ -33,7 +33,7 @@ def test_coil_custom_coil():
 
 
 def test_create_scanner_coil_order0():
-    sph_contraints = json.load(open(__dir_config_scanner_constraints__))
+    sph_contraints = json.load(open(__config_scanner_constraints__))
 
     scanner_coil = ScannerCoil((4, 5, 6), np.eye(4), sph_contraints, [0])
 
@@ -41,7 +41,7 @@ def test_create_scanner_coil_order0():
 
 
 def test_create_scanner_coil_order1():
-    sph_contraints = json.load(open(__dir_config_scanner_constraints__))
+    sph_contraints = json.load(open(__config_scanner_constraints__))
 
     scanner_coil = ScannerCoil((4, 5, 6), np.eye(4), sph_contraints, [0, 1])
 
@@ -49,7 +49,7 @@ def test_create_scanner_coil_order1():
 
 
 def test_create_scanner_coil_siemens_order2():
-    sph_contraints = json.load(open(__dir_config_scanner_constraints__))
+    sph_contraints = json.load(open(__config_scanner_constraints__))
     affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'SIEMENS')
 
@@ -59,7 +59,7 @@ def test_create_scanner_coil_siemens_order2():
 
 
 def test_create_scanner_coil_philips():
-    sph_contraints = json.load(open(__dir_config_scanner_constraints__))
+    sph_contraints = json.load(open(__config_scanner_constraints__))
     affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'PHILIPS')
 
@@ -69,7 +69,7 @@ def test_create_scanner_coil_philips():
 
 
 def test_create_scanner_coil_ge():
-    sph_contraints = json.load(open(__dir_config_scanner_constraints__))
+    sph_contraints = json.load(open(__config_scanner_constraints__))
     affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'GE')
 
