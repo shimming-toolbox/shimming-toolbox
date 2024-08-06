@@ -127,7 +127,7 @@ def create_coil_constraints(name, channels, min_current, max_current, max_sum, u
         'name': name,
         'coef_channel_minmax': {'coil': [[min_current, max_current]] * channels},
         'coef_sum_max': max_sum,
-        'units': units
+        'Units': units
     }
 
     return config_constraint

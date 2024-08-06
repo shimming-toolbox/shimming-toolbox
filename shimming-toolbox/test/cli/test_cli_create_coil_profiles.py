@@ -228,8 +228,8 @@ def test_create_coil_profiles_from_cad():
     runner = CliRunner()
     fname_txt = os.path.join(__dir_testing__, 'ds_coil', 'NP13_15RX_ACDC_geometries.txt')
     fname_ref_coil_profiles = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_coil_profiles.nii.gz')
-    with open(os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_config.json'), 'rb') as f:
-        ref_config = json.load(f)
+    with open(os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_constraints.json'), 'rb') as f:
+        ref_constraints = json.load(f)
     with open(os.path.join(__dir_testing__, 'ds_coil', 'header_test.pkl'), 'rb') as outp:
         header = pickle.load(outp)
     ref_fov_shape = header["dim"][1:4]
@@ -265,7 +265,7 @@ def test_create_coil_profiles_from_cad():
         with open(fname_constraints, 'rb') as f:
             config_test = json.load(f)
 
-        assert are_jsons_equal(config_test, ref_config)
+        assert are_jsons_equal(config_test, ref_constraints)
 
 
 def test_create_coil_constraints():
@@ -289,7 +289,7 @@ def test_create_coil_constraints():
             json_data = json.load(json_file)
 
         expected = {"name": "dummy",
-                    "units": "A",
+                    "Units": "A",
                     "coef_channel_minmax": {"coil": [[-2.5, 2.5], ] * 8},
                     "coef_sum_max": 20.0}
         assert json_data == expected
