@@ -98,7 +98,7 @@ def test_integrate_coil_profile_load_constraints():
                              '-o', fname_output], catch_exceptions=False)
 
         assert res.exit_code == 0
-        fname_constraints = os.path.join(tmp, 'test_coil_config.json')
+        fname_constraints = os.path.join(tmp, 'test_coil_constraints.json')
         assert os.path.isfile(fname_constraints)
         with open(fname_constraints) as json_file:
             json_data = json.load(json_file)
@@ -255,14 +255,14 @@ def test_create_coil_profiles_from_cad():
         fname_cp = os.path.join(fname_output, coil_name + '_coil_profiles.nii.gz')
         assert os.path.isfile(fname_cp)
 
-        fname_config = os.path.join(fname_output, coil_name + '_coil_config.json')
-        assert os.path.isfile(fname_config)
+        fname_constraints = os.path.join(fname_output, coil_name + '_coil_constraints.json')
+        assert os.path.isfile(fname_constraints)
 
         nii_test = nib.load(fname_cp)
         nii_ref = nib.load(fname_ref_coil_profiles)
         assert are_niis_equal(nii_test, nii_ref)
 
-        with open(fname_config, 'rb') as f:
+        with open(fname_constraints, 'rb') as f:
             config_test = json.load(f)
 
         assert are_jsons_equal(config_test, ref_config)

@@ -102,8 +102,8 @@ def get_wire_pattern(pumcinFile):
     return wires
 
 
-def create_coil_config(name, channels, min_current, max_current, max_sum, units):
-    """ Create a coil config file
+def create_coil_constraints(name, channels, min_current, max_current, max_sum, units):
+    """ Create a coil constraint file
 
     Args:
         name (str): Name of the coil
@@ -114,7 +114,7 @@ def create_coil_config(name, channels, min_current, max_current, max_sum, units)
         units (str): Units of the coefficients e.g. 'A'
 
     Returns:
-        dict: Coil configuration
+        dict: Coil configuration for constraints
     """
     if channels < 1:
         raise ValueError("The number of channels must be at least 1")
@@ -122,12 +122,12 @@ def create_coil_config(name, channels, min_current, max_current, max_sum, units)
     if min_current >= max_current:
         raise ValueError("The minimum current must be smaller than the maximum current")
 
-    # Create coil config file
-    config_coil = {
+    # Create coil constraint file
+    config_constraint = {
         'name': name,
         'coef_channel_minmax': {'coil': [[min_current, max_current]] * channels},
         'coef_sum_max': max_sum,
         'Units': units
     }
 
-    return config_coil
+    return config_constraint

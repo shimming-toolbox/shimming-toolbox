@@ -803,7 +803,7 @@ class B0ShimTab(Tab):
         return sizer
 
     def create_sizer_coil_constraints(self, metadata=None):
-        path_output = os.path.join(__CURR_DIR__, "output_coil_config")
+        path_output = os.path.join(__CURR_DIR__, "output_coil_constraints")
         input_metadata = [
             {
                 "button_label": "Name",
@@ -838,7 +838,7 @@ class B0ShimTab(Tab):
             {
                 "button_label": "Output File",
                 "button_function": "select_folder",
-                "default_text": os.path.join(path_output, "config_file.nii.gz"),
+                "default_text": os.path.join(path_output, "constraint_file.json"),
                 "name": "output",
                 "required": True
             }
