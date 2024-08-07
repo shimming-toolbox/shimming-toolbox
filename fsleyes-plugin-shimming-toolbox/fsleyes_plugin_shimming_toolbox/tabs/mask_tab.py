@@ -354,7 +354,7 @@ class MaskTab(Tab):
         self.run_component_modify = RunComponent(
             panel=self,
             list_components=[input_component, dropdown_operation, dropdown_shape, second_input_component],
-            st_function="st_mask modify-binary-mask-cli",
+            st_function="st_mask modify-binary-mask",
         )
         sizer = self.run_component_modify.sizer
         return sizer

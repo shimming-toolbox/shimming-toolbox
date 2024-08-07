@@ -10,7 +10,7 @@ import os
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -377,7 +377,7 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
     # Run modify_binary_mask
     nii = nib.load(fname_input)
     array = nii.get_fdata()
-    mask = modify_binary_mask(array, shape, size, operation)
+    mask = modify_binary_mask_api(array, shape, size, operation)
     
     nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
     nib.save(nii_mask, fname_output)
