@@ -116,10 +116,8 @@ jobs:
         if: contains(matrix.os, 'ubuntu')
         run: |
           echo "Download FSL for Ubuntu"
-          mkdir fsl
-          curl -o fsl/fslinstaller.py -JL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
-          python3 fsl/fslinstaller.py -d /usr/local/fsl
-          sudo ln -s /usr/local/fsl/bin/* /usr/local/bin/
+          st_download_data fsl
+          sudo dpkg -i fsl/fslinstaller.deb
 
       - name: Check dependencies
         run: st_check_dependencies
