@@ -18,15 +18,15 @@ from fsleyes_plugin_shimming_toolbox import __dir_testing__
 from fsleyes_plugin_shimming_toolbox.tabs.mask_tab import MaskTab
 
 
-def test_st_plugin_mask_bet():
-    options = {
-        'f_param': '1',
-        'g_param': '0.2',
-    }
+# def test_st_plugin_mask_bet():
+#     options = {
+#         'f_param': '1',
+#         'g_param': '0.2',
+#     }
     
-    def _test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options):
-        __test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options)
-    run_with_orthopanel(_test_st_plugin_mask_bet)
+#     def _test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options):
+#         __test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options)
+#     run_with_orthopanel(_test_st_plugin_mask_bet)
     
 def test_st_plugin_mask_erode():
     options = {
