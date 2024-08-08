@@ -103,6 +103,24 @@ jobs:
           st_download_data prelude
           sudo install prelude/prelude /usr/local/bin
 
+      - name: FSL macOS
+        if: contains(matrix.os, 'macos')
+        run: |
+          echo "Download FSL for macOS"
+          mkdir fsl
+          curl -o fsl/fslinstaller.py -JL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
+          python3 fsl/fslinstaller.py -d /usr/local/fsl
+          sudo ln -s /usr/local/fsl/bin/* /usr/local/bin/
+      
+      - name: FSL Ubuntu
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          echo "Download FSL for Ubuntu"
+          mkdir fsl
+          curl -o fsl/fslinstaller.py -JL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
+          python3 fsl/fslinstaller.py -d /usr/local/fsl
+          sudo ln -s /usr/local/fsl/bin/* /usr/local/bin/
+
       - name: Check dependencies
         run: st_check_dependencies
 
