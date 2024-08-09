@@ -182,11 +182,11 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
         for widget in list_widgets:
             if widget.GetName() == 'input':
                 widget.SetValue(fname_anat)
-            elif widget.GetName() == 'size' and options['size'] is not None:
+            elif widget.GetName() == 'size' and shape != 'Sphere':
                 widget.SetValue(options['size'])
             elif widget.GetName() == 'center':
                 widget.SetValue(options['center'])
-            elif widget.GetName() == 'radius':
+            elif widget.GetName() == 'radius' and shape == 'Sphere':
                 widget.SetValue(options['radius'])
             elif widget.GetName() == 'output':
                 widget.SetValue(os.path.join(tmp, 'mask.nii.gz'))

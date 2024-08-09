@@ -22,10 +22,6 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         ["https://github.com/shimming-toolbox/binaries/raw/master/prelude"],
         "Binary for prelude software",
     ),
-    "fsl": (
-        ["https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py"],
-        "FSL software",
-    ),
     "data_dynamic_shimming": (
         ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20220319.zip"],
         "B0 dynamic shimming dataset.",
