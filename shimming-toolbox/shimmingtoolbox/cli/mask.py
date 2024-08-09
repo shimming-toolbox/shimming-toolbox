@@ -312,7 +312,7 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 @click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
               help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
                    "extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask'),
               show_default=True, help="Name of output mask. Do not add extension")
 @click.option('-f', '--f_param', required=False, type=float, default=0.5,
               help="fractional intensity threshold (0->1); default=0.5; smaller values give larger brain outline estimates")
