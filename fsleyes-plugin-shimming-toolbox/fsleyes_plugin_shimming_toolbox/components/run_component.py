@@ -8,6 +8,7 @@ import nibabel as nib
 import numpy as np
 import os
 import wx
+import pathlib
 
 from fsleyes_plugin_shimming_toolbox import __DIR_ST_PLUGIN_IMG__
 from fsleyes_plugin_shimming_toolbox.components.component import Component, RunArgumentErrorST
@@ -115,6 +116,18 @@ class RunComponent(Component):
                     self.panel.terminal_component.log_to_terminal(
                         "Could not fetch subject and/or path to load to overlay"
                     )
+                    
+            if self.st_function == "st_mask bet":
+                # Remove extension from output
+                fname_output = self.output
+                path = pathlib.Path(fname_output)
+                while path.suffix:
+                    path = path.with_suffix('')
+
+                mask = str(path) + '_mask.nii.gz'
+                self.output_paths.clear()
+                self.output_paths.append(mask)
+                
             self.send_output_to_overlay()
 
             self.output_paths.clear()
