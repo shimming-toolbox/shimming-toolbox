@@ -244,7 +244,7 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
             elif widget.GetName() == 'input':
                 widget.SetValue(fname_anat)
             elif widget.GetName() == 'output':
-                widget.SetValue(os.path.join(tmp, 'mask_bet.nii.gz'))
+                widget.SetValue(os.path.join(tmp, 'bet'))
                 
         # Run the mask
         mask_tab.run_component_bet.run()
@@ -252,7 +252,7 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
         # Search for the output for a maximum of 20 seconds
         for _ in range(20):
             realYield()
-            ovrlay_file = overlayList.find("mask_bet_mask")
+            ovrlay_file = overlayList.find("bet_mask")
             time.sleep(1)
             if ovrlay_file:
                 break
