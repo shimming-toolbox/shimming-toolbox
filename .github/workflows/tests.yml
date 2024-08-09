@@ -107,18 +107,15 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: |
           echo "Download FSL for macOS"
-          mkdir fsl
-          curl -o fsl/fslinstaller.py -JL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
-          python3 fsl/fslinstaller.py -d /usr/local/fsl
-          sudo ln -s /usr/local/fsl/bin/* /usr/local/bin/
+          source ~/shimming-toolbox/python/bin/activate
+          conda install -c https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ -c conda-forge fsl-bet2
       
-      # - name: FSL Ubuntu
-      #   if: contains(matrix.os, 'ubuntu')
-      #   run: |
-      #     echo "Download FSL for Ubuntu"
-      #     sudo curl -o fsl/fslinstaller.py -JL https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py
-      #     sudo python3 fsl/fslinstaller.py -d /usr/local/fsl
-      #     sudo ln -s /usr/local/fsl/bin/* /usr/local/bin/
+      - name: FSL Ubuntu
+        if: contains(matrix.os, 'ubuntu')
+        run: |
+          echo "Download FSL for macOS"
+          source ~/shimming-toolbox/python/bin/activate
+          conda install -c https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ -c conda-forge fsl-bet2
 
       - name: Check dependencies
         run: st_check_dependencies
