@@ -85,7 +85,7 @@ def test_get_bet_version(test_bet_installation):
     """Checks bet version output for expected structure.
     """
     bet_version_info = st_ce.get_bet_version()
-    version_regex = r"Part of FSL.*\nBET \(Brain Extraction Tool\).*Oxford"
+    version_regex = r"Part of FSL \(ID: \"\"\)\nBET \(Brain Extraction Tool\) v2\.1 - FMRIB Analysis Group, Oxford"
     assert re.search(version_regex, bet_version_info)
 
 

@@ -215,19 +215,19 @@ def get_dcm2niix_version() -> str:
 def get_bet_version() -> str:
     """Gets the ``bet`` installation version.
 
-    This function calls ``bet --version`` and captures the output to
+    This function calls ``bet2`` and captures the output to
     obtain the installation version.
 
     Returns:
-        str: Version of the ``bet`` installation.
+        str: Version of the ``bet2`` installation.
     """
-    # `bet --version` returns an error code and output is in stderr
+    # `bet -hn` returns an error code and output is in stderr
     bet_version: str = subprocess.run(["bet2"], capture_output=True, encoding="utf-8")
     # If the behaviour of bet changes to output help with a 0 exit code,
     # this function must fail loudly so we can update its behaviour
     # accordingly:
     assert bet_version.returncode != 0
-    version_output: str = bet_version.stdout.rstrip()
+    version_output: str = bet_version.stderr.rstrip()
     return version_output
 
 
