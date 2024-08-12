@@ -78,6 +78,15 @@ def test_get_dcm2niix_version(test_dcm2niix_installation):
     dcm2niix_version_info = st_ce.get_dcm2niix_version()
     version_regex = r"Chris.*\nv\d\.\d.\d{8}"
     assert re.search(version_regex, dcm2niix_version_info)
+    
+
+@pytest.mark.bet
+def test_get_bet_version(test_bet_installation):
+    """Checks bet version output for expected structure.
+    """
+    bet_version_info = st_ce.get_bet_version()
+    version_regex = r"Part of FSL.*\nBET \(Brain Extraction Tool\).*Oxford"
+    assert re.search(version_regex, bet_version_info)
 
 
 @pytest.mark.sct
