@@ -382,7 +382,7 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
     nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
     nib.save(nii_mask, fname_output)
     
-    # Lool for a json file with the same name as the input file
+    # Look for a json file with the same name as the input file
     path = pathlib.Path(fname_input)
     while path.suffix:
         path = path.with_suffix('')
