@@ -260,7 +260,7 @@ class MaskTab(Tab):
                 "button_label": "Vertical gradient",
                 "name": "g_param",
                 "default_text": "0.0",
-                "required": True
+                "required": False
             },
             {
                 "button_label": "Output File",
@@ -320,7 +320,7 @@ class MaskTab(Tab):
             {
                 "button_label": "Kernel size",
                 "name": "size",
-                "default_text": "1",
+                "default_text": "3",
                 "required": True
             },
             {
