@@ -12,7 +12,7 @@ import shimmingtoolbox.cli.check_env as st_ce
 @pytest.mark.prelude
 @pytest.mark.sct
 @pytest.mark.bet
-def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation):
+def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation, test_bet_installation):
     runner = CliRunner()
 
     result = runner.invoke(st_ce.check_dependencies)
