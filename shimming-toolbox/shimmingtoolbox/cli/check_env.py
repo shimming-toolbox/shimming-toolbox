@@ -58,6 +58,11 @@ def check_dependencies():
     prelude_check_msg = check_name.format("prelude")
     print_line(prelude_check_msg)
     check_prelude_installation()
+    
+    # Bet
+    bet_check_msg = check_name.format("bet")
+    print_line(bet_check_msg)
+    check_bet_installation()
 
     # # dcm2niix
     # dcm2niix now comes bundled with shimming toolbox. Therefore we don't need to check if it is in the path since it
@@ -97,6 +102,29 @@ def check_prelude_installation():
         print("    " + get_prelude_version().replace("\n", "\n    "))
         return True
 
+
+def check_bet_installation():
+    """Checks that ``bet`` is installed.
+    
+    This function calls ``which bet`` and checks the exit code to verify that ``bet`` is installed.
+    
+    Returns:
+        bool: True if bet is installed, False if not.
+    """
+    
+    try:
+        if sys.platform == 'win32':
+            pass # fsl is not available on windows
+        else:
+            subprocess.check_call(['which', 'bet'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: bet is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        return True
+    
 
 def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
