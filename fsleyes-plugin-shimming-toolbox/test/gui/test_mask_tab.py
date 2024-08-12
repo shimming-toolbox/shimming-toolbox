@@ -63,6 +63,7 @@ def test_st_plugin_mask_sphere():
     run_with_orthopanel(_test_st_plugin_mask_sphere)
 
 
+@pytest.mark.bet
 def test_st_plugin_mask_bet():
     options = {
         'f_param': '1',
@@ -208,7 +209,6 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
         assert os.path.exists(ovrlay_file.dataSource)
 
 
-@pytest.mark.bet
 def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
     """
     Test the Mask tab with the BET option.
