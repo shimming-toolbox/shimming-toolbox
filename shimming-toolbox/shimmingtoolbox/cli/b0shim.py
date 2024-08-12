@@ -17,7 +17,7 @@ import logging
 import os
 from matplotlib.figure import Figure
 
-from shimmingtoolbox import __dir_config_scanner_constraints__, __dir_config_custom_coil_constraints__
+from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
@@ -48,7 +48,7 @@ def b0shim_cli():
                    "profiles must be in Hz/unit_shim). If using the scanner's gradient/shim coils, the coil profiles "
                    "must be in Hz/unit_shim and fieldmaps must be in Hz. If you want to shim using the scanner's "
                    "gradient/shim coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_custom_coil_constraints__}")
+                   f"see: {__config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
@@ -61,7 +61,7 @@ def b0shim_cli():
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
-              help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
+              help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
@@ -143,7 +143,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
-    Example of use: st_b0shim dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    Example of use: st_b0shim dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
     --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
     """
 
@@ -511,7 +511,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
                    "profiles must be in Hz/unit_shim). If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_custom_coil_constraints__}")
+                   f"see: {__config_custom_coil_constraints__}")
 @click.option('--coil-riro', 'coils_riro', nargs=2, multiple=True,
               type=(click.Path(exists=True), click.Path(exists=True)), required=False,
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -521,7 +521,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "the RIRO optimization, otherwise, the coils from the --coil options will be used."
                    "If you only want to shim using the scanner's gradient/shim "
                    "coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__dir_config_custom_coil_constraints__}")
+                   f"see: {__config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
@@ -546,7 +546,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
-              help=f"Constraints for the scanner coil. Example file located: {__dir_config_scanner_constraints__}")
+              help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']), required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
@@ -619,7 +619,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
 
-    Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_config.json --coil coil2.nii coil2_config.json
+    Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
     # Set coils and scanner order for riro if none were indicated
