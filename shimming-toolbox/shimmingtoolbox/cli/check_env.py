@@ -116,7 +116,7 @@ def check_bet_installation():
         if sys.platform == 'win32':
             subprocess.check_call(['where', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
-            subprocess.check_call(['which', 'bet'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.check_call(['which', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
         print_fail()
         print(f"Error {error.returncode}: bet is not installed or not in your PATH.")
