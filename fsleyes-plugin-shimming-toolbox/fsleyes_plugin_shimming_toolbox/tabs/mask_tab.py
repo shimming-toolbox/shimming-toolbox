@@ -314,10 +314,6 @@ class MaskTab(Tab):
             {
                 "label": "Cube",
                 "option_value": "cube"
-            },
-            {
-                "label": "None",
-                "option_value": "None"
             }
         ]
         input_text_box_metadata_2 = [
