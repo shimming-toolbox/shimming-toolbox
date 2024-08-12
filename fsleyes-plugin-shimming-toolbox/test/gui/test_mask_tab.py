@@ -325,3 +325,4 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
         # Make sure the output is correct
         assert ovrlay_file is not None
         assert os.path.exists(ovrlay_file.dataSource)
+        
