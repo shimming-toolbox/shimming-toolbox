@@ -105,7 +105,7 @@ jobs:
 
       - name: Bet2
         run: |
-          echo "Download FSL for macOS"
+          echo "Download BET from FSL"
           source ~/shimming-toolbox/python/bin/activate
           conda install -c https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ -c conda-forge fsl-bet2
 
