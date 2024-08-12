@@ -11,6 +11,7 @@ import shutil
 import tempfile
 import time
 import wx
+import pytest
 
 from .test_tabs import get_notebook, set_notebook_page, get_tab, get_all_children, set_dropdown_selection, set_checkbox
 from .. import realYield, run_with_orthopanel
@@ -207,6 +208,7 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
         assert os.path.exists(ovrlay_file.dataSource)
 
 
+@pytest.mark.bet
 def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
     """
     Test the Mask tab with the BET option.

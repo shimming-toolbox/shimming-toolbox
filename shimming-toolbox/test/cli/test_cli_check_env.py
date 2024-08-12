@@ -11,6 +11,7 @@ import shimmingtoolbox.cli.check_env as st_ce
 @pytest.mark.dcm2niix
 @pytest.mark.prelude
 @pytest.mark.sct
+@pytest.mark.bet
 def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation):
     runner = CliRunner()
 
@@ -32,7 +33,7 @@ def test_check_installation_errors():
 
     result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
     assert result.exit_code == 0
-    assert result.stdout.count('FAIL') == 2
+    assert result.stdout.count('FAIL') == 3
 
 
 def test_check_prelude_installation():

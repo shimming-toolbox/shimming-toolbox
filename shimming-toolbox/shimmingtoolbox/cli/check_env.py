@@ -114,7 +114,7 @@ def check_bet_installation():
     
     try:
         if sys.platform == 'win32':
-            pass # fsl is not available on windows
+            subprocess.check_call(['where', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             subprocess.check_call(['which', 'bet'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     except subprocess.CalledProcessError as error:
