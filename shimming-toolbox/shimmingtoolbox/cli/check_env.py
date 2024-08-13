@@ -123,6 +123,7 @@ def check_bet_installation():
         return False
     else:
         print_ok()
+        print("    " + "\n    ".join(get_bet_version().split("\n")[1:3]))
         return True
     
 
