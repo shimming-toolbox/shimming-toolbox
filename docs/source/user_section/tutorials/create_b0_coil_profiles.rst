@@ -56,7 +56,7 @@ Config file
 ___________
 
 The configuration file allows :ref:`cli_reference/cli:from-field-maps` to know the number of channels, the path to the different
-NIfTI folders, the current used for each channel and other information that will allow to generate the config file
+NIfTI folders, the current used for each channel and other information that will allow to generate the constraint file
 required for B0 shimming (:ref:`st_b0shimming`). The configuration file for this dataset is already filled in as:
 `configuration_file.json`. The following describes the different arguments required in the JSON file:
 
