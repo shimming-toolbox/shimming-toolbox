@@ -58,6 +58,11 @@ def check_dependencies():
     prelude_check_msg = check_name.format("prelude")
     print_line(prelude_check_msg)
     check_prelude_installation()
+    
+    # Bet
+    bet_check_msg = check_name.format("bet")
+    print_line(bet_check_msg)
+    check_bet_installation()
 
     # # dcm2niix
     # dcm2niix now comes bundled with shimming toolbox. Therefore we don't need to check if it is in the path since it
@@ -97,6 +102,30 @@ def check_prelude_installation():
         print("    " + get_prelude_version().replace("\n", "\n    "))
         return True
 
+
+def check_bet_installation():
+    """Checks that ``bet`` is installed.
+    
+    This function calls ``which bet`` and checks the exit code to verify that ``bet`` is installed.
+    
+    Returns:
+        bool: True if bet is installed, False if not.
+    """
+    
+    try:
+        if sys.platform == 'win32':
+            subprocess.check_call(['where', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.check_call(['which', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: bet is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + "\n    ".join(get_bet_version().split("\n")[1:3]))
+        return True
+    
 
 def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
@@ -181,6 +210,25 @@ def get_dcm2niix_version() -> str:
     # accordingly:
     assert dcm2niix_version.returncode != 0
     version_output: str = dcm2niix_version.stdout.rstrip()
+    return version_output
+
+
+def get_bet_version() -> str:
+    """Gets the ``bet`` installation version.
+
+    This function calls ``bet2`` and captures the output to
+    obtain the installation version.
+
+    Returns:
+        str: Version of the ``bet2`` installation.
+    """
+    # `bet -hn` returns an error code and output is in stderr
+    bet_version: str = subprocess.run(["bet2"], capture_output=True, encoding="utf-8")
+    # If the behaviour of bet changes to output help with a 0 exit code,
+    # this function must fail loudly so we can update its behaviour
+    # accordingly:
+    assert bet_version.returncode != 0
+    version_output: str = bet_version.stderr.rstrip()
     return version_output
 
 
