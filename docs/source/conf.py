@@ -33,9 +33,15 @@ author = "NeuroPoly Lab, Polytechnique Montreal"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.githubpages", "sphinx.ext.napoleon", "sphinx_click.ext", "sphinx.ext.autosectionlabel"]
+extensions = ["sphinx.ext.githubpages",
+              "sphinx.ext.napoleon",
+              "sphinx_click.ext",
+              "sphinx.ext.autosectionlabel",
+              "myst_parser"]
 
 autosectionlabel_prefix_document = True
+autosectionlabel_maxdepth = 2
+
 # Autodoc configuration
 autodoc_mock_imports = [
     "click",
@@ -56,7 +62,6 @@ templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-#
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.

@@ -26,8 +26,10 @@
    :glob:
    :caption: Developer Section
 
-   contributing/*
+   contributing/CONTRIBUTING.rst
+   contributing/contributors.rst
    api_reference/api.rst
+   contributing/CHANGES.md
 
 .. toctree::
    :maxdepth: 4
