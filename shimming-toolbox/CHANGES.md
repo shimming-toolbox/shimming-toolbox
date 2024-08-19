@@ -130,6 +130,7 @@
 
 **DOCUMENTATION**
  - **st_b1shim**: Specify in docstring that CV reduction favors high B1+ efficiency. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/357)
+ - Add versions and a changelog. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/541)
 
 ## 0.1 (2021-07-28)
 

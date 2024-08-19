@@ -45,6 +45,7 @@
  - Add issue template. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/16)
  - Add pull request template. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/18)
  - Add LICENSE. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/62)
+ - Add versions and a changelog. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/541)
 
 **TESTING**
  - Add continuous integration and pre-commit. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/61)
@@ -52,7 +53,7 @@
 **REFACTORING**
  - Gc/cleanup. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/40)
  - Major refactoring. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/59)
-  - Merge fsleyes-plugin-shimming-toolbox repo in Shimming Toolbox. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/533)
+ - Merge fsleyes-plugin-shimming-toolbox repo in Shimming Toolbox. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/533)
 
 ## 0.1 (2021-07-28)
 
@@ -62,5 +63,5 @@
 **FEATURE**
  - Support fsleyes as a GUI. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/248)
 
- **ENHANCEMENT**
-  - Add GUI Integration into FSLeyes. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/1)
+**ENHANCEMENT**
+ - Add GUI Integration into FSLeyes. [View pull request](https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox/pull/1)
