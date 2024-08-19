@@ -2,7 +2,7 @@
 
 - [ ] I've given this PR a concise, self-descriptive, and meaningful title
 - [ ] I've linked relevant issues in the PR body
-- [ ] I've applied the relevant labels to this PR
+- [ ] I've applied the relevant labels to this PR. (You need to choose: the scope of the PR, 1 or more (pale brown), the main reason for the PR, only 1 (dark purple) and if applicable, the CLI affected (dark cyan))
 - [ ] I've added relevant tests for my contribution
 - [ ] I've updated the documentation and/or added correct docstrings
 - [ ] I've assigned a reviewer
