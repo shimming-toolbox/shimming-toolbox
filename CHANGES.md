@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0 (2024-08-20)
+## 1.0 (2024-08-21)
 
 ### PACKAGE: SHIMMING TOOLBOX
 

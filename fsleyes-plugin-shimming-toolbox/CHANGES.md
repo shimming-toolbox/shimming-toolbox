@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0 (2024-08-20)
+## 1.0 (2024-08-21)
 
 **FEATURE**
  - **st_check_dependencies, st_mask**: first iteration to adding BET. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/542)

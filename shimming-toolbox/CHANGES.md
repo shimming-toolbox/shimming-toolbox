@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0 (2024-08-20)
+## 1.0 (2024-08-21)
 
 **FEATURE**
  - **st_b0shim**: Add shim CLI and sequencer. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/296)
