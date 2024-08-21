@@ -106,7 +106,6 @@
  - **st_realtime_shim**: gradient realtime shim output coordinate system. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/310)
  - **st_realtime_shim**: Gradient realtime_shim orientation and nan problems. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/323)
  - Solve launchers needing to be launched from the ST venv. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/346)
- - Restrict numpy version < 2.x. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/527)
 
 **INSTALLATION**
  - Automate the install process. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/295)
