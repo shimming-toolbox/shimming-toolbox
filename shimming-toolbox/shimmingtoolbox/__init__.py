@@ -10,6 +10,7 @@ __version__ = metadata.version(__name__)
 del metadata
 
 __dir_shimmingtoolbox__ = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+__dir_repo__ = os.path.dirname(__dir_shimmingtoolbox__)
 __dir_testing__ = os.path.join(__dir_shimmingtoolbox__, 'testing_data')
 __config_dcm2bids__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'dcm2bids.json')
 __config_scanner_constraints__ = os.path.join(__dir_shimmingtoolbox__, 'config', 'scanner_coil_constraints.json')

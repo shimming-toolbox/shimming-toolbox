@@ -10,7 +10,7 @@ linear regression between the field maps and the current yields the coil profile
 In this tutorial, we will be characterising an 8 channel coil that was acquired with a dual echo field mapping sequence at 2
 different currents for each channel (-0.5 amps and 0.5 amps). We will start by processing the DICOMs into NIfTI files, we will then fill the
 configuration file containing the necessary information to correctly and accurately process the coil profiles. The last
-step consists in running :ref:`cli_reference/cli:from-field-maps` on the command line to calculate the coil profiles.
+step consists in running ":ref:`st_create_coil_profiles` from-field-maps" on the command line to calculate the coil profiles.
 
 .. Note::
 
@@ -42,7 +42,7 @@ The first step is to convert the DICOMs into NIfTI files. To do so, we first nee
 
     st_sort_dicoms -i ./dicoms -o ./dicoms_sorted
 
-The command :ref:`cli_reference/cli:from-field-maps` requires the different phase, magnitude, echoes and currents to be separated
+The command ":ref:`st_create_coil_profiles` from-field-maps" requires the different phase, magnitude, echoes and currents to be separated
 in different NIfTI files. A helper script was downloaded with the dataset named: `batch_dicom_to_nifti.sh` that will
 process each folder of DICOMs into NIfTI files sorted by the folder names of the input. This script can be used with other datasets.
 You will need to give executable permission to the script beforehand.
@@ -55,10 +55,10 @@ You will need to give executable permission to the script beforehand.
 Config file
 ___________
 
-The configuration file allows :ref:`cli_reference/cli:from-field-maps` to know the number of channels, the path to the different
+The configuration file allows ":ref:`st_create_coil_profiles` from-field-maps" to know the number of channels, the path to the different
 NIfTI folders, the current used for each channel and other information that will allow to generate the constraint file
 required for B0 shimming (:ref:`st_b0shimming`). The configuration file for this dataset is already filled in as:
-`configuration_file.json`. The following describes the different arguments required in the JSON file:
+`demo_config_coil_profile.json <https://github.com/shimming-toolbox/data-create-coil-profiles/blob/main/demo_config_coil_profile.json>`_. The following describes the different arguments required in the JSON file:
 
 * "phase": 3D list containing the path of phase NIfTI files of the different channels, currents and echos. Note that the first dimension is the different channels, the second the different currents and the third the different echoes.
 
@@ -72,7 +72,7 @@ required for B0 shimming (:ref:`st_b0shimming`). The configuration file for this
 
 * "Units": Units used for setup_currents. Note that this is for displayed text purposes and does not affect any coil profile output.
 
-* "coef_channel_minmax": 2D list containing the minimum and maximum currents allowed for each channel when shimming. Note that the first dimension is for the channels and the second dimension for the minimum and maximum current.
+* "coef_channel_minmax": Dictionary with key "coil" (for a custom coil) that contains a 2D list containing the minimum and maximum currents allowed for each channel when shimming. Note that the first dimension is for the channels and the second dimension for the minimum and maximum current.
 
 * "coef_sum_max": Maximum total current that the coil can use during shimming. Use null if there is not a limit on the total current.
 
@@ -100,6 +100,6 @@ ______________________________
 
 When creating your own custom coil using the commands above, keep in mind the following:
 
-* :ref:`cli_reference/cli:from-field-maps` will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command :ref:`cli_reference/cli:from-field-maps`.
+* ":ref:`st_create_coil_profiles` from-field-maps" will automatically scale Siemens phase data to radians. For other vendors, a step to rescale phase data to [-pi, pi] is necessary before using the command ":ref:`st_create_coil_profiles` from-field-maps".
 
 * The output B0 coil profile is scaled in Hz/<current> where current depends on the value in the configuration file. For example, this tutorial could have use 500 mA instead of 0.5 A. This would have resulted in a coil profile in Hz/mA instead of Hz/A.

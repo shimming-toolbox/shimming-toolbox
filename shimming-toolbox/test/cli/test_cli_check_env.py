@@ -103,7 +103,9 @@ def test_get_env_info():
     assert isinstance(env_info, str)
 
 
-def test_get_pkg_info():
-    pkg_info = st_ce.get_pkg_info()
-    version_regex = r"\d*\.\d*\.\d*"
-    assert re.search(version_regex, pkg_info)
+def test_version():
+    assert type(st_ce.get_git_version()) == str
+
+
+def test_plugin_version():
+    assert type(st_ce.get_plugin_version()) == str
