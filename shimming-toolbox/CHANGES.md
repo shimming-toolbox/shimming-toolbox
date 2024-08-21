@@ -8,6 +8,7 @@
  - **st_b0shim**: Deal with saturation pulse when B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/374)
  - **st_b0shim**: Add standard deviation criteria and options to select it in st_b0shim CLI. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/405)
  - **st_b0shim**: Implement maximization of shim settings based on signal intensity. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/413)
+ - **st_b0shim**: Signal recovery optimizer.  [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/429)
  - **st_b0shim**: Faster B0 shimming by changing some mathematical expressions. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/432)
  - **st_b0shim**: Add compatibly for Philips scanners. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/435)
  - **st_b0shim**: Changed the optimizer to a quadratic problem. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/458)
