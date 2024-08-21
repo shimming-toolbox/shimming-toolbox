@@ -103,6 +103,12 @@ jobs:
           st_download_data prelude
           sudo install prelude/prelude /usr/local/bin
 
+      - name: Bet2
+        run: |
+          echo "Download BET from FSL"
+          source ~/shimming-toolbox/python/bin/activate
+          conda install -c https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ -c conda-forge fsl-bet2
+
       - name: Check dependencies
         run: st_check_dependencies
 
