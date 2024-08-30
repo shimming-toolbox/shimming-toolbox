@@ -1286,3 +1286,40 @@ def test_b0_max_intensity_no_mask():
         with open(fname_output, 'r', encoding='utf-8') as f:
             assert f.readline().strip() == "1"
             assert f.readline().strip() == "1"
+
+
+def test_combine_shim_coefs():
+    """Test the combine shim coefs function"""
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
+        with open(fname_input1, 'w', encoding='utf-8') as f:
+            f.write("11, 12, 13, 14, 15, 11, 12, 13, 14\n")
+            f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+        fname_input2 = os.path.join(tmp, 'shim_coefs2.txt')
+        with open(fname_input2, 'w', encoding='utf-8') as f:
+            f.write("1,2,3, 4,\n")
+            f.write("5,6,7, 4\n")
+
+        fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+        fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+
+        runner = CliRunner()
+        res = runner.invoke(b0shim_cli, ['combine-shim-coefs',
+                                         '--anat', fname_anat,
+                                         '--input', fname_input1,
+                                         '--input2', fname_input2,
+                                         '--input-file-format', 'slicewise',
+                                         '--output-file-format', 'custom-cl',
+                                         '-o', fname_output,
+                                         '-v', 'debug'],
+
+                            catch_exceptions=False)
+        assert res.exit_code == 0
+        with open(fname_output, 'r', encoding='utf-8') as f:
+            assert f.readline() == "(mA)    xy         zy         zx      x2-y2         z2\n"
+            assert f.readline() == "        15         11         12         13         14\n"
+            assert f.readline() == "\n"
+            assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
+            assert f.readline() == "   14.000000    16.000000    18.000000    12.000000\n"
+            assert f.readline() == "   18.000000    20.000000    18.000000    16.000000\n"
