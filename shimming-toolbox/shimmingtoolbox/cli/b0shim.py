@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
-from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -1446,7 +1446,7 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--anat', 'fname_anat', nargs=1, type=click.Path(exists=True), required=True,
+@click.option('--anat', 'fname_anat', nargs=1, type=click.Path(exists=True), required=False,
               help="Target image to shim. Supported formats: .nii, .nii.gz")
 @click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
               help="Text file containing the shim coefficients. Supported formats: .txt")
@@ -1466,12 +1466,15 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
                    "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                    "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
                    "captured by the controller of the shim amplifier.")
+@click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
+              help="Reverse the order of the slices", required=False)
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
               default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
               show_default=True, help="Filename to output shim text file.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
-def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format, fname_output, verbose):
+def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format, rev_slice_order, fname_output,
+                       verbose):
     """ Combine the shim coefficients from two files into a single file."""
     # Set logger level
     set_all_loggers(verbose)
@@ -1492,7 +1495,7 @@ def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format
             list_line = line.strip('\n').split(',')
             temp = []
             for i, value in enumerate(list_line):
-                if value != '':
+                if value.strip(' ') != '':
                     temp.append(float(value.strip()))
             coefs1.append(temp)
         coefs1 = np.array(coefs1)
@@ -1502,7 +1505,7 @@ def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format
             list_line = line.strip('\n').split(',')
             temp = []
             for i, value in enumerate(list_line):
-                if value != '':
+                if value.strip(' ') != '':
                     temp.append(float(value.strip()))
             coefs2.append(temp)
         coefs2 = np.array(coefs2)
@@ -1541,10 +1544,10 @@ def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format
     logger.debug(coefs1)
     logger.debug(coefs2)
     logger.debug(coefs)
-    write_coefs_to_text_file(coefs, fname_output, o_format)
+    write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order)
 
 
-def write_coefs_to_text_file(coefs, fname_output, o_format):
+def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=False):
     if o_format == 'slicewise' or o_format == 'chronological':
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_shim in range(coefs.shape[0]):
@@ -1555,11 +1558,28 @@ def write_coefs_to_text_file(coefs, fname_output, o_format):
         with open(fname_output, 'w', encoding='utf-8') as f:
             f.write("(mA)%6s%11s%11s%11s%11s\n" % ("xy", "zy", "zx", "x2-y2", "z2"))
             ref = coefs[0][4:]
+
             for i_shim in range(coefs.shape[0]):
                 if not np.all(np.isclose(coefs[i_shim][4:], ref)):
                     raise ValueError("The 2nd order shims must be the same for all slices")
+
+            coefs[..., 4:] = reorder_shim_to_scaling_ge(coefs[..., 4:])
+
             f.write("%10s%11s%11s%11s%11s\n" % tuple(str(int(coefs[0][i_channel])) for i_channel in range(4, 9)))
             f.write("\n(G/cm)%6s%13s%13s%13s\n" % ("x", "y", "z", "bo (Hz)"))
+
+            if rev_slice_order:
+                coefs = coefs[::-1]
+
+            cfxfull = 30082
+            cfyfull = 30430
+            cfzfull = 30454
+            cfxfs = cfyfs = cfzfs = 5
+            shim_scale = 16
+
+            coefs[:, 1] = coefs[:, 1] / cfxfull / shim_scale * cfxfs
+            coefs[:, 2] = coefs[:, 2] / cfyfull / shim_scale * cfyfs
+            coefs[:, 3] = coefs[:, 3] / cfzfull / shim_scale * cfzfs
 
             for i_shim in range(coefs.shape[0]):
                 f.write("%12s%13s%13s%13s\n" % (f"{coefs[i_shim][1]:.6f}",

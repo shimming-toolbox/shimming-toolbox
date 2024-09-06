@@ -1312,6 +1312,7 @@ def test_combine_shim_coefs():
                                          '--input-file-format', 'slicewise',
                                          '--output-file-format', 'custom-cl',
                                          '-o', fname_output,
+                                         '--reverse-slice-order',
                                          '-v', 'debug'],
 
                             catch_exceptions=False)
@@ -1321,5 +1322,5 @@ def test_combine_shim_coefs():
             assert f.readline() == "        15         11         12         13         14\n"
             assert f.readline() == "\n"
             assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
-            assert f.readline() == "   14.000000    16.000000    18.000000    12.000000\n"
             assert f.readline() == "   18.000000    20.000000    18.000000    16.000000\n"
+            assert f.readline() == "   14.000000    16.000000    18.000000    12.000000\n"
