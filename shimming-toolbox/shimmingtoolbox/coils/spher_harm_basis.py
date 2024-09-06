@@ -197,25 +197,13 @@ def ge_basis(x, y, z, orders=(1, 2)):
     scaled = {}
     for order in orders:
         if order == 0:
-            scaled[0] = reordered_spher[0]
+            scaled[0] = -reordered_spher[0]
         elif order == 1:
             # Rescale to unit-shims that are XXXXX
             # They are currently in uT/m
             # Todo: This seems to be the appropriate scaling factor, we need to verify the units
             scaled[1] = reordered_spher[1] / 10
         elif order == 2:
-
-            def _reorder_shim_to_scaling(coefs):
-                # Reorder 2nd order terms
-                # 1. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
-                # 2. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
-                return coefs[..., [4, 2, 1, 3, 0]]
-
-            def _reorder_scaling_to_shim(coefs):
-                # Reorder 2nd order terms
-                # 1. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
-                # 2. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
-                return coefs[..., [4, 2, 1, 3, 0]]
 
             # Scale
             orders_to_order2_ut = np.zeros_like(orders_to_order2)
@@ -228,7 +216,7 @@ def ge_basis(x, y, z, orders=(1, 2)):
 
             # Reorder 2nd order terms to the scaling matrix order
             # * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
-            reordered_spher[2] = _reorder_shim_to_scaling(reordered_spher[2])
+            reordered_spher[2] = reorder_shim_to_scaling_ge(reordered_spher[2])
 
             scaled[2] = np.zeros_like(reordered_spher[2])
             for i_channel in range(reordered_spher[order].shape[-1]):
@@ -479,6 +467,20 @@ def reorder_to_manufacturer(spher_harm, manufacturer):
         reordered[order] = reorder[order](spher_harm[order], manuf=manufacturer)
 
     return reordered
+
+
+def reorder_shim_to_scaling_ge(coefs):
+    # Reorder 2nd order terms
+    # 1. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
+    # 2. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
+    return coefs[..., [4, 2, 1, 3, 0]]
+
+
+def _reorder_scaling_to_shim(coefs):
+    # Reorder 2nd order terms
+    # 1. * XY, ZY, ZX, X2 - Y2, Z2 * (scaling matrix)
+    # 2. * Z2, ZX, ZY, X2 - Y2, XY * (in line with GE shims)
+    return coefs[..., [4, 2, 1, 3, 0]]
 
 
 def _get_scaling_factors(orders):
