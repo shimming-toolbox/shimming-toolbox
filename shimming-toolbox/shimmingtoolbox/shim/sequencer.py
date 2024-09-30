@@ -41,6 +41,7 @@ supported_optimizers = {
     'pseudo_inverse': Optimizer
 }
 
+GAMMA = 42.576E6  # in Hz/Tesla
 
 class Sequencer(object):
     """
@@ -820,16 +821,18 @@ class ShimSequencer(Sequencer):
         nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
 
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
-    # Plot signal loss maps
-        def calculate_signal_loss(B0_map):
-            G = np.gradient(B0_map, axis = 2)
-            signal_map = abs(np.sinc(self.epi_te * G))
+        # Plot signal loss maps
+        def calculate_signal_loss(gradient):
+            slice_thickness = self.nii_anat.header['pixdim'][3]
+            B0_map_thickness = self.nii_fieldmap_orig.header['pixdim'][3]
+            phi = gradient * self.epi_te * slice_thickness * 1/B0_map_thickness
+            signal_map = abs(np.sinc(phi/2))
             signal_loss_map = 1 - signal_map
             return signal_loss_map
 
-        unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-        shimmed_signal_loss = 1 - abs(np.sinc(self.epi_te * shimmed_Gz))
-
+        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis = 2))
+        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
+        
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
         mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
 
