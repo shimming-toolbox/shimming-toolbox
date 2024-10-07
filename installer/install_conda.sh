@@ -39,7 +39,7 @@ else
     exit 1
 fi
 
-CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/"$CONDA_INSTALLER"
+CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/tag/24.5.0-0/"$CONDA_INSTALLER"
 
 installConda() {
     curl -L --url $CONDA_INSTALLER_URL --output $TMP_DIR/$CONDA_INSTALLER
