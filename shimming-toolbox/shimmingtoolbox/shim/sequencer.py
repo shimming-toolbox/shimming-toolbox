@@ -838,14 +838,20 @@ class ShimSequencer(Sequencer):
 
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
-        mt_unshimmed = montage(unshimmed_signal_loss[:,:,nonzero_indices])
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
 
         # Save the signal loss maps
-        nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        # nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        #          os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
+        # nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        #          os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
+        # nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        #          os.path.join(self.path_output, 'mask_erode.nii.gz'))
+        
+        nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'mask_erode.nii.gz'))
