@@ -60,7 +60,7 @@ setup(
         "cloup",
     ],
     extras_require={
-        'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click", "myst_parser"],
+        'docs': ["sphinx>=1.7", "sphinx_rtd_theme==2.0.0", "sphinx-click", "myst_parser"],
         'dev': ["pre-commit>=2.10.0"]
     },
 )
