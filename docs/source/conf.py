@@ -89,7 +89,7 @@ html_theme = "sphinx_rtd_theme"
 #
 html_theme_options = {
     "collapse_navigation": False,
-    "display_version": False,
+    "display_version": True,
     "navigation_depth": 4,
 }
 html_logo = "_static/img/shimming_toolbox_logo.png"
