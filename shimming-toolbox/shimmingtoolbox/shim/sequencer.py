@@ -825,8 +825,8 @@ class ShimSequencer(Sequencer):
         def calculate_signal_loss(gradient):
             slice_thickness = self.nii_anat.header['pixdim'][3]
             B0_map_thickness = self.nii_fieldmap_orig.header['pixdim'][3]
-            phi = gradient * self.epi_te * slice_thickness * 1/B0_map_thickness
-            signal_map = abs(np.sinc(phi/2))
+            phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
+            signal_map = abs(np.sinc(phi/(2*math.pi))) # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
             signal_loss_map = 1 - signal_map
             return signal_loss_map
 
@@ -840,14 +840,6 @@ class ShimSequencer(Sequencer):
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
-
-        # Save the signal loss maps
-        # nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
-        #          os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
-        # nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
-        #          os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
-        # nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
-        #          os.path.join(self.path_output, 'mask_erode.nii.gz'))
         
         nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
@@ -871,13 +863,8 @@ class ShimSequencer(Sequencer):
         fig.suptitle(f"Signal Percentage Loss Map\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
-        #ax.imshow(mt_unshimmed, cmap='gray')s
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
-        #
-        #nan_mask = mt_unshimmed_masked
-        #nan_count = np.count_nonzero(nan_mask)
-        #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
-        #
+
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
                     , fontsize=20)
