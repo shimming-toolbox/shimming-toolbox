@@ -36,6 +36,7 @@ setup(
         ]
     },
     packages=find_packages(exclude=["docs"]),
+    include_package_data=True,
     install_requires=[
         "click",
         "dcm2bids>=3.0.1",
