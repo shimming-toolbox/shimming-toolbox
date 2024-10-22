@@ -241,7 +241,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         _save_nii_to_new_dir(list_fname, path_output)
 
     # Open json of the fmap
-    fname_json = fname_fmap.split('.nii')[0] + '.json'
+    fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
     # Read from json file
     if os.path.isfile(fname_json):
         with open(fname_json) as json_file:
@@ -279,7 +279,10 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
-    sequencer = ShimSequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
+    sequencer = ShimSequencer(nii_fmap_orig, json_fm_data,
+                              nii_anat, json_anat_data,
+                              nii_mask_anat,
+                              list_slices, list_coils,
                               method=method,
                               opt_criteria=opt_criteria,
                               mask_dilation_kernel='sphere',
