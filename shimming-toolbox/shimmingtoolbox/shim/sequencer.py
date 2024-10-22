@@ -150,7 +150,7 @@ class ShimSequencer(Sequencer):
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
-    def __init__(self, nii_fieldmap, nii_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
+    def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
@@ -189,7 +189,9 @@ class ShimSequencer(Sequencer):
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
+        self.json_fieldmap = json_fieldmap
         self.nii_anat = self.get_anat(nii_anat)
+        self.json_anat = json_anat
         self.nii_mask_anat = self.get_mask(nii_mask_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
@@ -823,8 +825,8 @@ class ShimSequencer(Sequencer):
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
         def calculate_signal_loss(gradient):
-            slice_thickness = self.nii_anat.header['pixdim'][3]
-            B0_map_thickness = self.nii_fieldmap_orig.header['pixdim'][3]
+            slice_thickness = self.json_anat['SliceThickness']
+            B0_map_thickness = self.json_fieldmap['SliceThickness']
             phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
             signal_map = abs(np.sinc(phi/(2*math.pi))) # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
             signal_loss_map = 1 - signal_map
