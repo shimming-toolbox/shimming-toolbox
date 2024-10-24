@@ -43,10 +43,10 @@ print info "Installing dcm2niix"
 "$ST_DIR"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge dcm2niix python=3.10
 
 print info "Installing shimming-toolbox"
-cp "${ST_PACKAGE_DIR}/config/dcm2bids.json" "${ST_DIR}/dcm2bids.json"
-cp "${ST_PACKAGE_DIR}/config/custom_coil_constraints.json" "${ST_DIR}/custom_coil_constraints.json"
-cp "${ST_PACKAGE_DIR}/config/scanner_coil_constraints.json" "${ST_DIR}/scanner_coil_constraints.json"
-"${ST_DIR}"/"${PYTHON_DIR}"/bin/python -m pip install -e "${ST_PACKAGE_DIR}[docs,dev]"
+cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/dcm2bids.json" "${ST_DIR}/dcm2bids.json"
+cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/custom_coil_constraints.json" "${ST_DIR}/custom_coil_constraints.json"
+cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/scanner_coil_constraints.json" "${ST_DIR}/scanner_coil_constraints.json"
+"${ST_DIR}"/"${PYTHON_DIR}"/bin/python -m pip install "${ST_PACKAGE_DIR}[docs,dev]"
 
 # Create launchers for Python scripts
 print info "Creating launchers for Python scripts. List of functions available:"

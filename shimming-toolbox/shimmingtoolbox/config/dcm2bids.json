@@ -790,6 +790,7 @@
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "1",
                 "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
             }
@@ -799,6 +800,7 @@
             "suffix": "magnitude2",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "2",
                 "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
             }
@@ -808,6 +810,7 @@
             "suffix": "phase1",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "1",
                 "ImageType": [".*", ".*", ".*", "P", "FFE", "PHASE"]
             }
@@ -817,6 +820,7 @@
             "suffix": "phase2",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "2",
                 "ImageType": [".*", ".*", ".*", "P", "FFE", "PHASE"]
             }
@@ -834,6 +838,7 @@
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "1",
                 "ImageType": [".*", ".*", "T1", "MIXED", "FIELDMAPHZ"]
             }
@@ -841,19 +846,71 @@
         {
             "datatype": "func",
             "suffix": "bold",
+            "custom_entities": "acq-AP",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": ".*(_AP|-AP|_ap|-ap| ap| AP).*",
+                "PulseSequenceName": ".*EPI.*",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "func",
+            "suffix": "bold",
+            "custom_entities": "acq-PA",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": ".*(_PA|-PA|_pa|-pa| pa| PA).*",
                 "PulseSequenceName": ".*EPI.*",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
             }
         },
         {
             "datatype": "anat",
-            "suffix": "T1w",
+            "suffix": "T1wTFE",
             "criteria": {
                 "Manufacturer": "Philips",
+                "ProtocolName": "^((?!Survey|survey|WIP Survey).)+$",
                 "PulseSequenceName": "T1TFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "survey",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": ".*(Survey|WIP Survey).*",
+                "PulseSequenceName": "T1TFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1wTFE",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "T1FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "func",
+            "suffix": "bold",
+            "criteria": {
+                "Manufacturer": "GE",
+                "ScanningSequence": ".*EP.*",
+                "PulseSequenceName": ".*epi.*"
             }
         },
         {
