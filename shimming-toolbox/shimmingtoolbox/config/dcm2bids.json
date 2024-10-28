@@ -129,6 +129,65 @@
         {
             "datatype": "anat",
             "suffix": "T1w",
+            "custom_entities": "acq-mprage_echo-1",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "1",
+                "SequenceName": ".*tfl3d.*",
+                "ProtocolName": ".*(mprage|MPRAGE).*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "custom_entities": "acq-mprage_echo-2",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "2",
+                "SequenceName": ".*tfl3d.*",
+                "ProtocolName": ".*(mprage|MPRAGE).*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "custom_entities": "acq-mprage_echo-3",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "3",
+                "SequenceName": ".*tfl3d.*",
+                "ProtocolName": ".*(mprage|MPRAGE).*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "custom_entities": "acq-mprage_echo-4",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "4",
+                "SequenceName": ".*tfl3d.*",
+                "ProtocolName": ".*(mprage|MPRAGE).*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "custom_entities": "acq-mprage",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d.*",
+                "ProtocolName": ".*(mprage|MPRAGE).*",
+                "ImageType": ["ORIGINAL", "PRIMARY", "OTHER", "ND", "MEAN"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*tfl3d1_16",
