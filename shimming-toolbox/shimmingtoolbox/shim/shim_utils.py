@@ -173,7 +173,7 @@ def phys_to_shim_cs(coefs, manufacturer, orders):
     if manufacturer.upper() in SHIM_CS:
         flip_mat = get_flip_matrix(SHIM_CS[manufacturer], manufacturer=manufacturer, orders=orders)
         if len(flip_mat) != len(coefs):
-            logger.warning("Could not convert between shim and physical coordinate system")
+            raise ValueError("Could not convert between shim and physical coordinate system")
         else:
             coefs = flip_mat * coefs
 

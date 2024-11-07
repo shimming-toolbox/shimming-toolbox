@@ -440,7 +440,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_dynamic_format_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -471,6 +471,58 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 11.007908"
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001260"
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.029665"
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.060548"
+
+    def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001980"
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.032016"
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.066749"
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
