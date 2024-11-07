@@ -445,6 +445,7 @@ class ShimSequencer(Sequencer):
                 corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
                 nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
                 nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
+                # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
                 full_Gz = np.gradient(shimmed_temp, axis=2)
                 full_Gx = np.gradient(shimmed_temp, axis=0)
@@ -455,19 +456,23 @@ class ShimSequencer(Sequencer):
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
             if len(self.slices) == 1:
-                # TODO: Output json sidecar
                 # TODO: Update the shim settings if Scanner coil?
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
+
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
@@ -834,7 +839,7 @@ class ShimSequencer(Sequencer):
 
         unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis = 2))
         shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
-        
+
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
         mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
 
@@ -842,7 +847,7 @@ class ShimSequencer(Sequencer):
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
-        
+
         nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
         nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
