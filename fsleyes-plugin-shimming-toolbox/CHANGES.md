@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1 (2024-11-08)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.0...1.1)
+
 ## 1.0 (2024-08-21)
 
 **FEATURE**
