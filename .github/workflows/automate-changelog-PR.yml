@@ -1,0 +1,60 @@
+name: "Update changelog and open a pull request"
+
+on:
+  workflow_dispatch:
+    inputs:
+      fname_changelog:
+        description: 'Changelog filename'
+        required: true
+        default: 'CHANGES.md'
+      milestone_number:
+        description: 'Milestone number (get this from the milestone URL)'
+        required: true
+      milestone_title:
+        description: 'Milestone title (e.g. 6.1)'
+        required: true
+      future_milestone_title:
+        description: 'Next milestone title (used to update dev version.txt on master)'
+        required: true
+
+jobs:
+  create-changelog-PR:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Python (to install 'changelog')
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.x'
+    - name: Install 'changelog'
+      run: |
+        pip install git+https://github.com/neuropoly/changelog@master
+    - name: Checkout '${{ github.event.repository.name }}'
+      uses: actions/checkout@v4
+      with:
+        path: ${{ github.event.repository.name }}
+    - name: Update '${{ github.event.inputs.fname_changelog }}' for '${{ github.event.repository.name }}'
+      run: |
+        cd ${{ github.event.repository.name }}
+        changelog shimming-toolbox/shimming-toolbox --update --name "${{ github.event.inputs.fname_changelog }}" --milestone ${{ github.event.inputs.milestone_title }} --use-milestone-due-date
+        changelog shimming-toolbox/shimming-toolbox --header-labels "Package: Shimming Toolbox" --update --name "shimming-toolbox/${{ github.event.inputs.fname_changelog }}" --milestone ${{ github.event.inputs.milestone_title }} --use-milestone-due-date
+        changelog shimming-toolbox/shimming-toolbox --header-labels "Package: Plugin" --update --name "fsleyes-plugin-shimming-toolbox/${{ github.event.inputs.fname_changelog }}" --milestone ${{ github.event.inputs.milestone_title }} --use-milestone-due-date
+        rm -f "${{ github.event.inputs.fname_changelog }}.bak"
+        rm -f "shimming-toolbox/${{ github.event.inputs.fname_changelog }}.bak"
+        rm -f "fsleyes-plugin-shimming-toolbox/${{ github.event.inputs.fname_changelog }}.bak"
+    - name: Update version.txt
+      run: |
+        cd ${{ github.event.repository.name }}
+        echo "${{ github.event.inputs.future_milestone_title }}" > shimming-toolbox/shimmingtoolbox/version.txt
+        echo "${{ github.event.inputs.future_milestone_title }}" > fsleyes-plugin-shimming-toolbox/fsleyes-plugin-shimming-toolbox/version.txt
+    - name: Create pull request for updated changelog and version.txt
+      uses: peter-evans/create-pull-request@v6
+      with:
+        path: "${{ github.event.repository.name }}"
+        branch: "bot/v${{ github.event.inputs.milestone_title }}"
+        commit-message  : "Update ${{ github.event.inputs.fname_changelog }} and version.txt for ${{ github.event.inputs.milestone_title }} release"
+        title: "Update ${{ github.event.inputs.fname_changelog }} and version.txt for ${{ github.event.inputs.milestone_title }} release"
+        milestone: "${{ github.event.inputs.milestone_number }}"
+        body: |
+          Update ${{ github.event.inputs.fname_changelog }} and version.txt for ${{ github.event.inputs.milestone_title }} release.
+
+        delete-branch: true
