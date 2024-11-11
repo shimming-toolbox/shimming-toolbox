@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.1 (2024-11-08)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.0...1.1)
+
+### PACKAGE: SHIMMING TOOLBOX
+
+**ENHANCEMENT**
+ - **st_b0shim, st_dicom_to_nifti**: Update dcm2bids config file for Philips and output JSON sidecar for the calculated field maps. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/559)
+
+**BUG**
+ - **st_b0shim**: Update signal recovery calculation. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/555)
+ - **st_dicom_to_nifti**: Fix default dcm2bids config file not existing on Windows installation. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/556)
+
+### REPO
+
+**ENHANCEMENT**
+ - Create a workflow to automate updating CHANGES.md. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/562)
+
+**BUG**
+ - Fix test issues coming from incompatibility with fsl bet2. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/554)
+
+**DOCUMENTATION**
+ - Update documentation configuration file to support ReadTheDocs addons migration. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/552)
+
 ## 1.0 (2024-08-21)
 
 ### PACKAGE: SHIMMING TOOLBOX
