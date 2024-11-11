@@ -57,16 +57,16 @@ def mean(fname_input, fname_output, axis, verbose):
 
 
 @maths_cli.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
-              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
 @click.option('--real', 'fname_real', type=click.Path(exists=True), required=True,
               help="Input filename of a real image, supported extensions: .nii, .nii.gz")
+@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
+              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
               default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
               help="Output filename, supported extensions: .nii, .nii.gz")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def phase(fname_im, fname_real, fname_output, verbose):
-    """Compute the phase data from other image types."""
+    """Compute the phase data from real and imaginary data."""
 
     # Set logger level
     set_all_loggers(verbose)
@@ -92,6 +92,13 @@ def phase(fname_im, fname_real, fname_output, verbose):
         with open(fname_json_real, 'r') as json_file:
             json_data = json.load(json_file)
 
+        if 'ImageType' in json_data:
+            for i_field, field in enumerate(json_data['ImageType']):
+                if 'M' == field.upper() or 'R' == field.upper() or 'I' == field.upper():
+                    json_data['ImageType'][i_field] = 'P'
+                if 'MAG' == field.upper() or 'REAL' == field.upper() or 'IMAGINARY' == field.upper():
+                    json_data['ImageType'][i_field] = 'PHASE'
+
         save_nii_json(nii_output, json_data, fname_output)
     else:
         nib.save(nii_output, fname_output)
@@ -107,7 +114,7 @@ def phase(fname_im, fname_real, fname_output, verbose):
               help="Output filename, supported extensions: .nii, .nii.gz")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def mag(fname_im, fname_real, fname_output, verbose):
-    """Compute the magnitude data from other image types."""
+    """Compute the magnitude data from real and imaginary data."""
 
     # Set logger level
     set_all_loggers(verbose)
@@ -132,6 +139,12 @@ def mag(fname_im, fname_real, fname_output, verbose):
     if os.path.isfile(fname_json_real):
         with open(fname_json_real, 'r') as json_file:
             json_data = json.load(json_file)
+
+        if 'ImageType' in json_data:
+            for i_field, field in enumerate(json_data['ImageType']):
+                if 'P' == field.upper() or 'R' == field.upper() or 'PHASE' == field.upper() or 'REAL' == field.upper()\
+                        or 'I' == field.upper() or 'IMAGINARY' == field.upper():
+                    json_data['ImageType'][i_field] = 'M'
 
         save_nii_json(nii_output, json_data, fname_output)
     else:
