@@ -1487,7 +1487,7 @@ def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format
     if o_format == 'slicewise' and i_format != 'slicewise':
         raise ValueError("Slicewise output format is only compatible with slicewise input format")
     if o_format == 'chronological' and i_format != 'chronological':
-        raise ValueError("Slicewise output format is only compatible with slicewise input format")
+        raise ValueError("Chronological output format is only compatible with chronological input format")
 
     # Prepare the output
     create_output_dir(fname_output, is_file=True)
@@ -1542,7 +1542,7 @@ def combine_shim_coefs(fname_anat, fname_input, fname_input2, i_format, o_format
                         else:
                             coefs[i_shim][i_channel] = coefs2[i_shim][i_channel]
         else:
-            raise ValueError("The number of shim events and the number of channels is not he same in both text files")
+            raise ValueError("The number of shim events is not the same in both text files")
 
     logger.debug(coefs1)
     logger.debug(coefs2)
