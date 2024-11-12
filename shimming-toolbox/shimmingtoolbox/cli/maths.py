@@ -2,14 +2,16 @@
 # -*- coding: utf-8 -*-
 
 import click
-import os
+import json
 import nibabel as nib
 import numpy as np
+import os
 
-from shimmingtoolbox.utils import add_suffix
+from shimmingtoolbox.utils import add_suffix, set_all_loggers, splitext, save_nii_json, create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 AXES = ['0', '1', '2', '3', '4']
+DEFAULT_PATH = os.path.abspath(os.curdir)
 
 
 @click.group(context_settings=CONTEXT_SETTINGS,
@@ -22,11 +24,15 @@ def maths_cli():
 @click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
               help="Input filename, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
-              help="Output filename, supported extensions: .nii, .nii.gz")
+              help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_mean.nii.gz]")
 @click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
-              help="Axis of the array to calculate the average  [default: ./input_mean.nii.gz]")
-def mean(fname_input, fname_output, axis):
+              help="Axis of the array to calculate the average")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def mean(fname_input, fname_output, axis, verbose):
     """Average NIfTI data across dimension."""
+
+    # Set logger level
+    set_all_loggers(verbose)
 
     # Load input
     nii_input = nib.load(fname_input)
@@ -48,3 +54,98 @@ def mean(fname_input, fname_output, axis):
         _, filename = os.path.split(fname_input)
         fname_output = add_suffix(os.path.join(os.curdir, filename), '_mean')
     nib.save(nii_output, fname_output)
+
+
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--real', 'fname_real', type=click.Path(exists=True), required=True,
+              help="Input filename of a real image, supported extensions: .nii, .nii.gz")
+@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
+              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
+              help="Output filename, supported extensions: .nii, .nii.gz")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def phase(fname_im, fname_real, fname_output, verbose):
+    """Compute the phase data from real and imaginary data."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    fname_output = os.path.abspath(fname_output)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Load input
+    nii_real = nib.load(fname_real)
+    nii_im = nib.load(fname_im)
+
+    # Calculate the phase
+    phase = np.arctan2(nii_im.get_fdata(), nii_real.get_fdata())
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(phase, nii_real.affine, header=nii_real.header)
+
+    # Save nii and JSON if possible
+    fname_json_real = splitext(fname_real)[0] + '.json'
+    if os.path.isfile(fname_json_real):
+        with open(fname_json_real, 'r') as json_file:
+            json_data = json.load(json_file)
+
+        if 'ImageType' in json_data:
+            for i_field, field in enumerate(json_data['ImageType']):
+                if 'M' == field.upper() or 'R' == field.upper() or 'I' == field.upper():
+                    json_data['ImageType'][i_field] = 'P'
+                if 'MAG' == field.upper() or 'REAL' == field.upper() or 'IMAGINARY' == field.upper():
+                    json_data['ImageType'][i_field] = 'PHASE'
+
+        save_nii_json(nii_output, json_data, fname_output)
+    else:
+        nib.save(nii_output, fname_output)
+
+
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
+              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
+@click.option('--real', 'fname_real', type=click.Path(exists=True), required=True,
+              help="Input filename of a real image, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
+              help="Output filename, supported extensions: .nii, .nii.gz")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def mag(fname_im, fname_real, fname_output, verbose):
+    """Compute the magnitude data from real and imaginary data."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    fname_output = os.path.abspath(fname_output)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Load input
+    nii_real = nib.load(fname_real)
+    nii_im = nib.load(fname_im)
+
+    # Calculate the phase
+    mag = np.sqrt(nii_im.get_fdata() ** 2 + nii_real.get_fdata() ** 2)
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(mag, nii_real.affine, header=nii_real.header)
+
+    # Save nii and JSON if possible
+    fname_json_real = splitext(fname_real)[0] + '.json'
+    if os.path.isfile(fname_json_real):
+        with open(fname_json_real, 'r') as json_file:
+            json_data = json.load(json_file)
+
+        if 'ImageType' in json_data:
+            for i_field, field in enumerate(json_data['ImageType']):
+                if 'P' == field.upper() or 'R' == field.upper() or 'PHASE' == field.upper() or 'REAL' == field.upper()\
+                        or 'I' == field.upper() or 'IMAGINARY' == field.upper():
+                    json_data['ImageType'][i_field] = 'M'
+
+        save_nii_json(nii_output, json_data, fname_output)
+    else:
+        nib.save(nii_output, fname_output)
