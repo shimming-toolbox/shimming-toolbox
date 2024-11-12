@@ -315,7 +315,7 @@ class LsqOptimizer(OptimizerUtils):
                                        method='SLSQP',
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
-                                       options={'maxiter': 1000, 'ftol': 1e-9})
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
 
         return currents_sp
 
