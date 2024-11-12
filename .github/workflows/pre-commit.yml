@@ -13,14 +13,14 @@ jobs:
     runs-on: 'ubuntu-latest'
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Setup Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10'
       - name: Cache pip dependencies
         id: cache-pip-dependencies
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           # Ubuntu-specific, see
           # https://github.com/actions/cache/blob/main/examples.md#python---pip
@@ -31,6 +31,7 @@ jobs:
       - name: Install shimming-toolbox
         if: steps.cache-pip-dependencies.cache-hit != 'true'
         run: |
+          cd shimming-toolbox
           pip install ".[docs, dev]"
       - name: Run pre-commit large file check
         run: pre-commit run --all-files check-added-large-files

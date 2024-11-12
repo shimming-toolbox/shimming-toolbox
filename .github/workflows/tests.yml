@@ -19,29 +19,48 @@ jobs:
     strategy:
       matrix:
         os:
-          - 'macos-12'
           - 'macos-13'
+          - 'macos-14'
+          - 'macos-15'
+          - 'ubuntu-24.04'
           - 'ubuntu-22.04'
           - 'ubuntu-20.04'
         python-version:
-          - '3.9'
+          - '3.10'
+        tests:
+          - 'fsleyes-plugin-shimming-toolbox'
+          - 'shimming-toolbox'
+        exclude:
+          - os: 'macos-15'
+            tests: 'fsleyes-plugin-shimming-toolbox'
+          - os: 'macos-14'
+            tests: 'fsleyes-plugin-shimming-toolbox'
+          - os: 'macos-13'
+            tests: 'fsleyes-plugin-shimming-toolbox'
 
     steps:
       - name: Get home directory
         run: |
           echo ~
           echo $HOME
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Package installation
+      - name: Package plugin installation
+        if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
         run: |
           echo "shimming-toolbox installation"
           make install
+
+      - name: Package ST installation
+        if: matrix.tests == 'shimming-toolbox'
+        run: |
+          echo "Plugin installation"
+          make install PLUGIN=false
 
       - name: Set path for Shimming Toolbox
         run: |
@@ -58,7 +77,7 @@ jobs:
 
       - name: Cache SCT
         id: cache-sct
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/work/spinalcordtoolbox
           # Use commit hash file from previous step as key
@@ -88,13 +107,26 @@ jobs:
           st_download_data prelude
           sudo install prelude/prelude /usr/local/bin
 
+      - name: Bet2
+        run: |
+          echo "Download BET from FSL"
+          source ~/shimming-toolbox/python/bin/activate
+          conda install -c https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/public/ -c conda-forge fsl-bet2
+
       - name: Check dependencies
         run: st_check_dependencies
 
-      - name: Run unit tests
+      - name: Run unit tests for ST
+        if: matrix.tests == 'shimming-toolbox'
         run: |
           source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
-          py.test . -v --cov shimmingtoolbox/ --cov-report term-missing
+          py.test ./shimming-toolbox -v --cov ./shimming-toolbox/shimmingtoolbox/ --cov-report term-missing
+
+      - name: Run unit tests for the plugin
+        if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
+        run: |
+          source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
+          xvfb-run -a -s "-screen 0 1920x1200x24" py.test ./fsleyes-plugin-shimming-toolbox -v
 
       - name: macOS Shellcheck
         if: contains(matrix.os, 'macos')
@@ -118,13 +150,13 @@ jobs:
   coveralls:
     name: Finish Coveralls
     needs: test
-    runs-on: 'ubuntu-22.04'
+    runs-on: 'ubuntu-24.04'
     steps:
 
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.7'
+        python-version: '3.10'
     - name: Finished
       run: |
         pip3 install --upgrade coveralls
