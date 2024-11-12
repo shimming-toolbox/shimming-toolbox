@@ -853,92 +853,39 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 # Therefore, we can only check for the o_format_sph.
                 if o_format_sph == 'gradient':
                     if key == '0':
-                        if coefs_coil_static is not None:
-                            save_coefs_static = coefs_coil_static
-                        else:
-                            save_coefs_static = None
-                        if coefs_coil_riro is not None:
-                            save_coefs_riro = coefs_coil_riro
-                        else:
-                            save_coefs_riro = None
-                        continue
+                        pass
                     elif key == '1':
                         if coefs_coil_static is not None:
-                            if save_coefs_static is not None:
-                                # order 0 is present
-                                save_coefs_static = np.concatenate((save_coefs_static, coefs_coil_static), axis=1)
-                            else:
-                                save_coefs_static = coefs_coil_static
+                            logger.debug("Converting scanner coil static from Shim CS to Gradient CS")
+                            for i_shim in range(coefs_coil_static.shape[0]):
+                                coefs_coil_static[i_shim] = shim_to_phys_cs(coefs_coil_static[i_shim], manufacturer,
+                                                                            (1,))
+                            # RAS to gradient
+                            coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                                coefs_coil_static[:, 0],
+                                coefs_coil_static[:, 1],
+                                coefs_coil_static[:, 2],
+                                fname_anat)
+                            coefs_coil_static[:, 0] = coefs_st_freq
+                            coefs_coil_static[:, 1] = coefs_st_phase
+                            coefs_coil_static[:, 2] = coefs_st_slice
+
                         if coefs_coil_riro is not None:
-                            if save_coefs_riro is not None:
-                                save_coefs_riro = np.concatenate((save_coefs_riro, coefs_coil_riro), axis=1)
-                            else:
-                                save_coefs_riro = coefs_coil_riro
+                            logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
+                            for i_shim in range(coefs_coil_riro.shape[0]):
+                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,(1,))
+                            # RAS to gradient
+                            coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                                coefs_coil_riro[:, 0],
+                                coefs_coil_riro[:, 1],
+                                coefs_coil_riro[:, 2],
+                                fname_anat)
+                            coefs_coil_riro[:, 0] = coefs_riro_freq
+                            coefs_coil_riro[:, 1] = coefs_riro_phase
+                            coefs_coil_riro[:, 2] = coefs_riro_slice
 
                     else:
                         raise NotImplementedError("Only order 1 and 0 supported for gradient file format")
-
-                    coefs_coil_static = save_coefs_static
-                    coefs_coil_riro = save_coefs_riro
-                    logger.debug("Converting scanner coil from Shim CS to Gradient CS")
-                    # Remove 0 from these orders
-                    orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
-                    orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
-
-                    # At this point, if order 0 is present, there will be 4 channels in coefs_coil_static and
-                    # coefs_coil_riro
-                    if 0 in all_scanner_orders:
-                        for i_shim in range(coefs_coil_static.shape[0]):
-                            # Convert coefficient
-                            coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer,
-                                                                            orders_static)
-                            coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer,
-                                                                          orders_riro)
-                        # RAS to gradient
-                        coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                            coefs_coil_static[:, 1],
-                            coefs_coil_static[:, 2],
-                            coefs_coil_static[:, 3],
-                            fname_anat)
-                        coefs_coil_static[:, 1] = coefs_st_freq
-                        coefs_coil_static[:, 2] = coefs_st_phase
-                        coefs_coil_static[:, 3] = coefs_st_slice
-
-                        coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                            coefs_coil_riro[:, 1],
-                            coefs_coil_riro[:, 2],
-                            coefs_coil_riro[:, 3],
-                            fname_anat)
-                        coefs_coil_riro[:, 1] = coefs_riro_freq
-                        coefs_coil_riro[:, 2] = coefs_riro_phase
-                        coefs_coil_riro[:, 3] = coefs_riro_slice
-
-                    else:
-                        for i_shim in range(coefs_coil_static.shape[0]):
-                            # Convert coefficient
-                            coefs_coil_static[i_shim] = shim_to_phys_cs(coefs_coil_static[i_shim], manufacturer,
-                                                                        orders_static)
-                            coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,
-                                                                      orders_riro)
-
-                        # RAS to gradient
-                        coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                            coefs_coil_static[:, 0],
-                            coefs_coil_static[:, 1],
-                            coefs_coil_static[:, 2],
-                            fname_anat)
-                        coefs_coil_static[:, 0] = coefs_st_freq
-                        coefs_coil_static[:, 1] = coefs_st_phase
-                        coefs_coil_static[:, 2] = coefs_st_slice
-
-                        coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                            coefs_coil_riro[:, 0],
-                            coefs_coil_riro[:, 1],
-                            coefs_coil_riro[:, 2],
-                            fname_anat)
-                        coefs_coil_riro[:, 0] = coefs_riro_freq
-                        coefs_coil_riro[:, 1] = coefs_riro_phase
-                        coefs_coil_riro[:, 2] = coefs_riro_slice
 
                 else:
 
@@ -1054,7 +1001,9 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
         else:  # o_format == 'gradient':
             f0 = 'f0'
             gradients = ['x', 'y', 'z']
-            if n_channels == 3:
+            if n_channels == 1:
+                name = {0: f0}
+            elif n_channels == 3:
                 name = {0: gradients[0],
                         1: gradients[1],
                         2: gradients[2]}

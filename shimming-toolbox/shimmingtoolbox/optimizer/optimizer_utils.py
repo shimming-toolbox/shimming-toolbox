@@ -107,6 +107,16 @@ class OptimizerUtils(Optimizer):
         """
         current_0 = np.zeros(len(self.merged_bounds))
 
+        # If it is not within the bounds, fall back to average
+        for i_bound, bounds in enumerate(self.merged_bounds):
+            if not (bounds[0] <= current_0[i_bound] <= bounds[1]):
+                avg = np.mean(bounds)
+
+                if np.isnan(avg):
+                    current_0[i_bound] = 0
+                else:
+                    current_0[i_bound] = avg
+
         return current_0
 
     def optimize(self, mask):
