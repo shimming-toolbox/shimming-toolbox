@@ -412,8 +412,8 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
                        "folder. Return an output nifti file to be used as a mask for MRS shimming.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
               help="Input path of the fieldmap to be shimmed.")
-@click.option('-r', '--raw_data', type=click.Path(),
-              help="Input path of the siemens raw-data (supported extention .rda)")
+@click.option('-r', '--raw', 'raw_data', type=click.Path(),
+              help="Input path of the raw-data (supported extention .rda)")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
               show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
@@ -434,8 +434,7 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     output_mask = output_mask.astype(np.int32)
     nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
     nib.save(nii_img, output)
-    click.echo(f"The filename for the output mask is: {os.path.abspath(output)}")
-    return output
+    logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',

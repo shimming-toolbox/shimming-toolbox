@@ -3,14 +3,19 @@
 """
 Creating MRS mask API
 """
+
+import logging
+import os.path
+
+import nibabel as nib
 import numpy as np
 import numpy.linalg as npl
-import nibabel as nib
-import logging
+import pathlib
+import tempfile
+
 from shimmingtoolbox.utils import splitext
 from shimmingtoolbox.utils import run_subprocess
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -42,11 +47,13 @@ def mask_mrs(fname_input, raw_data, center, size):
 
     else:
         logger.info("Reading the raw_data")
-        run_subprocess(['spec2nii', 'rda', raw_data])
-        name_nii, ext = splitext(raw_data)
-        nii = nib.load(name_nii + '.nii.gz')
-        header_raw_data = nii.header
-        affine = nii.affine
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            basename = os.path.basename(raw_data)
+            run_subprocess(['spec2nii', 'rda', '-o', tmp, '-f', basename, raw_data])
+            fname_rawdata_nifti = os.path.join(tmp, basename + '.nii.gz')
+            nii = nib.load(fname_rawdata_nifti)
+            header_raw_data = nii.header
+            affine = nii.affine
         position_sag = header_raw_data['qoffset_x']
         position_cor = header_raw_data['qoffset_y']
         position_tra = header_raw_data['qoffset_z']
@@ -71,9 +78,8 @@ def mask_mrs(fname_input, raw_data, center, size):
     i, j, k = map(int, voxel_position[:3])
     fmap_resolution = fmap_header['pixdim'][1:4]
 
-    # The distance from the center of the MRS voxel to it's edges is calculated based on number of fieldmap voxels.
-    half_voxel_distances = np.ceil(np.divide(mrs_voxel_size, 2 * fmap_resolution)).astype(int)
-    sd = half_voxel_distances
+    # The distance from the center of the MRS voxel to its edges is calculated based on number of fieldmap voxels.
+    sd = np.ceil(mrs_voxel_size / (2 * fmap_resolution)).astype(int)
 
     # create a zero mask with the same size as the input fieldmap to be shimmed.
     mask = np.zeros(fmap_array.shape)
