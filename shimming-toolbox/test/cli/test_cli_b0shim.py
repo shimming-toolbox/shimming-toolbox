@@ -484,6 +484,51 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 assert lines[15].strip() == "corr_vec[0][5]= 0.060548"
 
+
+    def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
+
     def test_cli_dynamic_format_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

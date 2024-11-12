@@ -319,19 +319,19 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if type(coil) == ScannerCoil:
             manufacturer = json_anat_data['Manufacturer']
 
-            # If outputting in the gradient CS, it must be the 1st order, it must be in the delta CS and Siemens
+            # Fill in a dictionary with the coefficients for each order
+            coefs_scanner = {}
+            start_channel_scanner = 0
+            for order in scanner_coil_order:
+                end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+                coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+                start_channel_scanner = end_channel_scanner_order
+
+            # If outputting in the gradient CS, it must have specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
-
-                # Fill in a dictionary with the coefficients for each order
-                coefs_scanner = {}
-                start_channel_scanner = start_channel
-                for order in scanner_coil_order:
-                    end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
-                    coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
-                    start_channel_scanner = end_channel_scanner_order
 
                 if 1 in scanner_coil_order:
                     for i_shim in range(coefs.shape[0]):
@@ -351,20 +351,20 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             else:
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
-                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
-                    for i_channel in range(n_channels):
-                        # abs_coef = delta + initial
-                        coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
+                    for order in scanner_coil_order:
+                        # abs_coef = initial + delta
+                        coefs_scanner[order] = scanner_shim_settings.shim_settings[str(order)] + coefs_scanner[order]
 
                     list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
                                                                    o_format_sph, options, coil_number=i_coil,
                                                                    default_coefs=initial_coefs)
                     continue
-
+            # coefs_coil is a dict
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
                                                            options, coil_number=i_coil)
 
         else:
+            # coefs_coil is a list
             list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            options, coil_number=i_coil)
 
