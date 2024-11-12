@@ -197,7 +197,7 @@ def ge_basis(x, y, z, orders=(1, 2)):
     scaled = {}
     for order in orders:
         if order == 0:
-            scaled[0] = -reordered_spher[0]
+            scaled[0] = reordered_spher[0]
         elif order == 1:
             # Rescale to unit-shims that are XXXXX
             # They are currently in uT/m

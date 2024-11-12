@@ -1568,6 +1568,7 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
             for i_shim in range(coefs.shape[0]):
                 f.write(f"{', '.join([str(coef) for coef in coefs[i_shim]])},\n")
     elif o_format == 'custom-cl':
+        coefs[:, 0] *= -1
         if coefs.shape[1] != 9:
             raise ValueError("The number of channels in the text file must be 9 for the custom-cl format")
         with open(fname_output, 'w', encoding='utf-8') as f:

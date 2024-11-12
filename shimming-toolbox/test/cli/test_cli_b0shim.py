@@ -1606,8 +1606,8 @@ class TestCombineShimCoefs():
                 assert f.readline() == "        14         12         11         13         15\n"
                 assert f.readline() == "\n"
                 assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
-                assert f.readline() == "    0.000187     0.000205     0.000185    16.000000\n"
-                assert f.readline() == "    0.000145     0.000164     0.000185    12.000000\n"
+                assert f.readline() == "    0.000187     0.000205     0.000185   -16.000000\n"
+                assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"
 
     def test_combine_shim_coefs_sl(self):
         """Test the combine shim coefs function"""
