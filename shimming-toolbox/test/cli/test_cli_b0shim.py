@@ -1571,8 +1571,36 @@ def test_b0_max_intensity_no_mask():
             assert f.readline().strip() == "1"
 
 
-class TestCombineShimCoefs():
-    def test_combine_shim_coefs_cl(self):
+class TestAddShimCoefs:
+    def test_add_shim_coefs(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
+            with open(fname_input1, 'w', encoding='utf-8') as f:
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14\n")
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+            fname_input2 = os.path.join(tmp, 'shim_coefs2.txt')
+            with open(fname_input2, 'w', encoding='utf-8') as f:
+                f.write("10, 10, 10, 10, 10, 10, 10, 10, 10\n")
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['add-shim-coefs',
+                                             '--input', fname_input1,
+                                             '--input2', fname_input2,
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "21.0, 22.0, 23.0, 24.0, 25.0, 21.0, 22.0, 23.0, 24.0,\n"
+                assert f.readline() == "22.0, 24.0, 26.0, 28.0, 30.0, 22.0, 24.0, 26.0, 28.0,\n"
+
+    def test_add_shim_coefs_error(self):
         """Test the combine shim coefs function"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
@@ -1586,13 +1614,181 @@ class TestCombineShimCoefs():
                 f.write("5,6,7, 4\n")
 
             fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
-            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
 
             runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['combine-shim-coefs',
-                                             '--anat', fname_anat,
-                                             '--input', fname_input1,
-                                             '--input2', fname_input2,
+            with pytest.raises(ValueError, match="The number of shim events and/or the number of channels is not "
+                                                 "the same in both text files"):
+                runner.invoke(b0shim_cli, ['add-shim-coefs',
+                                                 '--input', fname_input1,
+                                                 '--input2', fname_input2,
+                                                 '-o', fname_output,
+                                                 '-v', 'debug'],
+                                    catch_exceptions=False)
+
+
+class TestConvertShimCoefsFormat:
+    def test_convert_shim_coefs_vol_sl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,2,3,4,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--add-channels', '0,4,6,7,8,9',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
+
+    def test_convert_shim_coefs_ch_vol(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("0,0,0,0,\n")
+                f.write("0,0,0,0,\n")
+                f.write("0,0,0,0,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'chronological',
+                                             '--output-file-format', 'volume',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
+
+    def test_convert_shim_coefs_ch_sl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1, 1, 1, 1\n")
+                f.write("0,0,0,0,\n")
+                f.write("2, 2, 2, 2,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'chronological',
+                                             '--output-file-format', 'slicewise',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == "1.0, 1.0, 1.0, 1.0,\n"
+                assert f.readline() == "2.0, 2.0, 2.0, 2.0,\n"
+
+    def test_convert_shim_coefs_sl_ch(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("0,0,0,0,\n")
+                f.write("1, 1, 1, 1\n")
+                f.write("2, 2, 2, 2,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'slicewise',
+                                             '--output-file-format', 'chronological',
+                                             '-o', fname_output,
+                                             '--reverse-slice-order',
+                                             '-v', 'debug'],
+
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "1.0, 1.0, 1.0, 1.0,\n"
+                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == "2.0, 2.0, 2.0, 2.0,\n"
+
+    def test_convert_shim_coefs_sl_cl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("12, 14, 16, 18, 15, 11, 12, 13, 14\n")
+                f.write("16, 18, 20, 18, 15, 11, 12, 13, 14,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_anat,
+                                             '--input', fname_input,
                                              '--input-file-format', 'slicewise',
                                              '--output-file-format', 'custom-cl',
                                              '-o', fname_output,
@@ -1608,36 +1804,3 @@ class TestCombineShimCoefs():
                 assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
                 assert f.readline() == "    0.000187     0.000205     0.000185   -16.000000\n"
                 assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"
-
-    def test_combine_shim_coefs_sl(self):
-        """Test the combine shim coefs function"""
-        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-            fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
-            with open(fname_input1, 'w', encoding='utf-8') as f:
-                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14\n")
-                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
-
-            fname_input2 = os.path.join(tmp, 'shim_coefs2.txt')
-            with open(fname_input2, 'w', encoding='utf-8') as f:
-                f.write("1,2,3, 4,\n")
-                f.write("5,6,7, 4\n")
-
-            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
-            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
-
-            runner = CliRunner()
-            res = runner.invoke(b0shim_cli, ['combine-shim-coefs',
-                                             '--anat', fname_anat,
-                                             '--input', fname_input1,
-                                             '--input2', fname_input2,
-                                             '--input-file-format', 'slicewise',
-                                             '--output-file-format', 'slicewise',
-                                             '-o', fname_output,
-                                             '--reverse-slice-order',
-                                             '-v', 'debug'],
-
-                                catch_exceptions=False)
-            assert res.exit_code == 0
-            with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "12.0, 14.0, 16.0, 18.0, 15.0, 11.0, 12.0, 13.0, 14.0,\n"
-                assert f.readline() == "16.0, 18.0, 20.0, 18.0, 15.0, 11.0, 12.0, 13.0, 14.0,\n"
