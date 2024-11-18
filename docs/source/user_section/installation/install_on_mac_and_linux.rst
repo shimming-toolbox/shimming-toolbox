@@ -27,19 +27,24 @@ Installation Procedure for macOS and Linux
     They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
     have previously installed ``FSLeyes``, that version will not support the GUI.
 
-Open a Terminal and run the following commands.
+Open a Terminal, navigate where you want to download the source code and run the following commands.
 
-First, download the FSLeyes plugin:
+.. Warning::
+
+    Navigate anywhere except your $HOME. The installer will create a directory called ``shimming-toolbox`` in $HOME and
+    would interfere with the source code if you download it in $HOME.
+
+First, download Shimming Toolbox:
 
 .. code:: bash
 
-    git clone https://github.com/shimming-toolbox/fsleyes-plugin-shimming-toolbox.git
+    git clone https://github.com/shimming-toolbox/shimming-toolbox.git
 
 Next, run the installer:
 
 .. code:: bash
 
-    cd fsleyes-plugin-shimming-toolbox
+    cd shimming-toolbox
     make install
 
 You will be prompted to source your ``.*shrc`` file. For example:
@@ -52,13 +57,13 @@ You will be prompted to source your ``.*shrc`` file. For example:
 
     You can restart your terminal or open a new tab to source your ``.*shrc`` file automatically.
 
-The ``shimming-toolbox`` command launches FSLeyes with GUI support.
+The ``shimming-toolbox`` command launches FSLeyes with GUI support. It takes a few seconds to open.
 
 .. code:: bash
 
     shimming-toolbox
 
-To launch our plugin, go to:
+You should see our plugin as a panel. If it does not open automatically, go to:
 
 .. code:: bash
 
@@ -88,7 +93,7 @@ To run the entire testing suite, run ``pytest`` from the
 
 .. code:: bash
 
-  cd ~/shimming-toolbox/shimming-toolbox
+  cd <shimming-toolbox-dir>/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
   conda activate ~/shimming-toolbox/python/
   pytest
@@ -108,7 +113,7 @@ To test shimming-toolbox without ``prelude``:
 
 .. code:: bash
 
-  cd ~/shimming-toolbox/shimming-toolbox
+  cd <shimming-toolbox-dir>/shimming-toolbox
   source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh
   conda activate ~/shimming-toolbox/python/
   pytest -m "not prelude"

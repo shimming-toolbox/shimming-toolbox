@@ -35,12 +35,6 @@ In your terminal, run the command:
 
     shimming-toolbox
 
-Then, open ``Shimming Toolbox`` plugin:
-
-.. code:: bash
-
-    Settings --> OrthoView --> Shimming Toolbox
-
 The plugin should open as a new panel in ``FSLeyes``.
 
 
@@ -84,7 +78,7 @@ Dynamic shimming
 - Select the fieldmap from the overlay, click the button *Input Fieldmap*.
 - Select the target anatomical image, click the button *Input Anat*.
 - Select the mask, click the button *Input Mask*.
-- Select a *Slice Ordering* of Sequential.
+- Select a *Slice Ordering* of Ascending.
 - Select a *Slice Factor* of 1 (should be the default).
 - Select a *Scanner Order* of 1. It means that dynamic shimming will be
   performed with the linear gradients of the scanner. In typical scanners, order 2

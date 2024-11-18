@@ -14,7 +14,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath("../.."))
-sys.path.insert(0, os.path.abspath("../../shimmingtoolbox/"))
+sys.path.insert(0, os.path.abspath("../../shimming-toolbox/shimmingtoolbox/"))
 sys.path.insert(0, os.path.abspath("../../examples/"))
 
 # Project imports
@@ -33,9 +33,15 @@ author = "NeuroPoly Lab, Polytechnique Montreal"
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ["sphinx.ext.githubpages", "sphinx.ext.napoleon", "sphinx_click.ext", "sphinx.ext.autosectionlabel"]
+extensions = ["sphinx.ext.githubpages",
+              "sphinx.ext.napoleon",
+              "sphinx_click.ext",
+              "sphinx.ext.autosectionlabel",
+              "myst_parser"]
 
 autosectionlabel_prefix_document = True
+autosectionlabel_maxdepth = 2
+
 # Autodoc configuration
 autodoc_mock_imports = [
     "click",
@@ -56,7 +62,6 @@ templates_path = ["_templates"]
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
-#
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.
@@ -84,7 +89,7 @@ html_theme = "sphinx_rtd_theme"
 #
 html_theme_options = {
     "collapse_navigation": False,
-    "display_version": False,
+    "display_version": True,
     "navigation_depth": 4,
 }
 html_logo = "_static/img/shimming_toolbox_logo.png"
@@ -110,6 +115,16 @@ html_sidebars = {
         "donate.html",
     ]
 }
+
+# ReadTheDocs addon on
+# Define the canonical URL if you are using a custom domain on Read the Docs
+html_baseurl = os.environ.get("READTHEDOCS_CANONICAL_URL", "")
+
+# Tell Jinja2 templates the build is running on Read the Docs
+if os.environ.get("READTHEDOCS", "") == "True":
+    if "html_context" not in globals():
+        html_context = {}
+    html_context["READTHEDOCS"] = True
 
 # -- Options for HTMLHelp output ------------------------------------------
 
