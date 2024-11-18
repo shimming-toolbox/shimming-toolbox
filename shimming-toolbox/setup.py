@@ -63,6 +63,7 @@ setup(
         "joblib",
         "quadprog",
         "cloup",
+        "spec2nii"
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme==2.0.0", "sphinx-click", "myst_parser"],
