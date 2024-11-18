@@ -33,7 +33,7 @@ def create_fieldmap(n_slices=3):
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
     model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
-    model_obj.generate_deltaB0('linear', [0.025, 2])
+    model_obj.generate_deltaB0('x', [0.025, 2])
     tr = 0.025  # in s
     te = [0.004, 0.008]  # in s
     model_obj.simulate_measurement(tr, te)
@@ -128,7 +128,8 @@ class TestSequencer(object):
     def test_shim_sequencer_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method='least_squares')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='least_squares')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -136,7 +137,8 @@ class TestSequencer(object):
     def test_shim_sequencer_quad_prog(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method='quad_prog')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='quad_prog')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -144,7 +146,26 @@ class TestSequencer(object):
     def test_shim_sequencer_pseudo(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method='pseudo_inverse')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='pseudo_inverse')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_bfgs(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nii_anat.shape[2], 1)
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='bfgs')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_bfgs_ps_huber(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nii_anat.shape[2], 1)
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='bfgs', opt_criteria='ps_huber')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -152,8 +173,8 @@ class TestSequencer(object):
     def test_shim_sequencer_std(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method='least_squares',
-                                       opt_criteria='std')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='least_squares', opt_criteria='std')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -161,8 +182,17 @@ class TestSequencer(object):
     def test_shim_sequencer_mae(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method='least_squares',
-                                       opt_criteria='mae')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='least_squares', opt_criteria='mae')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_ps_huber_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nii_anat.shape[2], 1)
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                                       method='least_squares', opt_criteria='ps_huber')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -170,8 +200,8 @@ class TestSequencer(object):
     def test_shim_sequencer_2_coils_lsq(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil, sph_coil2],
-                                       method='least_squares')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices,
+                                       [sph_coil, sph_coil2], method='least_squares')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil, sph_coil2], currents, slices)
@@ -179,8 +209,8 @@ class TestSequencer(object):
     def test_shim_sequencer_2_coils_quad_prog(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nii_anat.shape[2], 1)
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil, sph_coil2],
-                                       method='quad_prog')
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices,
+                                       [sph_coil, sph_coil2], method='quad_prog')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil, sph_coil2], currents, slices)
@@ -227,7 +257,8 @@ class TestSequencer(object):
         slices = [(0, 2), (1,)]
         method = 'abc'
         with pytest.raises(KeyError, match=f"Method: {method} is not part of the supported optimizers"):
-            ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil], method=method).shim()
+            ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_mask, slices, [sph_coil],
+                          method=method).shim()
 
     def test_shim_sequencer_wrong_fmap_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
         # Optimize
@@ -265,7 +296,8 @@ class TestSequencer(object):
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata(), diff_affine, header=nii_mask.header)
 
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_diff_mask, slices, [sph_coil])
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_diff_mask, slices,
+                                       [sph_coil])
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
@@ -275,7 +307,8 @@ class TestSequencer(object):
         slices = [(0, 2), (1,)]
         nii_diff_mask = nib.Nifti1Image(nii_mask.get_fdata()[5:, ...], nii_mask.affine, header=nii_mask.header)
 
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_diff_mask, slices, [sph_coil])
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_anat, json_anat, nii_diff_mask, slices,
+                                       [sph_coil])
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_diff_mask, [sph_coil], currents, slices)
@@ -287,7 +320,8 @@ class TestSequencer(object):
         nii_4d_mask = nib.Nifti1Image(mask_4d, nii_mask.affine, header=nii_mask.header)
 
         slices = [(0, 2), (1,)]
-        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_4d_anat, json_anat, nii_4d_mask, slices, [sph_coil])
+        sequencer_test = ShimSequencer(nii_fieldmap, json_fmap, nii_4d_anat, json_anat, nii_4d_mask, slices,
+                                       [sph_coil])
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nii_fieldmap, nii_anat, nii_mask, [sph_coil], currents, slices)
@@ -764,7 +798,8 @@ class TestDefineSlices(object):
 
     def test_define_slices_interleaved_sms3_even(self):
         output = define_slices(24, 3, "interleaved")
-        assert np.all(output == [(1, 9, 17),(3, 11, 19), (7, 15, 23), (5, 13, 21), (2, 10, 18), (4, 12, 20), (0, 8, 16), (6, 14, 22)])
+        assert np.all(output == [(1, 9, 17),(3, 11, 19), (7, 15, 23), (5, 13, 21),
+                                 (2, 10, 18), (4, 12, 20), (0, 8, 16), (6, 14, 22)])
 
     def test_define_slices_interleaved_sms2_odd(self):
         output = define_slices(18, 2, "interleaved")
@@ -772,7 +807,8 @@ class TestDefineSlices(object):
 
     def test_define_slices_interleaved_sms3_odd(self):
         output = define_slices(21, 3, "interleaved")
-        assert np.all(output == [(0, 7, 14), (2, 9, 16), (4, 11, 18), (6, 13, 20), (1, 8, 15), (3, 10, 17), (5, 12, 19)])
+        assert np.all(output == [(0, 7, 14), (2, 9, 16), (4, 11, 18), (6, 13, 20),
+                                 (1, 8, 15), (3, 10, 17), (5, 12, 19)])
 
     def test_define_slices_ascending(self):
         output = define_slices(6, 2, "ascending")

@@ -14,13 +14,12 @@ import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
-import matplotlib as plt
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
-from shimmingtoolbox.optimizer.gradient_optimizer import GradientOpt
+from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -40,7 +39,7 @@ supported_optimizers = {
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
     'pseudo_inverse': Optimizer,
-    'gradient': GradientOpt
+    'bfgs': BFGSOpt
 }
 
 GAMMA = 42.576E6  # in Hz/Tesla
@@ -141,7 +140,7 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'gradient'.
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
@@ -172,7 +171,7 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'gradient'.
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
@@ -387,7 +386,7 @@ class ShimSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method in ['least_squares', 'gradient']:
+            if self.method in ['least_squares', 'bfgs']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor, w_signal_loss=self.w_signal_loss,

@@ -361,12 +361,8 @@ class LsqOptimizer(OptimizerUtils):
                                     module='scipy')
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
-            # regularization on the currents has no affect on the output stability factor.
-            if self.opt_criteria == 'mse':
-                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
-                                                           np.zeros_like(coil_mat),
-                                                           factor=1)
-            elif self.opt_criteria == 'grad':
+            # regularization on the currents has no effect on the output stability factor.
+            if self.opt_criteria in ['mse', 'grad']:
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
