@@ -9,6 +9,7 @@ import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
+from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
 
@@ -346,7 +347,7 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
     # Run BET
     # Create the mask
     run_subprocess(['bet2', fname_process, fname_output, '-f', str(f_param), '-g', str(g_param), '-m'])
-    
+
     return fname_output
 
 
@@ -366,22 +367,22 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbose):
     set_all_loggers(verbose)
-    
+
     # Prepare the output
     create_output_dir(fname_output, is_file=True)
-    
+
     # Make sure input path exists
     if not os.path.exists(fname_input):
         raise RuntimeError("Input file does not exist")
-    
+
     # Run modify_binary_mask
     nii = nib.load(fname_input)
     array = nii.get_fdata()
     mask = modify_binary_mask_api(array, shape, size, operation)
-    
+
     nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
     nib.save(nii_mask, fname_output)
-    
+
     # Look for a json file with the same name as the input file
     path = pathlib.Path(fname_input)
     while path.suffix:
@@ -399,9 +400,43 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
         with open(fname_output_json, 'w') as f:
             click.echo(f"Copying json file from {fname_json} to {fname_output_json}")
             f.write(json_data)
-    
+
     return fname_output
-    
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Create a mask to shim single voxel MRS. "
+                       "Voxel position and size can be directly given or these info can be read "
+                       "from the siemens raw-data. "
+                       "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
+                       "folder. Return an output nifti file to be used as a mask for MRS shimming.")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the fieldmap to be shimmed.")
+@click.option('-r', '--raw', 'raw_data', type=click.Path(),
+              help="Input path of the raw-data (supported extention .rda)")
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
+              show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
+              "the scanner's coordinate")
+@click.option('-s', '--size', nargs=3, type=click.FLOAT, help="Voxel size in mm of the x, y and z of the scanner's "
+              "coordinate")
+@click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def mrs(fname_input, output, raw_data, center, size, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(output, is_file=True)
+
+    nii = nib.load(fname_input)
+    output_mask = mask_mrs(fname_input, raw_data, center, size)  # creation of the MRS mask
+    output_mask = output_mask.astype(np.int32)
+    nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
+    nib.save(nii_img, output)
+    logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
+
+
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):
 #     """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file

@@ -40,6 +40,7 @@ AVAILABLE_ORDERS = [-1, 0, 1, 2, 3]
 def b0shim_cli():
     pass
 
+
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
@@ -62,7 +63,8 @@ def b0shim_cli():
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
+              required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
@@ -83,12 +85,14 @@ def b0shim_cli():
               help="Criteria of optimization for the optimizer 'least_squares'."
                    " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
-@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0, show_default=True,
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0,
+              show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-              " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
-@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0, show_default=True,
+                   " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0,
+              show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
-              " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+                   " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
 @click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False, default='3',
               show_default=True,
               help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
@@ -241,7 +245,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         _save_nii_to_new_dir(list_fname, path_output)
 
     # Open json of the fmap
-    fname_json = fname_fmap.split('.nii')[0] + '.json'
+    fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
     # Read from json file
     if os.path.isfile(fname_json):
         with open(fname_json) as json_file:
@@ -255,9 +259,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if output_value_format != 'delta':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order == [0, 1] or scanner_coil_order == [1]):
+        if not (scanner_coil_order == [0, 1] or scanner_coil_order == [1] or scanner_coil_order == [0]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
-                             f"{o_format_sph}")
+                             f"{o_format_sph}. Supported orders are: [0, 1], [1], [0]")
         if json_fm_data.get('Manufacturer') != 'Siemens':
             raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
@@ -279,7 +283,10 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
-    sequencer = ShimSequencer(nii_fmap_orig, nii_anat, nii_mask_anat, list_slices, list_coils,
+    sequencer = ShimSequencer(nii_fmap_orig, json_fm_data,
+                              nii_anat, json_anat_data,
+                              nii_mask_anat,
+                              list_slices, list_coils,
                               method=method,
                               opt_criteria=opt_criteria,
                               mask_dilation_kernel='sphere',
@@ -312,28 +319,36 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if type(coil) == ScannerCoil:
             manufacturer = json_anat_data['Manufacturer']
 
-            # If outputting in the gradient CS, it must be the 1st order, it must be in the delta CS and Siemens
+            # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
             if o_format_sph == 'gradient':
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
-                # First convert to RAS
-                orders = tuple([order for order in scanner_coil_order if order != 0])
-                for i_shim in range(coefs.shape[0]):
-                    # Convert coefficient
-                    coefs_coil[i_shim, 1:] = shim_to_phys_cs(coefs_coil[i_shim, 1:], manufacturer, orders)
 
-                # Convert coef of 1st order sph harmonics to Gradient coord system
-                coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_coil[:, 1],
-                                                                           coefs_coil[:, 2],
-                                                                           coefs_coil[:, 3], fname_anat)
+                # Fill in a dictionary with the coefficients for each order
+                coefs_scanner = {}
+                start_channel_scanner = 0
+                for order in scanner_coil_order:
+                    end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+                    coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+                    start_channel_scanner = end_channel_scanner_order
 
-                coefs_coil[:, 1] = coefs_freq
-                coefs_coil[:, 2] = coefs_phase
-                coefs_coil[:, 3] = coefs_slice
+                if 1 in scanner_coil_order:
+                    for i_shim in range(coefs.shape[0]):
+                        # Convert to RAS
+                        coefs_scanner[1][i_shim] = shim_to_phys_cs(coefs_scanner[1][i_shim], manufacturer, (1,))
+
+                    # Convert coef of 1st order sph harmonics to Gradient coord system
+                    coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_scanner[1][:, 0],
+                                                                               coefs_scanner[1][:, 1],
+                                                                               coefs_scanner[1][:, 2], fname_anat)
+                    coefs_scanner[1][:, 0] = coefs_freq
+                    coefs_scanner[1][:, 1] = coefs_phase
+                    coefs_scanner[1][:, 2] = coefs_slice
+
+                coefs_coil = coefs_scanner
 
             else:
-
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
                     initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
@@ -393,7 +408,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
         # Print the average shim coefficients without considering slices with 0s
         logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
-                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs!=0)), axis=0)}")
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0)}")
 
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
@@ -467,39 +482,41 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
             list_fname_output.append(os.path.abspath(fname_output))
     else:  # o_format == 'gradient':
+        # coefs is a dictionary
+        f0 = 'f0'
+        gradients = ['x', 'y', 'z']
 
-        for i_channel in range(n_channels):
-            # Make sure there are 4 channels
-            if n_channels != 4:
-                raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
+        names = {
+            0: (f0,),
+            1: (gradients[0], gradients[1], gradients[2])
+        }
 
-            name = {0: 'f0',
-                    1: 'x',
-                    2: 'y',
-                    3: 'z'}
+        for i_order, order in enumerate(coefs):
+            for i_channel in range(coefs[order].shape[1]):
+                fname_output = os.path.join(path_output, f"{names[order][i_channel]}shim_gradients.txt")
+                with open(fname_output, 'w', encoding='utf-8') as f:
+                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                    for i_slice in range(n_slices):
+                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
 
-            fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
-            with open(fname_output, 'w', encoding='utf-8') as f:
-                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-                for i_slice in range(n_slices):
-                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                        if names[order][i_channel] == f0:
+                            # f0, Output is in Hz
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{coefs[order][i_shim, i_channel]:.6f}\n")
+                        elif names[order][i_channel] in gradients:
+                            # For Gx, Gy, Gz: Divide by 1000 for mT/m
+                            f.write(f"corr_vec[0][{i_slice}]= "
+                                    f"{coefs[order][i_shim, i_channel] / 1000:.6f}\n")
+                        else:
+                            raise ValueError(f"Unsupported name: {names[order][i_channel]}")
 
-                    if i_channel == 0:
-                        # f0, Output is in Hz
-                        f.write(f"corr_vec[0][{i_slice}]= "
-                                f"{coefs[i_shim, i_channel]:.6f}\n")
-                    else:
-                        # For Gx, Gy, Gz: Divide by 1000 for mT/m
-                        f.write(f"corr_vec[0][{i_slice}]= "
-                                f"{coefs[i_shim, i_channel] / 1000:.6f}\n")
+                        # Static shimming does not have a riro component
+                        f.write(f"corr_vec[1][{i_slice}]= "
+                                f"{0:.12f}\n")
+                        # Arbitrarily chose a mean pressure of 2000 to satisfy the sequence
+                        f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
 
-                    # Static shimming does not have a a riro component
-                    f.write(f"corr_vec[1][{i_slice}]= "
-                            f"{0:.12f}\n")
-                    # Arbitrarily chose a mean pressure of 2000 to satisfy the sequence
-                    f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
-
-            list_fname_output.append(os.path.abspath(fname_output))
+                list_fname_output.append(os.path.abspath(fname_output))
 
     return list_fname_output
 
@@ -547,7 +564,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "The 0th order is the f0 frequency.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
-@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']), required=False,
+@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']),
+              required=False,
               default='auto', show_default=True,
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
@@ -702,8 +720,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1]) or \
-                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1]):
+        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1] or scanner_coil_order_static == [0]) or \
+                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [0]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
@@ -805,6 +823,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 keys = [str(order) for order in AVAILABLE_ORDERS
                         if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
 
+            save_coefs_static = None
+            save_coefs_riro = None
             for key in keys:
                 if coil in list_coils_riro:
                     if key in coil_indexes_riro[coil.name]:
@@ -833,52 +853,39 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 # Therefore, we can only check for the o_format_sph.
                 if o_format_sph == 'gradient':
                     if key == '0':
-                        save_coefs_static = coefs_coil_static
+                        pass
+                    elif key == '1':
+                        if coefs_coil_static is not None:
+                            logger.debug("Converting scanner coil static from Shim CS to Gradient CS")
+                            for i_shim in range(coefs_coil_static.shape[0]):
+                                coefs_coil_static[i_shim] = shim_to_phys_cs(coefs_coil_static[i_shim], manufacturer,
+                                                                            (1,))
+                            # RAS to gradient
+                            coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
+                                coefs_coil_static[:, 0],
+                                coefs_coil_static[:, 1],
+                                coefs_coil_static[:, 2],
+                                fname_anat)
+                            coefs_coil_static[:, 0] = coefs_st_freq
+                            coefs_coil_static[:, 1] = coefs_st_phase
+                            coefs_coil_static[:, 2] = coefs_st_slice
+
                         if coefs_coil_riro is not None:
-                            save_coefs_riro = coefs_coil_riro
-                        else:
-                            save_coefs_riro = None
-                        has0 = True
-                        continue
-                    elif key == '1' and has0:
-                        save_coefs_static = np.concatenate((save_coefs_static, coefs_coil_static), axis=1)
-                        if save_coefs_riro is not None:
-                            save_coefs_riro = np.concatenate((save_coefs_riro, coefs_coil_riro), axis=1)
-                        elif coefs_coil_riro is not None:
-                            save_coefs_riro = coefs_coil_riro
-                        else:
-                            raise ValueError("Orders do not match gradient")
-                    coefs_coil_static = save_coefs_static
-                    coefs_coil_riro = save_coefs_riro
-                    logger.debug("Converting scanner coil from Shim CS to Gradient CS")
-                    orders_static = tuple([order for order in scanner_coil_order_static if order != 0])
-                    orders_riro = tuple([order for order in scanner_coil_order_riro if order != 0])
-                    # First convert coefficients from Shim CS to RAS
-                    for i_shim in range(coefs_coil_static.shape[0]):
-                        # Convert coefficient
-                        coefs_coil_static[i_shim, 1:] = shim_to_phys_cs(coefs_coil_static[i_shim, 1:], manufacturer,
-                                                                        orders_static)
-                        coefs_coil_riro[i_shim, 1:] = shim_to_phys_cs(coefs_coil_riro[i_shim, 1:], manufacturer,
-                                                                      orders_riro)
+                            logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
+                            for i_shim in range(coefs_coil_riro.shape[0]):
+                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,(1,))
+                            # RAS to gradient
+                            coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
+                                coefs_coil_riro[:, 0],
+                                coefs_coil_riro[:, 1],
+                                coefs_coil_riro[:, 2],
+                                fname_anat)
+                            coefs_coil_riro[:, 0] = coefs_riro_freq
+                            coefs_coil_riro[:, 1] = coefs_riro_phase
+                            coefs_coil_riro[:, 2] = coefs_riro_slice
 
-                    # RAS to gradient
-                    coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                        coefs_coil_static[:, 1],
-                        coefs_coil_static[:, 2],
-                        coefs_coil_static[:, 3],
-                        fname_anat)
-                    coefs_coil_static[:, 1] = coefs_st_freq
-                    coefs_coil_static[:, 2] = coefs_st_phase
-                    coefs_coil_static[:, 3] = coefs_st_slice
-
-                    coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                        coefs_coil_riro[:, 1],
-                        coefs_coil_riro[:, 2],
-                        coefs_coil_riro[:, 3],
-                        fname_anat)
-                    coefs_coil_riro[:, 1] = coefs_riro_freq
-                    coefs_coil_riro[:, 2] = coefs_riro_phase
-                    coefs_coil_riro[:, 3] = coefs_riro_slice
+                    else:
+                        raise NotImplementedError("Only order 1 and 0 supported for gradient file format")
 
                 else:
 
@@ -992,15 +999,21 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     f.write(f"{mean_p:.4f},\n")
 
         else:  # o_format == 'gradient':
-
-            # Make sure there are 4 channels
-            if n_channels != 4:
+            f0 = 'f0'
+            gradients = ['x', 'y', 'z']
+            if n_channels == 1:
+                name = {0: f0}
+            elif n_channels == 3:
+                name = {0: gradients[0],
+                        1: gradients[1],
+                        2: gradients[2]}
+            elif n_channels == 4:
+                name = {0: f0,
+                        1: gradients[0],
+                        2: gradients[1],
+                        3: gradients[2]}
+            else:
                 raise RuntimeError("Gradient output format should only be used with 1st order scanner coils")
-
-            name = {0: 'f0',
-                    1: 'x',
-                    2: 'y',
-                    3: 'z'}
 
             fname_output = os.path.join(path_output, f"{name[i_channel]}shim_gradients.txt")
             with open(fname_output, 'w', encoding='utf-8') as f:
@@ -1008,7 +1021,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                 for i_slice in range(n_slices):
                     i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
 
-                    if i_channel == 0:
+                    if name[i_channel] == f0:
                         # f0, Output is in Hz
                         if currents_static is not None:
                             f.write(f"corr_vec[0][{i_slice}]= "
@@ -1018,7 +1031,7 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                                     f"{currents_riro[i_shim, i_channel]:.12f}\n")
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
 
-                    else:
+                    elif name[i_channel] in gradients:
                         # For Gx, Gy, Gz: Divide by 1000 for mT/m
                         if currents_static is not None:
                             f.write(f"corr_vec[0][{i_slice}]= "
@@ -1027,6 +1040,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                             f.write(f"corr_vec[1][{i_slice}]= "
                                     f"{currents_riro[i_shim, i_channel] / 1000:.12f}\n")
                         f.write(f"corr_vec[2][{i_slice}]= {mean_p:.3f}\n")
+                    else:
+                        raise RuntimeError("Unsupported name")
 
         list_fname_output.append(os.path.abspath(fname_output))
 
