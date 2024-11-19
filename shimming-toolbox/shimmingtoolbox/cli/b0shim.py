@@ -1661,10 +1661,17 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
     if o_format == 'slicewise' or o_format == 'chronological':
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_shim in range(coefs.shape[0]):
-                f.write(f"{', '.join([str(coef) for coef in coefs[i_shim]])},\n")
+                for i_coef, coef in enumerate(coefs[i_shim]):
+                    f.write(f"{coef:.6f},")
+                    if i_coef != coefs.shape[1] - 1:
+                        f.write(" ")
+                f.write("\n")
     elif o_format == 'volume':
         with open(fname_output, 'w', encoding='utf-8') as f:
-            f.write(f"{', '.join([str(coef) for coef in coefs])},\n")
+            for i_coef, coef in enumerate(coefs):
+                f.write(f"{coef:.6f},")
+                if i_coef != coefs.shape[1] - 1:
+                    f.write(" ")
     elif o_format == 'custom-cl':
         coefs[:, 0] *= -1
         if coefs.shape[1] != 9:
