@@ -12,22 +12,23 @@ from shimmingtoolbox.utils import iso_times_to_ms
 
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
+POSSIBLE_TIMINGS = ['slice-middle', 'volume-start', 'volume-middle']
 
 
 def get_acquisition_times(nii_data, json_data, when='slice-middle'):
-    """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+    f""" Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
         nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
         json_data (dict): Json dict corresponding to a nifti sidecar.
-        when (str): When to get the acquisition time. Can be 'slice-middle'/'volume-start'/'volume-middle'
+        when (str): When to get the acquisition time. Can be within {POSSIBLE_TIMINGS}.
 
     Returns:
         numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
     """
-    possible_timings = ['slice-middle', 'volume-start', 'volume-middle']
-    if when not in possible_timings:
-        raise ValueError(f"Invalid 'when' parameter. Must be within {possible_timings}")
+
+    if when not in POSSIBLE_TIMINGS:
+        raise ValueError(f"Invalid 'when' parameter. Must be within {POSSIBLE_TIMINGS}")
 
     # Get number of volumes
     n_volumes = nii_data.header['dim'][4]
@@ -71,8 +72,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         mr_acquisition_type = data.get('MRAcquisitionType')
         if mr_acquisition_type != '2D':
             # mr_acquisition_type is None or 3D
-            logger.warning("MR acquisition type is not 2D or not set.")
-            return np.zeros(n_slices)
+            raise ValueError("MR acquisition type is not 2D or not set.")
 
         # list containing the time at which each slice was acquired
         # Todo: Does a SliTiming of 0 mean that it started acquiring at the same time as the beginning of the volume?
@@ -82,8 +82,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
                 # Slice timing information does not seem to be defined if there is only one slice
                 slice_timing_start = [0.0]
             else:
-                logger.warning("No slice timing information found in JSON file.")
-                return np.zeros(n_slices)
+                raise ValueError("No slice timing information found in JSON file.")
 
         # Convert to ms
         slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
@@ -91,8 +90,8 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         phase_encode_steps = int(data.get('PhaseEncodingSteps'))
         repetition_slice_excitation = float(data.get('RepetitionTimeExcitation'))
         if repetition_slice_excitation is None or phase_encode_steps is None:
-            logger.warning("Not enough information to figure out each slice time.")
-            return np.zeros(n_slices)
+            raise ValueError("Not enough information to figure out each slice time. "
+                             "Either/Both of RepetitionTimeExcitation and PhaseEncodingSteps is/are undefined")
 
         # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
         # (more than one slice acquired within a TR excitation)
@@ -102,13 +101,11 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         # If there are other slices acquired before the next TR excitation, then this is interleaved
         # multi-slice
         if np.any(slice_timing_start_no_zero < repetition_slice_excitation):
-            logger.warning("Interleaved multi-slice acquisition detected.")
-            return np.zeros(n_slices)
+            raise ValueError("Interleaved multi-slice acquisition detected.")
 
         pulse_sequence_details = data.get('PulseSequenceDetails')
         if pulse_sequence_details is None:
-            logger.warning("No PulseSequenceDetails name found in JSON file.")
-            return np.zeros(n_slices)
+            raise ValueError("No PulseSequenceDetails name found in JSON file.")
 
         if "%CustomerSeq%\\gre_field_mapping_PMUlog" == pulse_sequence_details:
             # This protocol acquires 2 echos with 2 different TRs
@@ -116,17 +113,15 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
             deltat_slice = repetition_slice_excitation * phase_encode_steps
         else:
-            logger.warning("Protocol name not recognized.")
-            return np.zeros(n_slices)
+            raise ValueError("Protocol name not recognized.")
 
         # Error check
         volume_tr = data.get('RepetitionTime')
         if volume_tr is None:
-            logger.warning("No volume repetition time found in JSON file.")
-            return np.zeros(n_slices)
+            raise ValueError("No volume 'RepetitionTime' found in JSON file.")
         deltat_vol = float(volume_tr) * 1000  # [ms]
         if (deltat_slice * n_sli) > deltat_vol:
-            logger.warning("Slice timing of slices is longer than the volume timing.")
+            raise RuntimeError("Slice timing of slices is longer than the volume timing.")
 
         # Get when the middle of k-space was acquired
         manufacturer = data.get('Manufacturer')
@@ -138,16 +133,13 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             else:
                 fourier = float(fourier)
                 if not (0 <= fourier <= 1):
-                    logger.warning("Partial Fourier value format not supported, make sure it is between 0 and 1."
-                                   "Setting it to 1")
-                    fourier = 1.0
+                    raise ValueError("Partial Fourier value format not supported, make sure it is between 0 and 1.")
 
             # When partial fourier is used, crossing of the middle of k-space is shifted
             # For Siemens, it seems to start with the "smaller" side
             ratio = (fourier - 0.5) / fourier
         else:
-            logger.warning("Manufacturer not supported for partial fourier, assuming no partial fourier.")
-            ratio = 0.5
+            raise ValueError("Manufacturer not supported for partial fourier, assuming no partial fourier.")
 
         slice_timing_mid = slice_timing_start + (deltat_slice * ratio)
 
@@ -156,11 +148,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     slice_timing_middle = get_middle_of_slice_timing(json_data, n_slices)
     timing = np.zeros((n_volumes, n_slices))
     if np.all(slice_timing_middle == 0):
-        logger.warning("Could not figure out the slice timing. Using one time-point per volume instead.")
-        # If the slice timing is set to 0, then we could not figure out the slice timing, then set the best guess to
-        # the time required to get to the middle of the volume
-        for i in range(n_volumes):
-            timing[i, :] = np.repeat(volume_start_times[i] + (deltat_volume / 2), n_slices)
+        raise ValueError("Could not figure out the slice timing. Using one time-point per volume instead.")
     else:
         # If we figured out the slice timing, then we can use it to get the timing of each slice for each volume
         for i in range(n_volumes):

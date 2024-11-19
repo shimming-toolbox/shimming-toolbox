@@ -137,46 +137,6 @@
         },
         {
             "datatype": "anat",
-            "suffix": "MPRAGE_e1",
-            "criteria": {
-                "SequenceName": ".*tfl3d[2-4].*",
-                "ProtocolName": ".*MPRAGE.*",
-                "EchoNumber": "1",
-                "ImageType": [".*", ".*", "M", ".*"]
-            }
-        },
-                {
-            "datatype": "anat",
-            "suffix": "MPRAGE_e2",
-            "criteria": {
-                "SequenceName": ".*tfl3d[2-4].*",
-                "ProtocolName": ".*MPRAGE.*",
-                "EchoNumber": "2",
-                "ImageType": [".*", ".*", "M", ".*"]
-            }
-        },
-                {
-            "datatype": "anat",
-            "suffix": "MPRAGE_e3",
-            "criteria": {
-                "SequenceName": ".*tfl3d[2-4].*",
-                "ProtocolName": ".*MPRAGE.*",
-                "EchoNumber": "3",
-                "ImageType": [".*", ".*", "M", ".*"]
-            }
-        },
-                {
-            "datatype": "anat",
-            "suffix": "MPRAGE_e4",
-            "criteria": {
-                "SequenceName": ".*tfl3d[2-4].*",
-                "ProtocolName": ".*MPRAGE.*",
-                "EchoNumber": "4",
-                "ImageType": [".*", ".*", "M", ".*"]
-            }
-        },
-        {
-            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-1",
             "criteria": {
