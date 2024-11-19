@@ -33,7 +33,7 @@ def create_fieldmap(n_slices=3):
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
     model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
-    model_obj.generate_deltaB0('x', [0.025, 2])
+    model_obj.generate_deltaB0('z', [0.025, 2])
     tr = 0.025  # in s
     te = [0.004, 0.008]  # in s
     model_obj.simulate_measurement(tr, te)
