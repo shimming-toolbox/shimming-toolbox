@@ -1537,9 +1537,9 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
     if o_format == 'custom_cl' and i_format != 'slicewise':
         raise ValueError("Custom-cl output format is only compatible with slicewise input format")
     if i_format in ['chronological', 'volume'] or o_format == 'chronological':
+        if fname_target is None:
+            raise ValueError("The target image is required for the specified input/output formats")
         nii_target = nib.load(fname_target)
-    else:
-        raise ValueError("The target image is required for the specified input/output formats")
 
     coefs = read_txt_file(fname_input)
 
@@ -1670,7 +1670,7 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_coef, coef in enumerate(coefs):
                 f.write(f"{coef:.6f},")
-                if i_coef != coefs.shape[1] - 1:
+                if i_coef != len(coefs) - 1:
                     f.write(" ")
     elif o_format == 'custom-cl':
         coefs[:, 0] *= -1

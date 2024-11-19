@@ -1597,8 +1597,10 @@ class TestAddShimCoefs:
 
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "21.0, 22.0, 23.0, 24.0, 25.0, 21.0, 22.0, 23.0, 24.0,\n"
-                assert f.readline() == "22.0, 24.0, 26.0, 28.0, 30.0, 22.0, 24.0, 26.0, 28.0,\n"
+                assert f.readline() == ("21.000000, 22.000000, 23.000000, 24.000000, 25.000000, "
+                                        "21.000000, 22.000000, 23.000000, 24.000000,\n")
+                assert f.readline() == ("22.000000, 24.000000, 26.000000, 28.000000, 30.000000, "
+                                        "22.000000, 24.000000, 26.000000, 28.000000,\n")
 
     def test_add_shim_coefs_error(self):
         """Test the combine shim coefs function"""
@@ -1659,9 +1661,12 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
-                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
-                assert f.readline() == "0.0, 1.0, 2.0, 3.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
 
     def test_convert_shim_coefs_ch_vol(self):
         """Test the combine shim coefs function"""
@@ -1696,7 +1701,7 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,"
 
     def test_convert_shim_coefs_ch_sl(self):
         """Test the combine shim coefs function"""
@@ -1708,7 +1713,8 @@ class TestConvertShimCoefsFormat:
                 f.write("2, 2, 2, 2,\n")
 
             fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
-            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
             fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
             nii = nib.load(fname_anat)
             with open(fname_json) as f:
@@ -1731,9 +1737,9 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
-                assert f.readline() == "1.0, 1.0, 1.0, 1.0,\n"
-                assert f.readline() == "2.0, 2.0, 2.0, 2.0,\n"
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,\n"
+                assert f.readline() == "1.000000, 1.000000, 1.000000, 1.000000,\n"
+                assert f.readline() == "2.000000, 2.000000, 2.000000, 2.000000,\n"
 
     def test_convert_shim_coefs_sl_ch(self):
         """Test the combine shim coefs function"""
@@ -1745,7 +1751,8 @@ class TestConvertShimCoefsFormat:
                 f.write("2, 2, 2, 2,\n")
 
             fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
-            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
             fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
             nii = nib.load(fname_anat)
             with open(fname_json) as f:
@@ -1769,9 +1776,9 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "1.0, 1.0, 1.0, 1.0,\n"
-                assert f.readline() == "0.0, 0.0, 0.0, 0.0,\n"
-                assert f.readline() == "2.0, 2.0, 2.0, 2.0,\n"
+                assert f.readline() == "1.000000, 1.000000, 1.000000, 1.000000,\n"
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,\n"
+                assert f.readline() == "2.000000, 2.000000, 2.000000, 2.000000,\n"
 
     def test_convert_shim_coefs_sl_cl(self):
         """Test the combine shim coefs function"""
@@ -1782,12 +1789,9 @@ class TestConvertShimCoefsFormat:
                 f.write("16, 18, 20, 18, 15, 11, 12, 13, 14,\n")
 
             fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
-            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
-                                      "sub-1_acq-gre_magnitude1.nii.gz")
 
             runner = CliRunner()
             res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
-                                             '--target', fname_anat,
                                              '--input', fname_input,
                                              '--input-file-format', 'slicewise',
                                              '--output-file-format', 'custom-cl',
