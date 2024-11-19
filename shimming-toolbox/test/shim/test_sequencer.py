@@ -83,7 +83,7 @@ def create_coil(n_x, n_y, n_z, constraints, coil_affine, n_channel=8):
     mesh_x, mesh_y, mesh_z = generate_meshgrid((n_x, n_y, n_z), coil_affine)
     profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
 
-    # Define coil1
+    # Define coil
     coil = Coil(profiles[..., :n_channel], coil_affine, constraints)
     return coil
 
@@ -521,14 +521,8 @@ class TestShimRTpmuSimData(object):
     def test_shim_sequencer_rt_larger_coil(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                            nii_mask_riro, slices, pmu, coil):
 
-        nii_fieldmap = nib.Nifti1Image(nii_fieldmap.get_fdata()[:, :, :1, :], nii_fieldmap.affine,
-                                       header=nii_fieldmap.header)
-
-        new_affine = update_affine_for_ap_slices(nii_fieldmap.affine, 1, 2)
-
-        mesh1, mesh2, mesh3 = generate_meshgrid(np.array(nii_fieldmap.shape[:3]) + [0, 0, 2], new_affine)
-        coil_profile = siemens_basis(mesh1, mesh2, mesh3)[..., :3]
-        new_coil = Coil(coil_profile, new_affine, create_constraints(2000, -2000, 5000, n_channels=3))
+        constraints = create_constraints(1000, -1000, 2000, 3)
+        new_coil = create_coil(nii_fieldmap.shape[0], nii_fieldmap.shape[1], 3, constraints, nii_fieldmap.affine, 3)
 
         # Find optimal currents
         output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,

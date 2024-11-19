@@ -24,7 +24,7 @@ class LsqOptimizer(OptimizerUtils):
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', initial_guess_method='zeros',
-                 reg_factor=0,  w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
+                 reg_factor=0, w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
@@ -40,7 +40,7 @@ class LsqOptimizer(OptimizerUtils):
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
-        self._delta = 1  # Initialize delta for pseudo huber function
+        self._delta = None  # Initialize delta for pseudo huber function
 
         # Initialization of grad parameters
         self.w_signal_loss = w_signal_loss
@@ -92,11 +92,11 @@ class LsqOptimizer(OptimizerUtils):
             merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
 
         self.coil_Gz_mat = np.reshape(merged_coils_Gz,
-                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
         self.coil_Gx_mat = np.reshape(merged_coils_Gx,
-                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
         self.coil_Gy_mat = np.reshape(merged_coils_Gy,
-                                    (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
 
         self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
 
@@ -170,7 +170,7 @@ class LsqOptimizer(OptimizerUtils):
             float: Residuals for least squares optimization
         """
         residuals = unshimmed_vec + coil_mat @ coef
-        if self._delta == 1:
+        if self._delta is None:
             self._delta = np.max(residuals)
         return np.sum(pseudo_huber(self._delta, np.abs(residuals))) / factor + np.abs(coef).dot(self.reg_vector)
 
@@ -370,7 +370,8 @@ class LsqOptimizer(OptimizerUtils):
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
                                                        np.zeros_like(coil_mat),
                                                        factor=1)
-
+            # Reset delta for pseudo huber function
+            self._delta = None
             currents_sp = self._scipy_minimize(currents_0, unshimmed_vec, coil_mat, scipy_constraints,
                                                factor=stability_factor)
         if not currents_sp.success:
@@ -443,12 +444,55 @@ class PmuLsqOptimizer(LsqOptimizer):
         super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
+        # TODO: Implement mean pressure calculation. This should be taken from the PMU object between different times.
+        # I implemented something in the rt shim PR
+        self.pressure_mean = (self.pressure_max - self.pressure_min) / 2
+        self.rt_bounds = None
 
     def _define_scipy_constraints(self):
-        """Redefined from super() to include more constraints"""
+        """Redefined from super()"""
         scipy_constraints = self._define_scipy_coef_sum_max_constraint()
-        scipy_constraints += self._define_scipy_bounds_constraint()
+        self.rt_bounds = self.define_rt_bounds()
         return scipy_constraints
+
+    def define_rt_bounds(self):
+        """ Define bounds taking into account that the formula scales the coefficient by the acquired pressure.
+
+        riro_offset = riro * (acq_pressure - mean_p)
+
+        Since the pressure can vary up and down, there are 2 maximum and 2 minimum values that the currents can have.
+        We select the lower and greater of the 2 values respectively.
+        """
+        # coef * (self.max_pressure - self.pressure_mean) < bound_max
+        # coef * (self.min_pressure - self.pressure_mean) < bound_max
+        # coef * (self.max_pressure - self.pressure_mean) > bound_min
+        # coef * (self.min_pressure - self.pressure_mean) > bound_min
+        rt_bounds = []
+        for i_bound, bound in enumerate(self.merged_bounds):
+            tmp_bound = []
+
+            # print(bound[0] / (self.pressure_max - self.pressure_mean))  # Must be greater than this value
+            # print(bound[0] / (self.pressure_min - self.pressure_mean))  # Must be lower than this value
+            # print(bound[1] / (self.pressure_max - self.pressure_mean))  # Must be lower than this value
+            # print(bound[1] / (self.pressure_min - self.pressure_mean))  # Must be greater than this value
+
+            # No point in adding a constraint if the bound is infinite
+            if not bound[0] == -np.inf:
+                tmp_bound.append(max(bound[0] / (self.pressure_max - self.pressure_mean),
+                                     bound[1] / (self.pressure_min - self.pressure_mean)))
+            else:
+                tmp_bound.append(-np.inf)
+            # No point in adding a constraint if the bound is infinite
+            if not bound[1] == np.inf:
+                tmp_bound.append(min(bound[0] / (self.pressure_min - self.pressure_mean),
+                                     bound[1] / (self.pressure_max - self.pressure_mean)))
+            else:
+                tmp_bound.append(np.inf)
+
+            if tmp_bound[0] > tmp_bound[1]:
+                raise ValueError("The bounds are not consistent with the pressure range.")
+            rt_bounds.append(tmp_bound)
+        return rt_bounds
 
     def _define_scipy_coef_sum_max_constraint(self):
         """Constraint on each coil about the maximum current of all channels"""
@@ -481,56 +525,6 @@ class PmuLsqOptimizer(LsqOptimizer):
             start_index = end_index
         return constraints
 
-    def _define_scipy_bounds_constraint(self):
-        """Constraints that allows to respect the bounds. Since the pressure can vary up and down, there are 2 maximum
-        values that the currents can have for each optimization. This allows to set a constraint that multiplies the
-        maximum pressure value by the currents of units [unit_pressure / unit_currents] and see if it respects the
-        bounds then do the same thing for the mimimum pressure value.
-        """
-
-        def _apply_min_pressure_constraint(inputs, i_channel, bound_min, pressure_min):
-            # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
-            # Make sure the min current for a channel is higher than the min bound for that channel
-            current_min_pressure = inputs[i_channel] * pressure_min
-
-            # current_min_pressure > bound_min
-            return current_min_pressure - bound_min
-
-        def _apply_max_pressure_constraint(inputs, i_channel, bound_max, pressure_max):
-            # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
-            # Make sure the max current for a channel is lower than the max bound for that channel
-            current_max_pressure = inputs[i_channel] * pressure_max
-
-            # current_max_pressure < bound_max
-            return bound_max - current_max_pressure
-
-        # riro_offset = riro * (acq_pressure - mean_p)
-        # Maximum/minimum values of riro_offset will occure when (acq_pressure - mean_p) are min and max:
-        # if the mean is self.pressure_min and the pressure probe reads self.pressure_max --> delta_pressure
-        # if the mean is self.pressure_max and the pressure probe reads self.pressure_min --> -delta_pressure
-        # Those are theoretical min and max, they should not happen since the mean should preferably be in the middle of
-        # the probe's min/max
-        delta_pressure = self.pressure_max - self.pressure_min
-
-        constraints = []
-        for i_bound, bound in enumerate(self.merged_bounds):
-            # No point in adding a constraint if the bound is infinite
-            if not bound[0] == -np.inf:
-                # Minimum bound
-                constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
-                                    'args': (i_bound, bound[0], -delta_pressure)})
-                constraints.append({'type': 'ineq', "fun": _apply_min_pressure_constraint,
-                                    'args': (i_bound, bound[0], delta_pressure)})
-            # No point in adding a constraint if the bound is infinite
-            if not bound[1] == np.inf:
-                # Maximum bound
-                constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
-                                    'args': (i_bound, bound[1], delta_pressure)})
-                constraints.append({'type': 'ineq', "fun": _apply_max_pressure_constraint,
-                                    'args': (i_bound, bound[1], -delta_pressure)})
-
-        return constraints
-
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
         if self.opt_criteria == 'mse':
@@ -539,16 +533,33 @@ class PmuLsqOptimizer(LsqOptimizer):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='SLSQP',
+                                       bounds=self.rt_bounds,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
-                                       options={'maxiter': 1000, 'ftol': 1e-9})
-
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
+        # elif self.opt_criteria == 'grad':
+        #     a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
+        #
+        #     currents_sp = opt.minimize(self._criteria_func, currents_0,
+        #                                args=(a, b, c, e),
+        #                                method='SLSQP',
+        #                                bounds=self.rt_bounds,
+        #                                constraints=tuple(scipy_constraints),
+        #                                jac=self._jacobian_func,
+        #                                options={'maxiter': 10000, 'ftol': 1e-9})
+        elif self.opt_criteria == 'ps_huber':
+            currents_sp = opt.minimize(self._criteria_func, currents_0,
+                                       args=(unshimmed_vec, coil_mat, factor),
+                                       method='SLSQP',
+                                       bounds=self.rt_bounds,
+                                       jac=self._jacobian_func,
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
         else:
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='SLSQP',
+                                       bounds=self.rt_bounds,
                                        constraints=tuple(scipy_constraints),
-                                       jac=self._jacobian_func,
-                                       options={'maxiter': 1000, 'ftol': 1e-9})
+                                       options={'maxiter': 10000, 'ftol': 1e-9})
 
         return currents_sp
