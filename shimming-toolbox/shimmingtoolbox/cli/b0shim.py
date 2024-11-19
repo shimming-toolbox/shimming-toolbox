@@ -89,10 +89,10 @@ def b0shim_cli():
 @click.option('--optimizer-criteria', 'opt_criteria',
               type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
               default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares' and 'gradient'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, ps-huber: pseudo huber cost function, "
+              help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
+                   "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
                    "grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
-                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
+                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method.")
 @click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0,
               show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
@@ -534,7 +534,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--coil', 'coils_static', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
+@click.option('--coil', 'coils_static', nargs=2, multiple=True,
+              type=(click.Path(exists=True), click.Path(exists=True)),
               help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
                    "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
                    "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
@@ -562,7 +563,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
-@click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1', show_default=True,
+@click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1',
+              show_default=True,
               help="Spherical harmonics orders to be used in static optimization. "
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
@@ -582,19 +584,21 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' ('ascending' or 'descending') mode, shimming will be performed "
-                   "independently on the following groups: {0,1,2}, {3,4,5}, etc. With the mode 'interleaved', "
+                   "'--slice-factor' value is '3', then with the 'sequential' ('ascending' or 'descending') mode, "
+                   "shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. With the "
+                   "mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', type=click.Choice(['least_squares', 'pseudo_inverse',
-                                                                 'quad_prog']), required=False,
-              default='quad_prog', show_default=True,
-              help="Method used by the optimizer. LS and QP will respect the constraints,"
-                   "PS will not respect the constraints")
+@click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
+              type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
+              help="Method used by the optimizer. LS and QP will respect the constraints, "
+              "BFGS method only accepts constraints for each channel (not constraints on the total current), "
+              "PS will not respect any constraints")
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares'."
-                   " mse: Mean Squared Error, mae: Mean Absolute Error, grad: MSE of Bz and Gz, i.e., Signal Loss, "
-                   "rmse: Root Mean Squared Error")
+              help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
+                   "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
+                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' or 'quad_prog' "
+                   "--optimizer-method.")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0, show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "

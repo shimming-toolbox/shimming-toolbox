@@ -537,6 +537,14 @@ class TestShimRTpmuSimData(object):
 
         assert np.all(currents_static.shape == (20, 3))
 
+    def test_shim_sequencer_rt_bfgs(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
+                                           nii_mask_riro, slices, pmu, coil):
+        # Optimize
+        output = RealTimeSequencer(nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro,
+                                   slices, pmu, [coil], [coil], method='bfgs').shim()
+
+        assert output[0].shape == (20, 3)
+
     def test_shim_sequencer_rt_kernel_line(self, nii_fieldmap, json_data, nii_anat, nii_mask_static,
                                            nii_mask_riro, slices, pmu, coil):
         # Optimize

@@ -547,13 +547,6 @@ class PmuLsqOptimizer(LsqOptimizer):
         #                                constraints=tuple(scipy_constraints),
         #                                jac=self._jacobian_func,
         #                                options={'maxiter': 10000, 'ftol': 1e-9})
-        elif self.opt_criteria == 'ps_huber':
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor),
-                                       method='SLSQP',
-                                       bounds=self.rt_bounds,
-                                       jac=self._jacobian_func,
-                                       options={'maxiter': 10000, 'ftol': 1e-9})
         else:
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),

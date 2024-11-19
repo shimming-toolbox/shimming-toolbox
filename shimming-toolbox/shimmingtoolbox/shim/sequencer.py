@@ -19,7 +19,7 @@ from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
-from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt
+from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -38,6 +38,8 @@ supported_optimizers = {
     'least_squares': LsqOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
+    'bfgs': BFGSOpt,
+    'bfgs_rt': PmuBFGSOpt,
     'pseudo_inverse': Optimizer,
     'bfgs': BFGSOpt
 }
@@ -1037,7 +1039,7 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
@@ -1265,6 +1267,8 @@ class RealTimeSequencer(Sequencer):
             self.method = 'least_squares_rt'
         if self.method == 'quad_prog':
             self.method = 'quad_prog_rt'
+        if self.method == 'bfgs':
+            self.method = 'bfgs_rt'
         self.select_optimizer(riro, affine_fieldmap, self.pmu)
 
         # Create both resampled masks used for the optimization
@@ -1303,14 +1307,14 @@ class RealTimeSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method == 'least_squares':
+            if self.method in ['least_squares', 'bfgs']:
                 self.optimizer = supported_optimizers[self.method](
                     self.coils_static, unshimmed, affine, self.opt_criteria, reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
-            elif self.method == 'least_squares_rt':
+            elif self.method in ['least_squares_rt', 'bfgs_rt']:
                 # Make sure pmu is defined
                 if pmu is None:
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
