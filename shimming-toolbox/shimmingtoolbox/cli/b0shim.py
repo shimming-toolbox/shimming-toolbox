@@ -1513,7 +1513,8 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
                    "collaborator. Use volume to output a single set of shim coefficients.")
 @click.option('--target', 'fname_target', nargs=1, type=click.Path(exists=True), required=False,
               help="Target image the text file is based on. This is used to infer slice timing information when "
-                   "converting between 'slicewise' and 'chronological' Supported formats: .nii, .nii.gz")
+                   "converting between 'slicewise' and 'chronological'. It is also used to infer the number of slices "
+                   "when converting from volume to any other format. Supported formats: .nii, .nii.gz")
 @click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
               help="Reverse the order of the slices. Only relevant for 'custom-cl'", required=False)
 @click.option('--add-channels', 'to_add_channels',
@@ -1535,6 +1536,10 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
 
     if o_format == 'custom_cl' and i_format != 'slicewise':
         raise ValueError("Custom-cl output format is only compatible with slicewise input format")
+    if i_format in ['chronological', 'volume'] or o_format == 'chronological':
+        nii_target = nib.load(fname_target)
+    else:
+        raise ValueError("The target image is required for the specified input/output formats")
 
     coefs = read_txt_file(fname_input)
 
@@ -1542,8 +1547,6 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
     coefs = add_channels(coefs, to_add_channels)
 
     # convert coefs
-    nii_target = nib.load(fname_target)
-
     if i_format == 'volume':
         # convert to slice_wise
         coefs = np.repeat(coefs, nii_target.shape[2], axis=0)
