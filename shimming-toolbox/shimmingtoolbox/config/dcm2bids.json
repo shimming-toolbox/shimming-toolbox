@@ -1028,6 +1028,14 @@
                     "REAL"
                 ]
             }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "GE",
+                "PulseSequenceName": ".*BRAVO.*"
+            }
         }
     ]
 }

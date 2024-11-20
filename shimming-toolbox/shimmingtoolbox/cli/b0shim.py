@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
-from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -1460,7 +1460,258 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
     logger.info(f"Txt file is located here:\n{fname_output}")
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('-i2', '--input2', 'fname_input2', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
+    """ Combine the shim coefficients from two files into a single file."""
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    coefs1 = read_txt_file(fname_input)
+    coefs2 = read_txt_file(fname_input2)
+
+    if coefs1.shape == coefs2.shape:
+        coefs = coefs1 + coefs2
+    else:
+        raise ValueError("The number of shim events and/or the number of channels is not the same in both text files")
+
+    logger.debug(coefs1)
+    logger.debug(coefs2)
+    logger.debug(coefs)
+    write_coefs_to_text_file(coefs, fname_output, 'slicewise')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('--input-file-format', 'i_format',
+              type=click.Choice(['volume', 'slicewise', 'chronological']), required=True,
+              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                   "Use 'slicewise' if the inputs in row 1, 2, 3, etc. are the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' if the inputs in row 1, 2, 3, etc. are the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. Use volume if the intput is a single set of shim "
+                   "coefficients.")
+@click.option('--output-file-format', 'o_format',
+              type=click.Choice(['volume', 'slicewise', 'chronological', 'custom-cl']), required=True,
+              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. 'custom-cl' is a custom format for a "
+                   "collaborator. Use volume to output a single set of shim coefficients.")
+@click.option('--target', 'fname_target', nargs=1, type=click.Path(exists=True), required=False,
+              help="Target image the text file is based on. This is used to infer slice timing information when "
+                   "converting between 'slicewise' and 'chronological'. It is also used to infer the number of slices "
+                   "when converting from volume to any other format. Supported formats: .nii, .nii.gz")
+@click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
+              help="Reverse the order of the slices. Only relevant for 'custom-cl'", required=False)
+@click.option('--add-channels', 'to_add_channels',
+              help="Add channels to the text file that are 0s. ", type=click.STRING, default='', required=False)
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev_slice_order, fname_output,
+                              to_add_channels, verbose):
+    """ Convert the shim coefficients from one format to another."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    if o_format == 'custom_cl' and i_format != 'slicewise':
+        raise ValueError("Custom-cl output format is only compatible with slicewise input format")
+    if i_format in ['chronological', 'volume'] or o_format == 'chronological':
+        if fname_target is None:
+            raise ValueError("The target image is required for the specified input/output formats")
+        nii_target = nib.load(fname_target)
+
+    coefs = read_txt_file(fname_input)
+
+    to_add_channels = parse_add_channels(to_add_channels, 9)
+    coefs = add_channels(coefs, to_add_channels)
+
+    # convert coefs
+    if i_format == 'volume':
+        # convert to slice_wise
+        coefs = np.repeat(coefs, nii_target.shape[2], axis=0)
+    elif i_format == 'chronological':
+        # convert to slice_wise
+        slices = parse_slices(fname_target)
+        tmp = np.zeros((nii_target.shape[2], coefs.shape[1]))
+        for i_slice, slice in enumerate(slices):
+            tmp[slice] = np.repeat(coefs[i_slice], len(slice))
+        coefs = tmp
+
+    # All coefficients should be in a slicewise format at this point
+    # Convert from slicewise to the desired format
+
+    if o_format == 'volume':
+        # convert to volume
+        for i_slice in range(coefs.shape[0]):
+            if not np.all(coefs[i_slice] == coefs[0]):
+                raise ValueError("All slices must have the same shim coefficients to convert to volume format")
+        coefs = coefs[0]
+
+    elif o_format == 'chronological':
+        # convert to chronological
+        slices = parse_slices(fname_target)
+        tmp = np.zeros((len(slices), coefs.shape[1]))
+        for i_shim in range(len(slices)):
+            for i_slice in range(len(slices[i_shim])):
+                if np.all(coefs[slices[i_shim][i_slice]] == coefs[slices[i_shim][0]]):
+                    tmp[i_shim] = coefs[slices[i_shim][0]]
+        coefs = tmp
+    elif o_format == 'custom_cl':
+        # Make sure there are 9 channels
+        if coefs.shape[1] != 9:
+            raise ValueError("The number of channels in one of the text files must be 9 for the custom-cl format")
+
+        # Make sure the 2nd order shims are the same for all slices
+        for i_shim in range(coefs.shape[0]):
+            if not np.all(np.isclose(coefs[i_shim][4:], coefs[0][4:])):
+                raise ValueError("The 2nd order shims must be the same for all slices to convert to 'custom-cl' format")
+
+        # Send to write_coefs_to_text_file in a slice-wise format, the formatting is handled in that function
+
+    write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order)
+
+
+def parse_add_channels(channels: str, n_channels: int):
+    """
+    Parse the channels to add to the shim coefficients
+    Args:
+        channels (str): String containing the channels to add
+        n_channels (int): Number of channels that there currently is
+
+    Returns:
+        list: List of channels to add
+    """
+    channels = channels.split(',')
+    try:
+        if channels == ['']:
+            return []
+        channels = [int(channel) for channel in channels]
+        channels.sort()
+        if len(channels) + n_channels <= max(channels):
+            raise ValueError(f"The provided channels to add would leave gaps in the channels")
+        return channels
+    except ValueError:
+        raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")
+
+
+def add_channels(coefs: np.array, channels: list):
+    """
+    Add channels to the shim coefficients
+    Args:
+        coefs (np.array): Shim coefficients (n_shims x n_channels)
+        channels (list): List of channels to add
+
+    Returns:
+        np.array: Shim coefficients with added channels
+
+    """
+    if len(channels) == 0:
+        return coefs
+    for channel in channels:
+        coefs = np.insert(coefs, channel, 0, axis=1)
+    return coefs
+
+
+def read_txt_file(fname_input):
+    """
+    Read the text file containing the shim coefficients
+    Args:
+        fname_input (str): Filename of the text file
+
+    Returns:
+        np.array: Array containing the shim coefficients
+    """
+    coefs = []
+    with open(fname_input, 'r') as f:
+        for i_line, line in enumerate(f):
+            list_line = line.strip('\n').split(',')
+            temp = []
+            for i, value in enumerate(list_line):
+                if value.strip(' ') != '':
+                    temp.append(float(value.strip()))
+            coefs.append(temp)
+    n_lines = i_line + 1
+    coefs = np.array(coefs)
+    logger.debug(f"Reading text file. Number of shim events: {n_lines}, number of channels: {coefs.shape[1]}")
+    return coefs
+
+
+def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=False):
+    if o_format == 'slicewise' or o_format == 'chronological':
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            for i_shim in range(coefs.shape[0]):
+                for i_coef, coef in enumerate(coefs[i_shim]):
+                    f.write(f"{coef:.6f},")
+                    if i_coef != coefs.shape[1] - 1:
+                        f.write(" ")
+                f.write("\n")
+    elif o_format == 'volume':
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            for i_coef, coef in enumerate(coefs):
+                f.write(f"{coef:.6f},")
+                if i_coef != len(coefs) - 1:
+                    f.write(" ")
+    elif o_format == 'custom-cl':
+        coefs[:, 0] *= -1
+        if coefs.shape[1] != 9:
+            raise ValueError("The number of channels in the text file must be 9 for the custom-cl format")
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            f.write("(mA)%6s%11s%11s%11s%11s\n" % ("xy", "zy", "zx", "x2-y2", "z2"))
+            ref = coefs[0][4:]
+
+            for i_shim in range(coefs.shape[0]):
+                if not np.all(np.isclose(coefs[i_shim][4:], ref)):
+                    raise ValueError("The 2nd order shims must be the same for all slices")
+
+            coefs[..., 4:] = reorder_shim_to_scaling_ge(coefs[..., 4:])
+
+            f.write("%10s%11s%11s%11s%11s\n" % tuple(str(int(coefs[0][i_channel])) for i_channel in range(4, 9)))
+            f.write("\n(G/cm)%6s%13s%13s%13s\n" % ("x", "y", "z", "bo (Hz)"))
+
+            if rev_slice_order:
+                coefs = coefs[::-1]
+
+            cfxfull = 30082
+            cfyfull = 30430
+            cfzfull = 30454
+            cfxfs = cfyfs = cfzfs = 5
+            shim_scale = 16
+
+            coefs[:, 1] = coefs[:, 1] / cfxfull / shim_scale * cfxfs
+            coefs[:, 2] = coefs[:, 2] / cfyfull / shim_scale * cfyfs
+            coefs[:, 3] = coefs[:, 3] / cfzfull / shim_scale * cfzfs
+
+            for i_shim in range(coefs.shape[0]):
+                f.write("%12s%13s%13s%13s\n" % (f"{coefs[i_shim][1]:.6f}",
+                                                f"{coefs[i_shim][2]:.6f}",
+                                                f"{coefs[i_shim][3]:.6f}",
+                                                f"{coefs[i_shim][0]:.6f}"))
+
+
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
 b0shim_cli.add_command(max_intensity)
+b0shim_cli.add_command(add_shim_coefs)
+b0shim_cli.add_command(convert_shim_coefs_format)
