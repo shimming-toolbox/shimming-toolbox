@@ -14,12 +14,12 @@ import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
-import matplotlib as plt
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
+from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
@@ -38,7 +38,10 @@ supported_optimizers = {
     'least_squares': LsqOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
-    'pseudo_inverse': Optimizer
+    'bfgs': BFGSOpt,
+    'bfgs_rt': PmuBFGSOpt,
+    'pseudo_inverse': Optimizer,
+    'bfgs': BFGSOpt
 }
 
 GAMMA = 42.576E6  # in Hz/Tesla
@@ -139,11 +142,11 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                            'mae': mean absolute error, 'std': standard deviation.
+                            'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
         nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         fmap_is_extended (bool) : Tells whether the fieldmap has been extended by the object.
@@ -170,11 +173,12 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
+                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error,
+                                'ps_huber': pseudo huber cost function.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
@@ -384,7 +388,7 @@ class ShimSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method == 'least_squares':
+            if self.method in ['least_squares', 'bfgs']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor, w_signal_loss=self.w_signal_loss,
@@ -1009,8 +1013,8 @@ class RealTimeSequencer(Sequencer):
             acq_timestamps (np.ndarray) : 1D array that contains the acquisitions timestamps
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_static,
-                 coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
+                 coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
                  mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
         """
         Initialization of the RealTimeSequencer class
@@ -1035,7 +1039,7 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
@@ -1263,6 +1267,8 @@ class RealTimeSequencer(Sequencer):
             self.method = 'least_squares_rt'
         if self.method == 'quad_prog':
             self.method = 'quad_prog_rt'
+        if self.method == 'bfgs':
+            self.method = 'bfgs_rt'
         self.select_optimizer(riro, affine_fieldmap, self.pmu)
 
         # Create both resampled masks used for the optimization
@@ -1274,8 +1280,8 @@ class RealTimeSequencer(Sequencer):
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
-        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds, self.coils_static,
-                                                              self.coils_riro)
+        self.bounds = new_bounds_from_currents_static_to_riro(
+            coef_static, self.optimizer.merged_bounds, self.coils_static, self.coils_riro)
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(riro_mask_resampled)
@@ -1301,14 +1307,14 @@ class RealTimeSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method == 'least_squares':
-                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine, self.opt_criteria,
-                                                                   reg_factor=self.reg_factor)
+            if self.method in ['least_squares', 'bfgs']:
+                self.optimizer = supported_optimizers[self.method](
+                    self.coils_static, unshimmed, affine, self.opt_criteria, reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
-            elif self.method == 'least_squares_rt':
+            elif self.method in ['least_squares_rt', 'bfgs_rt']:
                 # Make sure pmu is defined
                 if pmu is None:
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
@@ -1453,7 +1459,7 @@ class RealTimeSequencer(Sequencer):
                 # Calculate masked shim
                 masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
                 masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
-                i_shim]
+                                                                                                            i_shim]
                 masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
                 masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
 
@@ -1918,7 +1924,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def new_bounds_from_currents(currents:dict, old_bounds:dict):
+def new_bounds_from_currents(currents: dict, old_bounds: dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
@@ -1984,10 +1990,12 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
             else:
                 for order in coil.coef_channel_minmax:
                     if order in coils_static[static_coil_names.index(coil.name)].coef_channel_minmax.keys():
-                        currents_riro = np.append(currents_riro,
-                                                  currents[:, coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
-                                                  axis = 1)
-                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
+                        currents_riro = np.append(
+                            currents_riro,
+                            currents[:, coil_indexes[coil.name][order][0]: coil_indexes[coil.name][order][1]],
+                            axis=1)
+                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order]
+                                               [0]:coil_indexes[coil.name][order][1]])
                     else:
                         currents_riro = np.append(currents_riro,
                                                   np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
@@ -1997,8 +2005,8 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
         else:
             if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
-                                        np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
-                                        axis=1)
+                                          np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
+                                          axis=1)
                 old_bounds_riro.extend(coil.coef_channel_minmax['coil'])
 
             else:
