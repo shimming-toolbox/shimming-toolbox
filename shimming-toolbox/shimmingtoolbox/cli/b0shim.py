@@ -545,6 +545,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               help="Anatomical image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
+@click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
+              help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
 @click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
               help="Mask defining the static spatial region to shim.")
 @click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
@@ -632,7 +634,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
                      opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
                      scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
-                     o_format_coil, o_format_sph, output_value_format, reg_factor, verbose):
+                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -756,7 +758,14 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
-    pmu = PmuResp(fname_resp)
+    if time_offset is 'auto':
+        is_pmu_time_offset_auto = True
+        time_offset = 0
+    else:
+        is_pmu_time_offset_auto = False
+        time_offset = round(int(time_offset))
+    pmu = PmuResp(fname_resp, time_offset=time_offset)
+
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
                                   nii_mask_anat_riro,
@@ -766,7 +775,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                   mask_dilation_kernel='sphere',
                                   mask_dilation_kernel_size=dilation_kernel_size,
                                   reg_factor=reg_factor,
-                                  path_output=path_output)
+                                  path_output=path_output,
+                                  is_pmu_time_offset_auto=is_pmu_time_offset_auto)
     # 2) Launch the sequencer
     out = sequencer.shim()
     coefs_static, coefs_riro, mean_p, p_rms = out

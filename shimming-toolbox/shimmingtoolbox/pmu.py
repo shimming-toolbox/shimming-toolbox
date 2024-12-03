@@ -25,11 +25,12 @@ class PmuResp(object):
             start_time_mpcu (int): Start time in milliseconds past midnight
             stop_time_mpcu (int): Stop time in milliseconds past midnight
     """
-    def __init__(self, fname_pmu):
+    def __init__(self, fname_pmu: str, time_offset=0):
         """
 
         Args:
             fname_pmu (str): Filename of the Siemens .resp file
+            time_offset (int): Time offset in ms to what is read in the .resp file
         """
 
         attributes = self.read_resp(fname_pmu)
@@ -43,6 +44,8 @@ class PmuResp(object):
         self.data_triggers = attributes['data_triggers']
         self.max = attributes['max']
         self.min = attributes['min']
+        self.time_offset = 0
+        self.adjust_start_time(time_offset)
 
     def read_resp(self, fname_pmu):
         """
@@ -57,6 +60,7 @@ class PmuResp(object):
 
                   * ``fname``
                   * ``data``
+                  * ``data_triggers``
                   * ``start_time_mdh``
                   * ``stop_time_mdh``
                   * ``start_time_mpcu``
@@ -137,6 +141,19 @@ class PmuResp(object):
 
         return attributes
 
+    def adjust_start_time(self, time_offset: int):
+        """
+        Offset the start and end time of the PMU data
+        Args:
+            time_offset (int): Time offset in ms to what is read in the .resp file
+
+        """
+        self.start_time_mdh += time_offset - self.time_offset
+        self.stop_time_mdh += time_offset - self.time_offset
+        self.start_time_mpcu += time_offset - self.time_offset
+        self.stop_time_mpcu += time_offset - self.time_offset
+        self.time_offset = time_offset
+
     def get_times(self, start_time=None, stop_time=None):
         """
         Get the times in ms at which the respiration took place.
@@ -150,7 +167,6 @@ class PmuResp(object):
         times = self._get_all_times()
         start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
 
-        # +1 is needed to include the stop_idx
         return times[start_idx:stop_idx + 1]
 
     def _get_all_times(self):
@@ -200,11 +216,12 @@ class PmuResp(object):
         """
         start_offset = np.min(acquisition_times - self.start_time_mdh)
         stop_offset = np.min(self.stop_time_mdh - acquisition_times)
-        print(f"start_offset: {start_offset}")
-        print(f"stop_offset: {stop_offset}")
+
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             # TODO: Explore why pmulog sequence raises an error for pmulog sequence
-            pass
+            logger.warning("acquisition_times don't fit within time limits for resp trace")
+            logger.debug(f"start_offset: {start_offset}")
+            logger.debug(f"stop_offset: {stop_offset}")
             # raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()
@@ -263,10 +280,21 @@ class PmuResp(object):
                 if data != 5000:
                     logger.warning(f"Trigger value {data} not recognized")
                 if index_start <= i <= index_stop:
-                    trigger_times.append(times[i])
+                    trigger_times.append(float(times[i]))
             else:
                 i += 1
 
         logger.debug(f"Trigger times: {trigger_times}")
 
         return trigger_times
+
+    def get_mean_trigger_span(self):
+        """
+        Returns the mean time between triggers in ms
+
+        Returns:
+            float: Mean time between triggers in ms
+        """
+        trigger_times = self.get_trigger_times()
+        trigger_span = np.diff(trigger_times)
+        return np.mean(trigger_span)
