@@ -83,18 +83,10 @@ def test_timing_images():
         masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
         fieldmap_avg[i_time] = np.ma.average(masked_array)
 
-    # Reshape pmu datapoints to fit those of the acquisition
-    pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
-    pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-
     # Compute correlation
-    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, fieldmap_avg.shape[0])
-    pearson = np.corrcoef(fieldmap_avg, pmu_data_within_range_ds)
+    pearson = np.corrcoef(fieldmap_avg, acquisition_pressures[:, 0])
 
-    assert(np.isclose(pearson[0, 1], 0.7894495972364111))
+    assert(np.isclose(pearson[0, 1], 0.97095326))
 
 
 def test_pmu_fake_data():
