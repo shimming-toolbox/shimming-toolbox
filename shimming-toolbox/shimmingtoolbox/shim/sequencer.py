@@ -14,9 +14,9 @@ import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
-import matplotlib as plt
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask
+from scipy.signal import find_peaks, savgol_filter
 
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
@@ -43,6 +43,7 @@ supported_optimizers = {
 
 GAMMA = 42.576E6  # in Hz/Tesla
 
+
 class Sequencer(object):
     """
     General class for the sequencer
@@ -65,7 +66,7 @@ class Sequencer(object):
     """
 
     def __init__(self, slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor,
-                w_signal_loss=0, w_signal_loss_xy=0, epi_te=0, path_output=None):
+                 w_signal_loss=0, w_signal_loss_xy=0, epi_te=0, path_output=None):
         """
         Constructor of the sequencer class
 
@@ -150,7 +151,8 @@ class ShimSequencer(Sequencer):
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
-    def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
+    def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils,
+                 method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
@@ -192,7 +194,7 @@ class ShimSequencer(Sequencer):
         self.json_fieldmap = json_fieldmap
         self.nii_anat = self.get_anat(nii_anat)
         self.json_anat = json_anat
-        self.nii_mask_anat = self.get_mask(nii_mask_anat)
+        self.nii_mask_anat = self.load_masks(nii_mask_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
@@ -261,7 +263,7 @@ class ShimSequencer(Sequencer):
 
         return nii_anat
 
-    def get_mask(self, nii_mask_anat):
+    def load_masks(self, nii_mask_anat):
         """
         Get the mask and perform error checking.
 
@@ -387,8 +389,10 @@ class ShimSequencer(Sequencer):
             if self.method == 'least_squares':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, self.opt_criteria,
-                                                              reg_factor=self.reg_factor, w_signal_loss=self.w_signal_loss,
-                                                              w_signal_loss_xy=self.w_signal_loss_xy, epi_te=self.epi_te)
+                                                              reg_factor=self.reg_factor,
+                                                              w_signal_loss=self.w_signal_loss,
+                                                              w_signal_loss_xy=self.w_signal_loss_xy,
+                                                              epi_te=self.epi_te)
             elif self.method == 'quad_prog':
                 optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
                                                               self.nii_fieldmap.affine, reg_factor=self.reg_factor)
@@ -438,12 +442,15 @@ class ShimSequencer(Sequencer):
 
                 # Resample the shimmed fieldmap and the corrections (useful for the evaluation of the shim)
                 shimmed_temp_nii = nib.Nifti1Image(shimmed_temp, affine=self.nii_fieldmap_orig.affine,
-                                                    header=self.nii_fieldmap_orig.header)
+                                                   header=self.nii_fieldmap_orig.header)
                 corrections_nii = nib.Nifti1Image(corrections, affine=self.nii_fieldmap_orig.affine,
                                                   header=self.nii_fieldmap_orig.header)
-                shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat, order=1, mode='grid-constant')
-                corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
-                nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
+                shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat, order=1,
+                                                             mode='grid-constant')
+                corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1,
+                                                            mode='grid-constant')
+                nib.save(shimmed_temp_resample_nii,
+                         os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
                 nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
                 # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
@@ -496,7 +503,6 @@ class ShimSequencer(Sequencer):
 
             self.calc_shimmed_anat_orient(coef, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
-
                 # Save to a NIfTI
                 fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
                 nii_correction_3d = nib.Nifti1Image(corrections, self.optimizer.unshimmed_affine)
@@ -710,7 +716,7 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=-100, vmax=100, cmap='jet') #! FLAG: Had to change vmin and vmax
+        im = ax.imshow(mt_shimmed_masked, vmin=-100, vmax=100, cmap='jet')
         ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
                      f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
         ax.get_xaxis().set_visible(False)
@@ -833,23 +839,25 @@ class ShimSequencer(Sequencer):
             slice_thickness = self.json_anat['SliceThickness']
             B0_map_thickness = self.json_fieldmap['SliceThickness']
             phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
-            signal_map = abs(np.sinc(phi/(2*math.pi))) # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
+            # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
+            signal_map = abs(np.sinc(phi / (2 * math.pi)))
             signal_loss_map = 1 - signal_map
             return signal_loss_map
 
-        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis = 2))
+        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis=2))
         shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
 
-        #shimmed_signal_loss = calculate_signal_loss(shimmed)
-        mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
+        # shimmed_signal_loss = calculate_signal_loss(shimmed)
+        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='erode')
 
         # choose selected slices to plot
-        nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
-        mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
-        mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
+        nonzero_indices = np.nonzero(np.sum(mask_erode, axis=(0, 1)))[0]
+        mt_unshimmed_masked = montage(unshimmed_signal_loss[:, :, nonzero_indices] * mask_erode[:, :, nonzero_indices])
+        mt_shimmed_masked = montage(shimmed_signal_loss[:, :, nonzero_indices] * mask_erode[:, :, nonzero_indices])
 
-        nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
-                 os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
+        nib.save(
+            nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+            os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
         nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
@@ -864,9 +872,10 @@ class ShimSequencer(Sequencer):
         metric_shimmed_std = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='std')
         metric_unshimmed_mean = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(temp_shimmed_signal_loss), mask_erode, metric='mean')
+        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(temp_shimmed_signal_loss), mask_erode,
+                                                              metric='mean')
 
-        fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
+        fig = Figure(figsize=(60, 30))  # make the figure larger and higher resolution
         fig.suptitle(f"Signal Percentage Loss Map\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
@@ -874,27 +883,27 @@ class ShimSequencer(Sequencer):
 
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                    , fontsize=20)
+                     , fontsize=20)
         # Change title font size
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax) #signal loss map should be from [0, 1]
+        fig.colorbar(im, cax=cax)  # signal loss map should be from [0, 1]
 
         ax = fig.add_subplot(1, 2, 2)
-        #ax.imshow(mt_unshimmed, cmap='gray')
+        # ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                    f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
+                     f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax) #signal loss map should be from [0, 1]
+        fig.colorbar(im, cax=cax)  # signal loss map should be from [0, 1]
         # Lower suptitle
-        #fig.subplots_adjust(top=0.85)
+        # fig.subplots_adjust(top=0.85)
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
@@ -902,14 +911,14 @@ class ShimSequencer(Sequencer):
     def _plot_G_mask(self, unshimmed_G, shimmed_G, mask, name='G'):
         # Plot Gradient maps
 
-        #shimmed_Gz = np.gradient(shimmed, axis = 2)
-        mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
+        # shimmed_Gz = np.gradient(shimmed, axis = 2)
+        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='erode')
 
         # choose selected slices to plot
-        nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
-        mt_unshimmed = montage(unshimmed_G[:,:,nonzero_indices])
-        mt_unshimmed_masked = montage(unshimmed_G[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
-        mt_shimmed_masked = montage(shimmed_G[:,:,nonzero_indices] * mask_erode[:,:,nonzero_indices])
+        nonzero_indices = np.nonzero(np.sum(mask_erode, axis=(0, 1)))[0]
+        mt_unshimmed = montage(unshimmed_G[:, :, nonzero_indices])
+        mt_unshimmed_masked = montage(unshimmed_G[:, :, nonzero_indices] * mask_erode[:, :, nonzero_indices])
+        mt_shimmed_masked = montage(shimmed_G[:, :, nonzero_indices] * mask_erode[:, :, nonzero_indices])
 
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed_G, mask_erode, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_G, mask_erode, metric='std')
@@ -921,20 +930,20 @@ class ShimSequencer(Sequencer):
         min_value = min(mt_unshimmed_masked.min(), mt_shimmed_masked.min())
         max_value = max(mt_unshimmed_masked.max(), mt_shimmed_masked.max())
 
-        fig = Figure(figsize=(60, 30)) #make the figure larger and higher resolution
+        fig = Figure(figsize=(60, 30))  # make the figure larger and higher resolution
         fig.suptitle(f"{name}\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
-        #ax.imshow(mt_unshimmed, cmap='gray')s
+        # ax.imshow(mt_unshimmed, cmap='gray')s
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
         #
-        #nan_mask = mt_unshimmed_masked
-        #nan_count = np.count_nonzero(nan_mask)
-        #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
+        # nan_mask = mt_unshimmed_masked
+        # nan_count = np.count_nonzero(nan_mask)
+        # print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
         #
         im = ax.imshow(mt_unshimmed_masked, vmin=-30, vmax=30, cmap='jet')
         ax.set_title(f"Before shimming {name} \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                    f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
+                     f"abs mean: {metric_unshimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -942,18 +951,18 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         ax = fig.add_subplot(1, 2, 2)
-        #ax.imshow(mt_unshimmed, cmap='gray')
+        # ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=-30, vmax=30, cmap='jet')
         ax.set_title(f"After shimming {name} \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                    f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
+                     f"abs mean: {metric_shimmed_absmean:.3}", fontsize=20)
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
         cax = divider.append_axes('right', size='5%', pad=0.05)
         fig.colorbar(im, cax=cax)
         # Lower suptitle
-        #fig.subplots_adjust(top=0.85)
+        # fig.subplots_adjust(top=0.85)
         # Save
         fname_figure = os.path.join(self.path_output, f'fig_{name}_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
@@ -1007,11 +1016,13 @@ class RealTimeSequencer(Sequencer):
             bounds (list) : List of the bounds for the currents for the real time optimization
             acq_pressures (np.ndarray) : 1D array that contains the acquisitions pressures
             acq_timestamps (np.ndarray) : 1D array that contains the acquisitions timestamps
+            extended_fmap (bool): True if the fieldmap was extended to be able to shim only 1 slice
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp, coils_static,
+    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
+                 coils_static,
                  coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
-                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None):
+                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
         """
         Initialization of the RealTimeSequencer class
 
@@ -1049,6 +1060,7 @@ class RealTimeSequencer(Sequencer):
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
+            is_pmu_time_offset_auto (bool): If True, the PMU time offset will be automatically calculated.
 
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
@@ -1063,17 +1075,160 @@ class RealTimeSequencer(Sequencer):
             raise ValueError("Criteria for optimization not supported")
 
         self.opt_criteria = opt_criteria
-        self.nii_fieldmap, self.nii_fieldmap_orig = self.get_fieldmap(nii_fieldmap)
+        self.fmap_orig_location = None
+        self.nii_fieldmap, self.nii_fieldmap_orig, self.extended_fmap = self.get_fieldmap(nii_fieldmap)
 
         # Check if anat has the good dimensions
         if nii_anat.get_fdata().ndim != 3:
             raise ValueError("Anatomical image must be in 3d")
 
         self.nii_anat = nii_anat
-        self.nii_static_mask, self.nii_riro_mask = self.get_mask(nii_static_mask, nii_riro_mask)
+        self.nii_static_mask, self.nii_riro_mask = self.load_masks(nii_static_mask, nii_riro_mask)
+
+        # Resample the masks to the fmap coordinate system for each shim group
+        (_,
+         _,
+         self.mask_static_fmcs_per_shim_dil,
+         self.mask_riro_fmcs_per_shim_dil) = self.resample_masks_to_target_per_shim(self.nii_fieldmap)
+        (self.mask_static_orig_fmcs_per_shim,
+         self.mask_riro_orig_fmcs_per_shim,
+         _,
+         _) = self.resample_masks_to_target_per_shim(self.nii_fieldmap_orig)
+
+        # Resample the whole masks to the fmap coordinate system
+        (self.mask_static_fmcs,
+         self.mask_riro_fmcs,
+         self.mask_static_fmcs_dil,
+         self.mask_riro_fmcs_dil) = self.resample_mask_to_target(self.nii_fieldmap)
+        (self.mask_static_orig_fmcs,
+         self.mask_riro_orig_fmcs,
+         self.mask_static_orig_fmcs_dil,
+         self.mask_riro_orig_fmcs_dil) = self.resample_mask_to_target(self.nii_fieldmap_orig)
+
         self.acq_timestamps = None
-        self.acq_pressures = self.get_acq_pressures()
+        self.acq_timestamps_orig = None
+        self.acq_pressures_orig = None
+        self.acq_pressures = None
+        if is_pmu_time_offset_auto:
+            time_offset = self.calculate_best_pmu_time_offset()
+            self.pmu.adjust_start_time(time_offset)
+        self.get_acq_pressures()
         self.optimizer_riro = None
+
+    def calculate_best_pmu_time_offset(self):
+        logger.info(f"Calculating best time offset")
+        # Todo: deal with loads of warnings when setting the time offset
+        # Probably sweep at all times but centered on the frequency added
+        n_slices = self.nii_fieldmap_orig.shape[2]
+
+        previous_time_offset = self.pmu.time_offset
+        self.pmu.adjust_start_time(0)
+        mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
+        acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
+        n_samples = 1000
+        min_offset = max(-mean_respiratory_cycle_time / 2, self.pmu.start_time_mdh - acq_times.min())
+        max_offset = min(mean_respiratory_cycle_time / 2, self.pmu.stop_time_mdh - acq_times.max())
+        # min_offset = -mean_respiratory_cycle_time / 2
+        # max_offset = mean_respiratory_cycle_time / 2
+        time_offsets = np.linspace(min_offset, max_offset, n_samples)
+
+        mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
+        mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
+        fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
+
+        # Find best time offset
+        best_r2total = 0
+        best_time_offset = 0
+        r2total_list = []
+        for time_offset in time_offsets:
+            self.pmu.adjust_start_time(round(time_offset))
+            r2_total = 0
+            for i_slice in range(n_slices):
+                if i_slice in []:
+                    continue
+                pressures = self.pmu.interp_resp_trace(acq_times) - 2048
+                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
+                y = (y - y.mean())
+                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+                # Adjusted r2 score
+                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
+                # r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
+                r2_total += r2
+            r2_total /= n_slices
+            r2total_list.append(r2_total)
+            if best_r2total < r2_total:
+                best_r2total = r2_total
+                best_time_offset = time_offset
+
+        logger.info(f"Best time offset: {round(best_time_offset)}ms")
+        logger.info(f"Average r2 score: {best_r2total} at this time offset")
+
+        if self.path_output is not None:
+            fig = Figure(figsize=(8, 10))
+            ax1 = fig.add_subplot(311)
+            ax1.plot(time_offsets, r2total_list)
+            ax1.set_xlabel("Time offset [ms]")
+            ax1.set_ylabel("Average r2")
+            ax1.set_title("R2 score for different time offsets")
+            ax1.set_ylim([-0.1, 1.1])
+
+            # 750 ms is chosen as the smoothing length
+            window_length = round(750 / ((max_offset - min_offset) / n_samples))
+            r2_list_smooth = savgol_filter(r2total_list, window_length, 4, mode='mirror')
+            # The distance parameter is the minimum number of samples between adjacent peaks
+            # 1000 ms is chosen as the minimum time between peaks
+            min_distance = round(500 / ((max_offset - min_offset) / n_samples))
+            peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
+            for index in peak_indices:
+                ax1.vlines(time_offsets[index], -1, 2, colors='k', linestyles='dashed')
+                ax1.annotate(f"{round(time_offsets[index])}ms",
+                             (time_offsets[index] + 50, r2total_list[index] - 0.2))
+
+            self.pmu.adjust_start_time(best_time_offset)
+
+            acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+            pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
+            pmu_plot_pressures = (self.pmu.get_resp_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
+
+            ax2 = fig.add_subplot(312)
+            ax2.plot((pmu_plot_times - pmu_plot_times.min()) / 1000, pmu_plot_pressures, label='pmu')
+            for i_slice in range(n_slices):
+                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
+                y = (y - y.mean())
+                ax2.scatter((acq_times[:, i_slice] - pmu_plot_times.min()) / 1000, y, label=f"slice: {i_slice}")
+
+            ax2.legend()
+            ax2.set_xlabel("Time [s]")
+            ax2.set_ylabel("Field [Hz]")
+            ax2.set_title(f"B0 offset and acquired pressure through time with time offset: {round(best_time_offset)}ms")
+
+            ax3 = fig.add_subplot(313)
+            for i_slice in range(n_slices):
+                if i_slice in []:
+                    continue
+                pressures = self.pmu.interp_resp_trace(acq_times) - 2048
+                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
+                y = (y - y.mean())
+                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+                # Adjusted r2 score
+                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
+                r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
+                ax3.scatter(pressures[:, i_slice], y, label=f"slice: {i_slice}, score: {r2:.2}")
+                ax3.plot(pressures[:, i_slice], reg.predict(pressures[:, i_slice].reshape(-1, 1)))
+
+            ax3.set_xlabel("Pressure [-2048,2048]")
+            ax3.set_ylabel("Field [Hz]")
+            ax3.legend()
+            ax3.set_title("B0 offset vs pressure with time offset: {round(best_time_offset)}ms")
+
+            fname_figure = os.path.join(self.path_output, 'fig_rt_pmu_offset_scan.png')
+            fig.tight_layout()
+            fig.savefig(fname_figure, bbox_inches='tight')
+            logger.debug(f"Saved figure: {fname_figure}")
+
+        self.pmu.adjust_start_time(previous_time_offset)
+
+        return round(best_time_offset)
 
     def get_fieldmap(self, nii_fieldmap):
         """
@@ -1098,15 +1253,18 @@ class RealTimeSequencer(Sequencer):
         # voxels in one dimension can differentiate order 1 at most), the parameter allows to have at least the size
         # of the kernel for each dimension This is usually useful in the through plane direction where we could have
         # less slices. To mitigate this, we create a 3d volume by replicating the slices on the edges.
+        extended_fmap = False
         for i_axis in range(3):
             if nii_fmap_orig.shape[i_axis] < self.mask_dilation_kernel_size:
-                nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
-                                                          self.path_output)
+                nii_fieldmap, location = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
+                                                                    self.path_output, ret_location=True)
+                extended_fmap = True
+                self.fmap_orig_location = location
                 break
 
-        return nii_fieldmap, nii_fmap_orig
+        return nii_fieldmap, nii_fmap_orig, extended_fmap
 
-    def get_mask(self, nii_static_mask, nii_riro_mask):
+    def load_masks(self, nii_static_mask, nii_riro_mask):
         """
             Get both masks for the RealTimeSequencer Class
 
@@ -1162,22 +1320,32 @@ class RealTimeSequencer(Sequencer):
 
     def get_acq_pressures(self):
         """
-        Get the acquisition pressures at the times when the fieldmap was acquired.
+        Get the acquisition pressures at the times when the field map volumes and slices were acquired.
 
         Returns:
-            np.ndarray: 1D array that contains the acquisitions pressures
+            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
         # Fetch PMU timing
-        self.acq_timestamps = get_acquisition_times(self.nii_fieldmap, self.json_fmap)
+        self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+        if self.extended_fmap:
+            # If the field map was extended, we need to add extra slices to the acq_timestamps
+            n_slices_to_extend = int((self.nii_fieldmap.shape[2] - self.acq_timestamps_orig.shape[1]) / 2)
+            self.acq_timestamps = np.zeros((self.acq_timestamps_orig.shape[0], self.nii_fieldmap.shape[2]))
+            for i_slice_to_extend in range(n_slices_to_extend):
+                self.acq_timestamps[:, i_slice_to_extend] = self.acq_timestamps_orig[:, 0]
+                self.acq_timestamps[:, -i_slice_to_extend - 1] = self.acq_timestamps_orig[:, -1]
+            self.acq_timestamps[:, n_slices_to_extend:-n_slices_to_extend] = self.acq_timestamps_orig
+        else:
+            self.acq_timestamps = self.acq_timestamps_orig
+
         # TODO: deal with saturation
         # fit PMU and fieldmap values
-        acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
-
-        return acq_pressures
+        self.acq_pressures_orig = self.pmu.interp_resp_trace(self.acq_timestamps_orig)
+        self.acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
 
     def get_real_time_parameters(self):
         """
-        Get real time parameters used for the shimming
+        Get real time parameters used for shimming
 
         Returns:
             (tuple) : tuple containing:
@@ -1189,43 +1357,54 @@ class RealTimeSequencer(Sequencer):
 
         """
         fieldmap = self.nii_fieldmap.get_fdata()
-        anat = self.nii_anat.get_fdata()
+
+        n_slices = fieldmap.shape[2]
+        n_volumes = fieldmap.shape[-1]
+
         # regularization --> static, riro
         # field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
-        mean_p = np.mean(self.acq_pressures)
-        pressure_rms = np.sqrt(np.mean((self.acq_pressures - mean_p) ** 2))
-        x = self.acq_pressures.reshape(-1, 1) - mean_p
+        mean_p = self.pmu.mean(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
+        pressure_rms = self.pmu.get_pressure_rms(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
 
-        # Safety check for linear regression if the pressure and fieldmap fit well
         # Mask the voxels not being shimmed for riro
-        nii_3dfmap = nib.Nifti1Image(self.nii_fieldmap.get_fdata()[..., 0], self.nii_fieldmap.affine,
-                                     header=self.nii_fieldmap.header)
-        fmap_mask_riro = resample_mask(self.nii_riro_mask, nii_3dfmap, tuple(range(anat.shape[2])),
-                                       dilation_kernel=self.mask_dilation_kernel,
-                                       dilation_size=self.mask_dilation_kernel_size).get_fdata()
-        masked_fieldmap_riro = np.repeat(fmap_mask_riro[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
-        y = masked_fieldmap_riro.reshape(-1, fieldmap.shape[-1]).T
+        mask_fmap = np.logical_or(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
+        masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
-        reg_riro = LinearRegression().fit(x, y)
-        # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
-        score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
-        logger.debug(f"Linear fit of the RIRO masked fieldmap and pressure got a R2 score of: {score_riro}")
+        static = np.zeros(fieldmap.shape[:-1])
+        riro = np.zeros(fieldmap.shape[:-1])
 
-        # Warn if lower than a threshold
-        # Threshold was set by looking at a small sample of data (This value could be updated based on user feedback)
-        threshold_score = 0.7
-        if score_riro < threshold_score:
-            logger.warning(f"Linear fit of the RIRO masked fieldmap and pressure got a low R2 score: {score_riro} "
-                           f"(less than {threshold_score}). This indicates a bad fit between the pressure data and the "
-                           f"fieldmap values")
+        for i_slice in range(n_slices):
+            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
 
-        # Fit to the linear model (no mask)
-        y = fieldmap.reshape(-1, fieldmap.shape[-1]).T
-        reg = LinearRegression().fit(x, y)
+            # Safety check for linear regression if the pressure and field map fit well
+            y = masked_fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
 
-        # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
-        static = reg.intercept_.reshape(fieldmap.shape[:-1])
-        riro = reg.coef_.reshape(fieldmap.shape[:-1])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+            reg_riro = LinearRegression().fit(x, y)
+            # TODO: There are a lot of 0s in there (it is masked) so the score is biased
+            # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
+            score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
+            logger.debug(
+                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure"
+                f"got a R2 score of: {score_riro}")
+
+            # Warn if lower than a threshold
+            # Threshold was set by looking at a small sample of data (This value could be updated based on user
+            # feedback)
+            threshold_score = 0.7
+            if score_riro < threshold_score:
+                logger.warning(
+                    f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2"
+                    f"score: {score_riro} (less than {threshold_score}). This indicates a bad fit between the pressure"
+                    f"data and the fieldmap values")
+
+            # Fit to the linear model (no mask)
+            y = fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
+            reg = LinearRegression().fit(x, y)
+
+            # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
+            static[..., i_slice] = reg.intercept_.reshape(fieldmap.shape[:-2])
+            riro[..., i_slice] = reg.coef_.reshape(
+                fieldmap.shape[:-2])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
 
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -1265,20 +1444,18 @@ class RealTimeSequencer(Sequencer):
             self.method = 'quad_prog_rt'
         self.select_optimizer(riro, affine_fieldmap, self.pmu)
 
-        # Create both resampled masks used for the optimization
-        static_mask_resampled, riro_mask_resampled = self.get_riro_and_static_resampled_masks()
-
         # Static shim
         logger.info("Static optimization")
-        coef_static = self.optimize(static_mask_resampled)
+        coef_static = self.optimize(self.mask_static_fmcs_per_shim_dil)
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
-        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds, self.coils_static,
+        self.bounds = new_bounds_from_currents_static_to_riro(coef_static, self.optimizer.merged_bounds,
+                                                              self.coils_static,
                                                               self.coils_riro)
 
         logger.info("Realtime optimization")
-        coef_riro = self.optimize_riro(riro_mask_resampled)
+        coef_riro = self.optimize_riro(self.mask_riro_fmcs_per_shim_dil)
 
         # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
         # between scans. This allows to compare results between scans.
@@ -1302,7 +1479,8 @@ class RealTimeSequencer(Sequencer):
         # global supported_optimizers
         if self.method in supported_optimizers:
             if self.method == 'least_squares':
-                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine, self.opt_criteria,
+                self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
+                                                                   self.opt_criteria,
                                                                    reg_factor=self.reg_factor)
             elif self.method == 'quad_prog':
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
@@ -1335,43 +1513,81 @@ class RealTimeSequencer(Sequencer):
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
 
-    def get_riro_and_static_resampled_masks(self):
+    def resample_masks_to_target_per_shim(self, nii_fmap):
         """
-        This function resample the static and the riro masks on the differents elements needed
-         for the optimization and the evaluation
+        Resample the static and riro masks to the target coordinate system for each shim group
+
+        nii_target (nib.Nifti1Image): 4d fieldmap
 
         Returns:
             (tuple) : tuple containing:
-                * np.ndarray: Static mask resampled and dilated on the fieldmap for the optimization
-                * np.ndarray: Riro mask resampled and dilated on the original fieldmap for the optimization.
+                * np.ndarray: Static mask resampled on the fieldmap
+                * np.ndarray: Riro mask resampled on the original fieldmap
+                * np.ndarray: Static mask resampled and dilated on the fieldmap
+                * np.ndarray: Riro mask resampled and dilated on the original fieldmap
         """
-
         n_shims = len(self.slices)
-        dilation_kernel = self.mask_dilation_kernel
-        dilation_kernel_size = self.mask_dilation_kernel_size
-        slices = self.slices
-        path_output = self.path_output
-        nii_riro_mask = self.nii_riro_mask
-        nii_static_mask = self.nii_static_mask
 
-        static_fieldmap = nib.Nifti1Image(self.optimizer.unshimmed, self.optimizer.unshimmed_affine)
-        riro_fieldmap = nib.Nifti1Image(self.optimizer_riro.unshimmed, self.optimizer_riro.unshimmed_affine)
+        nii_fmap_cs = nib.Nifti1Image(nii_fmap.get_fdata()[..., 0], nii_fmap.affine)
 
-        static_mask = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(nii_static_mask, static_fieldmap, slices[i],
-                                   dilation_kernel,
-                                   dilation_kernel_size, path_output)
+        r = Parallel(-1, backend='loky')(
+            delayed(resample_mask)(self.nii_static_mask, nii_fmap_cs, self.slices[i],
+                                   self.mask_dilation_kernel, self.mask_dilation_kernel_size,
+                                   self.path_output, return_non_dil_mask=True)
             for i in range(n_shims))
-        riro_mask = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(nii_riro_mask, riro_fieldmap, slices[i],
-                                   dilation_kernel,
-                                   dilation_kernel_size, path_output)
+        static_mask, static_mask_dil = zip(*r)
+        r = Parallel(-1, backend='loky')(
+            delayed(resample_mask)(self.nii_riro_mask, nii_fmap_cs, self.slices[i],
+                                   self.mask_dilation_kernel,
+                                   self.mask_dilation_kernel_size, self.path_output, return_non_dil_mask=True)
             for i in range(n_shims))
+        riro_mask, riro_mask_dil = zip(*r)
 
-        static_mask_resampled = np.array([static_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
-        riro_mask_resampled = np.array([riro_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        static_mask_fmap_cs_per_shim = np.array(
+            [static_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        static_mask_fmap_cs_per_shim_dil = np.array(
+            [static_mask_dil[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        riro_mask_fmap_cs_per_shim = np.array(
+            [riro_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
+        riro_mask_fmap_cs_per_shim_dil = np.array(
+            [riro_mask_dil[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
 
-        return static_mask_resampled, riro_mask_resampled
+        return (static_mask_fmap_cs_per_shim,
+                riro_mask_fmap_cs_per_shim,
+                static_mask_fmap_cs_per_shim_dil,
+                riro_mask_fmap_cs_per_shim_dil)
+
+    def resample_mask_to_target(self, nii_target):
+        """
+        Resample the static and riro masks to the target coordinate system
+
+        Args:
+            nii_target (nib.Nifti1Image): 4d fieldmap
+
+        Returns:
+            (tuple) : tuple containing:
+                * np.ndarray: Static mask resampled on the fieldmap
+                * np.ndarray: Riro mask resampled on the original fieldmap
+                * np.ndarray: Static mask resampled and dilated on the fieldmap
+                * np.ndarray: Riro mask resampled and dilated on the original fieldmap
+        """
+        nii_3dfmap = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine,
+                                     header=nii_target.header)
+        fmap_mask_static, fmap_mask_static_dil = resample_mask(self.nii_static_mask, nii_3dfmap,
+                                                               tuple(range(self.nii_anat.shape[2])),
+                                                               dilation_kernel=self.mask_dilation_kernel,
+                                                               dilation_size=self.mask_dilation_kernel_size,
+                                                               return_non_dil_mask=True)
+        fmap_mask_riro, fmap_mask_riro_dil = resample_mask(self.nii_riro_mask, nii_3dfmap,
+                                                           tuple(range(self.nii_anat.shape[2])),
+                                                           dilation_kernel=self.mask_dilation_kernel,
+                                                           dilation_size=self.mask_dilation_kernel_size,
+                                                           return_non_dil_mask=True)
+
+        return (fmap_mask_static.get_fdata(),
+                fmap_mask_riro.get_fdata(),
+                fmap_mask_static_dil.get_fdata(),
+                fmap_mask_riro_dil.get_fdata())
 
     def optimize_riro(self, mask_anat):
         """
@@ -1408,13 +1624,10 @@ class RealTimeSequencer(Sequencer):
             mean_p (float): mean of the acquisitions pressures
             pressure_rms (float): rms of the acquisitions pressures
         """
-
         logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
         # Calculate theoretical shimmed map
         # shim
-        unshimmed = self.nii_fieldmap.get_fdata()
-        nii_target = nib.Nifti1Image(self.nii_fieldmap.get_fdata()[..., 0], self.nii_fieldmap.affine,
-                                     header=self.nii_fieldmap.header)
+        unshimmed = self.nii_fieldmap_orig.get_fdata()
         shape = unshimmed.shape + (len(self.slices),)
         shimmed_static_riro = np.zeros(shape)
         shimmed_static = np.zeros(shape)
@@ -1423,65 +1636,77 @@ class RealTimeSequencer(Sequencer):
         masked_shim_static = np.zeros(shape)
         masked_shim_riro = np.zeros(shape)
         masked_unshimmed = np.zeros(shape)
-        mask_fmap_cs = np.zeros(unshimmed[..., 0].shape + (len(self.slices),))
         shim_trace_static_riro = []
         shim_trace_static = []
         shim_trace_riro = []
         unshimmed_trace = []
-        mae_unshimmed_trace = []
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_static_mask,
-                                                            nii_target,
-                                                            order=0,
-                                                            mode='grid-constant',
-                                                            cval=0).get_fdata()), 0, 1)
+
+        mask_fmcs_per_shim = np.logical_or(self.mask_static_orig_fmcs_per_shim, self.mask_riro_orig_fmcs_per_shim)
+        mask_fmcs = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
+
+        if self.extended_fmap:
+            # Remove extended slices if the field map was smaller than the kernel size
+            n_channels = self.optimizer.merged_coils.shape[-1]
+            # static coil
+            merged_coils = self.optimizer.merged_coils[self.fmap_orig_location[..., 0], :]
+            merged_coils = merged_coils.reshape(unshimmed.shape[:-1] + (n_channels,))
+            # riro coil
+            merged_coils_riro = self.optimizer_riro.merged_coils[self.fmap_orig_location[..., 0], :]
+            merged_coils_riro = merged_coils_riro.reshape(unshimmed.shape[:-1] + (n_channels,))
+        else:
+            merged_coils = self.optimizer.merged_coils
+            merged_coils_riro = self.optimizer_riro.merged_coils
+
         for i_shim in range(len(self.slices)):
             # Calculate static correction
-            correction_static = self.optimizer.merged_coils @ coef_static[i_shim]
+            correction_static = merged_coils @ coef_static[i_shim]
 
             # Calculate the riro coil profiles
-            riro_profile = self.optimizer_riro.merged_coils @ coef_riro[i_shim]
+            riro_profile = merged_coils_riro @ coef_riro[i_shim]
 
-            mask_fmap_cs[..., i_shim] = np.ceil(resample_mask(self.nii_static_mask, nii_target,
-                                                              self.slices[i_shim]).get_fdata())
             for i_t in range(self.nii_fieldmap.shape[3]):
                 # Apply the static and riro correction
-                correction_riro = riro_profile * (self.acq_pressures[i_t] - mean_p)
+                correction_riro = riro_profile * (self.acq_pressures_orig[i_t] - mean_p)
                 shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
                 shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
                 shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
                 # Calculate masked shim
-                masked_shim_static[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static[..., i_t, i_shim]
-                masked_shim_static_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_static_riro[..., i_t,
-                i_shim]
-                masked_shim_riro[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * shimmed_riro[..., i_t, i_shim]
-                masked_unshimmed[..., i_t, i_shim] = mask_fmap_cs[..., i_shim] * unshimmed[..., i_t]
+                masked_shim_static[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] *
+                                                        shimmed_static[..., i_t, i_shim])
+                masked_shim_static_riro[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] *
+                                                             shimmed_static_riro[..., i_t, i_shim])
+                masked_shim_riro[..., i_t, i_shim] = mask_fmcs_per_shim[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+                masked_unshimmed[..., i_t, i_shim] = mask_fmcs_per_shim[..., i_shim] * unshimmed[..., i_t]
 
                 # Calculate the sum over the ROI
                 # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If the roi is bigger due to
                 #  interpolation, it should not count more). Possibly use soft mask?
                 rmse_shimmed_static = calculate_metric_within_mask(masked_shim_static[..., i_t, i_shim],
-                                                                   mask_fmap_cs[..., i_shim].astype(bool),
+                                                                   mask_fmcs_per_shim[..., i_shim].astype(bool),
                                                                    metric='rmse')
                 rmse_shimmed_static_riro = calculate_metric_within_mask(masked_shim_static_riro[..., i_t, i_shim],
-                                                                        mask_fmap_cs[..., i_shim].astype(bool),
+                                                                        mask_fmcs_per_shim[..., i_shim].astype(bool),
                                                                         metric='rmse')
                 rmse_shimmed_riro = calculate_metric_within_mask(masked_shim_riro[..., i_t, i_shim],
-                                                                 mask_fmap_cs[..., i_shim].astype(bool),
+                                                                 mask_fmcs_per_shim[..., i_shim].astype(bool),
                                                                  metric='rmse')
                 rmse_unshimmed = calculate_metric_within_mask(masked_unshimmed[..., i_t, i_shim],
-                                                              mask_fmap_cs[..., i_shim].astype(bool),
+                                                              mask_fmcs_per_shim[..., i_shim].astype(bool),
                                                               metric='rmse')
 
                 if rmse_shimmed_static_riro > rmse_unshimmed:
                     logger.warning("Verify the shim parameters. Some give worse results than no shim.\n"
                                    f"i_shim: {i_shim}, i_t: {i_t}")
 
+                riro_current_txt = ""
+                for i_fmap_slice in range(unshimmed.shape[2]):
+                    riro_current_txt += f"Fmap slice {i_fmap_slice}: {coef_riro[i_shim] * (self.acq_pressures_orig[i_t][i_fmap_slice] - mean_p)}\n"
                 logger.debug(f"\nRMSE: i_shim: {i_shim}, t: {i_t}"
                              f"\nunshimmed: {rmse_unshimmed}, shimmed static: {rmse_shimmed_static}, "
                              f"shimmed static+riro: {rmse_shimmed_static_riro}\n"
                              f"Static currents:\n{coef_static[i_shim]}\n"
-                             f"Riro currents:\n{coef_riro[i_shim] * (self.acq_pressures[i_t] - mean_p)}\n")
+                             f"Riro currents:\n" + riro_current_txt)
 
                 # Create a 1D list of the sum of the shimmed and unshimmed maps
                 shim_trace_static.append(rmse_shimmed_static)
@@ -1499,27 +1724,21 @@ class RealTimeSequencer(Sequencer):
 
         if self.path_output is not None:
             # Plot before vs after shimming averaged on time
-            shimmed_mask_avg = np.zeros(mask_full_binary.shape)
-            np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmap_cs, axis=3),
-                      where=mask_full_binary.astype(bool), out=shimmed_mask_avg)
-            plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_full_binary, self.path_output)
+            shimmed_mask_avg = np.zeros(mask_fmcs.shape)
+            np.divide(np.sum(np.mean(masked_shim_static_riro, axis=3), axis=3), np.sum(mask_fmcs_per_shim, axis=3),
+                      where=mask_fmcs.astype(bool), out=shimmed_mask_avg)
+            plot_full_mask(np.mean(unshimmed, axis=3), shimmed_mask_avg, mask_fmcs, self.path_output)
 
             # Plot STD over time before and after shimming
-            self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmap_cs, mask_full_binary)
+            self.plot_full_time_std(unshimmed, masked_shim_static_riro, mask_fmcs_per_shim, mask_fmcs)
 
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # plot results
-            i_slice = 0
-            i_shim = self.index_shimmed[0] if self.index_shimmed else n_shim - 1
-            i_t = 0
-
-            self.plot_static_riro(masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
-                                  shimmed_static,
-                                  shimmed_static_riro, i_slice=i_slice, i_shim=i_shim, i_t=i_t)
             self.plot_currents(coef_static, riro=coef_riro * pressure_rms)
             self.plot_shimmed_trace(unshimmed_trace, shim_trace_static, shim_trace_riro, shim_trace_static_riro)
             self.plot_pressure_and_unshimmed_field(unshimmed_trace)
-            self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmap_cs)
+            self.plot_pressure_vs_field(masked_unshimmed, mask_fmcs_per_shim)
+            self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmcs_per_shim)
             # Save shimmed result
             nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nii_fieldmap.affine,
                                                       header=self.nii_fieldmap.header)
@@ -1539,88 +1758,95 @@ class RealTimeSequencer(Sequencer):
             static (np.ndarray): Array with the static currents
             riro (np.ndarray): Array with the riro currents
         """
+
+        # Cannot see the evolution of the currents through shims if there is only one
+        if len(self.slices) == 1:
+            return
+
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
 
         n_channels = static.shape[1]
         for i_channel in range(n_channels):
-            ax.plot(static[:, i_channel], label=f"Static channel{i_channel} currents through shim groups")
+            ax.plot(static[:, i_channel], label=f"Static channel {i_channel} currents through shim groups")
 
         if riro is not None:
+            n_channels = riro.shape[1]
             for i_channel in range(n_channels):
-                ax.plot(riro[:, i_channel], label=f"Riro channel{i_channel} currents through shim groups")
+                ax.plot(riro[:, i_channel], label=f"Riro channel {i_channel} currents through shim groups")
 
         ax.set_xlabel('Shim group')
-        ax.set_ylabel('Coefficients (Physical CS [RAS])')
+        ax.set_ylabel('Coefficients')
         ax.legend()
         ax.set_title("Currents through shims")
         fname_figure = os.path.join(self.path_output, 'fig_currents.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
-    def plot_static_riro(self, masked_unshimmed, masked_shim_static, masked_shim_static_riro, unshimmed,
-                         shimmed_static, shimmed_static_riro, i_t=0, i_slice=0, i_shim=0):
+    def plot_pressure_vs_field(self, unshimmed, mask_fm):
+        """ One graph per i_shim
+        In each graph, one scatter and one line for each fmap slice in the ROI
+        Each line should have pearson correlation coefficient
         """
-        Plot Static and RIRO maps for a particular fieldmap slice, anat shim and timepoint
+        # x, y, z, t, i_shim
 
-        Args:
-            masked_unshimmed (np.ndarray):  Fieldmap masked before the shimming
-            masked_shim_static (np.ndarray): Fieldmap masked after static shimming
-            masked_shim_static_riro (np.ndarray): Fieldmap masked after the static and riro shimming
-            unshimmed (np.ndarray): Fieldmap not shimmed
-            shimmed_static (np.ndarray): Data of the nii_fieldmap after the static shimming
-            shimmed_static_riro (np.ndarray): Data of the nii_fieldmap after static and riro shimming
-            i_shim: (int): index of the anat shim, where we want to plot the static and riro maps
-            i_slice: (int): index of the slice, where we want to plot the static and riro maps
-            i_t: (int): Index of the time, where we want to plot the static and riro maps
-        """
+        n_t = unshimmed.shape[3]
+        n_shims = len(self.slices)
+        n_slices_fm = unshimmed.shape[2]
 
-        min_value = min(masked_shim_static_riro[..., i_slice, i_t, i_shim].min(),
-                        masked_shim_static[..., i_slice, i_t, i_shim].min(),
-                        masked_unshimmed[..., i_slice, i_t, i_shim].min())
-        max_value = max(masked_shim_static_riro[..., i_slice, i_t, i_shim].max(),
-                        masked_shim_static[..., i_slice, i_t, i_shim].max(),
-                        masked_unshimmed[..., i_slice, i_t, i_shim].max())
+        # Remove
+        plots = []
+        for i_shim in range(n_shims):
+            if np.any(mask_fm[..., i_shim] != 0):
+                plots.append(i_shim)
 
-        index_slice_to_show = self.slices[i_shim][i_slice]
+        path_pressure_and_unshimmed_field = os.path.join(self.path_output, 'fig_noshim_vs_pressure_regression')
+        create_output_dir(path_pressure_and_unshimmed_field)
 
-        fig = Figure(figsize=(15, 10))
-        fig.suptitle(f"Maps for slice: {index_slice_to_show}, timepoint: {i_t}")
-        ax = fig.add_subplot(2, 3, 1)
-        im = ax.imshow(np.rot90(masked_shim_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_shim static + riro")
-        ax = fig.add_subplot(2, 3, 2)
-        im = ax.imshow(np.rot90(masked_shim_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_shim static")
-        ax = fig.add_subplot(2, 3, 3)
-        im = ax.imshow(np.rot90(masked_unshimmed[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("masked_unshimmed")
+        for i_plot, i_shim in enumerate(plots):
 
-        min_value = min(shimmed_static_riro[..., i_slice, i_t, i_shim].min(),
-                        shimmed_static[..., i_slice, i_t, i_shim].min(),
-                        unshimmed[..., i_slice, i_t, i_shim].min())
-        max_value = max(shimmed_static_riro[..., i_slice, i_t, i_shim].max(),
-                        shimmed_static[..., i_slice, i_t, i_shim].max(),
-                        unshimmed[..., i_slice, i_t, i_shim].max())
+            fm_slices = []
+            for i_slice_fm in range(n_slices_fm):
+                if np.any(mask_fm[..., i_slice_fm, i_shim] != 0):
+                    fm_slices.append(i_slice_fm)
 
-        ax = fig.add_subplot(2, 3, 4)
-        im = ax.imshow(np.rot90(shimmed_static_riro[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title("shim static + riro")
-        ax = fig.add_subplot(2, 3, 5)
-        im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title(f"shim static")
-        ax = fig.add_subplot(2, 3, 6)
-        im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]), vmin=min_value, vmax=max_value)
-        fig.colorbar(im)
-        ax.set_title(f"unshimmed")
-        fname_figure = os.path.join(self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure)
-        logger.debug(f"Saved figure: {fname_figure}")
+            fig = Figure(figsize=(8, 4))
+            ax = fig.add_subplot(111)
+            y = np.zeros((n_t, len(fm_slices)))
+            # pressure
+            for i, i_slice_fm in enumerate(fm_slices):
+                x = self.acq_pressures[:, i_slice_fm]
+
+                for i_t in range(n_t):
+                    y[i_t, i] = calculate_metric_within_mask(unshimmed[..., i_slice_fm, i_t, i_shim],
+                                                             mask_fm[..., i_slice_fm, i_shim],
+                                                             metric='rmse')
+
+                reg = LinearRegression().fit(x.reshape(-1, 1), y[:, i])
+                # Adjusted r2 score
+                score = (1 - (1 - reg.score(x.reshape(-1, 1), y[:, i])) *
+                         (len(y[:, i]) - 1) / (len(y[:, i]) - x.reshape(-1, 1).shape[1] - 1))
+
+                ax.scatter(x, y[:, i], label=f"Fm slice: {i_slice_fm}, r2: {score:.2f}")
+                ax.plot(x, reg.predict(x.reshape(-1, 1)))
+
+            # If there is only 1 fm slice, it's the same as all the slices
+            if len(fm_slices) != 1:
+                x = self.acq_pressures[:, fm_slices]
+                reg = LinearRegression().fit(x.reshape(-1, 1), y.reshape(-1))
+                # Adjusted r2 score
+                score = (1 - (1 - reg.score(x.reshape(-1, 1), y.reshape(-1))) *
+                         (len(y.reshape(-1)) - 1) / (len(y.reshape(-1)) - x.reshape(-1, 1).shape[1] - 1))
+                ax.plot(x.reshape(-1), reg.predict(x.reshape(-1, 1)),
+                        label=f"All slices: {i_slice_fm}, r2: {score:.2f}")
+
+            ax.legend()
+            ax.set_xlabel('Pressure (A.U.)')
+            ax.set_ylabel('RMSE (Hz)')
+            ax.set_title(f"Pressure vs Field for target slice(s): {self.slices[i_shim]}")
+            fname_figure = os.path.join(path_pressure_and_unshimmed_field,
+                                        f'fig_noshim_vs_pressure_regression_shimgroup_{i_shim:03}.png')
+            fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_pressure_and_unshimmed_field(self, unshimmed_trace):
         """
@@ -1630,12 +1856,9 @@ class RealTimeSequencer(Sequencer):
             unshimmed_trace (np.ndarray): field in the ROI for each shim volume
         """
         # Get the pmu data values in the range of the acquisition
-        pmu_timestamps = self.pmu.get_times()
-        pmu_pressures = self.pmu.data
-        indexes = np.where(np.logical_and(pmu_timestamps >= (self.acq_timestamps[0] - 1000),
-                                          pmu_timestamps <= self.acq_timestamps[-1] + 1000))
-        pmu_timestamps_curated = pmu_timestamps[indexes]
-        pmu_pressures_curated = pmu_pressures[indexes]
+        pmu_timestamps = self.pmu.get_times(self.acq_timestamps[0].min() - 1000, self.acq_timestamps[-1].max() + 1000)
+        pmu_pressures = self.pmu.get_resp_trace(self.acq_timestamps[0].min() - 1000,
+                                                self.acq_timestamps[-1].max() + 1000)
 
         # Select slices shimmed
         curated_unshimmed_trace = unshimmed_trace[self.index_shimmed]
@@ -1648,9 +1871,9 @@ class RealTimeSequencer(Sequencer):
         max_field = max_diff_field_list.max()
         max_diff_field = max_field - min_field
 
-        diff_pressure = pmu_pressures_curated.max() - pmu_pressures_curated.min()
+        diff_pressure = pmu_pressures.max() - pmu_pressures.min()
         scaling = max_diff_field / diff_pressure
-        avg_pressure = np.mean(pmu_pressures_curated)
+        avg_pressure = np.mean(pmu_pressures)
 
         # Scale
         curated_unshimmed_trace_scaled = np.array([(x - np.mean(x)) / scaling + avg_pressure
@@ -1668,15 +1891,18 @@ class RealTimeSequencer(Sequencer):
         for i_plot in range(n_plots):
             fig = Figure(figsize=(8, 4))
             ax = fig.add_subplot(111)
-            ax.plot((pmu_timestamps_curated - pmu_timestamps_curated[0]) / 1000, pmu_pressures_curated,
+            ax.plot((pmu_timestamps - pmu_timestamps[0]) / 1000, pmu_pressures,
                     label='Pressure Trace')
-            ax.plot((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, curated_unshimmed_trace_scaled[i_plot],
-                    label='RMSE over the not shimmed ROI')
-            ax.scatter((self.acq_timestamps - pmu_timestamps_curated[0]) / 1000, self.acq_pressures, color='red',
-                       label='Fieldmap timepoints')
+            ax.plot((self.acq_timestamps_orig - pmu_timestamps[0]).mean(axis=1) / 1000,
+                    curated_unshimmed_trace_scaled[i_plot],
+                    label='Unshimmed RMSE over the ROI')
+            ax.scatter((np.mean(self.acq_timestamps_orig, axis=1) - pmu_timestamps[0]) / 1000,
+                       np.mean(self.acq_pressures_orig, axis=1),
+                       color='red',
+                       label='Field map timepoints')
             ax.legend()
             ax.set_ylim(ylim)
-            ax.set_yticks([pmu_pressures_curated.min(), pmu_pressures_curated.max()],
+            ax.set_yticks([pmu_pressures.min(), pmu_pressures.max()],
                           [min_field.astype(int), max_field.astype(int)])
             ax.set_xlabel('Time (s)')
             ax.set_ylabel('RMSE (Hz)')
@@ -1918,7 +2144,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def new_bounds_from_currents(currents:dict, old_bounds:dict):
+def new_bounds_from_currents(currents: dict, old_bounds: dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
     "old_coef + next_bound < old_bound".
@@ -1985,9 +2211,11 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
                 for order in coil.coef_channel_minmax:
                     if order in coils_static[static_coil_names.index(coil.name)].coef_channel_minmax.keys():
                         currents_riro = np.append(currents_riro,
-                                                  currents[:, coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
-                                                  axis = 1)
-                        old_bounds_riro.extend(old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
+                                                  currents[:,
+                                                  coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]],
+                                                  axis=1)
+                        old_bounds_riro.extend(
+                            old_bounds[coil_indexes[coil.name][order][0]:coil_indexes[coil.name][order][1]])
                     else:
                         currents_riro = np.append(currents_riro,
                                                   np.zeros((currents.shape[0], len(coil.coef_channel_minmax[order]))),
@@ -1997,8 +2225,8 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
         else:
             if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
-                                        np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
-                                        axis=1)
+                                          np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
+                                          axis=1)
                 old_bounds_riro.extend(coil.coef_channel_minmax['coil'])
 
             else:
@@ -2233,7 +2461,7 @@ def shim_max_intensity(nii_input, nii_mask=None):
     return index_per_slice
 
 
-def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=None):
+def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=None, ret_location=False):
     """
     Load the fmap and expand its dimensions to the kernel size
 
@@ -2241,6 +2469,7 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
         nii_fmap_orig (nib.Nifti1Image): 3d (dim1, dim2, dim3) or 4d (dim1, dim2, dim3, t) nii to be extended
         dilation_kernel_size: Size of the kernel
         path_output (str): Path to save the debug output
+        ret_location (bool): If True, return the location of the original data in the new data
     Returns:
         nib.Nifti1Image: Nibabel object of the loaded and extended fieldmap
     """
@@ -2249,12 +2478,13 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
 
     # Extend the dimensions where the kernel is bigger than the number of voxels
     tmp_nii = copy.deepcopy(nii_fmap_orig)
+    location = np.ones(nii_fmap_orig.shape)
     for i_axis in range(len(fieldmap_shape)):
         # If there are less voxels than the kernel size, extend in that axis
         if fieldmap_shape[i_axis] < dilation_kernel_size:
             diff = float(dilation_kernel_size - fieldmap_shape[i_axis])
             n_slices_to_extend = math.ceil(diff / 2)
-            tmp_nii = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis)
+            tmp_nii, location = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis, location=location)
 
     nii_fmap = tmp_nii
 
@@ -2264,10 +2494,13 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
         nib.save(nii_fmap, fname_new_fmap)
         logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
 
+    if ret_location:
+        return nii_fmap, location.astype(bool)
+
     return nii_fmap
 
 
-def extend_slice(nii_array, n_slices=1, axis=2):
+def extend_slice(nii_array, n_slices=1, axis=2, location=None):
     """
     Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
     Updates the affine of the matrix to keep the input array in the same location.
@@ -2276,6 +2509,7 @@ def extend_slice(nii_array, n_slices=1, axis=2):
         nii_array (nib.Nifti1Image): 3d or 4d array to extend the dimensions along an axis.
         n_slices (int): Number of slices to add on each side of the selected axis.
         axis (int): Axis along which to insert the slice(s), Allowed axis: 0, 1, 2.
+        location (np.array): Location where the original data is located in the new data.
     Returns:
         nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.
 
@@ -2285,9 +2519,14 @@ def extend_slice(nii_array, n_slices=1, axis=2):
             nii_out = extend_slice(nii_array, n_slices=1, axis=2)
             print(nii_out.get_fdata().shape)  # (50, 50, 3, 10)
     """
+    # Locate original data in new data
+    orig_data_in_new_data = location
+
     if nii_array.get_fdata().ndim == 3:
         extended = nii_array.get_fdata()
         extended = extended[..., np.newaxis]
+        if location is not None:
+            orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
     elif nii_array.get_fdata().ndim == 4:
         extended = nii_array.get_fdata()
     else:
@@ -2295,12 +2534,33 @@ def extend_slice(nii_array, n_slices=1, axis=2):
 
     for i_slice in range(n_slices):
         if axis == 0:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
         elif axis == 1:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
         elif axis == 2:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
             extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
             extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
         else:
@@ -2312,6 +2572,9 @@ def extend_slice(nii_array, n_slices=1, axis=2):
         extended = extended[..., 0]
 
     nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
+
+    if location is not None:
+        return nii_extended, orig_data_in_new_data
 
     return nii_extended
 

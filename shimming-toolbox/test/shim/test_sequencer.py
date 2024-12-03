@@ -371,14 +371,13 @@ def define_rt_sim_inputs():
                               'sub-realtime_PMUresp_signal.resp')
     pmu = PmuResp(fname_resp)
     # Change pmu so that it uses fake data. The fake data is essentially a sinusoid with 4 points
-    pmu.data = np.array([3000, 2000, 1000, 2000])
-    pmu.stop_time_mdh = 750
+    pmu.data = np.array([3000, 2000, 1000, 2000, 3000])
+    pmu.stop_time_mdh = 1000
     pmu.start_time_mdh = 0
 
-    # Define a dummy json data with the bare minimum fields and calculate the pressures pressure
+    # Define a dummy json data with the bare minimum fields and calculate the pressures
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
-    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
-    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data, when='volume-start')
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
