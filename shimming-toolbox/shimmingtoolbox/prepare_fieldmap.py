@@ -51,7 +51,7 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         if (phase[i_echo].max() > math.pi) or (phase[i_echo].min() < -math.pi):
 
             # If this is a rounding error from saving niftis, let it go, the algorithm can handle the difference.
-            if (phase[i_echo].max() > math.pi + 1e-6) or (phase[i_echo].min() < -math.pi - 1e-6):
+            if (phase[i_echo].max() > math.pi + 1e-3) or (phase[i_echo].min() < -math.pi - 1e-3):
                 raise ValueError("Values must range from -pi to pi.")
             else:
                 pass
