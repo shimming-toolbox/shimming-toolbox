@@ -791,7 +791,7 @@
             "criteria": {
                 "Manufacturer": "Philips",
                 "EchoNumber": "1",
-                "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
+                "ImageType": [".*", ".*", "M", ".*", "M", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -800,7 +800,7 @@
             "criteria": {
                 "Manufacturer": "Philips",
                 "EchoNumber": "2",
-                "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
+                "ImageType": [".*", ".*", "M", ".*", "M", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -844,7 +844,7 @@
             "criteria": {
                 "Manufacturer": "Philips",
                 "PulseSequenceName": ".*EPI.*",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
@@ -853,7 +853,7 @@
             "criteria": {
                 "Manufacturer": "Philips",
                 "PulseSequenceName": "T1TFE",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
