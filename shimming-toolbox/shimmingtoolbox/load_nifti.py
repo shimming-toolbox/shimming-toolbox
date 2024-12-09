@@ -215,7 +215,7 @@ def read_nii(fname_nifti, auto_scale=True):
 def get_isocenter(json_data):
     """ Get the isocenter location in RAS coordinates from the json file. The patient position is used to infer the
     table position in the patient coordinate system. When the table is at (0,0,0), the origin is at the isocenter.
-    We can therefore infer the isocenter as -table_position when the table_positionis in RAS coordinates.
+    We can therefore infer the isocenter as -table_position when the table_position is in RAS coordinates.
 
     Args:
         json_data (dict): Dictionary containing the BIDS sidecar information
