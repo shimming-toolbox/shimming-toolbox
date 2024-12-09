@@ -11,7 +11,8 @@ import shimmingtoolbox.cli.check_env as st_ce
 @pytest.mark.dcm2niix
 @pytest.mark.prelude
 @pytest.mark.sct
-def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation):
+@pytest.mark.bet
+def test_check_dependencies(test_dcm2niix_installation, test_prelude_installation, test_bet_installation):
     runner = CliRunner()
 
     result = runner.invoke(st_ce.check_dependencies)
@@ -32,7 +33,7 @@ def test_check_installation_errors():
 
     result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
     assert result.exit_code == 0
-    assert result.stdout.count('FAIL') == 2
+    assert result.stdout.count('FAIL') == 3
 
 
 def test_check_prelude_installation():
@@ -79,6 +80,15 @@ def test_get_dcm2niix_version(test_dcm2niix_installation):
     assert re.search(version_regex, dcm2niix_version_info)
 
 
+@pytest.mark.bet
+def test_get_bet_version(test_bet_installation):
+    """Checks bet version output for expected structure.
+    """
+    bet_version_info = st_ce.get_bet_version()
+    version_regex = r"Part of FSL \(ID: .*\)\nBET \(Brain Extraction Tool\) v2\.1 - FMRIB Analysis Group, Oxford"
+    assert re.search(version_regex, bet_version_info)
+
+
 @pytest.mark.sct
 def test_get_sct_version(test_sct_installation):
     """Checks sct version output for expected structure.
@@ -93,7 +103,9 @@ def test_get_env_info():
     assert isinstance(env_info, str)
 
 
-def test_get_pkg_info():
-    pkg_info = st_ce.get_pkg_info()
-    version_regex = r"\d*\.\d*\.\d*"
-    assert re.search(version_regex, pkg_info)
+def test_version():
+    assert type(st_ce.get_git_version()) == str
+
+
+def test_plugin_version():
+    assert type(st_ce.get_plugin_version()) == str

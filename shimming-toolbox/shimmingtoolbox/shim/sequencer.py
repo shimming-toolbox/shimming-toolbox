@@ -41,6 +41,7 @@ supported_optimizers = {
     'pseudo_inverse': Optimizer
 }
 
+GAMMA = 42.576E6  # in Hz/Tesla
 
 class Sequencer(object):
     """
@@ -149,7 +150,7 @@ class ShimSequencer(Sequencer):
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
-    def __init__(self, nii_fieldmap, nii_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
+    def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils, method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
@@ -188,7 +189,9 @@ class ShimSequencer(Sequencer):
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
+        self.json_fieldmap = json_fieldmap
         self.nii_anat = self.get_anat(nii_anat)
+        self.json_anat = json_anat
         self.nii_mask_anat = self.get_mask(nii_mask_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
@@ -442,6 +445,7 @@ class ShimSequencer(Sequencer):
                 corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
                 nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
                 nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
+                # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
                 full_Gz = np.gradient(shimmed_temp, axis=2)
                 full_Gx = np.gradient(shimmed_temp, axis=0)
@@ -452,19 +456,23 @@ class ShimSequencer(Sequencer):
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
             if len(self.slices) == 1:
-                # TODO: Output json sidecar
                 # TODO: Update the shim settings if Scanner coil?
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
+
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
@@ -820,29 +828,29 @@ class ShimSequencer(Sequencer):
         nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
 
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
-    # Plot signal loss maps
-        def calculate_signal_loss(B0_map):
-            G = np.gradient(B0_map, axis = 2)
-            signal_map = abs(np.sinc(self.epi_te * G))
+        # Plot signal loss maps
+        def calculate_signal_loss(gradient):
+            slice_thickness = self.json_anat['SliceThickness']
+            B0_map_thickness = self.json_fieldmap['SliceThickness']
+            phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
+            signal_map = abs(np.sinc(phi/(2*math.pi))) # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
             signal_loss_map = 1 - signal_map
             return signal_loss_map
 
-        unshimmed_signal_loss = calculate_signal_loss(unshimmed)
-        shimmed_signal_loss = 1 - abs(np.sinc(self.epi_te * shimmed_Gz))
+        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis = 2))
+        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
 
         #shimmed_signal_loss = calculate_signal_loss(shimmed)
         mask_erode = modify_binary_mask(mask,shape='sphere',size=3, operation='erode')
 
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(mask_erode,axis=(0,1)))[0]
-        mt_unshimmed = montage(unshimmed_signal_loss[:,:,nonzero_indices])
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:,:,nonzero_indices]*mask_erode[:,:,nonzero_indices])
 
-        # Save the signal loss maps
-        nib.save(nib.Nifti1Image(unshimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(shimmed_signal_loss*mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'mask_erode.nii.gz'))
@@ -862,13 +870,8 @@ class ShimSequencer(Sequencer):
         fig.suptitle(f"Signal Percentage Loss Map\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
-        #ax.imshow(mt_unshimmed, cmap='gray')s
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
-        #
-        #nan_mask = mt_unshimmed_masked
-        #nan_count = np.count_nonzero(nan_mask)
-        #print("The mt_unshimmed_masked contains", nan_count, "NaN values.")
-        #
+
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
         ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
                     , fontsize=20)
@@ -2047,7 +2050,7 @@ def parse_slices(fname_nifti):
     if 'SliceTiming' in json_data:
         slice_timing = json_data['SliceTiming']
     else:
-        raise RuntimeError("No tag SliceTiming to automatically parse slice data, see --slices option")
+        raise RuntimeError("No tag SliceTiming to automatically parse slice data")
 
     # If SliceEncodingDirection exists and is negative, SliceTiming is reversed
     if 'SliceEncodingDirection' in json_data:

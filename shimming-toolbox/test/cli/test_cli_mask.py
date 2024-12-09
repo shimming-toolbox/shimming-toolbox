@@ -9,6 +9,7 @@ import pytest
 
 from click.testing import CliRunner
 from shimmingtoolbox.cli.mask import mask_cli
+from shimmingtoolbox.utils import run_subprocess
 from shimmingtoolbox import __dir_testing__
 
 inp = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
@@ -180,3 +181,58 @@ def test_cli_mask_sct_4d():
         # There should be 2 files left since we remove tmp files: the input 4d file and the mask.
         assert len(os.listdir(tmp)) == 2
         assert os.path.isfile(fname_output)
+
+
+def test_cli_mask_mrs_manual():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_gre = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-1_acq-gre_magnitude1.nii.gz')
+        fname_out = os.path.join(tmp, 'mask_mrs.nii.gz')
+
+        runner = CliRunner()
+        result = runner.invoke(mask_cli, ['mrs',
+                                          '--input', fname_gre,
+                                          '--output', fname_out,
+                                          '--size', '20.0', '20.0', '20.0',
+                                          '--center', '1.860047', '73.027419', '27.88912'],
+                               catch_exceptions=False)
+
+        # Knowing that the input magnitude data(GRE) has a pixel size of 4.4 x 4.4 x 4.4 mm, and the MRS voxel size
+        # was originally chosen to be 20 x 20 x 20 mm, we can calculate the expected mask size. By dividing 20 by 4.4,
+        # rounding up, and adding one margin pixel to the mask, the expected mask will have dimensions of 6 x 6 x 6 pixels.
+
+        nii_fmap = nib.load(fname_gre)
+        expected = np.zeros(nii_fmap.shape)
+        expected[29:35, 37:43, 6:12] = 1
+        nii_out = nib.load(fname_out)
+
+        assert result.exit_code == 0
+        assert np.all(nii_out.get_fdata() == expected)
+
+
+def test_cli_mask_rda():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+        # The MRS voxel size and its center coordinates (x, y, z) are extracted from the raw data by first converting
+        # the raw data to a NIfTI file and then reading the header of that file.
+        mrs_raw_data = os.path.join(__dir_testing__, 'ds_mrs', 'sub-1_acq-press-siemens-shim_nuc-H_echo-135_svs.rda')
+        fname_gre = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-1_acq-gre_magnitude1.nii.gz')
+        fname_out = os.path.join(tmp, 'mask_mrs.nii.gz')
+
+        result = runner.invoke(mask_cli, ['mrs',
+                                          '--input', fname_gre,
+                                          '--output', fname_out,
+                                          '--raw', mrs_raw_data],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        # Knowing that the input magnitude data(GRE) has a pixel size of 4.4 x 4.4 x 4.4 mm, and the MRS voxel size
+        # was originally chosen to be 20 x 20 x 20 mm, we can calculate the expected mask size. By dividing 20 by 4.4,
+        # rounding up, and adding one margin pixel to the mask, the expected mask will have dimensions of 6 x 6 x 6 pixels.
+
+        nii_fmap = nib.load(fname_gre)
+        expected = np.zeros(nii_fmap.shape)
+        expected[29:35, 37:43, 6:12] = 1
+        nii_out = nib.load(fname_out)
+
+        assert result.exit_code == 0
+        assert np.all(nii_out.get_fdata() == expected)

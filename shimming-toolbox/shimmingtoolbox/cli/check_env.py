@@ -13,9 +13,11 @@ import platform
 import psutil
 import sys
 
-from typing import Dict, Tuple, List
+from shimmingtoolbox import __version__, __dir_repo__
+from shimmingtoolbox.utils import check_exe
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
 
 class bcolors:
     HEADER = '\033[95m'
@@ -54,10 +56,25 @@ def check_dependencies():
     """
     check_name = "Check if {} is installed"
 
+    # Shimming Toolbox
+    print(f"Shimming Toolbox version: {__version__}")
+
+    # Plugin
+    plugin_version = get_plugin_version()
+    print(f"Plugin version: {plugin_version}")
+
+    # Git
+    print(f"Git version: {get_git_version()}\n")
+
     # Prelude
     prelude_check_msg = check_name.format("prelude")
     print_line(prelude_check_msg)
     check_prelude_installation()
+    
+    # Bet
+    bet_check_msg = check_name.format("bet")
+    print_line(bet_check_msg)
+    check_bet_installation()
 
     # # dcm2niix
     # dcm2niix now comes bundled with shimming toolbox. Therefore we don't need to check if it is in the path since it
@@ -82,21 +99,39 @@ def check_prelude_installation():
     Returns:
         bool: True if prelude is installed, False if not.
     """
-    try:
-        if sys.platform == 'win32':
-            subprocess.check_call(['where', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(['which', 'prelude'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    except subprocess.CalledProcessError as error:
-        print_fail()
-        print(f"Error {error.returncode}: prelude is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('prelude'):
         print_ok()
         print("    " + get_prelude_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: prelude is not installed or not in your PATH.")
+        return False
 
+
+def check_bet_installation():
+    """Checks that ``bet`` is installed.
+    
+    This function calls ``which bet`` and checks the exit code to verify that ``bet`` is installed.
+    
+    Returns:
+        bool: True if bet is installed, False if not.
+    """
+    
+    try:
+        if sys.platform == 'win32':
+            subprocess.check_call(['where', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.check_call(['which', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        print_fail()
+        print(f"Error {error.returncode}: bet is not installed or not in your PATH.")
+        return False
+    else:
+        print_ok()
+        print("    " + "\n    ".join(get_bet_version().split("\n")[1:3]))
+        return True
+    
 
 def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
@@ -106,20 +141,14 @@ def check_dcm2niix_installation():
     Returns:
         bool: True if dcm2niix is installed, False if not.
     """
-    try:
-        if sys.platform == 'win32':
-            subprocess.check_call(['where', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(['which', 'dcm2niix'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as error:
-        print(error)
-        print_fail()
-        print(f"Error {error.returncode}: dcm2niix is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('dcm2niix'):
         print_ok()
         print("    " + get_dcm2niix_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: dcm2niix is not installed or not in your PATH.")
+        return False
 
 
 def check_sct_installation():
@@ -130,17 +159,14 @@ def check_sct_installation():
     Returns:
         bool: True if sct is installed, False if not.
     """
-    try:
-        subprocess.check_call(['sct_check_dependencies', '-short'], stdout=subprocess.DEVNULL,
-                              stderr=subprocess.DEVNULL, shell=True)
-    except subprocess.CalledProcessError as error:
-        print_fail()
-        print(f"Error {error.returncode}: Spinal Cord Toolbox is not installed or not in your PATH.")
-        return False
-    else:
+    if check_exe('sct_check_dependencies'):
         print_ok()
         print("    " + get_sct_version().replace("\n", "\n    "))
         return True
+    else:
+        print_fail()
+        print(f"Error: Spinal Cord Toolbox is not installed or not in your PATH.")
+        return False
 
 
 def get_prelude_version() -> str:
@@ -184,6 +210,25 @@ def get_dcm2niix_version() -> str:
     return version_output
 
 
+def get_bet_version() -> str:
+    """Gets the ``bet`` installation version.
+
+    This function calls ``bet2`` and captures the output to
+    obtain the installation version.
+
+    Returns:
+        str: Version of the ``bet2`` installation.
+    """
+    # `bet -hn` returns an error code and output is in stderr
+    bet_version: str = subprocess.run(["bet2"], capture_output=True, encoding="utf-8")
+    # If the behaviour of bet changes to output help with a 0 exit code,
+    # this function must fail loudly so we can update its behaviour
+    # accordingly:
+    assert bet_version.returncode != 0
+    version_output: str = bet_version.stderr.rstrip()
+    return version_output
+
+
 def get_sct_version() -> str:
     """Gets the ``sct`` installation version.
 
@@ -211,9 +256,11 @@ def dump_env_info():
     by calling helper functions to retrieve these details.
     """
     env_info = get_env_info()
-    pkg_version = get_pkg_info()
+    git_version = get_git_version()
+    plugin_version = get_plugin_version()
 
-    print(f"ENVIRONMENT INFO:\n{env_info}\n\nPACKAGE INFO:\n{pkg_version}")
+    print(f"Shimming Toolbox version:\n{__version__}\n\nPlugin version:\n{plugin_version}\n\nGit information:\n{git_version}\n\n"
+          f"Environment info:\n{env_info}")
     return
 
 
@@ -243,21 +290,81 @@ def get_env_info() -> str:
     env_info = (f"{os_name} {cpu_arch}\n" +
                 f"{platform_system} {platform_release}\n" +
                 f"{platform_version}\n" +
-                f"{python_implementation} {python_full_version}\n\n" +
+                f"{python_implementation} {python_full_version}\n" +
                 f"{cpu_usage}\n" +
                 f"{ram_usage}"
                 )
     return env_info
 
 
-def get_pkg_info() -> str:
-    """Gets package version.
-
-    This function gets the version of shimming-toolbox.
-
+def get_git_version():
+    """ Get the git version of the repository
     Returns:
-        str: The version number of the shimming-toolbox installation.
+        string: branch-commit
     """
-    import shimmingtoolbox as st
-    pkg_version = st.__version__
-    return pkg_version
+    st_commit = None
+    st_branch = None
+    if check_exe("git") and os.path.isdir(os.path.join(__dir_repo__, ".git")):
+        st_commit = _get_commit() or st_commit
+        st_branch = _get_branch() or st_branch
+
+    if st_commit is None:
+        return "Not a Git repository"
+
+    return f"{st_branch}-{st_commit}"
+
+
+def _get_branch():
+    p = subprocess.Popen(["git", "rev-parse", "--abbrev-ref", "HEAD"], stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, cwd=__dir_repo__)
+    output, _ = p.communicate()
+    status = p.returncode
+
+    if status == 0:
+        return output.decode().strip()
+
+
+def _get_commit(path_to_git_folder=None):
+    if path_to_git_folder is None:
+        path_to_git_folder = __dir_repo__
+    else:
+        path_to_git_folder = os.path.abspath(os.path.expanduser(path_to_git_folder))
+
+    p = subprocess.Popen(["git", "rev-parse", "HEAD"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         cwd=path_to_git_folder)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        commit = output.decode().strip()
+    else:
+        commit = "?!?"
+
+    p = subprocess.Popen(["git", "status", "--porcelain"], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         cwd=path_to_git_folder)
+    output, _ = p.communicate()
+    status = p.returncode
+    if status == 0:
+        unclean = True
+        for line in output.decode().strip().splitlines():
+            line = line.rstrip()
+            if line.startswith("??"):  # ignore ignored files, they can't hurt
+                continue
+            break
+        else:
+            unclean = False
+        if unclean:
+            commit += "*"
+
+    return commit
+
+
+def get_plugin_version():
+    """ Get the version of the plugin
+    Returns:
+        string: version
+    """
+    try:
+        from fsleyes_plugin_shimming_toolbox import __version__ as plugin_version
+        return plugin_version
+    except ImportError:
+        return "Not installed"

@@ -11,7 +11,7 @@ import nibabel as nib
 import numpy as np
 import json
 
-from shimmingtoolbox import __dir_config_custom_coil_constraints__
+from shimmingtoolbox import __config_custom_coil_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -20,7 +20,7 @@ from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 
 
-def _define_inputs(fmap_dim, manufacturers_model_name=None):
+def _define_inputs(fmap_dim, manufacturers_model_name=None, no_shim_settings=False):
     # fname for fmap
     fname_fmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii = nib.load(fname_fmap)
@@ -31,6 +31,9 @@ def _define_inputs(fmap_dim, manufacturers_model_name=None):
 
     if manufacturers_model_name is not None:
         fm_data['ManufacturersModelName'] = manufacturers_model_name
+
+    if no_shim_settings:
+        fm_data['ShimSetting'] = [None]
 
     if fmap_dim == 4:
         nii_fmap = nii
@@ -437,7 +440,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_dynamic_format_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -468,6 +471,135 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 11.007908"
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001260"
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.029665"
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.060548"
+
+
+    def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
+
+    def test_cli_dynamic_format_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 119.644382"
+
+    def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil with gradient o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001980"
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.032016"
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.066749"
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -639,6 +771,38 @@ class TestCliDynamic(object):
                                            '--scanner-coil-order', '1',
                                            '--output', tmp],
                               catch_exceptions=False)
+
+
+def test_cli_dynamic_unknown_scanner():
+    """Test cli with scanner coil profiles of order 1 with default constraints"""
+    nii_fmap, nii_anat, nii_mask, fm_data, anat_data = _define_inputs(fmap_dim=3,
+                                                                      manufacturers_model_name='not_set',
+                                                                      no_shim_settings=True)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        # Save the inputs to the new directory
+        fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+        fname_fm_json = os.path.join(tmp, 'fmap.json')
+        fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        fname_anat = os.path.join(tmp, 'anat.nii.gz')
+        fname_anat_json = os.path.join(tmp, 'anat.json')
+        _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                     nii_anat=nii_anat, fname_anat=fname_anat,
+                     nii_mask=nii_mask, fname_mask=fname_mask,
+                     fm_data=fm_data, fname_fm_json=fname_fm_json,
+                     anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+        runner = CliRunner()
+
+        res = runner.invoke(b0shim_cli, ['dynamic',
+                                         '--fmap', fname_fmap,
+                                         '--anat', fname_anat,
+                                         '--mask', fname_mask,
+                                         '--scanner-coil-order', '1,2',
+                                         '--output', tmp],
+                            catch_exceptions=False)
+
+        assert res.exit_code == 0
+        assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Unknown.txt"))
 
 
 @pytest.mark.parametrize(
@@ -918,8 +1082,8 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_rt_gradient(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
-        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+    def test_cli_rt_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
@@ -954,6 +1118,160 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 11.007908" and lines[16].strip() == "corr_vec[1][5]= -0.014577058094"
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001260" and lines[16].strip() == "corr_vec[1][5]= -0.000000000000"
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.029665" and lines[16].strip() == "corr_vec[1][5]= 0.000005532449"
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.060548" and lines[16].strip() == "corr_vec[1][5]= 0.000013492875"
+
+    def test_cli_rt_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '1',
+                                             '--scanner-coil-order-riro', '1',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.001980" and lines[16].strip() == ("corr_vec[1][5]= "
+                                                                                                 "-0.000001091261")
+            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.032016" and lines[16].strip() == ("corr_vec[1][5]= "
+                                                                                                 "0.000004151859")
+            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 0.066749" and lines[16].strip() == ("corr_vec[1][5]= "
+                                                                                                 "0.000003690757")
+
+    def test_cli_rt_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0',
+                                             '--scanner-coil-order-riro', '0',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[15].strip() == "corr_vec[0][5]= 119.644383" and lines[16].strip() == ("corr_vec[1][5]= "
+                                                                                                 "0.009161744842")
+
+    def test_cli_rt_gradient_order01_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--coil-riro', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--optimizer-method', 'pseudo_inverse',
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,1',
+                                             '--scanner-coil-order-riro', '0,1',
+                                             '--output-file-format-scanner', 'gradient',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            for i_channel in range(9):
+                assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_ch{i_channel}_Dummy_coil.txt"))
+
 
     def test_cli_rt_absolute(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1196,7 +1514,7 @@ def _create_dummy_coil(nii_fmap):
     nii_dummy_coil = nib.Nifti1Image(sph_coil_profile, nii_fmap.affine, header=nii_fmap.header)
 
     # Dummy constraints
-    with open(__dir_config_custom_coil_constraints__, 'r', encoding='utf-8') as f:
+    with open(__config_custom_coil_constraints__, 'r', encoding='utf-8') as f:
         constraints = json.load(f)
 
     constraints['name'] = 'Dummy_coil'
@@ -1251,3 +1569,242 @@ def test_b0_max_intensity_no_mask():
         with open(fname_output, 'r', encoding='utf-8') as f:
             assert f.readline().strip() == "1"
             assert f.readline().strip() == "1"
+
+
+class TestAddShimCoefs:
+    def test_add_shim_coefs(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
+            with open(fname_input1, 'w', encoding='utf-8') as f:
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14\n")
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+            fname_input2 = os.path.join(tmp, 'shim_coefs2.txt')
+            with open(fname_input2, 'w', encoding='utf-8') as f:
+                f.write("10, 10, 10, 10, 10, 10, 10, 10, 10\n")
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['add-shim-coefs',
+                                             '--input', fname_input1,
+                                             '--input2', fname_input2,
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == ("21.000000, 22.000000, 23.000000, 24.000000, 25.000000, "
+                                        "21.000000, 22.000000, 23.000000, 24.000000,\n")
+                assert f.readline() == ("22.000000, 24.000000, 26.000000, 28.000000, 30.000000, "
+                                        "22.000000, 24.000000, 26.000000, 28.000000,\n")
+
+    def test_add_shim_coefs_error(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input1 = os.path.join(tmp, 'shim_coefs1_vol.txt')
+            with open(fname_input1, 'w', encoding='utf-8') as f:
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14\n")
+                f.write("11, 12, 13, 14, 15, 11, 12, 13, 14,\n")
+
+            fname_input2 = os.path.join(tmp, 'shim_coefs2.txt')
+            with open(fname_input2, 'w', encoding='utf-8') as f:
+                f.write("1,2,3, 4,\n")
+                f.write("5,6,7, 4\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+
+            runner = CliRunner()
+            with pytest.raises(ValueError, match="The number of shim events and/or the number of channels is not "
+                                                 "the same in both text files"):
+                runner.invoke(b0shim_cli, ['add-shim-coefs',
+                                                 '--input', fname_input1,
+                                                 '--input2', fname_input2,
+                                                 '-o', fname_output,
+                                                 '-v', 'debug'],
+                                    catch_exceptions=False)
+
+
+class TestConvertShimCoefsFormat:
+    def test_convert_shim_coefs_vol_sl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,2,3,4,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--add-channels', '0,4,6,7,8,9',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
+                assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
+                                        "0.000000, 0.000000, 0.000000,\n")
+
+    def test_convert_shim_coefs_ch_vol(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("0,0,0,0,\n")
+                f.write("0,0,0,0,\n")
+                f.write("0,0,0,0,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'chronological',
+                                             '--output-file-format', 'volume',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,"
+
+    def test_convert_shim_coefs_ch_sl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1, 1, 1, 1\n")
+                f.write("0,0,0,0,\n")
+                f.write("2, 2, 2, 2,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'chronological',
+                                             '--output-file-format', 'slicewise',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,\n"
+                assert f.readline() == "1.000000, 1.000000, 1.000000, 1.000000,\n"
+                assert f.readline() == "2.000000, 2.000000, 2.000000, 2.000000,\n"
+
+    def test_convert_shim_coefs_sl_ch(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("0,0,0,0,\n")
+                f.write("1, 1, 1, 1\n")
+                f.write("2, 2, 2, 2,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_anat = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_anat)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'slicewise',
+                                             '--output-file-format', 'chronological',
+                                             '-o', fname_output,
+                                             '--reverse-slice-order',
+                                             '-v', 'debug'],
+
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "1.000000, 1.000000, 1.000000, 1.000000,\n"
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,\n"
+                assert f.readline() == "2.000000, 2.000000, 2.000000, 2.000000,\n"
+
+    def test_convert_shim_coefs_sl_cl(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("12, 14, 16, 18, 15, 11, 12, 13, 14\n")
+                f.write("16, 18, 20, 18, 15, 11, 12, 13, 14,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--input', fname_input,
+                                             '--input-file-format', 'slicewise',
+                                             '--output-file-format', 'custom-cl',
+                                             '-o', fname_output,
+                                             '--reverse-slice-order',
+                                             '-v', 'debug'],
+
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "(mA)    xy         zy         zx      x2-y2         z2\n"
+                assert f.readline() == "        14         12         11         13         15\n"
+                assert f.readline() == "\n"
+                assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
+                assert f.readline() == "    0.000187     0.000205     0.000185   -16.000000\n"
+                assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"

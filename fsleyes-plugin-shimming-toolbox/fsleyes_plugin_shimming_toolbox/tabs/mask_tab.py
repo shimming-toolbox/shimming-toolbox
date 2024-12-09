@@ -8,8 +8,9 @@ from fsleyes_plugin_shimming_toolbox import __CURR_DIR__
 from fsleyes_plugin_shimming_toolbox.tabs.tab import Tab
 from fsleyes_plugin_shimming_toolbox.components.input_component import InputComponent
 from fsleyes_plugin_shimming_toolbox.components.run_component import RunComponent
+from fsleyes_plugin_shimming_toolbox.components.dropdown_component import DropdownComponent
 
-from shimmingtoolbox.cli.mask import box, rect, threshold, sphere
+from shimmingtoolbox.cli.mask import box, rect, threshold, sphere, bet, modify_binary_mask
 
 
 class MaskTab(Tab):
@@ -19,6 +20,8 @@ class MaskTab(Tab):
         self.run_component_box = None
         self.run_component_rect = None
         self.run_component_thr = None
+        self.run_component_bet = None
+        self.run_component_modify = None
         self.choice_box = None
 
         description = "Create a mask.\n\n" \
@@ -43,6 +46,14 @@ class MaskTab(Tab):
             {
                 "name": "Sphere",
                 "sizer_function": self.create_sizer_sphere
+            },
+            {
+                "name": "BET",
+                "sizer_function": self.create_sizer_bet
+            },
+            {
+                "name": "Erode/Dilate",
+                "sizer_function": self.create_sizer_modify
             }
         ]
         self.dropdown_choices = [item["name"] for item in self.dropdown_metadata]
@@ -186,7 +197,7 @@ class MaskTab(Tab):
                 "name": "output",
             }
         ]
-        component = InputComponent(self, input_text_box_metadata, box)
+        component = InputComponent(self, input_text_box_metadata, cli=box)
         self.run_component_box = RunComponent(
             panel=self,
             list_components=[component],
@@ -221,11 +232,125 @@ class MaskTab(Tab):
                 "name": "output",
             }
         ]
-        component = InputComponent(self, input_text_box_metadata, sphere)
+        component = InputComponent(self, input_text_box_metadata, cli=sphere)
         self.run_component_sphere = RunComponent(
             panel=self,
             list_components=[component],
             st_function="st_mask sphere"
         )
         sizer = self.run_component_sphere.sizer
+        return sizer
+    
+    def create_sizer_bet(self):
+        path_output = os.path.join(__CURR_DIR__, "output_mask_bet")
+        input_text_box_metadata = [
+            {
+                "button_label": "Input",
+                "button_function": "select_from_overlay",
+                "name": "input",
+                "required": True
+            },
+            {
+                "button_label": "fractional intensity threshold",
+                "name": "f_param",
+                "default_text": "0.5",
+                "required": False
+            },
+            {
+                "button_label": "Vertical gradient",
+                "name": "g_param",
+                "default_text": "0.0",
+                "required": False
+            },
+            {
+                "button_label": "Output File",
+                "button_function": "select_folder",
+                "default_text": os.path.join(path_output, "bet.nii.gz"),
+                "name": "output",
+            }
+        ]
+        component = InputComponent(self, input_text_box_metadata, cli=bet)
+        self.run_component_bet = RunComponent(
+            panel=self,
+            list_components=[component],
+            st_function="st_mask bet"
+        )
+        sizer = self.run_component_bet.sizer
+        return sizer
+    
+    def create_sizer_modify(self):
+        path_output = os.path.join(__CURR_DIR__, "output_mask_modify")
+        input_text_box_metadata_1 = [
+            {
+                "button_label": "Input",
+                "button_function": "select_from_overlay",
+                "name": "input",
+                "required": True
+            }
+        ]
+        dropdown_operation_metadata = [
+            {
+                "label": "Erode",
+                "option_value": "erode"
+            },
+            {
+                "label": "Dilate",
+                "option_value": "dilate"
+            }
+        ]
+        dropdown_shape_metadata = [
+            {
+                "label": "Sphere",
+                "option_value": "sphere"
+            },
+            {
+                "label": "Cross",
+                "option_value": "cross"
+            },
+            {
+                "label": "Line",
+                "option_value": "line"
+            },
+            {
+                "label": "Cube",
+                "option_value": "cube"
+            }
+        ]
+        input_text_box_metadata_2 = [
+            {
+                "button_label": "Kernel size",
+                "name": "size",
+                "default_text": "3",
+                "required": True
+            },
+            {
+                "button_label": "Output File",
+                "button_function": "select_folder",
+                "default_text": os.path.join(path_output, "mask_eroded.nii.gz"),
+                "name": "output",
+            }
+        ]
+        
+        input_component = InputComponent(self, input_text_box_metadata_1, cli=modify_binary_mask)
+        second_input_component = InputComponent(self, input_text_box_metadata_2, cli=modify_binary_mask)
+        dropdown_shape = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_shape_metadata,
+            label="Shape",
+            option_name='shape',
+            cli=modify_binary_mask
+        )
+        dropdown_operation = DropdownComponent(
+            panel=self,
+            dropdown_metadata=dropdown_operation_metadata,
+            label="Operation",
+            option_name='operation',
+            cli=modify_binary_mask
+        )
+        self.run_component_modify = RunComponent(
+            panel=self,
+            list_components=[input_component, dropdown_operation, dropdown_shape, second_input_component],
+            st_function="st_mask modify-binary-mask",
+        )
+        sizer = self.run_component_modify.sizer
         return sizer

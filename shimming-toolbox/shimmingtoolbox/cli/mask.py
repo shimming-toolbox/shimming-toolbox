@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pathlib
 import click
 import logging
 import nibabel as nib
@@ -8,7 +9,9 @@ import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
+from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -301,6 +304,137 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 
     click.echo(f"The path for the output mask is: {os.path.abspath(fname_output)}")
     return fname_output
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Wrapper for BET, please see https://fsl.fmrib.ox.ac.uk/fsl/docs/#/structural/bet. "
+                    "Create a brain mask in the coordinates of the input file. The mask is stored by default "
+                       "under the name 'mask.nii.gz' in the output folder.")
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
+              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask'),
+              show_default=True, help="Name of output mask. Do not add extension")
+@click.option('-f', '--f_param', required=False, type=float, default=0.5,
+              help="fractional intensity threshold (0->1); default=0.5; smaller values give larger brain outline estimates")
+@click.option('-g', '--g_param', type=float, required=False, default=0,
+              help="vertical gradient in fractional intensity threshold (-1->1); positive values give larger brain outline at bottom, smaller at top")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def bet(fname_input, fname_output, f_param, g_param, verbose):
+
+    set_all_loggers(verbose)
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Make sure input path exists
+    if not os.path.exists(fname_input):
+        raise RuntimeError("Input file does not exist")
+
+    # Get the number of dimensions
+    nii_input = nib.load(fname_input)
+    ndim = nii_input.ndim
+    # If 4d, last dimension is time, average last dim for better SNR
+    if ndim == 4:
+        input_3d = np.mean(nii_input.get_fdata(), 3)
+        nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
+        fname_mean = os.path.join(os.path.dirname(fname_output), 'mean_3d.nii.gz')
+        nib.save(nii_3d, fname_mean)
+        fname_process = fname_mean
+    # If not then only set the processing filename
+    else:
+        fname_process = fname_input
+
+    # Run BET
+    # Create the mask
+    run_subprocess(['bet2', fname_process, fname_output, '-f', str(f_param), '-g', str(g_param), '-m'])
+
+    return fname_output
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Wrapper for modify_binary_mask. Lets the user dilate or erode their masks")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+                   "extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              show_default=True, help="Name of output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('--shape', 'shape', required=False, type=click.Choice(['sphere', 'cross', 'line', 'cube', 'None']), default='sphere',
+              help="3d kernel to perform the dilation. Allowed shapes are: 'sphere', 'cross', 'line', 'cube', 'None'.")
+@click.option('--size', 'size', type=float, required=True, default=1,
+              help="Kernel size for the dilation or erosion. Must be odd.")
+@click.option('--operation', 'operation', type=click.Choice(['erode', 'dilate']), required=True, default="dilate",
+              help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbose):
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    # Make sure input path exists
+    if not os.path.exists(fname_input):
+        raise RuntimeError("Input file does not exist")
+
+    # Run modify_binary_mask
+    nii = nib.load(fname_input)
+    array = nii.get_fdata()
+    mask = modify_binary_mask_api(array, shape, size, operation)
+
+    nii_mask = nib.Nifti1Image(mask, affine=nii.affine, header=nii.header)
+    nib.save(nii_mask, fname_output)
+
+    # Look for a json file with the same name as the input file
+    path = pathlib.Path(fname_input)
+    while path.suffix:
+        path = path.with_suffix('')
+    fname_json = str(path.with_suffix('.json'))
+    click.echo(f"Looking for json file at {fname_json}")
+    if os.path.exists(fname_json):
+        path = pathlib.Path(fname_output)
+        while path.suffix:
+            path = path.with_suffix('')
+        fname_output_json = str(path.with_suffix('.json'))
+        click.echo(f"Found json file at {fname_json}")
+        with open(fname_json, 'r') as f:
+            json_data = f.read()
+        with open(fname_output_json, 'w') as f:
+            click.echo(f"Copying json file from {fname_json} to {fname_output_json}")
+            f.write(json_data)
+
+    return fname_output
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Create a mask to shim single voxel MRS. "
+                       "Voxel position and size can be directly given or these info can be read "
+                       "from the siemens raw-data. "
+                       "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
+                       "folder. Return an output nifti file to be used as a mask for MRS shimming.")
+@click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
+              help="Input path of the fieldmap to be shimmed.")
+@click.option('-r', '--raw', 'raw_data', type=click.Path(),
+              help="Input path of the raw-data (supported extention .rda)")
+@click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
+              show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
+              "the scanner's coordinate")
+@click.option('-s', '--size', nargs=3, type=click.FLOAT, help="Voxel size in mm of the x, y and z of the scanner's "
+              "coordinate")
+@click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def mrs(fname_input, output, raw_data, center, size, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(output, is_file=True)
+
+    nii = nib.load(fname_input)
+    output_mask = mask_mrs(fname_input, raw_data, center, size)  # creation of the MRS mask
+    output_mask = output_mask.astype(np.int32)
+    nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
+    nib.save(nii_img, output)
+    logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',

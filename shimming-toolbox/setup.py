@@ -7,10 +7,14 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(path.dirname(here), "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
+path_version = path.join(here, 'shimmingtoolbox', 'version.txt')
+with open(path_version) as f:
+    version = f.read().strip()
+
 setup(
     name="shimmingtoolbox",
     python_requires=">=3.7",
-    version="0.1.0",
+    version=version,
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
     url="https://github.com/shimming-toolbox/shimming-toolbox",
@@ -36,6 +40,7 @@ setup(
         ]
     },
     packages=find_packages(exclude=["docs"]),
+    include_package_data=True,
     install_requires=[
         "click",
         "dcm2bids>=3.0.1",
@@ -57,10 +62,11 @@ setup(
         "raven",
         "joblib",
         "quadprog",
-        "cloup"
+        "cloup",
+        "spec2nii"
     ],
     extras_require={
-        'docs': ["sphinx>=1.7", "sphinx_rtd_theme>=1.2.2", "sphinx-click"],
+        'docs': ["sphinx>=1.7", "sphinx_rtd_theme==2.0.0", "sphinx-click", "myst_parser"],
         'dev': ["pre-commit>=2.10.0"]
     },
 )

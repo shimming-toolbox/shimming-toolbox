@@ -281,6 +281,11 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
         logger.warning(f"Scanner: {manufacturers_model_name} not implemented, constraints might not be respected.")
         constraints["name"] = "Unknown"
 
+        # Fill with Nones
+        for order in orders:
+            n_channels = channels_per_order(order, manufacturer)
+            constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
+
     return constraints
 
 

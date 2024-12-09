@@ -75,7 +75,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
 
 def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     """
-    Dilates a binary mask according to different shapes and kernel size
+    Dilates or erodes a binary mask according to different shapes and kernel size
 
     Args:
         mask (numpy.ndarray): 3d array containing the binary mask.
@@ -86,7 +86,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
         operation (str): Operation to perform. Allowed operations are: 'dilate', 'erode'.
 
     Returns:
-        numpy.ndarray: Dilated mask.
+        numpy.ndarray: Dilated/eroded mask.
 
     Notes:
 
