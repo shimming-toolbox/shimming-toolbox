@@ -27,9 +27,51 @@ def test_coil_siemens_basis():
     assert a_coil.coef_sum_max == constraints['coef_sum_max']
 
 
-def test_coil_custom_coil():
-    pass
-    # Define a custom coil in testing_data
+def test_custom_coil_coefs_used():
+    grid_x, grid_y, grid_z = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
+                                         indexing='ij')
+    profiles = siemens_basis(grid_x, grid_y, grid_z)
+
+    constraints = {
+        "name": "Siemens Basis",
+        "coef_sum_max": 40,
+        "coef_channel_minmax": {"coil": [[-2, 2], [-2, 2], [-2, 2], [-2, 2], [-2, 2], [-2, 2], [-2, 2], [-2, 2]]},
+        "coefs_used": {"coil": [-2, -1, 0, 1, 2, 2, 2, 2]},
+    }
+
+    a_coil = Coil(profiles, np.eye(4), constraints)
+
+    assert np.array_equal(a_coil.profile, profiles)
+    assert a_coil.coef_channel_minmax == {"coil": [[0, 4], [-1, 3], [-2, 2], [-3, 1], [-4, 0], [-4, 0], [-4, 0], [-4, 0]]}
+    assert a_coil.coef_sum_max == constraints['coef_sum_max']
+
+
+def test_scanner_coil_coefs_used():
+    grid_x, grid_y, grid_z = np.meshgrid(np.array(range(-1, 2)), np.array(range(-1, 2)), np.array(range(-1, 2)),
+                                         indexing='ij')
+    profiles = siemens_basis(grid_x, grid_y, grid_z, (0, 1, 2, 3))
+
+    constraints = {
+        "name": "Siemens Basis",
+        "coef_sum_max": 40,
+        "coef_channel_minmax": {"0": [[-2, 2]],
+                                "1": [[-2, 2], [-2, 2], [-2, 2]],
+                                "2": [[-2, 2], [None, 2], [-2, None], [None, None], [-2, 2]],
+                                "3": [[None, None], [None, None], [None, None], [None, None]]},
+        "coefs_used": {"0": [-2], "1": [-1, 0, 1], "2": [2, 2, 2, 2, None], "3": None},
+    }
+
+    a_coil = Coil(profiles, np.eye(4), constraints)
+
+    assert np.array_equal(a_coil.profile, profiles)
+    assert a_coil.coef_channel_minmax == {"0": [[0, 4]],
+                                          "1": [[-1, 3], [-2, 2], [-3, 1]],
+                                          "2": [[-4, 0], [-np.inf, 0], [-4, np.inf], [-np.inf, np.inf], [-2, 2]],
+                                          "3": [[-np.inf, np.inf],
+                                                [-np.inf, np.inf],
+                                                [-np.inf, np.inf],
+                                                [-np.inf, np.inf]]}
+    assert a_coil.coef_sum_max == constraints['coef_sum_max']
 
 
 def test_create_scanner_coil_order0():

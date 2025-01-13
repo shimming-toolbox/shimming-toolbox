@@ -1090,21 +1090,23 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
-
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 sph_contraints = json.load(json_file)
-            orders_to_delete = []
+
             for key in sph_contraints['coef_channel_minmax']:
                 if key not in str(orders):
-                    orders_to_delete.append(key)
-            for key in orders_to_delete:
-                del sph_contraints['coef_channel_minmax'][key]
+                    del sph_contraints['coef_channel_minmax'][key]
+            if sph_contraints.get('coefs_used') is not None:
+                for key in sph_contraints['coefs_used']:
+                    if key not in str(orders):
+                        del sph_contraints['coefs_used'][key]
         else:
             sph_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
+        sph_contraints['coefs_used'] = restrict_sph_constraints(scanner_shim_settings, orders)
+
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints, orders,
                                    manufacturer=manufacturer)
         list_coils.append(scanner_coil)
 
@@ -1113,64 +1115,6 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
-
-
-def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orders, manufacturer):
-    """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
-        absolute bounds
-
-    Args:
-        constraints (dict): Constraints of the scanner coils
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        orders (list): Order of the scanner coils (0 or 1 or 2)
-        manufacturer (str): Name of the MRI manufacturer
-    Returns:
-        dict: Updated constraints of the scanner
-    """
-
-    def _initial_in_bounds(coefs: dict, bounds: dict):
-        """Makes sure the initial values are within the bounds of the constraints"""
-        if coefs.keys() != bounds.keys():
-            raise RuntimeError("The scanner coil's orders is not the same length as the initial orders")
-        if any(len(coefs[key]) != len(bounds[key]) for key in bounds):
-            raise RuntimeError("The scanner coil's bounds is not the same length as the initial bounds")
-
-        for key in coefs:
-            for (bound, coef) in zip(bounds[key], coefs[key]):
-                if bound[0] is None and bound[1] is None:
-                    continue
-                if bound[1] is not None:
-                    if not coef <= bound[1]:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-                if bound[0] is not None:
-                    if not bound[0] <= coef:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-
-    # Set the initial coefficients to 0
-    initial_coefs = {}
-    for order in orders:
-        initial_coefs[str(order)] = [0] * channels_per_order(order, manufacturer)
-    if initial_coefs == {}:
-        initial_coefs = None
-
-    # Restrict the constraints to the provided order
-    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
-
-    # If the scanner coefficients are valid, update the initial coefficients
-    for order in orders:
-        if scanner_shim_settings[f'order{order}_is_valid']:
-            initial_coefs[str(order)] = np.array(scanner_shim_settings[str(order)])
-
-    # Make sure the initial coefficients are within the specified bounds
-    _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
-
-    # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
-    # shimming
-    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs, constraints['coef_channel_minmax'])
-
-    return constraints
 
 
 def _save_nii_to_new_dir(list_fname, path_output):

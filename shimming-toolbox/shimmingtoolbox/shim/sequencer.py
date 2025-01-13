@@ -20,7 +20,7 @@ from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
-from shimmingtoolbox.coils.coil import Coil
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
@@ -420,7 +420,6 @@ class ShimSequencer(Sequencer):
         # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
         if self.fmap_is_extended:
             merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap_orig.affine)
-
         else:
             merged_coils = self.optimizer.merged_coils
 
@@ -456,14 +455,11 @@ class ShimSequencer(Sequencer):
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
             if len(self.slices) == 1:
-                # TODO: Update the shim settings if Scanner coil?
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
-                    json.dump(self.json_fieldmap, outfile, indent=4)
 
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
@@ -471,8 +467,15 @@ class ShimSequencer(Sequencer):
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
-                    json.dump(self.json_fieldmap, outfile, indent=4)
+
+            # Output JSON file
+            # TODO: Update the shim settings if Scanner coil?
+            if len(self.coils) == 1 and isinstance(self.coils[0], ScannerCoil):
+                # Dump the shim coefficients as ShimSettingsCurrent + ShimSettings
+                pass
+
+            with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                json.dump(self.json_fieldmap, outfile, indent=4)
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
