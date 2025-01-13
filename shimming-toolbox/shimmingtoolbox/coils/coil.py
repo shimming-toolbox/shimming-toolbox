@@ -314,7 +314,11 @@ class ScannerCoil(Coil):
         # Create the spherical harmonics with the correct order, dim and affine
         sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
-        constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], self.orders)
+        if 'coef_channel_minmax' in constraints.keys():
+            constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'],
+                                                                          self.orders)
+        if 'coefs_used' in constraints.keys():
+            constraints['coefs_used'] = restrict_sph_constraints(constraints['coefs_used'], self.orders)
         super().__init__(sph_coil_profile, affine, constraints)
 
     def _create_coil_profile(self, dim, manufacturer=None):
