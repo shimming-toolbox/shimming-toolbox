@@ -11,7 +11,7 @@ import nibabel as nib
 import numpy as np
 import json
 
-from shimmingtoolbox import __config_custom_coil_constraints__
+from shimmingtoolbox import __config_custom_coil_constraints__, __config_scanner_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
@@ -111,6 +111,55 @@ class TestCliDynamic(object):
                 values = [float(val) for val in line if val.strip()]
 
             assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
+
+    def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            with open(__config_scanner_constraints__) as f:
+                constraints_data = json.load(f)
+
+            constraints_data['coefs_used']['0'] = [123100100 + 1000]
+            constraints_data['coefs_used']['1'] = [1000, 1000, 1000]
+            constraints_data['coefs_used']['2'] = [1000, 1000, 1000, 1000, 1000]
+            constraints_data['coef_channel_minmax']['2'][0] = [None, None]
+            constraints_data['coef_channel_minmax']['2'][1] = None
+            fname_scanner_constraints_json = os.path.join(tmp, 'scanner_constraints.json')
+            with open(fname_scanner_constraints_json, 'w', encoding='utf-8') as f:
+                json.dump(constraints_data, f, indent=4)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1,2,3',
+                                             '--scanner-coil-constraints', fname_scanner_constraints_json,
+                                             '--slices', 'ascending',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [-18.377593, 1.396879, -15.365026, -76.076255, -3.318103, -0.612707, -5.770534,
+                              1.025224, -0.185286, 0.008222, -0.050427, -0.427594, 0.263235]
 
     def test_cli_dynamic_signal_recovery(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""

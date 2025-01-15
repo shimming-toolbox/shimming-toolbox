@@ -19,7 +19,7 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
@@ -270,9 +270,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
+    manufacturer_model_name = json_fm_data.get('ManufacturersModelName')
+    if manufacturer_model_name is not None:
+        manufacturer_model_name.replace(' ', '_')
+
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
+    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
+                             json_fm_data.get('Manufacturer'), manufacturer_model_name)
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -720,8 +724,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1] or scanner_coil_order_static == [0]) or \
-                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [0]):
+        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [
+            1] or scanner_coil_order_static == [0]) or \
+                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [
+                    0]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
@@ -733,13 +739,15 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=all_scanner_orders)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
+    manufacturer_model_name = json_fm_data.get('ManufacturersModelName')
+    if manufacturer_model_name is not None:
+        manufacturer_model_name.replace(' ', '_')
+
     # Load the coils
-    list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data['Manufacturer'],
-                                    json_fm_data['ManufacturersModelName'])
-    list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data['Manufacturer'],
-                                  json_fm_data['ManufacturersModelName'])
+    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
+                                    options['scanner_shim'], json_fm_data['Manufacturer'], manufacturer_model_name)
+    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
+                                  options['scanner_shim'], json_fm_data['Manufacturer'], manufacturer_model_name)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -873,7 +881,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         if coefs_coil_riro is not None:
                             logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
                             for i_shim in range(coefs_coil_riro.shape[0]):
-                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,(1,))
+                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer, (1,))
                             # RAS to gradient
                             coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
                                 coefs_coil_riro[:, 0],
@@ -1060,7 +1068,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
+def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
                 manufacturers_model_name):
     """ Loads the Coil objects from filenames
 
@@ -1090,23 +1098,17 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
+        # Todo: Skip loading constraints if the algo does not support constraints?
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
-                sph_contraints = json.load(json_file)
-
-            for key in sph_contraints['coef_channel_minmax']:
-                if key not in str(orders):
-                    del sph_contraints['coef_channel_minmax'][key]
-            if sph_contraints.get('coefs_used') is not None:
-                for key in sph_contraints['coefs_used']:
-                    if key not in str(orders):
-                        del sph_contraints['coefs_used'][key]
+                external_contraints = json.load(json_file)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings, external_contraints)
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings)
 
-        sph_contraints['coefs_used'] = restrict_sph_constraints(scanner_shim_settings, orders)
-
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints, orders,
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, scanner_contraints, orders,
                                    manufacturer=manufacturer)
         list_coils.append(scanner_coil)
 

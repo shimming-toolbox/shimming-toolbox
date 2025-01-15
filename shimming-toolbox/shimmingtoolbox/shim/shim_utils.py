@@ -240,13 +240,13 @@ def get_scanner_shim_settings(bids_json_dict, orders):
         else:
             logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
     else:
-        logger.warning("ShimSetting tag is not available")
+        logger.debug("ShimSetting tag is not available")
 
     # Check if the orders to shim are available in the metadata
     for order in orders:
         if scanner_shim.get(str(order)) is None:
-            logger.warning(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
-                           f"respected.")
+            logger.debug(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
+                         f"respected.")
 
     return scanner_shim
 
@@ -288,7 +288,8 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                     max_0 = scanner_constraints[order][0][1]
                     min_0 = scanner_constraints[order][0][0]
                     tolerance = 0.001 * (max_0 - min_0)
-                    if (shim_settings[order][0] > (max_0 + tolerance)) or (shim_settings[order][0] < (min_0 - tolerance)):
+                    if (shim_settings[order][0] > (max_0 + tolerance)) or (
+                            shim_settings[order][0] < (min_0 - tolerance)):
                         raise ValueError(f"Current f0 frequency {shim_settings[order][0]} exceeds known system limits.")
                     continue
                 # Check if unit conversion for the order is implemented
@@ -303,8 +304,8 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                                                               scanner_constraints_dac[order])
 
     else:
-        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented,"
-                       f"could not convert shim settings")
+        logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, "
+                     f"could not convert shim settings")
 
     return scanner_shim_mp
 
@@ -326,7 +327,11 @@ class ScannerShimSettings:
     def __init__(self, bids_json_dict, orders=None):
 
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
+
         manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
+        if manufacturer_model_name is not None:
+            manufacturer_model_name.replace(' ', '_')
+
         manufacturer = bids_json_dict.get('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
 

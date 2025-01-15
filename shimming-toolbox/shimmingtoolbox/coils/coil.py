@@ -9,6 +9,7 @@ from typing import Tuple
 from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
                                                     channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
+from shimmingtoolbox import __config_scanner_constraints__
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,18 @@ SCANNER_CONSTRAINTS = {
 
     },
     "Philips": {
-
+        "Ingenia_Elition_X": {
+            "0": [[-4336, -336]],
+            "1": [[-1.000000, 1.000000],
+                  [-1.000000, 1.000000],
+                  [-1.000000, 1.000000]],
+            "2": [[-2.132910, 2.132910],
+                  [-5.422375, 5.422375],
+                  [-5.280444, 5.280444],
+                  [-2.216936, 2.216936],
+                  [-2.238412, 2.238412]],
+            "3": []
+        }
     }
 }
 
@@ -315,10 +327,10 @@ class ScannerCoil(Coil):
         sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
         # Restricts the constraints to the specified order
         if 'coef_channel_minmax' in constraints.keys():
-            constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'],
+            constraints['coef_channel_minmax'] = restrict_to_orders(constraints['coef_channel_minmax'],
                                                                           self.orders)
         if 'coefs_used' in constraints.keys():
-            constraints['coefs_used'] = restrict_sph_constraints(constraints['coefs_used'], self.orders)
+            constraints['coefs_used'] = restrict_to_orders(constraints['coefs_used'], self.orders)
         super().__init__(sph_coil_profile, affine, constraints)
 
     def _create_coil_profile(self, dim, manufacturer=None):
@@ -345,7 +357,7 @@ class ScannerCoil(Coil):
         return super().__eq__(__value)
 
 
-def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
+def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim_settings, external_constraints=None):
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
 
@@ -353,32 +365,71 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
         manufacturers_model_name (str): Name of the scanner
         orders (list): List of all orders of the shim system to be used
         manufacturer (str): Manufacturer of the scanner
+        shim_settings (dict): Dictionary containing the shim settings
+        external_constraints (dict): External constraints to be used as priority
 
     Returns:
         dict: The constraints including the scanner name, bounds and the maximum sum of currents.
     """
     constraints = {
         "coef_channel_minmax": {"0": [], "1": [], "2": [], "3": []},
-        "coef_sum_max": None
+        "coef_sum_max": None,
+        "coefs_used": {}
     }
+
+    # Min max constraints
+    if external_constraints is not None:
+        external_minmax = external_constraints.get('coef_channel_minmax')
+    else:
+        external_minmax = None
 
     # If the manufacturer and scanner is implemented
     if (manufacturer in SCANNER_CONSTRAINTS.keys() and
             manufacturers_model_name in SCANNER_CONSTRAINTS[manufacturer].keys()):
         constraints["name"] = manufacturers_model_name
         for order in orders:
-            constrs = copy.deepcopy(SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name][str(order)])
-            if constrs:
-                constraints["coef_channel_minmax"][str(order)] = constrs
+            internal_constrs = copy.deepcopy(SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name][str(order)])
+            if external_minmax is not None:
+                ext_constraints = external_minmax.get(str(order))
+            else:
+                ext_constraints = None
+
+            if ((internal_constrs and internal_constrs is not None) and
+                    (ext_constraints and ext_constraints is not None)):
+                logger.warning(f"Scanner constraints for order {order} is defined in both the constraint file "
+                               f"and internally. Choosing the ones from the constraint file.")
+                constraints["coef_channel_minmax"][str(order)] = ext_constraints
+            elif ((not internal_constrs or internal_constrs is None) and
+                  (ext_constraints and ext_constraints is not None)):
+                constraints["coef_channel_minmax"][str(order)] = ext_constraints
+            elif ((internal_constrs and internal_constrs is not None) and
+                  (not ext_constraints or ext_constraints is None)):
+                constraints["coef_channel_minmax"][str(order)] = internal_constrs
             else:
                 n_channels = channels_per_order(order, manufacturer)
                 constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
                 logger.warning(
-                    f"Order {order} not available on the {manufacturers_model_name}, unconstrained optimization for "
-                    f"this order.")
+                    f"Order {order} not available on {manufacturers_model_name}, unconstrained optimization for "
+                    f"this order. Consider defining the constraints in an external constraint file. See "
+                    f"{__config_scanner_constraints__}")
+
+    elif external_minmax is not None:
+        if external_constraints.get("name") is not None:
+            constraints["name"] = external_constraints["name"]
+        else:
+            constraints["name"] = "Unknown"
+
+        for order in orders:
+            if external_minmax.get(str(order)) is None:
+                n_channels = channels_per_order(order, manufacturer)
+                constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
+            else:
+                constraints["coef_channel_minmax"][str(order)] = external_minmax.get(str(order))
 
     else:
-        logger.warning(f"Scanner: {manufacturers_model_name} not implemented, constraints might not be respected.")
+        logger.warning(f"Scanner: {manufacturers_model_name} not implemented, constraints are not known internally. "
+                       f"Consider defining the constraints in an external constraint file. See "
+                       f"{__config_scanner_constraints__}")
         constraints["name"] = "Unknown"
 
         # Fill with Nones
@@ -386,23 +437,47 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer):
             n_channels = channels_per_order(order, manufacturer)
             constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
 
+    # Coefs used constraint
+    if external_constraints is not None:
+        external_coefs_used = external_constraints.get('coefs_used')
+    else:
+        external_coefs_used = None
+
+    if external_coefs_used is not None:
+        for order in orders:
+            if ((shim_settings[str(order)] is not None) and (external_coefs_used.get(str(order)) is not None)):
+                logger.warning(f"Scanner Shim Settings for order {order} is defined in both the constraint file "
+                               f"and the BIDS JSON sidecar. Choosing the Shim Settings from the constraint file.")
+                constraints['coefs_used'][str(order)] = external_coefs_used.get(str(order))
+            elif shim_settings[str(order)] is None and external_coefs_used.get(str(order)) is not None:
+                constraints['coefs_used'][str(order)] = external_coefs_used.get(str(order))
+            elif shim_settings[str(order)] is not None and external_coefs_used.get(str(order)) is None:
+                constraints['coefs_used'][str(order)] = shim_settings[str(order)]
+            else:
+                logger.warning(f"Scanner Shim Settings for order {order} is not defined in a constraint file or "
+                               f"in the BIDS JSON sidecar. Consider adding them manually using 'coefs_used'")
+                n_channels = channels_per_order(order, manufacturer)
+                constraints['coefs_used'][str(order)] = [0 for _ in range(n_channels)]
+    else:
+        constraints['coefs_used'] = restrict_to_orders(shim_settings, orders)
+
     return constraints
 
 
-def restrict_sph_constraints(bounds: dict, orders):
-    """ Select bounds according to the order specified
+def restrict_to_orders(shim_dict: dict, orders):
+    """ Select the keys according to the order specified
 
     Args:
-        bounds (dict): Dictionary containing the min and max currents for multiple spherical harmonics orders
+        shim_dict (dict): Dictionary containing keys with the spherical harmonic orders
         orders (list): List of all spherical harmonics orders to be used
 
     Returns:
-        dict: Dictionary with the bounds of all specified orders
+        dict: Dictionary with only the keys specified in orders
     """
     minmax_out = {}
     for order in orders:
-        if f"{order}" in bounds:
-            minmax_out[f"{order}"] = bounds[f"{order}"]
+        if f"{order}" in shim_dict:
+            minmax_out[f"{order}"] = shim_dict[f"{order}"]
 
     if minmax_out == {}:
         raise NotImplementedError(f"Order must be between 0 and 3")
