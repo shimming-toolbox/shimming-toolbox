@@ -184,4 +184,4 @@ def test_get_scanner_constraints_external():
     constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", tmp_shim_settings, constraints_external)
 
     assert constraints['coef_channel_minmax']['3'] == [[None, None], [None, None], [None, None], [None, None]]
-    assert constraints['coefs_used']['3'] == [0, 0, 0, 0]
+    assert constraints['coefs_used']['3'] == [None, None, None, None]

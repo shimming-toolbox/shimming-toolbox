@@ -323,6 +323,30 @@ def _convert_to_ui_units(shim_settings_coefs, scanner_constraints, scanner_const
     return coefs_ui
 
 
+def convert_to_dac_units(shim_settings_coefs_ui, scanner_constraints, scanner_constraints_dac):
+    """ Convert shim settings from ui units to DAC units
+
+    Args:
+        shim_settings_coefs_ui (list): List of coefficients in the ui units
+        scanner_constraints (list): List containing the constraints of the scanner for a specific order
+        scanner_constraints_dac (list): List containing the maximum DAC values for a specific order
+
+    Returns:
+        list: List of coefficients in the DAC units
+    """
+    # Convert to dac units
+    max_coefs_ui = np.array([cst[1] for cst in scanner_constraints])
+    min_coefs_ui = np.array([cst[0] for cst in scanner_constraints])
+    coefs_dac = (np.array(shim_settings_coefs_ui) * 2 * np.array(scanner_constraints_dac) /
+                 (max_coefs_ui - min_coefs_ui))
+    tolerance = 0.001 * scanner_constraints_dac
+    if (np.any(coefs_dac > (scanner_constraints_dac + tolerance)) or
+            np.any(coefs_dac < (-scanner_constraints_dac - tolerance))):
+        logger.warning("Future shim settings exceed known system limits.")
+
+    return coefs_dac
+
+
 class ScannerShimSettings:
     def __init__(self, bids_json_dict, orders=None):
 

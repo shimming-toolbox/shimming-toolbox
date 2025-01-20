@@ -131,8 +131,8 @@ class TestCliDynamic(object):
                 constraints_data = json.load(f)
 
             constraints_data['coefs_used']['0'] = [123100100 + 1000]
-            constraints_data['coefs_used']['1'] = [1000, 1000, 1000]
-            constraints_data['coefs_used']['2'] = [1000, 1000, 1000, 1000, 1000]
+            constraints_data['coefs_used']['1'] = None
+            constraints_data['coefs_used']['2'] = [None, 1000, 1000, 1000, 1000]
             constraints_data['coef_channel_minmax']['2'][0] = [None, None]
             constraints_data['coef_channel_minmax']['2'][1] = None
             fname_scanner_constraints_json = os.path.join(tmp, 'scanner_constraints.json')
@@ -147,7 +147,7 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0,1,2,3',
                                              '--scanner-coil-constraints', fname_scanner_constraints_json,
-                                             '--slices', 'ascending',
+                                             '--slices', 'volume',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
@@ -158,8 +158,18 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [-18.377593, 1.396879, -15.365026, -76.076255, -3.318103, -0.612707, -5.770534,
-                              1.025224, -0.185286, 0.008222, -0.050427, -0.427594, 0.263235]
+            assert values == [-16.417611, 1.283857, -14.424815, -84.402628, -6.60401, -0.653534, -6.75787,
+                              0.955701, -0.168711, -0.139256, -0.094325,  -0.798893, 0.322054]
+            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim.json")
+            assert os.path.isfile(fname_bids_sidecar_fmap_output)
+            with open(fname_bids_sidecar_fmap_output) as f:
+                bids_sidecar_fmap_output_data = json.load(f)
+            assert bids_sidecar_fmap_output_data['ImagingFrequency'] == 123.101083
+            # Siemens scanner need to be scaled to DAC units. Moreover, we input the 'coefs_used' as ui units.
+            # This is why these values are not the direct sum of coefs + coefs_used
+            assert bids_sidecar_fmap_output_data['ShimSetting'] == [673.058, -7405.47, -9951.41,
+                                                                    None, 2813.48, 2834.6, 2818.01, 2866.49,
+                                                                    None, None, None, None]
 
     def test_cli_dynamic_signal_recovery(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""

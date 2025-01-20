@@ -457,7 +457,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim
                 logger.warning(f"Scanner Shim Settings for order {order} is not defined in a constraint file or "
                                f"in the BIDS JSON sidecar. Consider adding them manually using 'coefs_used'")
                 n_channels = channels_per_order(order, manufacturer)
-                constraints['coefs_used'][str(order)] = [0 for _ in range(n_channels)]
+                constraints['coefs_used'][str(order)] = [None for _ in range(n_channels)]
     else:
         constraints['coefs_used'] = restrict_to_orders(shim_settings, orders)
 
