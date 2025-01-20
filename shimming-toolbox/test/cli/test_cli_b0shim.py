@@ -141,7 +141,8 @@ class TestCliDynamic(object):
                                              '--regularization-factor', '0.1',
                                              '--slices', 'ascending',
                                              '--optimizer-method', 'pseudo_inverse',
-                                             '--output', tmp],
+                                             '--output', tmp,
+                                             '--verbose', 'debug'],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
