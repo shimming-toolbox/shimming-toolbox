@@ -44,7 +44,7 @@ setup(
     install_requires=[
         "click",
         "dcm2bids>=3.0.1",
-        "importlib-metadat",
+        "importlib-metadata",
         "numpy>=1.21",
         "phantominator~=0.6.4",
         "nibabel>=3.2.1",

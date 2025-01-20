@@ -196,7 +196,7 @@ class ScannerCoil(Coil):
             manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
             shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or
                            'I'. Only relevant if the manufacturer is unknown. Default: 'RAS'.
-            isocenter (np.ndarray): Position of the shim table in the scanner. Default: [0, 0, 0]
+            isocenter (np.ndarray): Position of the isocenter in the image. Default: [0, 0, 0]
         """
         self.orders = orders
 

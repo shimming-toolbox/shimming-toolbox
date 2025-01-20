@@ -231,9 +231,12 @@ def get_isocenter(json_data):
     if patient_position is None:
         raise ValueError("Patient position not found in json sidecar.")
 
-    # The table position is in world coordinates. If an observer stands in front of the scanner looking at it, a table
-    # moving to the left, up or into the scanner (from the observer's point of view) will increase the 1st, 2nd and 3rd
-    # value in the array respectively. The origin is defined by the image affine.
+    # From the Bid specification "TablePosition":
+    # The table position, relative to an implementation-specific reference point, often the isocenter. Values must be
+    # an array (1x3) of three distances in millimeters in absolute coordinates (world coordinates). If an observer
+    # stands in front of the scanner looking at it, a table moving to the left, up or into the scanner (from the
+    # observer's point of view) will increase the 1st, 2nd and 3rd value in the array respectively. The origin is
+    # defined by the image affine.
     table_position = np.array(table_position)
 
     # Convert table position to RAS coordinates

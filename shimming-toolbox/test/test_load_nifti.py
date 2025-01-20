@@ -379,7 +379,7 @@ class TestCore(object):
 class TestGetIsocenter():
     _json_data = {"TablePosition": [3, 5, 7]}
 
-    def test_get_isocenter(self):
+    def test_get_isocenter_hfs(self):
         self._json_data["PatientPosition"] = "HFS"
         isocenter = get_isocenter(self._json_data)
         assert np.all(isocenter == np.array([-3, -5, -7]))
