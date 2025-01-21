@@ -240,7 +240,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         time_limit = 20  # s
         for i in range(time_limit):
             realYield()
-            overlay_file = overlayList.find("fieldmap_calculated_shim_masked")
+            overlay_file = overlayList.find("fieldmap_calculated_shim")
             time.sleep(1)
             if overlay_file:
                 break
