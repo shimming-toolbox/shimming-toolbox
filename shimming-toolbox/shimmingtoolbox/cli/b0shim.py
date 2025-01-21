@@ -1087,7 +1087,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
     """
 
     manufacturer = json_fm_data.get('Manufacturer')
-    manufacturers_model_name = json_fm_data.get('ManufacturersModelName'),
+    manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
     isocenter = get_isocenter(json_fm_data)
 
     list_coils = []
