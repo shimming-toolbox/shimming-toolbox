@@ -109,6 +109,42 @@ def test_create_scanner_coil_siemens_order2():
                                                                    [-8.5154957e-05, -0.0000000e+00, 8.5154957e-05]]))
 
 
+def test_create_scanner_coil_isocenter():
+    sph_contraints = json.load(open(__config_scanner_constraints__))
+    affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
+    scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'SIEMENS',
+                               isocenter=np.array([0, 0, 0]))
+
+    assert np.all(scanner_coil.isocenter == [0, 0, 0])
+    assert np.allclose(scanner_coil.profile[0, 0, 1, :], [-1, 4.25774785e-02, -4.25774785e-02,
+                                                          0, -4.25774785e-05, 0,
+                                                          0, 0, -8.51549570e-05])
+    assert np.allclose(scanner_coil.profile[0, 1, 0, :], [-1, 4.25774785e-02, 0,
+                                                          4.25774785e-02, 2.12887393e-05, 8.51549570e-05,
+                                                          0, 4.25774785e-05, 0])
+    assert np.allclose(scanner_coil.profile[1, 0, 0, :], [-1, 0, -4.25774785e-02,
+                                                          4.25774785e-02, 2.12887393e-05, 0,
+                                                          -8.51549570e-05, -4.25774785e-05, 0])
+
+
+def test_create_scanner_coil_not_isocenter():
+    sph_contraints = json.load(open(__config_scanner_constraints__))
+    affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
+    scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'SIEMENS',
+                               isocenter=np.array([3, 4, 5]))
+
+    # assert np.all(scanner_coil.isocenter == [3, 4, 5])
+    assert np.allclose(scanner_coil.profile[0, 0, 1, :], [-1,  1.70309914e-01, -2.12887393e-01,
+                                                          2.12887393e-01, 1.91598653e-04,  1.70309914e-03,
+                                                          -2.12887393e-03, -3.83197307e-04, -1.70309914e-03])
+    assert np.allclose(scanner_coil.profile[0, 1, 0, :], [-1,  1.70309914e-01, -1.70309914e-01,
+                                                          2.55464871e-01, 8.51549570e-04,  2.04371897e-03,
+                                                          -2.04371897e-03,  8.34277965e-20, -1.36247931e-03])
+    assert np.allclose(scanner_coil.profile[1, 0, 0, :], [-1,  1.27732436e-01, -2.12887393e-01,
+                                                          2.55464871e-01, 8.08972092e-04, 1.53278923e-03,
+                                                          -2.55464871e-03, -6.81239656e-04, -1.27732436e-03])
+
+
 def test_create_scanner_coil_philips():
     sph_contraints = json.load(open(__config_scanner_constraints__))
     affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])

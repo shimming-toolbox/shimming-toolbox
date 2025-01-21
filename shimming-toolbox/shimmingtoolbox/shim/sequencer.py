@@ -413,11 +413,6 @@ class ShimSequencer(Sequencer):
         """
 
         # Save the merged coil profiles if in debug
-        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-            # Save coils
-            nii_merged_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap_orig.affine,
-                                               header=self.nii_fieldmap_orig.header)
-            nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
 
         unshimmed = self.nii_fieldmap_orig.get_fdata()
 
@@ -426,6 +421,18 @@ class ShimSequencer(Sequencer):
             merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap_orig.affine)
         else:
             merged_coils = self.optimizer.merged_coils
+
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+            if self.fmap_is_extended:
+                # Save coils with extended slices
+                nii_merged_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap.affine,
+                                                   header=self.nii_fieldmap.header)
+                nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils_opt.nii.gz"))
+
+            # Save coil with original dimensions
+            nii_merged_coils = nib.Nifti1Image(merged_coils, self.nii_fieldmap_orig.affine,
+                                               header=self.nii_fieldmap_orig.header)
+            nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
 
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
         shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
