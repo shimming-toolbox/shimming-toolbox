@@ -21,6 +21,7 @@ from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
+from shimmingtoolbox.load_nifti import get_isocenter
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -266,13 +267,19 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
+
     # Read the current shim settings from the scanner
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
+                             json_fm_data)
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -728,6 +735,12 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
                              f"{o_format_sph}")
 
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if isocenter_fm is None or isocenter_anat is None or not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
+
     # Read the current shim settings from the scanner
     all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=all_scanner_orders)
@@ -735,11 +748,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Load the coils
     list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data['Manufacturer'],
-                                    json_fm_data['ManufacturersModelName'])
+                                    options['scanner_shim'], json_fm_data)
     list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data['Manufacturer'],
-                                  json_fm_data['ManufacturersModelName'])
+                                  options['scanner_shim'], json_fm_data)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -1060,8 +1071,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
-                manufacturers_model_name):
+def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, json_fm_data):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1070,12 +1080,16 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        manufacturer (str): Name of the MRI manufacturer
-        manufacturers_model_name (str): Name of the scanner
+        json_fm_data (dict): BIDS JSON sidecar as a dictionary
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
+
+    manufacturer = json_fm_data.get('Manufacturer')
+    manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
+    isocenter = get_isocenter(json_fm_data)
+
     list_coils = []
 
     # Load custom coils
@@ -1105,7 +1119,7 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
         sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
         scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
-                                   manufacturer=manufacturer)
+                                   manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected

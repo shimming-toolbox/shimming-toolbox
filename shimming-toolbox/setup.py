@@ -13,7 +13,7 @@ with open(path_version) as f:
 
 setup(
     name="shimmingtoolbox",
-    python_requires=">=3.7",
+    python_requires=">=3.10",
     version=version,
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
@@ -44,7 +44,7 @@ setup(
     install_requires=[
         "click",
         "dcm2bids>=3.0.1",
-        'importlib-metadata ~= 4.0 ; python_version < "3.8"',
+        "importlib-metadata",
         "numpy>=1.21",
         "phantominator~=0.6.4",
         "nibabel>=3.2.1",
@@ -63,7 +63,8 @@ setup(
         "joblib",
         "quadprog",
         "cloup",
-        "spec2nii"
+        "spec2nii",
+        "dcm2niix>=1.0.20241211"
     ],
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme==2.0.0", "sphinx-click", "myst_parser"],

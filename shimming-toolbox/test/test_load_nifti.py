@@ -11,7 +11,7 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti, read_nii
+from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_isocenter
 from shimmingtoolbox import __dir_testing__
 
 
@@ -374,3 +374,12 @@ class TestCore(object):
         assert nii.shape == (64, 96, 1, 10)
         assert ('P' in json_info['ImageType'])
         assert (phasediff.max() <= math.pi) and (phasediff.min() >= -math.pi)
+
+
+class TestGetIsocenter():
+    _json_data = {"TablePosition": [3, 5, 7]}
+
+    def test_get_isocenter_hfs(self):
+        self._json_data["PatientPosition"] = "HFS"
+        isocenter = get_isocenter(self._json_data)
+        assert np.all(isocenter == np.array([-3, -5, -7]))
