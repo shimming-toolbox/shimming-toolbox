@@ -279,8 +279,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Load the coils
     list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'),
-                             isocenter_fm)
+                             json_fm_data)
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -749,11 +748,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Load the coils
     list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data['Manufacturer'],
-                                    json_fm_data['ManufacturersModelName'], isocenter_fm)
+                                    options['scanner_shim'], json_fm_data)
     list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data['Manufacturer'],
-                                  json_fm_data['ManufacturersModelName'], isocenter_fm)
+                                  options['scanner_shim'], json_fm_data)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -1074,8 +1071,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
-                manufacturers_model_name, isocenter):
+def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, json_fm_data):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1084,13 +1080,16 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        manufacturer (str): Name of the MRI manufacturer
-        manufacturers_model_name (str): Name of the scanner
-        isocenter: Isocenter position in RAS coordinates
+        json_fm_data (dict): BIDS JSON sidecar as a dictionary
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
+
+    manufacturer = json_fm_data.get('Manufacturer')
+    manufacturers_model_name = json_fm_data.get('ManufacturersModelName'),
+    isocenter = get_isocenter(json_fm_data)
+
     list_coils = []
 
     # Load custom coils

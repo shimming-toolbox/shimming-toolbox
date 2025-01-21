@@ -256,53 +256,53 @@ def get_isocenter(json_data):
         table_position_ras[1] = -table_position[1]
         table_position_ras[2] = -table_position[2]
     elif patient_position == 'LFP':
-        table_position_ras[2] = -table_position[0]
-        table_position_ras[1] = -table_position[1]
         table_position_ras[0] = -table_position[2]
+        table_position_ras[1] = -table_position[1]
+        table_position_ras[2] = -table_position[0]
     elif patient_position == 'LFS':
-        table_position_ras[2] = table_position[0]
-        table_position_ras[1] = table_position[1]
         table_position_ras[0] = -table_position[2]
-    elif patient_position == 'RFP':
-        table_position_ras[2] = table_position[0]
-        table_position_ras[1] = -table_position[1]
-        table_position_ras[0] = table_position[2]
-    elif patient_position == 'RFS':
-        table_position_ras[2] = -table_position[0]
         table_position_ras[1] = table_position[1]
+        table_position_ras[2] = table_position[0]
+    elif patient_position == 'RFP':
         table_position_ras[0] = table_position[2]
+        table_position_ras[1] = -table_position[1]
+        table_position_ras[2] = table_position[0]
+    elif patient_position == 'RFS':
+        table_position_ras[0] = table_position[2]
+        table_position_ras[1] = table_position[1]
+        table_position_ras[2] = -table_position[0]
     elif patient_position == 'HFDR':
-        table_position_ras[1] = table_position[0]
         table_position_ras[0] = -table_position[1]
+        table_position_ras[1] = table_position[0]
         table_position_ras[2] = table_position[2]
     elif patient_position == 'HFDL':
-        table_position_ras[1] = -table_position[0]
         table_position_ras[0] = table_position[1]
+        table_position_ras[1] = -table_position[0]
         table_position_ras[2] = table_position[2]
     elif patient_position == 'FFDR':
-        table_position_ras[1] = -table_position[0]
         table_position_ras[0] = -table_position[1]
+        table_position_ras[1] = -table_position[0]
         table_position_ras[2] = -table_position[2]
     elif patient_position == 'FFDL':
-        table_position_ras[1] = table_position[0]
         table_position_ras[0] = table_position[1]
+        table_position_ras[1] = table_position[0]
         table_position_ras[2] = -table_position[2]
     elif patient_position == 'AFDR':
-        table_position_ras[2] = -table_position[0]
         table_position_ras[0] = -table_position[1]
         table_position_ras[1] = table_position[2]
+        table_position_ras[2] = -table_position[0]
     elif patient_position == 'AFDL':
-        table_position_ras[2] = table_position[0]
         table_position_ras[0] = table_position[1]
         table_position_ras[1] = table_position[2]
-    elif patient_position == 'PFDR':
         table_position_ras[2] = table_position[0]
+    elif patient_position == 'PFDR':
         table_position_ras[0] = -table_position[1]
         table_position_ras[1] = -table_position[2]
+        table_position_ras[2] = table_position[0]
     elif patient_position == 'PFDL':
-        table_position_ras[2] = -table_position[0]
         table_position_ras[0] = table_position[1]
         table_position_ras[1] = -table_position[2]
+        table_position_ras[2] = -table_position[0]
     else:
         raise NotImplementedError(f"Patient position {patient_position} not implemented")
 
