@@ -227,9 +227,11 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
+        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         # RMSE regularized to minimize currents
-        return norm((unshimmed_vec + coil_mat @ coef) / factor, 2) + np.abs(coef).dot(self.reg_vector)
+        return b0_rmse_coef + current_regularization_coef
     
     def _residuals_rmse_grad(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
@@ -246,11 +248,11 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        c1 = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
-        c2 = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
-        c3 = np.abs(coef).dot(self.reg_vector)
+        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
+        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
         
-        return c1 + c2 * self.w_signal_loss + c3
+        return b0_rmse_coef + signal_recovery_coef * self.w_signal_loss + current_regularization_coef
         
     def _residuals_mse_jacobian(self, coef, a, b, c):
         """ Jacobian of the function that we want to minimize
