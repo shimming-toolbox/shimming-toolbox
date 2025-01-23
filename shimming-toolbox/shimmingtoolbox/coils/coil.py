@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
+import copy
 import logging
 import numpy as np
 from typing import Tuple
@@ -176,7 +177,8 @@ class Coil(object):
 class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
 
-    def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None):
+    def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None,
+                 isocenter=np.array([0, 0, 0])):
         """
         Args:
             dim_volume (tuple): x, y and z dimensions.
@@ -194,6 +196,7 @@ class ScannerCoil(Coil):
             manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
             shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or
                            'I'. Only relevant if the manufacturer is unknown. Default: 'RAS'.
+            isocenter (np.ndarray): Position of the isocenter in the image. Default: [0, 0, 0]
         """
         self.orders = orders
 
@@ -208,6 +211,7 @@ class ScannerCoil(Coil):
                 self.coord_system = shim_cs
 
         self.affine = affine
+        self.isocenter = isocenter
 
         # Create the spherical harmonics with the correct order, dim and affine
         sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
@@ -217,8 +221,10 @@ class ScannerCoil(Coil):
 
     def _create_coil_profile(self, dim, manufacturer=None):
         # Create spherical harmonics coil profiles
-        # f0, orders
-        mesh1, mesh2, mesh3 = generate_meshgrid(dim, self.affine)
+        # Change the affine offset so that the origin is at isocenter
+        affine_origin_iso = copy.deepcopy(self.affine)
+        affine_origin_iso[:3, 3] -= self.isocenter
+        mesh1, mesh2, mesh3 = generate_meshgrid(dim, affine_origin_iso)
         if manufacturer == 'SIEMENS':
             sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         elif manufacturer == 'GE':

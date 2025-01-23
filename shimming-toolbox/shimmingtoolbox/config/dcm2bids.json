@@ -8,7 +8,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "%CustomerSeq%\\\\gre_dyn_realtime_shimming",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
             }
         },
@@ -18,7 +18,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "%CustomerSeq%\\\\gre_dyn_realtime_shimming",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -28,7 +28,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "%CustomerSeq%\\\\gre_dyn_realtime_shimming",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
             }
         },
@@ -211,7 +211,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*fm2d2",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
             }
         },
@@ -221,7 +221,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*fm2d2",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -253,7 +253,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
             }
         },
@@ -265,7 +265,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -277,7 +277,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
             }
         },
@@ -289,7 +289,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "4"
             }
         },
@@ -301,7 +301,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "5"
             }
         },
@@ -313,7 +313,7 @@
                 "PulseSequenceDetails": "^(%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_SSreversal)$",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "6"
             }
         },
@@ -541,7 +541,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
             }
         },
@@ -553,7 +553,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -565,7 +565,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
             }
         },
@@ -577,7 +577,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "4"
             }
         },
@@ -589,7 +589,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "5"
             }
         },
@@ -601,7 +601,7 @@
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
                 "SequenceName": ".*fl[2-3]d[2-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "6"
             }
         },
@@ -851,7 +851,7 @@
                 "Manufacturer": "Philips",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "1",
-                "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
+                "ImageType": [".*", ".*", "M", ".*", "M", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -861,7 +861,7 @@
                 "Manufacturer": "Philips",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
                 "EchoNumber": "2",
-                "ImageType": [".*", ".*", "M", ".*", "M", ".*"]
+                "ImageType": [".*", ".*", "M", ".*", "M", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -921,7 +921,7 @@
                 "Manufacturer": "Philips",
                 "ProtocolName": ".*(_PA|-PA|_pa|-pa| pa| PA).*",
                 "PulseSequenceName": ".*EPI.*",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
@@ -931,7 +931,7 @@
                 "Manufacturer": "Philips",
                 "ProtocolName": "^((?!Survey|survey|WIP Survey).)+$",
                 "PulseSequenceName": "T1TFE",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
@@ -951,6 +951,15 @@
                 "Manufacturer": "Philips",
                 "PulseSequenceName": "T1FFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T2wTSE",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "TSE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T2", "NONE", "MAGNITUDE"]
             }
         },
         {
@@ -986,6 +995,150 @@
                 "EchoNumber": "2",
                 "PulseSequenceName": "FFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "1",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "2",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-3",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "3",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1_part-phase",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "1",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "PHASE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2_part-phase",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "2",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "PHASE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-3_part-phase",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "3",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "PHASE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1_part-imag",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "1",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "IMAGINARY"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2_part-imag",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "2",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "IMAGINARY"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-3_part-imag",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "3",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "IMAGINARY"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1_part-real",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "1",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "REAL"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2_part-real",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "2",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "REAL"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-3_part-real",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
+                "EchoNumber": "3",
+                "PulseSequenceName": "FFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "T1", "MIXED", "REAL"]
             }
         },
         {
