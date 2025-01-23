@@ -307,7 +307,7 @@ class B0ShimTab(Tab):
             },
             {
                 "label": "Mean Squared Error + Z gradient",
-                "option_value": "grad",
+                "option_value": "mse",
             }
         ]
 
