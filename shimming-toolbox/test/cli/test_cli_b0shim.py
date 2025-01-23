@@ -143,7 +143,7 @@ class TestCliDynamic(object):
                                              '--regularization-factor', '0.3',
                                              '--slices', 'ascending',
                                              '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'grad',
+                                             '--optimizer-criteria', 'mse',
                                              '--weighting-signal-loss', '0.01',
                                              '--mask-dilation-kernel-size', '5',
                                              '--output', tmp],
