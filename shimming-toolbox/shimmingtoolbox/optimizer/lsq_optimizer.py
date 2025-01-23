@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
+import logging
 import numpy as np
 from numpy.linalg import norm
 import scipy.optimize as opt
@@ -13,8 +13,8 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'grad', 'rmse']
-
+allowed_opt_criteria = ['mse', 'mae', 'std', 'grad', 'rmse', 'rmse_grad']
+logger = logging.getLogger(__name__)
 
 class LsqOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
@@ -47,14 +47,16 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
             allowed_opt_criteria[3]: self._residuals_grad,
-            allowed_opt_criteria[4]: self._residuals_rmse
+            allowed_opt_criteria[4]: self._residuals_rmse,
+            allowed_opt_criteria[5]: self._residuals_rmse_grad
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
             allowed_opt_criteria[2]: None,
             allowed_opt_criteria[3]: self._residuals_grad_jacobian,
-            allowed_opt_criteria[4]: None
+            allowed_opt_criteria[4]: None,
+            allowed_opt_criteria[5]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -92,14 +94,14 @@ class LsqOptimizer(OptimizerUtils):
 
         self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
 
-        if self.opt_criteria == 'grad':
-            self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
-            self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
-            self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+        # if self.opt_criteria == 'grad':
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
 
-            if len(self.unshimmed_Gz_vec) == 0:
-                raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
-                                 'Make sure to include at least 3 voxels in the slice direction.')
+        if len(self.unshimmed_Gz_vec) == 0:
+            raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
+                                'Make sure to include at least 3 voxels in the slice direction.')
 
     def optimize(self, mask):
         """
@@ -113,7 +115,7 @@ class LsqOptimizer(OptimizerUtils):
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                             The shape of the array returned has shape corresponding to the total number of channels
         """
-        if self.opt_criteria == 'grad':
+        if self.opt_criteria == 'grad' or 'rmse_grad':
             self._prepare_data(mask)
 
         self.mask = mask
@@ -228,7 +230,28 @@ class LsqOptimizer(OptimizerUtils):
 
         # RMSE regularized to minimize currents
         return norm((unshimmed_vec + coil_mat @ coef) / factor, 2) + np.abs(coef).dot(self.reg_vector)
+    
+    def _residuals_rmse_grad(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to minimize the root mean squared error (RMSE)
+            with through-slice gradient minimization
 
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            float: Residuals for least squares optimization with through-slice gradient minimization
+        """
+        c1 = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        c2 = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
+        c3 = np.abs(coef).dot(self.reg_vector)
+        
+        return c1 + c2 * self.w_signal_loss + c3
+        
     def _residuals_mse_jacobian(self, coef, a, b, c):
         """ Jacobian of the function that we want to minimize
         The function to minimize is :

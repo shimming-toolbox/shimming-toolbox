@@ -430,7 +430,7 @@ class ShimSequencer(Sequencer):
             # fmap space
             # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on
             # the fieldmap)
-            if self.opt_criteria == 'grad':
+            if self.opt_criteria == 'grad' or self.opt_criteria == 'rmse_grad':
                 full_Gz = np.zeros(corrections.shape)
                 full_Gx = np.zeros(corrections.shape)
                 full_Gy = np.zeros(corrections.shape)
@@ -476,7 +476,7 @@ class ShimSequencer(Sequencer):
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
-            if self.opt_criteria == 'grad':
+            if self.opt_criteria == 'grad' or self.opt_criteria == 'rmse_grad':
                 # Plot gradient realted results
                 self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
 
