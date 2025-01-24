@@ -232,7 +232,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if w_signal_loss or w_signal_loss_xy:
-        if opt_criteria != 'mse':
+        if opt_criteria not in ['mse', 'rmse']:
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
         
         opt_criteria += '_signal_recovery'
