@@ -290,7 +290,8 @@ class B0ShimTab(Tab):
                 "default_text": "0.01",
             },
         ]
-        component_slice_w_sig_loss = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
+        component_slice_w_sig_loss_mse = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
+        component_slice_w_sig_loss_rmse = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
 
         criteria_dropdown_metadata = [
             {
@@ -323,9 +324,9 @@ class B0ShimTab(Tab):
             cli=dynamic_cli,
             list_components=[self.create_empty_component(),
                             self.create_empty_component(),
-                            component_slice_w_sig_loss,
+                            component_slice_w_sig_loss_mse,
                             self.create_empty_component(),
-                            component_slice_w_sig_loss]
+                            component_slice_w_sig_loss_rmse],
         )
 
         dropdown_opt_metadata = [
