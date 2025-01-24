@@ -302,12 +302,16 @@ class B0ShimTab(Tab):
                 "option_value": "mae",
             },
             {
+                "label": "Mean Squared Error + Z gradient",
+                "option_value": "mse",
+            },
+            {
                 "label": "Root Mean Squared Error",
                 "option_value": "rmse",
             },
             {
-                "label": "Mean Squared Error + Z gradient",
-                "option_value": "mse",
+                "label": "Root Mean Squared Error + Z gradient",
+                "option_value": "rmse",
             }
         ]
 
@@ -319,6 +323,7 @@ class B0ShimTab(Tab):
             cli=dynamic_cli,
             list_components=[self.create_empty_component(),
                             self.create_empty_component(),
+                            component_slice_w_sig_loss,
                             self.create_empty_component(),
                             component_slice_w_sig_loss]
         )
