@@ -89,7 +89,10 @@ def b0shim_cli():
 @click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                   " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+                   " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity."
+                   " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                   "The optimal value for mse is around 0.01\n"
+                   "The optimal value for rmse is around 10")
 @click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
