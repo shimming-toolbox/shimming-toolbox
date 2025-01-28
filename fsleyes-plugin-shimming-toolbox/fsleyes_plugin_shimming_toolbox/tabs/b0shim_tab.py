@@ -283,14 +283,24 @@ class B0ShimTab(Tab):
         component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
         component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
 
-        weighting_signal_loss_metadata = [
+        weighting_signal_loss_metadata_mse = [
             {
                 "button_label": "Weighting signal loss",
                 "name": "weighting-signal-loss",
                 "default_text": "0.01",
             },
         ]
-        component_slice_w_sig_loss = InputComponent(self, weighting_signal_loss_metadata, cli=dynamic_cli)
+        
+        weighting_signal_loss_metadata_rmse = [
+            {
+                "button_label": "Weighting signal loss",
+                "name": "weighting-signal-loss",
+                "default_text": "10",
+            },
+        ]
+        
+        component_slice_w_sig_loss_mse = InputComponent(self, weighting_signal_loss_metadata_mse, cli=dynamic_cli)
+        component_slice_w_sig_loss_rmse = InputComponent(self, weighting_signal_loss_metadata_rmse, cli=dynamic_cli)
 
         criteria_dropdown_metadata = [
             {
@@ -302,12 +312,16 @@ class B0ShimTab(Tab):
                 "option_value": "mae",
             },
             {
+                "label": "Mean Squared Error + Z gradient",
+                "option_value": "mse",
+            },
+            {
                 "label": "Root Mean Squared Error",
                 "option_value": "rmse",
             },
             {
-                "label": "Mean Squared Error + Z gradient",
-                "option_value": "grad",
+                "label": "Root Mean Squared Error + Z gradient",
+                "option_value": "rmse",
             }
         ]
 
@@ -319,8 +333,9 @@ class B0ShimTab(Tab):
             cli=dynamic_cli,
             list_components=[self.create_empty_component(),
                             self.create_empty_component(),
+                            component_slice_w_sig_loss_mse,
                             self.create_empty_component(),
-                            component_slice_w_sig_loss]
+                            component_slice_w_sig_loss_rmse],
         )
 
         dropdown_opt_metadata = [

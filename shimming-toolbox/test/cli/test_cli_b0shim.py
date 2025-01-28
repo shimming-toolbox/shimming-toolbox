@@ -155,7 +155,7 @@ class TestCliDynamic(object):
             assert values == [-4.305412, -67.945413, 29.093204, -3804.340894,
                               -163.848482, -863.019747, 576.108918, -177.97076]
 
-    def test_cli_dynamic_signal_recovery(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_signal_recovery_mse(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
 
         # Duplicate nii_fmap's third dimension
@@ -186,8 +186,47 @@ class TestCliDynamic(object):
                                              '--regularization-factor', '0.3',
                                              '--slices', 'ascending',
                                              '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'grad',
+                                             '--optimizer-criteria', 'mse',
                                              '--weighting-signal-loss', '0.01',
+                                             '--mask-dilation-kernel-size', '5',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            
+    def test_cli_dynamic_signal_recovery_rmse(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+
+        # Duplicate nii_fmap's third dimension
+        fmap = nii_fmap.get_fdata()
+        fmap = np.repeat(fmap, 5, axis=2)
+        nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.3',
+                                             '--slices', 'ascending',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'rmse',
+                                             '--weighting-signal-loss', '10',
                                              '--mask-dilation-kernel-size', '5',
                                              '--output', tmp],
                                 catch_exceptions=False)
