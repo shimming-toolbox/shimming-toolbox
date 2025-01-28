@@ -192,24 +192,6 @@ class Coil(object):
 
         # Read in "coefs_used"
         if constraints.get("coefs_used") is not None:
-            # Make sure that coefs_used is defined for all keys and that coef_sum_max is not None
-            skipping_coef_sum_max_error_check = constraints.get("coef_sum_max") is None
-            for key in constraints["coefs_used"]:
-                if np.any(constraints["coefs_used"][key] is None):
-                    skipping_coef_sum_max_error_check = True
-                    break
-                if np.any(np.array(constraints["coefs_used"][key]) == None):
-                    skipping_coef_sum_max_error_check = True
-                    break
-            if not skipping_coef_sum_max_error_check:
-                # Log if the current coefs are outside the total sum constraint
-                total_current = 0
-                for key in constraints["coefs_used"]:
-                    total_current += sum(np.abs(constraints["coefs_used"][key]))
-                if total_current > constraints["coef_sum_max"]:
-                    logger.warning(f"Sum of the current coefficients is greater than the maximum allowed value: "
-                                   f"{constraints['coef_sum_max']}")
-
             self.coefs_used = constraints["coefs_used"]
 
         for key_name in required_constraints:
