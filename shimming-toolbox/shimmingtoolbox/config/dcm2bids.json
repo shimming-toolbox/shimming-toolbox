@@ -905,18 +905,18 @@
         {
             "datatype": "func",
             "suffix": "bold",
-            "custom_entities": "acq-AP",
+            "custom_entities": "dir-AP",
             "criteria": {
                 "Manufacturer": "Philips",
                 "ProtocolName": ".*(_AP|-AP|_ap|-ap| ap| AP).*",
                 "PulseSequenceName": ".*EPI.*",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
             "datatype": "func",
             "suffix": "bold",
-            "custom_entities": "acq-PA",
+            "custom_entities": "dir-PA",
             "criteria": {
                 "Manufacturer": "Philips",
                 "ProtocolName": ".*(_PA|-PA|_pa|-pa| pa| PA).*",
@@ -929,7 +929,7 @@
             "suffix": "T1wTFE",
             "criteria": {
                 "Manufacturer": "Philips",
-                "ProtocolName": "^((?!Survey|survey|WIP Survey).)+$",
+                "ProtocolName": "^((?!Survey|survey|WIP Survey|SURVEY|WIP SURVEY).)+$",
                 "PulseSequenceName": "T1TFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
@@ -939,9 +939,9 @@
             "suffix": "survey",
             "criteria": {
                 "Manufacturer": "Philips",
-                "ProtocolName": ".*(Survey|WIP Survey).*",
+                "ProtocolName": ".*(Survey|survey|WIP Survey|SURVEY|WIP SURVEY).*",
                 "PulseSequenceName": "T1TFE",
-                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
