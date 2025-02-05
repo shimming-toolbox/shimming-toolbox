@@ -129,6 +129,16 @@
         {
             "datatype": "anat",
             "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "SequenceName": ".*tfl3d1_16.*",
+                "ProtocolName": "T1w",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "NORM", "DIS3D", "DIS2D", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-1",
             "criteria": {
                 "Manufacturer": "Siemens",
