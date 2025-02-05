@@ -70,7 +70,7 @@
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
                 "SeriesDescription": ".*_INV1",
-                "ImageType": [".*", ".*", "M", ".*", "NORM"]
+                "ImageType": [".*", ".*", "M", ".*", "NORM", "MAGNITUDE"]
             }
         },
         {
@@ -81,7 +81,7 @@
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
                 "SeriesDescription": ".*_INV2",
-                "ImageType": [".*", ".*", "M", ".*", "NORM"]
+                "ImageType": [".*", ".*", "M", ".*", "NORM", "MAGNITUDE"]
             }
         },
         {
@@ -91,7 +91,7 @@
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
-                "ImageType": [".*", ".*", "M", ".*", "UNI"]
+                "ImageType": [".*", ".*", "M", ".*", "UNI", "MAGNITUDE"]
             }
         },
         {
@@ -102,7 +102,7 @@
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
                 "SeriesDescription": ".*_INV1",
-                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+                "ImageType": [".*", ".*", "M", "NORM", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -113,7 +113,7 @@
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
                 "SeriesDescription": ".*_INV2",
-                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+                "ImageType": [".*", ".*", "M", "NORM", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -123,17 +123,7 @@
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*tfl3d1_16.*",
                 "ProtocolName": ".*mp2rage.*",
-                "ImageType": [".*", ".*", "M", "UNI", ".*"]
-            }
-        },
-        {
-            "datatype": "anat",
-            "suffix": "T1w",
-            "criteria": {
-                "Manufacturer": "Siemens",
-                "SequenceName": ".*tfl3d1_16.*",
-                "ProtocolName": "T1w",
-                "ImageType": ["ORIGINAL", "PRIMARY", "M", "NORM", "DIS3D", "DIS2D", "MAGNITUDE"]
+                "ImageType": [".*", ".*", "M", "UNI", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -145,7 +135,7 @@
                 "EchoNumber": "1",
                 "SequenceName": ".*tfl3d.*",
                 "ProtocolName": ".*(mprage|MPRAGE).*",
-                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND", "MAGNITUDE"]
             }
         },
         {
@@ -157,7 +147,7 @@
                 "EchoNumber": "2",
                 "SequenceName": ".*tfl3d.*",
                 "ProtocolName": ".*(mprage|MPRAGE).*",
-                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND", "MAGNITUDE"]
             }
         },
         {
@@ -169,7 +159,7 @@
                 "EchoNumber": "3",
                 "SequenceName": ".*tfl3d.*",
                 "ProtocolName": ".*(mprage|MPRAGE).*",
-                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND", "MAGNITUDE"]
             }
         },
         {
@@ -181,7 +171,7 @@
                 "EchoNumber": "4",
                 "SequenceName": ".*tfl3d.*",
                 "ProtocolName": ".*(mprage|MPRAGE).*",
-                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND"]
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "ND", "MAGNITUDE"]
             }
         },
         {
@@ -192,7 +182,7 @@
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*tfl3d.*",
                 "ProtocolName": ".*(mprage|MPRAGE).*",
-                "ImageType": ["ORIGINAL", "PRIMARY", "OTHER", "ND", "MEAN"]
+                "ImageType": ["ORIGINAL", "PRIMARY", "OTHER", "ND", "MEAN", "MAGNITUDE"]
             }
         },
         {
@@ -202,7 +192,7 @@
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*tfl3d1_16",
                 "ProtocolName": "T1w",
-                "ImageType": [".*", ".*", "M", "NORM", ".*", ".*"]
+                "ImageType": [".*", ".*", "M", "NORM", ".*", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -212,7 +202,7 @@
                 "Manufacturer": "Siemens",
                 "SequenceName": ".*fl3d1",
                 "ProtocolName": "GRE-T1w",
-                "ImageType": [".*", ".*", "M", "NORM", ".*"]
+                "ImageType": [".*", ".*", "M", "NORM", ".*", "MAGNITUDE"]
             }
         },
         {
@@ -419,7 +409,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -431,7 +421,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
             }
         },
@@ -443,7 +433,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "4"
             }
         },
@@ -455,7 +445,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "5"
             }
         },
@@ -467,7 +457,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": ".*(field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).*",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "6"
             }
         },
@@ -695,7 +685,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
             }
         },
@@ -707,7 +697,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
             }
         },
@@ -719,7 +709,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
             }
         },
@@ -731,7 +721,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "4"
             }
         },
@@ -743,7 +733,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "5"
             }
         },
@@ -755,7 +745,7 @@
                 "PulseSequenceDetails": "%SiemensSeq%\\\\gre",
                 "SequenceName": ".*fl[2-3]d[2-6]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-).)+$",
-                "ImageType": [".*", ".*", "M", ".*", ".*", ".*"],
+                "ImageType": [".*", ".*", "M", ".*", ".*", ".*", "MAGNITUDE"],
                 "EchoNumber": "6"
             }
         },
