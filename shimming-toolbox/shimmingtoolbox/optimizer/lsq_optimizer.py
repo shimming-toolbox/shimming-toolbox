@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
+import logging
 import numpy as np
 from numpy.linalg import norm
 import scipy.optimize as opt
@@ -13,8 +13,8 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'grad', 'rmse']
-
+allowed_opt_criteria = ['mse', 'mae', 'std', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery']
+logger = logging.getLogger(__name__)
 
 class LsqOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
@@ -46,15 +46,17 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
-            allowed_opt_criteria[3]: self._residuals_grad,
-            allowed_opt_criteria[4]: self._residuals_rmse
+            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery,
+            allowed_opt_criteria[4]: self._residuals_rmse,
+            allowed_opt_criteria[5]: self._residuals_rmse_signal_recovery
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
             allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: self._residuals_grad_jacobian,
-            allowed_opt_criteria[4]: None
+            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery_jacobian,
+            allowed_opt_criteria[4]: None,
+            allowed_opt_criteria[5]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -64,7 +66,7 @@ class LsqOptimizer(OptimizerUtils):
         else:
             raise ValueError("Optimization criteria not supported")
 
-    def _prepare_data(self, mask):
+    def _prepare_signal_recovery_data(self, mask):
         """ Prepares the data for the optimization.
         """
         self.counter += 1
@@ -92,14 +94,13 @@ class LsqOptimizer(OptimizerUtils):
 
         self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
 
-        if self.opt_criteria == 'grad':
-            self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
-            self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
-            self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
 
-            if len(self.unshimmed_Gz_vec) == 0:
-                raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
-                                 'Make sure to include at least 3 voxels in the slice direction.')
+        if len(self.unshimmed_Gz_vec) == 0:
+            raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
+                                'Make sure to include at least 3 voxels in the slice direction.')
 
     def optimize(self, mask):
         """
@@ -113,8 +114,8 @@ class LsqOptimizer(OptimizerUtils):
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                             The shape of the array returned has shape corresponding to the total number of channels
         """
-        if self.opt_criteria == 'grad':
-            self._prepare_data(mask)
+        if 'signal_recovery' in self.opt_criteria:
+            self._prepare_signal_recovery_data(mask)
 
         self.mask = mask
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
@@ -172,7 +173,7 @@ class LsqOptimizer(OptimizerUtils):
         # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
         return a @ coef @ coef + b @ coef + c
 
-    def _residuals_grad(self, coef, a, b, c, e):
+    def _residuals_mse_signal_recovery(self, coef, a, b, c, e):
         result = coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
         return result
 
@@ -225,10 +226,33 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
+        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         # RMSE regularized to minimize currents
-        return norm((unshimmed_vec + coil_mat @ coef) / factor, 2) + np.abs(coef).dot(self.reg_vector)
+        return b0_rmse_coef + current_regularization_coef
+    
+    def _residuals_rmse_signal_recovery(self, coef, unshimmed_vec, coil_mat, factor):
+        """ Objective function to minimize the root mean squared error (RMSE)
+            with through-slice gradient minimization
 
+        Args:
+            coef (np.ndarray): 1D array of channel coefficients
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            float: Residuals for least squares optimization with through-slice gradient minimization
+        """
+        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
+        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
+        
+        return b0_rmse_coef + signal_recovery_coef * self.w_signal_loss + current_regularization_coef
+        
     def _residuals_mse_jacobian(self, coef, a, b, c):
         """ Jacobian of the function that we want to minimize
         The function to minimize is :
@@ -250,7 +274,7 @@ class LsqOptimizer(OptimizerUtils):
         """
         return 2 * a @ coef + b
 
-    def _residuals_grad_jacobian(self, coef, a, b, c, e):
+    def _residuals_mse_signal_recovery_jacobian(self, coef, a, b, c, e):
         """ Jacobian of the function that we want to minimize
 
         Args:
@@ -298,7 +322,7 @@ class LsqOptimizer(OptimizerUtils):
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
-        elif self.opt_criteria == 'grad':
+        elif self.opt_criteria == 'mse_signal_recovery':
             a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
 
             currents_sp = opt.minimize(self._criteria_func, currents_0,
@@ -333,11 +357,7 @@ class LsqOptimizer(OptimizerUtils):
             # scipy minimize expects the return value of the residual function to be ~10^0 to 10^1
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
             # regularization on the currents has no affect on the output stability factor.
-            if self.opt_criteria == 'mse':
-                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
-                                                           np.zeros_like(coil_mat),
-                                                           factor=1)
-            elif self.opt_criteria == 'grad':
+            if self.opt_criteria in ['mse', 'mse_signal_recovery']:
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
