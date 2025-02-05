@@ -857,7 +857,7 @@ class ShimSequencer(Sequencer):
                             manufacturer = self.json_fieldmap.get('Manufacturer')
                             n_channels = channels_per_order(order, manufacturer)
                             for i_channel in range(n_channels):
-                                if coil.coefs_used[str(order)][i_channel] is not None:
+                                if coil.coefs_used[str(order)] is not None and coil.coefs_used[str(order)][i_channel] is not None:
                                     shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
                                                          coefs[0, i + j + i_channel])
                                     manufacturers_model_name = self.json_fieldmap.get('ManufacturersModelName')
