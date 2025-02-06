@@ -23,7 +23,7 @@ URL_DICT: Dict[str, Tuple[List[str], str]] = {
         "Binary for prelude software",
     ),
     "data_dynamic_shimming": (
-        ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20220319.zip"],
+        ["https://github.com/shimming-toolbox/data-dynamic-shimming/archive/r20250205.zip"],
         "B0 dynamic shimming dataset.",
     ),
     "data_create_coil_profiles": (

@@ -16,20 +16,19 @@ TESTING_DATA_PATH="$(cd "$(dirname "testing_data")" || exit; pwd)/$(basename "te
 cd testing_data/ds_b0/sub-realtime/sourcedata || exit
 
 # dcm2bids -d . -o rt_shim_nifti -p sub-example -c ../../config/dcm2bids.json
-st_dicom_to_nifti --input "." --output "../.." --subject "sub-gradient_realtime" || exit
-cd ../../sub-gradient_realtime/fmap || exit
+st_dicom_to_nifti --input "." --output "../.." --subject "gradientrealtime" || exit
+cd ../../sub-gradientrealtime/fmap || exit
 
 # Create fieldmap
-st_prepare_fieldmap "sub-gradient_realtime_phasediff.nii.gz" --mag "sub-gradient_realtime_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-gradient_realtime_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
+st_prepare_fieldmap "sub-gradientrealtime_phasediff.nii.gz" --mag "sub-gradientrealtime_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-gradientrealtime_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
 
 # Mask anatomical image
-mkdir "../../derivatives/sub-gradient_realtime"
-st_mask box --input "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" || exit
+st_mask box --input "../anat/sub-gradientrealtime_magnitude1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" || exit
 
 # Shim
-st_b0shim gradient-realtime --fmap "sub-gradient_realtime_fieldmap.nii.gz" --anat "../anat/sub-gradient_realtime_unshimmed_e1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradient_realtime/sub-gradient_realtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradient_realtime/gradient_realtime" || exit
+st_b0shim gradient-realtime --fmap "sub-gradientrealtime_fieldmap.nii.gz" --anat "../anat/sub-gradientrealtime_magnitude1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradientrealtime/gradient_realtime" || exit
 
-echo -e "\n\033[0;32mOutput is located here: ${TESTING_DATA_PATH}/ds_b0/derivatives/sub-gradient_realtime/gradient_realtime"
+echo -e "\n\033[0;32mOutput is located here: ${TESTING_DATA_PATH}/ds_b0/derivatives/sub-gradientrealtime/gradient_realtime"
 
 # st_b0shim gradient_realtime will:
 # - resample (in time) the physio trace to the 4d fieldmap data so that each time point of the fieldmap has its corresponding respiratory probe value.
