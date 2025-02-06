@@ -438,36 +438,6 @@ class ShimSequencer(Sequencer):
         shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
         if self.path_output is not None:
             # fmap space
-            # Merge the i_shim into one single fieldmap shimmed (correction applied only where it will be applied on
-            # the fieldmap)
-            if self.opt_criteria == 'grad':
-                full_Gz = np.zeros(corrections.shape)
-                full_Gx = np.zeros(corrections.shape)
-                full_Gy = np.zeros(corrections.shape)
-                shimmed_temp = corrections + unshimmed[..., np.newaxis]
-
-                # Resample the shimmed fieldmap and the corrections (useful for the evaluation of the shim)
-                shimmed_temp_nii = nib.Nifti1Image(shimmed_temp, affine=self.nii_fieldmap_orig.affine,
-                                                   header=self.nii_fieldmap_orig.header)
-                corrections_nii = nib.Nifti1Image(corrections, affine=self.nii_fieldmap_orig.affine,
-                                                  header=self.nii_fieldmap_orig.header)
-                shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat, order=1,
-                                                             mode='grid-constant')
-                corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1,
-                                                            mode='grid-constant')
-                nib.save(shimmed_temp_resample_nii,
-                         os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
-                nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
-                # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
-
-                full_Gz = np.gradient(shimmed_temp, axis=2)
-                full_Gx = np.gradient(shimmed_temp, axis=0)
-                full_Gy = np.gradient(shimmed_temp, axis=1)
-
-                full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
-                full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
-                full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
-
             if len(self.slices) == 1:
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
@@ -487,14 +457,39 @@ class ShimSequencer(Sequencer):
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
-            if self.opt_criteria == 'grad':
+            if 'signal_recovery' in self.opt_criteria:
+
+                full_Gz = np.zeros(corrections.shape)
+                full_Gx = np.zeros(corrections.shape)
+                full_Gy = np.zeros(corrections.shape)
+                shimmed_temp = corrections + unshimmed[..., np.newaxis]
+
+                full_Gz = np.gradient(shimmed_temp, axis=2)
+                full_Gx = np.gradient(shimmed_temp, axis=0)
+                full_Gy = np.gradient(shimmed_temp, axis=1)
+
+                full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
+                full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
+                full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
                 # Plot gradient realted results
                 self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
 
-                # x, y, z are in the patient's coordinate system
-                self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
-                self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
-                self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
+                if logger.level <= getattr(logging, 'DEBUG'):
+                    # x, y, z are in the patient's coordinate system
+                    self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
+                    self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
+                    self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
+
+                    # Resample the shimmed fieldmap and the corrections (useful for the evaluation of the shim)
+                    shimmed_temp_nii = nib.Nifti1Image(shimmed_temp, affine=self.nii_fieldmap_orig.affine,
+                                                        header=self.nii_fieldmap_orig.header)
+                    corrections_nii = nib.Nifti1Image(corrections, affine=self.nii_fieldmap_orig.affine,
+                                                    header=self.nii_fieldmap_orig.header)
+                    shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat, order=1, mode='grid-constant')
+                    corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
+                    nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
+                    nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
+                    # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, self.path_output)

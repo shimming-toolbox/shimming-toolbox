@@ -81,16 +81,19 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
                    " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
-@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0,
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                   " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
-@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0,
+                   " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity."
+                   " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                   "The optimal value for mse is around 0.01\n"
+                   "The optimal value for rmse is around 10")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
                    " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
@@ -227,9 +230,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     with open(fname_anat_json) as json_file:
         json_anat_data = json.load(json_file)
 
-    # Get the EPI echo time if optimization criteria is grad
-    if opt_criteria == 'grad':
+    # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
+    if w_signal_loss or w_signal_loss_xy:
+        if opt_criteria not in ['mse', 'rmse']:
+            raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
+
+        opt_criteria += '_signal_recovery'
         epi_te = json_anat_data.get('EchoTime')
+
+        if w_signal_loss is None:
+            w_signal_loss = 0
+        if w_signal_loss_xy is None:
+            w_signal_loss_xy = 0
     else:
         epi_te = None
 
