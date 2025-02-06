@@ -2,7 +2,7 @@
 """
 This file includes utility functions useful for the shimming module
 """
-
+import copy
 import nibabel as nib
 import json
 import numpy as np
@@ -222,39 +222,31 @@ def get_scanner_shim_settings(bids_json_dict, orders):
         '0': None,
         '1': None,
         '2': None,
-        '3': None,
-        'order0_is_valid': False,
-        'order1_is_valid': False,
-        'order2_is_valid': False,
-        'order3_is_valid': False
+        '3': None
     }
     # get_imaging_frequency
     if bids_json_dict.get('ImagingFrequency'):
         scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
-        scanner_shim['order0_is_valid'] = True
 
     # get_shim_orders
     if bids_json_dict.get('ShimSetting'):
         n_shim_values = len(bids_json_dict.get('ShimSetting'))
         if n_shim_values == 3:
             scanner_shim['1'] = bids_json_dict.get('ShimSetting')
-            scanner_shim['order1_is_valid'] = True
         elif n_shim_values == 8:
             pass
             scanner_shim['2'] = bids_json_dict.get('ShimSetting')[3:]
             scanner_shim['1'] = bids_json_dict.get('ShimSetting')[:3]
-            scanner_shim['order1_is_valid'] = True
-            scanner_shim['order2_is_valid'] = True
         else:
             logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
     else:
-        logger.warning("ShimSetting tag is not available")
+        logger.debug("ShimSetting tag is not available")
 
     # Check if the orders to shim are available in the metadata
     for order in orders:
         if scanner_shim.get(str(order)) is None:
-            logger.warning(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
-                           f"respected.")
+            logger.debug(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
+                         f"respected.")
 
     return scanner_shim
 
@@ -267,15 +259,14 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
         manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
         manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
                                         ManufacturersModelName'. Supported names: 'Prisma_fit'.
-        shim_settings (dict): Dictionary with keys: '1', '2', 'orderX_is_valid'. '1' is a list of 3
-                       coefficients for the first order. Found in the json BIDS sidecar under 'ShimSetting'. '2' is
-                       a list of 5 coefficients. 'orderX_is_valid' is a boolean.
+        shim_settings (dict): Dictionary with keys: '1', '2'. Found in the json BIDS sidecar under 'ShimSetting'. '2' is
+                       a list of 5 coefficients.
 
     Returns:
         dict: Same dictionary as the shim_settings input with coefficients of the first, second and third order
               converted according to the appropriate manufacturer model.
     """
-    scanner_shim_mp = shim_settings
+    scanner_shim_mp = copy.deepcopy(shim_settings)
 
     # Check if the manufacturer is implemented
     if manufacturer not in SCANNER_CONSTRAINTS_DAC.keys():
@@ -289,21 +280,22 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
         # Do all the orders except f0
         for order in ['0', '1', '2', '3']:
             # Make sure the order is available in the metadata
-            if shim_settings.get(order) and shim_settings[f'order{order}_is_valid'] is True:
+            if shim_settings.get(order) and shim_settings[order] is not None:
 
                 # No conversion necessary for f0
                 if order == '0':
                     # F0 is in Hz, no conversion necessary, just check that the current frequency fits within the bounds
-                    tolerance = 0.001 * shim_settings[order][0]
                     max_0 = scanner_constraints[order][0][1]
                     min_0 = scanner_constraints[order][0][0]
-                    if (shim_settings[order][0] > (max_0 + tolerance)) or (shim_settings[order][0] < (min_0 - tolerance)):
+                    tolerance = 0.001 * (max_0 - min_0)
+                    if (shim_settings[order][0] > (max_0 + tolerance)) or (
+                            shim_settings[order][0] < (min_0 - tolerance)):
                         raise ValueError(f"Current f0 frequency {shim_settings[order][0]} exceeds known system limits.")
                     continue
                 # Check if unit conversion for the order is implemented
                 elif not scanner_constraints_dac.get(order):
                     logger.warning(f"Order {order} conversion of {manufacturers_model_name} not implemented.")
-                    scanner_shim_mp[f'order{order}_is_valid'] = False
+                    scanner_shim_mp[order] = None
                     continue
 
                 # Convert the shim settings to ui units
@@ -312,8 +304,8 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                                                               scanner_constraints_dac[order])
 
     else:
-        logger.warning(f"Manufacturer model {manufacturers_model_name} not implemented,"
-                       f"could not convert shim settings")
+        logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, "
+                     f"could not convert shim settings")
 
     return scanner_shim_mp
 
@@ -321,21 +313,49 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
 def _convert_to_ui_units(shim_settings_coefs, scanner_constraints, scanner_constraints_dac):
     # Convert to ui units
     coefs_dac = shim_settings_coefs
-    max_coef_ui = np.array([cst[1] for cst in scanner_constraints])
-    min_coef_ui = np.array([cst[0] for cst in scanner_constraints])
-    coefs_ui = (np.array(coefs_dac) * max_coef_ui / np.array(scanner_constraints_dac))
-    tolerance = 0.001 * max_coef_ui
-    if np.any(coefs_ui > (max_coef_ui + tolerance)) or np.any(coefs_ui < (min_coef_ui - tolerance)):
+    max_coefs_ui = np.array([cst[1] for cst in scanner_constraints])
+    min_coefs_ui = np.array([cst[0] for cst in scanner_constraints])
+    coefs_ui = (np.array(coefs_dac) * (max_coefs_ui - min_coefs_ui) / (2 * np.array(scanner_constraints_dac)))
+    tolerance = 0.001 * (max_coefs_ui - min_coefs_ui)
+    if np.any(coefs_ui > (max_coefs_ui + tolerance)) or np.any(coefs_ui < (min_coefs_ui - tolerance)):
         raise ValueError("Current shim settings exceed known system limits.")
 
     return coefs_ui
+
+
+def convert_to_dac_units(shim_settings_coefs_ui, scanner_constraints, scanner_constraints_dac):
+    """ Convert shim settings from ui units to DAC units
+
+    Args:
+        shim_settings_coefs_ui (list): List of coefficients in the ui units
+        scanner_constraints (list): List containing the constraints of the scanner for a specific order
+        scanner_constraints_dac (list): List containing the maximum DAC values for a specific order
+
+    Returns:
+        list: List of coefficients in the DAC units
+    """
+    # Convert to dac units
+    max_coefs_ui = np.array([cst[1] for cst in scanner_constraints])
+    min_coefs_ui = np.array([cst[0] for cst in scanner_constraints])
+    coefs_dac = (np.array(shim_settings_coefs_ui) * 2 * np.array(scanner_constraints_dac) /
+                 (max_coefs_ui - min_coefs_ui))
+    tolerance = 0.001 * scanner_constraints_dac
+    if (np.any(coefs_dac > (scanner_constraints_dac + tolerance)) or
+            np.any(coefs_dac < (-scanner_constraints_dac - tolerance))):
+        logger.warning("Future shim settings exceed known system limits.")
+
+    return coefs_dac
 
 
 class ScannerShimSettings:
     def __init__(self, bids_json_dict, orders=None):
 
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
+
         manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
+        if manufacturer_model_name is not None:
+            manufacturer_model_name.replace(' ', '_')
+
         manufacturer = bids_json_dict.get('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
 
@@ -345,8 +365,6 @@ class ScannerShimSettings:
         if any(order >= 0 for order in orders):
             for order in sorted(orders):
                 if self.shim_settings.get(str(order)) is not None:
-                    if not self.shim_settings[f'order{order}_is_valid']:
-                        raise ValueError(f"Order {order} shim settings is not valid")
                     # Concatenate 2 lists
                     coefs.extend(self.shim_settings.get(str(order)))
                 else:
