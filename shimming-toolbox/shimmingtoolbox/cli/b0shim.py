@@ -231,7 +231,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         json_anat_data = json.load(json_file)
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
-    if w_signal_loss or w_signal_loss_xy:
+    logger.info("Testing if Signal loss recovery is enabled")
+    if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
+        logger.info("Signal loss recovery is enabled")
         if opt_criteria not in ['mse', 'rmse']:
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
 
