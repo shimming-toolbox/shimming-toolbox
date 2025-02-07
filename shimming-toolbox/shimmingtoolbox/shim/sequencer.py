@@ -899,7 +899,6 @@ class ShimSequencer(Sequencer):
 
                 i += coil.dim[3]
 
-        logger.info(json_shimmed)
         with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
 
