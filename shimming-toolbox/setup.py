@@ -4,12 +4,46 @@ from os import path
 # Get the directory where this current file is saved
 here = path.abspath(path.dirname(__file__))
 
+# Read the long description from README.rst
 with open(path.join(path.dirname(here), "README.rst"), encoding="utf-8") as f:
     long_description = f.read()
 
+# Read the version from version.txt
 path_version = path.join(here, 'shimmingtoolbox', 'version.txt')
 with open(path_version) as f:
     version = f.read().strip()
+
+# Determine install_requires from requirements.txt if it exists
+requirements_path = path.join(path.dirname(here), "requirements_st.txt")
+if path.exists(requirements_path):
+    with open(requirements_path) as f:
+        install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+else:
+    install_requires = [
+        "click",
+        "cloup",
+        "dataclasses",
+        "dcm2bids>=3.0.1",
+        "dcm2niix>=1.0.20241211",
+        "importlib-metadata",
+        "joblib",
+        "matplotlib>=3.5",
+        "nibabel>=3.2.1",
+        "numpy>=1.21",
+        "phantominator~=0.6.4",
+        "pillow>=9.0.0",
+        "psutil>=5.8.0",
+        "pydicom",
+        "pytest>=6.2.5",
+        "pytest-cov>=2.5.1",
+        "quadprog",
+        "raven",
+        "requests",
+        "scikit-learn>=1.1.2",
+        "scipy>=1.7",
+        "spec2nii",
+        "tqdm"
+    ]
 
 setup(
     name="shimmingtoolbox",
@@ -41,31 +75,7 @@ setup(
     },
     packages=find_packages(exclude=["docs"]),
     include_package_data=True,
-    install_requires=[
-        "click",
-        "dcm2bids>=3.0.1",
-        "importlib-metadata",
-        "numpy>=1.21",
-        "phantominator~=0.6.4",
-        "nibabel>=3.2.1",
-        "requests",
-        "scipy>=1.7",
-        "tqdm",
-        "matplotlib>=3.5",
-        "psutil>=5.8.0",
-        "pydicom",
-        "pytest>=6.2.5",
-        "pytest-cov>=2.5.1",
-        "scikit-learn>=1.1.2",
-        "pillow>=9.0.0",
-        "dataclasses",
-        "raven",
-        "joblib",
-        "quadprog",
-        "cloup",
-        "spec2nii",
-        "dcm2niix>=1.0.20241211"
-    ],
+    install_requires=install_requires,
     extras_require={
         'docs': ["sphinx>=1.7", "sphinx_rtd_theme==2.0.0", "sphinx-click", "myst_parser"],
         'dev': ["pre-commit>=2.10.0"]
