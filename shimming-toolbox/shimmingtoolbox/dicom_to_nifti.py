@@ -1,7 +1,7 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-from distutils.dir_util import copy_tree
+from shutil import copytree
 import json
 import logging
 import nibabel as nib
@@ -56,7 +56,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
         os.makedirs(path_derivatives)
 
     # Copy original dicom files into nifti_path/sourcedata
-    copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
+    copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
 
     # Update the PATH environment variable to include the dcm2niix executable
     # TODO: Try this out on Windows, path could be Scripts instead of bin
