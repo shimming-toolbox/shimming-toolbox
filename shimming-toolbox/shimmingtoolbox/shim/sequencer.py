@@ -439,21 +439,23 @@ class ShimSequencer(Sequencer):
         if self.path_output is not None:
             # fmap space
             if len(self.slices) == 1:
+                # TODO: Update the shim settings if Scanner coil?
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
 
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
                 nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap_orig.affine,
                                                    header=self.nii_fieldmap_orig.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
+                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-
-            # Output JSON file
-            self.save_calc_fmap_json(coefs)
+                with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+                    json.dump(self.json_fieldmap, outfile, indent=4)
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
