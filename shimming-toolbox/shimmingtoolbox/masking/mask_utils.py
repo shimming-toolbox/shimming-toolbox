@@ -7,6 +7,7 @@ import numpy as np
 import os
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
 from skimage.morphology import binary_dilation, disk
+
 from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -231,7 +232,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     return mask_dilated
 
 
-def test_basic_soft_square_mask(data, soft_width, soft_value, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
+def basic_soft_square_mask(data, soft_width, soft_value, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
     """
     Creates a basic square softmask. Returns softmask with the same shape as `data`.
 
@@ -255,7 +256,7 @@ def test_basic_soft_square_mask(data, soft_width, soft_value, len_dim1, len_dim2
     return soft_square_mask
 
 
-def test_soft_square_mask(data, soft_width, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
+def soft_square_mask(data, soft_width, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
     """
     Creates a square softmask. Returns softmask with the same shape as `data`.
 
