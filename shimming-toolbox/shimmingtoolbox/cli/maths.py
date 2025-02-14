@@ -103,6 +103,8 @@ def phase(fname_im, fname_real, fname_complex, fname_output, verbose):
         raise ValueError("At least one of the inputs must be provided.")
 
     # Create nibabel output
+    header = nii.header
+    header['datatype'] = 16  # 16 is float32
     nii_output = nib.Nifti1Image(phase_data, nii.affine, header=nii.header)
 
     # Save nii and JSON if possible
@@ -168,6 +170,8 @@ def mag(fname_im, fname_real, fname_complex, fname_output, verbose):
         raise ValueError("At least one of the inputs must be provided.")
 
     # Create nibabel output
+    header = nii.header
+    header['datatype'] = 16  # 16 is float32
     nii_output = nib.Nifti1Image(mag, nii.affine, header=nii.header)
 
     # Save nii and JSON if possible
