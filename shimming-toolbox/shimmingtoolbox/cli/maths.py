@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import click
+from cloup import command, option, option_group, group
+from cloup.constraints import RequireAtLeast, mutually_exclusive, all_or_none, constraint
 import json
 import nibabel as nib
 import numpy as np
@@ -14,7 +16,7 @@ AXES = ['0', '1', '2', '3', '4']
 DEFAULT_PATH = os.path.abspath(os.curdir)
 
 
-@click.group(context_settings=CONTEXT_SETTINGS,
+@group(context_settings=CONTEXT_SETTINGS,
              help="Perform mathematical operations on images.")
 def maths_cli():
     pass
@@ -56,17 +58,26 @@ def mean(fname_input, fname_output, axis, verbose):
     nib.save(nii_output, fname_output)
 
 
-@maths_cli.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--real', 'fname_real', type=click.Path(exists=True), required=True,
-              help="Input filename of a real image, supported extensions: .nii, .nii.gz")
-@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
-              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
-@click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
-              help="Output filename, supported extensions: .nii, .nii.gz")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def phase(fname_im, fname_real, fname_output, verbose):
-    """Compute the phase data from real and imaginary data."""
+@command(context_settings=CONTEXT_SETTINGS)
+@option_group("Inputs",
+              option('--real', 'fname_real', type=click.Path(exists=True), required=False,
+                     help="Input filename of a real image. Must be used with '--imaginary'. "
+                          "Supported extensions: .nii, .nii.gz"),
+              option('--imaginary', 'fname_im', type=click.Path(exists=True), required=False,
+                     help="Input filename of a imaginary image. Must be used with '--real'. "
+                          "Supported extensions: .nii, .nii.gz"),
+              option('--complex', 'fname_complex', type=click.Path(exists=True), required=False,
+                     help="Input filename of a complex image. Supported extensions: .nii, .nii.gz"),
+              constraint=RequireAtLeast(1))
+@constraint(all_or_none, ['fname_real', 'fname_im'])
+@constraint(mutually_exclusive, ['fname_real', 'fname_complex'])
+@constraint(mutually_exclusive,['fname_im', 'fname_complex'])
+@option('-o', '--output', 'fname_output', type=click.Path(),
+                     default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
+                     help="Output filename. Supported extensions: .nii, .nii.gz")
+@option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def phase(fname_im, fname_real, fname_complex, fname_output, verbose):
+    """Compute the phase data from real and imaginary data, or complex data."""
 
     # Set logger level
     set_all_loggers(verbose)
@@ -77,26 +88,34 @@ def phase(fname_im, fname_real, fname_output, verbose):
     create_output_dir(fname_output, is_file=True)
 
     # Load input
-    nii_real = nib.load(fname_real)
-    nii_im = nib.load(fname_im)
-
-    # Calculate the phase
-    phase = np.arctan2(nii_im.get_fdata(), nii_real.get_fdata())
+    if fname_complex is not None:
+        nii = nib.load(fname_complex)
+        # Calculate the phase
+        phase_data = np.angle(np.asanyarray(nii.dataobj))
+        fname_json = splitext(fname_complex)[0] + '.json'
+    elif fname_real is not None and fname_im is not None:
+        nii = nib.load(fname_real)
+        nii_im = nib.load(fname_im)
+        # Calculate the phase
+        phase_data = np.arctan2(nii_im.get_fdata(), nii.get_fdata())
+        fname_json = splitext(fname_real)[0] + '.json'
+    else:
+        raise ValueError("At least one of the inputs must be provided.")
 
     # Create nibabel output
-    nii_output = nib.Nifti1Image(phase, nii_real.affine, header=nii_real.header)
+    nii_output = nib.Nifti1Image(phase_data, nii.affine, header=nii.header)
 
     # Save nii and JSON if possible
-    fname_json_real = splitext(fname_real)[0] + '.json'
-    if os.path.isfile(fname_json_real):
-        with open(fname_json_real, 'r') as json_file:
+    if os.path.isfile(fname_json):
+        with open(fname_json, 'r') as json_file:
             json_data = json.load(json_file)
 
         if 'ImageType' in json_data:
             for i_field, field in enumerate(json_data['ImageType']):
-                if 'M' == field.upper() or 'R' == field.upper() or 'I' == field.upper():
+                if 'M' == field.upper() or 'R' == field.upper() or 'I' == field.upper() or 'C' == field.upper():
                     json_data['ImageType'][i_field] = 'P'
-                if 'MAG' == field.upper() or 'REAL' == field.upper() or 'IMAGINARY' == field.upper():
+                if ('MAG' == field.upper() or 'REAL' == field.upper() or 'IMAGINARY' == field.upper() or
+                        'COMPLEX' == field.upper()):
                     json_data['ImageType'][i_field] = 'PHASE'
 
         save_nii_json(nii_output, json_data, fname_output)
@@ -104,17 +123,26 @@ def phase(fname_im, fname_real, fname_output, verbose):
         nib.save(nii_output, fname_output)
 
 
-@maths_cli.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--imaginary', 'fname_im', type=click.Path(exists=True), required=True,
-              help="Input filename of a imaginary image, supported extensions: .nii, .nii.gz")
-@click.option('--real', 'fname_real', type=click.Path(exists=True), required=True,
-              help="Input filename of a real image, supported extensions: .nii, .nii.gz")
-@click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
-              help="Output filename, supported extensions: .nii, .nii.gz")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def mag(fname_im, fname_real, fname_output, verbose):
-    """Compute the magnitude data from real and imaginary data."""
+@command(context_settings=CONTEXT_SETTINGS)
+@option_group("Inputs",
+              option('--real', 'fname_real', type=click.Path(exists=True), required=False,
+                     help="Input filename of a real image. Must be used with '--imaginary'. "
+                          "Supported extensions: .nii, .nii.gz"),
+              option('--imaginary', 'fname_im', type=click.Path(exists=True), required=False,
+                     help="Input filename of a imaginary image. Must be used with '--real'. "
+                          "Supported extensions: .nii, .nii.gz"),
+              option('--complex', 'fname_complex', type=click.Path(exists=True), required=False,
+                     help="Input filename of a complex image. Supported extensions: .nii, .nii.gz"),
+              constraint=RequireAtLeast(1))
+@constraint(all_or_none, ['fname_real', 'fname_im'])
+@constraint(mutually_exclusive, ['fname_real', 'fname_complex'])
+@constraint(mutually_exclusive,['fname_im', 'fname_complex'])
+@option('-o', '--output', 'fname_output', type=click.Path(),
+                     default=os.path.join(DEFAULT_PATH, 'phase.nii.gz'),
+                     help="Output filename. Supported extensions: .nii, .nii.gz")
+@option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def mag(fname_im, fname_real, fname_complex, fname_output, verbose):
+    """Compute the magnitude data from real and imaginary data, or complex data."""
 
     # Set logger level
     set_all_loggers(verbose)
@@ -124,28 +152,40 @@ def mag(fname_im, fname_real, fname_output, verbose):
     # Prepare the output
     create_output_dir(fname_output, is_file=True)
 
-    # Load input
-    nii_real = nib.load(fname_real)
-    nii_im = nib.load(fname_im)
-
-    # Calculate the phase
-    mag = np.sqrt(nii_im.get_fdata() ** 2 + nii_real.get_fdata() ** 2)
+    # Load inputs
+    if fname_complex is not None:
+        nii = nib.load(fname_complex)
+        # Calculate the magnitude
+        mag = np.abs(np.asanyarray(nii.dataobj))
+        fname_json = splitext(fname_complex)[0] + '.json'
+    elif fname_real is not None and fname_im is not None:
+        nii = nib.load(fname_real)
+        nii_im = nib.load(fname_im)
+        # Calculate the magnitude
+        mag = np.sqrt(nii_im.get_fdata() ** 2 + nii.get_fdata() ** 2)
+        fname_json = splitext(fname_real)[0] + '.json'
+    else:
+        raise ValueError("At least one of the inputs must be provided.")
 
     # Create nibabel output
-    nii_output = nib.Nifti1Image(mag, nii_real.affine, header=nii_real.header)
+    nii_output = nib.Nifti1Image(mag, nii.affine, header=nii.header)
 
     # Save nii and JSON if possible
-    fname_json_real = splitext(fname_real)[0] + '.json'
-    if os.path.isfile(fname_json_real):
-        with open(fname_json_real, 'r') as json_file:
+    if os.path.isfile(fname_json):
+        with open(fname_json, 'r') as json_file:
             json_data = json.load(json_file)
 
         if 'ImageType' in json_data:
             for i_field, field in enumerate(json_data['ImageType']):
                 if 'P' == field.upper() or 'R' == field.upper() or 'PHASE' == field.upper() or 'REAL' == field.upper()\
-                        or 'I' == field.upper() or 'IMAGINARY' == field.upper():
-                    json_data['ImageType'][i_field] = 'M'
+                        or 'I' == field.upper() or 'IMAGINARY' == field.upper() or 'COMPLEX' == field.upper() \
+                        or 'C' == field.upper():
+                    json_data['ImageType'][i_field] = 'MAGNITUDE'
 
         save_nii_json(nii_output, json_data, fname_output)
     else:
         nib.save(nii_output, fname_output)
+
+
+maths_cli.add_command(mag)
+maths_cli.add_command(phase)
