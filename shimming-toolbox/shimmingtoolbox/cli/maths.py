@@ -100,7 +100,7 @@ def phase(fname_im, fname_real, fname_complex, fname_output, verbose):
         phase_data = np.arctan2(nii_im.get_fdata(), nii.get_fdata())
         fname_json = splitext(fname_real)[0] + '.json'
     else:
-        raise ValueError("At least one of the inputs must be provided.")
+        raise ValueError("The options --real and --imaginary, or --complex should be provided.")
 
     # Create nibabel output
     header = nii.header
@@ -167,7 +167,7 @@ def mag(fname_im, fname_real, fname_complex, fname_output, verbose):
         mag = np.sqrt(nii_im.get_fdata() ** 2 + nii.get_fdata() ** 2)
         fname_json = splitext(fname_real)[0] + '.json'
     else:
-        raise ValueError("At least one of the inputs must be provided.")
+        raise ValueError("The options --real and --imaginary, or --complex should be provided.")
 
     # Create nibabel output
     header = nii.header
