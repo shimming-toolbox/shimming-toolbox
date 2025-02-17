@@ -19,8 +19,9 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
+from shimmingtoolbox.load_nifti import get_isocenter
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -80,16 +81,19 @@ def b0shim_cli():
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
+@click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares'."
                    " mse: Mean Squared Error, mae: Mean Absolute Error, grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo-inverse' optimizer_method.")
-@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0,
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                   " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
-@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=0.0,
+                   " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity."
+                   " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                   "The optimal value for mse is around 0.01\n"
+                   "The optimal value for rmse is around 10")
+@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a compromise between B0 inhomogeneity"
                    " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery), a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
@@ -226,9 +230,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     with open(fname_anat_json) as json_file:
         json_anat_data = json.load(json_file)
 
-    # Get the EPI echo time if optimization criteria is grad
-    if opt_criteria == 'grad':
+    # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
+    if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
+        if opt_criteria not in ['mse', 'rmse']:
+            raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
+
+        opt_criteria += '_signal_recovery'
         epi_te = json_anat_data.get('EchoTime')
+
+        if w_signal_loss is None:
+            w_signal_loss = 0
+        if w_signal_loss_xy is None:
+            w_signal_loss_xy = 0
     else:
         epi_te = None
 
@@ -266,13 +279,19 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
+
     # Read the current shim settings from the scanner
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
+    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
+                             json_fm_data)
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -722,13 +741,21 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1] or scanner_coil_order_static == [0]) or \
-                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [0]):
+        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [
+            1] or scanner_coil_order_static == [0]) or \
+                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [
+                    0]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
             raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
                              f"{o_format_sph}")
+
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if isocenter_fm is None or isocenter_anat is None or not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
     all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
@@ -736,12 +763,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data['Manufacturer'],
-                                    json_fm_data['ManufacturersModelName'])
-    list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data['Manufacturer'],
-                                  json_fm_data['ManufacturersModelName'])
+    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
+                                    options['scanner_shim'], json_fm_data)
+    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
+                                  options['scanner_shim'], json_fm_data)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -883,7 +908,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         if coefs_coil_riro is not None:
                             logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
                             for i_shim in range(coefs_coil_riro.shape[0]):
-                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,(1,))
+                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer, (1,))
                             # RAS to gradient
                             coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
                                 coefs_coil_riro[:, 0],
@@ -1070,8 +1095,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
-                manufacturers_model_name):
+def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, json_fm_data):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1080,12 +1104,17 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        manufacturer (str): Name of the MRI manufacturer
-        manufacturers_model_name (str): Name of the scanner
+        json_fm_data (dict): BIDS JSON sidecar as a dictionary
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
+
+    manufacturer = json_fm_data.get('Manufacturer')
+    manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
+    if manufacturers_model_name is not None:
+        manufacturers_model_name.replace(' ', '_')
+
     list_coils = []
 
     # Load custom coils
@@ -1100,22 +1129,19 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
-
+        # Todo: Skip loading constraints if the algo does not support constraints?
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
-                sph_contraints = json.load(json_file)
-            orders_to_delete = []
-            for key in sph_contraints['coef_channel_minmax']:
-                if key not in str(orders):
-                    orders_to_delete.append(key)
-            for key in orders_to_delete:
-                del sph_contraints['coef_channel_minmax'][key]
+                external_contraints = json.load(json_file)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings, external_contraints)
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
-                                   manufacturer=manufacturer)
+        isocenter = get_isocenter(json_fm_data)
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, scanner_contraints, orders,
+                                   manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
@@ -1123,64 +1149,6 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
-
-
-def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orders, manufacturer):
-    """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
-        absolute bounds
-
-    Args:
-        constraints (dict): Constraints of the scanner coils
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        orders (list): Order of the scanner coils (0 or 1 or 2)
-        manufacturer (str): Name of the MRI manufacturer
-    Returns:
-        dict: Updated constraints of the scanner
-    """
-
-    def _initial_in_bounds(coefs: dict, bounds: dict):
-        """Makes sure the initial values are within the bounds of the constraints"""
-        if coefs.keys() != bounds.keys():
-            raise RuntimeError("The scanner coil's orders is not the same length as the initial orders")
-        if any(len(coefs[key]) != len(bounds[key]) for key in bounds):
-            raise RuntimeError("The scanner coil's bounds is not the same length as the initial bounds")
-
-        for key in coefs:
-            for (bound, coef) in zip(bounds[key], coefs[key]):
-                if bound[0] is None and bound[1] is None:
-                    continue
-                if bound[1] is not None:
-                    if not coef <= bound[1]:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-                if bound[0] is not None:
-                    if not bound[0] <= coef:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-
-    # Set the initial coefficients to 0
-    initial_coefs = {}
-    for order in orders:
-        initial_coefs[str(order)] = [0] * channels_per_order(order, manufacturer)
-    if initial_coefs == {}:
-        initial_coefs = None
-
-    # Restrict the constraints to the provided order
-    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
-
-    # If the scanner coefficients are valid, update the initial coefficients
-    for order in orders:
-        if scanner_shim_settings[f'order{order}_is_valid']:
-            initial_coefs[str(order)] = np.array(scanner_shim_settings[str(order)])
-
-    # Make sure the initial coefficients are within the specified bounds
-    _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
-
-    # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
-    # shimming
-    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs, constraints['coef_channel_minmax'])
-
-    return constraints
 
 
 def _save_nii_to_new_dir(list_fname, path_output):

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2 (2025-03-31)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.1...1.2)
+
+**FEATURE**
+ - **st_b0shim**: Add signal loss optimization to RMSE criteria. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/573)
+
 ## 1.1 (2024-11-08)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.0...1.1)
 
