@@ -26,7 +26,7 @@ class BFGSOpt(LsqOptimizer):
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
-        elif self.opt_criteria == 'grad':
+        elif self.opt_criteria == 'mse_signal_recovery':
             a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c, e),

@@ -491,6 +491,11 @@ class PmuLsqOptimizer(LsqOptimizer):
         # coef * (self.min_pressure - self.pressure_mean) < bound_max
         # coef * (self.max_pressure - self.pressure_mean) > bound_min
         # coef * (self.min_pressure - self.pressure_mean) > bound_min
+        # =>
+        # coef  < bound_max / (self.max_pressure - self.pressure_mean)
+        # coef  > bound_max / (self.min_pressure - self.pressure_mean)
+        # coef  > bound_min / (self.max_pressure - self.pressure_mean)
+        # coef  < bound_min / (self.min_pressure - self.pressure_mean)
         rt_bounds = []
         for i_bound, bound in enumerate(self.merged_bounds):
             tmp_bound = []
@@ -561,16 +566,6 @@ class PmuLsqOptimizer(LsqOptimizer):
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
-        # elif self.opt_criteria == 'grad':
-        #     a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
-        #
-        #     currents_sp = opt.minimize(self._criteria_func, currents_0,
-        #                                args=(a, b, c, e),
-        #                                method='SLSQP',
-        #                                bounds=self.rt_bounds,
-        #                                constraints=tuple(scipy_constraints),
-        #                                jac=self._jacobian_func,
-        #                                options={'maxiter': 10000, 'ftol': 1e-9})
         else:
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
