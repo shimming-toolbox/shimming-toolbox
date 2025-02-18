@@ -4,9 +4,8 @@
 import logging
 import nibabel as nib
 import numpy as np
-import os
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
-from skimage.morphology import binary_dilation, disk
+from skimage.morphology import disk
 
 from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.coils.coordinates import resample_from_to
@@ -279,3 +278,32 @@ def soft_square_mask(data, soft_width, len_dim1, len_dim2, center_dim1=None, cen
         difference = dilated_mask - soft_square_mask
         soft_square_mask = soft_square_mask + difference * (1 - i/soft_width)
     return soft_square_mask
+
+def basic_sct_soft_mask(fname_sct_bin_mask, fname_sct_soft_mask, soft_width, soft_value):
+    """
+    Creates a basic softmask from a binary mask created from the `sct_create_mask` function.
+
+    Args:
+        fname_sct_bin_mask (str): Path to the binary mask created from the `sct_create_mask` function.
+        fname_sct_soft_mask (str): Path to save the soft mask
+        soft_width (int): Width of the soft zone (in pixels).
+        soft_value (float): Value of the intexnsity of the pixels in the soft zone.
+    Returns:
+        nii_sct_soft_mask : NIFTI file containing the soft mask created from the binary mask.
+    """
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(fname_sct_bin_mask)
+    sct_bin_mask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    sct_soft_mask = np.zeros_like(sct_bin_mask)
+    for i in range(sct_bin_mask.shape[2]):
+        slice = sct_bin_mask[:, :, i]
+        dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
+        difference = dilated_slice - slice
+        sct_soft_mask[:, :, i] = slice + difference * soft_value
+
+    # Save the soft mask to a NIFTI file
+    nii_sct_soft_mask = nib.Nifti1Image(sct_soft_mask, nifti_file.affine, header=nifti_file.header)
+    nii_sct_soft_mask.set_data_dtype(float)
+    nii_sct_soft_mask.to_filename(fname_sct_soft_mask)
