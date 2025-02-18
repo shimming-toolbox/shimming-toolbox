@@ -1289,7 +1289,7 @@ class RealTimeSequencer(Sequencer):
             ax3.set_xlabel("Pressure [-2048,2048]")
             ax3.set_ylabel("Field [Hz]")
             ax3.legend()
-            ax3.set_title("B0 offset vs pressure with time offset: {round(best_time_offset)}ms")
+            ax3.set_title(f"B0 offset vs pressure with time offset: {round(best_time_offset)}ms")
 
             fname_figure = os.path.join(self.path_output, 'fig_rt_pmu_offset_scan.png')
             fig.tight_layout()
@@ -2137,7 +2137,7 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
         ax.set_title(f"After shimming\nmean: {metric_shimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
