@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.2 (2025-03-31)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.1...1.2)
+
+**BUG**
+ - Update tutorials. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/576)
+
+**ENHANCEMENT**
+ - **st_b0shim**: Use the table position information to generate spherical harmonic coil profiles with proper origin. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/539)
+ - **st_b0shim**: Allow the use of order 1 or 0 by themselves when using output format of 'gradient'. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/560)
+ - **st_b0shim**: Add the ability to set the current shim coefficient values as inputs in the constraint file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/571)
+ - **st_dicom_to_nifti**: Add MPRAGE to recognized files. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/574)
+
+**FEATURE**
+ - **st_b0shim**: Add CLI to combine text files. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/550)
+ - **st_b0shim**: Add signal loss optimization to RMSE criteria. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/573)
+ - **st_download_data, st_mask**: Automatic mask creation for MRS shimming based on voxel position . [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/509)
+ - **st_maths**: Compute phase and magnitude images from real/imaginary data. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/551)
+
 ## 1.1 (2024-11-08)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.0...1.1)
 

@@ -41,7 +41,6 @@ def test_mean_axis_out_of_bound():
                                       '--output', fname_output], catch_exceptions=False)
 
 
-
 class TestMagPhase():
     fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
     fname_mag_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.json')
@@ -53,9 +52,10 @@ class TestMagPhase():
     fname_real = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_real1.nii.gz')
     fname_real_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_real1.json')
     fname_im = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_imaginary1.nii.gz')
+    fname_complex = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_complex.nii.gz')
+    fname_complex_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_complex.json')
     fname_output = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'output.nii.gz')
     fname_output_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'output.json')
-
 
     def setup_method(self):
         # Scale from -pi to pi
@@ -65,14 +65,22 @@ class TestMagPhase():
         # Load mag
         nii_mag = nib.load(self.fname_mag)
         # Calculate real and imaginary data
-        nii_real = nib.Nifti1Image(nii_mag.get_fdata() * np.cos(nii_phase.get_fdata()),
+        real_data = nii_mag.get_fdata() * np.cos(nii_phase.get_fdata())
+        nii_real = nib.Nifti1Image(real_data,
                                    nii_mag.affine,
                                    header=nii_mag.header)
         nib.save(nii_real, self.fname_real)
-        nii_im = nib.Nifti1Image(nii_mag.get_fdata() * np.sin(nii_phase.get_fdata()),
+        im_data = nii_mag.get_fdata() * np.sin(nii_phase.get_fdata())
+        nii_im = nib.Nifti1Image(im_data,
                                  nii_mag.affine,
                                  header=nii_mag.header)
         nib.save(nii_im, self.fname_im)
+        complex_data = np.empty(nii_mag.shape, dtype=np.complex64)
+        complex_data.real = real_data
+        complex_data.imag = im_data
+        nii_complex = nib.Nifti1Image(complex_data,
+                                      nii_mag.affine, dtype=np.complex64)
+        nib.save(nii_complex, self.fname_complex)
 
     def teardown_method(self):
         # Delete temporary test files between each tests
@@ -86,6 +94,10 @@ class TestMagPhase():
             os.remove(self.fname_output_json)
         if os.path.exists(self.fname_real_json):
             os.remove(self.fname_real_json)
+        if os.path.exists(self.fname_complex):
+            os.remove(self.fname_complex)
+        if os.path.exists(self.fname_complex_json):
+            os.remove(self.fname_complex_json)
         # This is the scaled version we created in the setup method
         if os.path.exists(self.fname_phase):
             os.remove(self.fname_phase)
@@ -115,4 +127,30 @@ class TestMagPhase():
         assert os.path.isfile(self.fname_output)
         assert np.all(np.isclose(nib.load(self.fname_output).get_fdata()[56:74, 20:45],
                                  nib.load(self.fname_mag).get_fdata()[56:74, 20:45],
+                                 rtol=1e-04, atol=1e-04))
+
+    def test_mag_from_complex(self):
+        shutil.copy(self.fname_mag_json, self.fname_complex_json)
+        runner = CliRunner()
+        result = runner.invoke(maths_cli, ['mag',
+                                           '--complex', self.fname_complex,
+                                           '--output', self.fname_output], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(self.fname_output)
+        assert np.all(np.isclose(nib.load(self.fname_output).get_fdata()[56:74, 20:45],
+                                 nib.load(self.fname_mag).get_fdata()[56:74, 20:45],
+                                 rtol=1e-04, atol=1e-04))
+
+    def test_phase_from_complex(self):
+        shutil.copy(self.fname_mag_json, self.fname_complex_json)
+        runner = CliRunner()
+        result = runner.invoke(maths_cli, ['phase',
+                                           '--complex', self.fname_complex,
+                                           '--output', self.fname_output], catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(self.fname_output)
+        assert np.all(np.isclose(nib.load(self.fname_output).get_fdata()[56:74, 20:45],
+                                 nib.load(self.fname_phase).get_fdata()[56:74, 20:45],
                                  rtol=1e-04, atol=1e-04))

@@ -19,8 +19,9 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_sph_constraints
-from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
+from shimmingtoolbox.load_nifti import get_isocenter
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -93,13 +94,16 @@ def b0shim_cli():
                    "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
                    "grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method.")
-@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=0.0,
+@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
               show_default=True,
               help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                   " and Gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
-                   "weights to recover the signal loss over the B0 inhomogeneity.")
+                   " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
+                   "weights to recover the signal loss over the B0 inhomogeneity."
+                   " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                   "The optimal value for mse is around 0.01\n"
+                   "The optimal value for rmse is around 10")
 @click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False,
-              default=0.0, show_default=True,
+              default=None, show_default=True,
               help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a "
                    "compromise between B0 inhomogeneity"
                    " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery)"
@@ -238,9 +242,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     with open(fname_anat_json) as json_file:
         json_anat_data = json.load(json_file)
 
-    # Get the EPI echo time if optimization criteria is grad
-    if opt_criteria == 'grad':
+    # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
+    if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
+        if opt_criteria not in ['mse', 'rmse']:
+            raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
+
+        opt_criteria += '_signal_recovery'
         epi_te = json_anat_data.get('EchoTime')
+
+        if w_signal_loss is None:
+            w_signal_loss = 0
+        if w_signal_loss_xy is None:
+            w_signal_loss_xy = 0
     else:
         epi_te = None
 
@@ -278,13 +291,19 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
+
     # Read the current shim settings from the scanner
     scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = _load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data.get('Manufacturer'), json_fm_data.get('ManufacturersModelName'))
+    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
+                             json_fm_data)
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
@@ -736,13 +755,21 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [1] or scanner_coil_order_static == [0]) or \
-                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [0]):
+        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [
+            1] or scanner_coil_order_static == [0]) or \
+                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [
+                    0]):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
             raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
                              f"{o_format_sph}")
+
+    # Find the isocenter
+    isocenter_fm = get_isocenter(json_fm_data)
+    isocenter_anat = get_isocenter(json_anat_data)
+    if isocenter_fm is None or isocenter_anat is None or not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+        raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
     all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
@@ -750,12 +777,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils_static = _load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data['Manufacturer'],
-                                    json_fm_data['ManufacturersModelName'])
-    list_coils_riro = _load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data['Manufacturer'],
-                                  json_fm_data['ManufacturersModelName'])
+    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
+                                    options['scanner_shim'], json_fm_data)
+    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
+                                  options['scanner_shim'], json_fm_data)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -889,7 +914,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         if coefs_coil_riro is not None:
                             logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
                             for i_shim in range(coefs_coil_riro.shape[0]):
-                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer,(1,))
+                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer, (1,))
                             # RAS to gradient
                             coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
                                 coefs_coil_riro[:, 0],
@@ -1076,8 +1101,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, manufacturer,
-                manufacturers_model_name):
+def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, json_fm_data):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1086,12 +1110,17 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         fname_constraints (str): Filename of the constraints of the scanner coils
         nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        manufacturer (str): Name of the MRI manufacturer
-        manufacturers_model_name (str): Name of the scanner
+        json_fm_data (dict): BIDS JSON sidecar as a dictionary
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
+
+    manufacturer = json_fm_data.get('Manufacturer')
+    manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
+    if manufacturers_model_name is not None:
+        manufacturers_model_name.replace(' ', '_')
+
     list_coils = []
 
     # Load custom coils
@@ -1106,22 +1135,19 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
-
+        # Todo: Skip loading constraints if the algo does not support constraints?
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
-                sph_contraints = json.load(json_file)
-            orders_to_delete = []
-            for key in sph_contraints['coef_channel_minmax']:
-                if key not in str(orders):
-                    orders_to_delete.append(key)
-            for key in orders_to_delete:
-                del sph_contraints['coef_channel_minmax'][key]
+                external_contraints = json.load(json_file)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings, external_contraints)
         else:
-            sph_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+                                                         scanner_shim_settings)
 
-        sph_contraints_calc = calculate_scanner_constraints(sph_contraints, scanner_shim_settings, orders, manufacturer)
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, sph_contraints_calc, orders,
-                                   manufacturer=manufacturer)
+        isocenter = get_isocenter(json_fm_data)
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, scanner_contraints, orders,
+                                   manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
@@ -1129,64 +1155,6 @@ def _load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_setting
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
-
-
-def calculate_scanner_constraints(constraints: dict, scanner_shim_settings, orders, manufacturer):
-    """ Calculate the constraints that should be used for the scanner by considering the current shim settings and the
-        absolute bounds
-
-    Args:
-        constraints (dict): Constraints of the scanner coils
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
-        orders (list): Order of the scanner coils (0 or 1 or 2)
-        manufacturer (str): Name of the MRI manufacturer
-    Returns:
-        dict: Updated constraints of the scanner
-    """
-
-    def _initial_in_bounds(coefs: dict, bounds: dict):
-        """Makes sure the initial values are within the bounds of the constraints"""
-        if coefs.keys() != bounds.keys():
-            raise RuntimeError("The scanner coil's orders is not the same length as the initial orders")
-        if any(len(coefs[key]) != len(bounds[key]) for key in bounds):
-            raise RuntimeError("The scanner coil's bounds is not the same length as the initial bounds")
-
-        for key in coefs:
-            for (bound, coef) in zip(bounds[key], coefs[key]):
-                if bound[0] is None and bound[1] is None:
-                    continue
-                if bound[1] is not None:
-                    if not coef <= bound[1]:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-                if bound[0] is not None:
-                    if not bound[0] <= coef:
-                        logger.warning(f"Initial scanner coefs are outside the bounds allowed in the constraints: "
-                                       f"{bound}, initial: {coef}")
-
-    # Set the initial coefficients to 0
-    initial_coefs = {}
-    for order in orders:
-        initial_coefs[str(order)] = [0] * channels_per_order(order, manufacturer)
-    if initial_coefs == {}:
-        initial_coefs = None
-
-    # Restrict the constraints to the provided order
-    constraints['coef_channel_minmax'] = restrict_sph_constraints(constraints['coef_channel_minmax'], orders)
-
-    # If the scanner coefficients are valid, update the initial coefficients
-    for order in orders:
-        if scanner_shim_settings[f'order{order}_is_valid']:
-            initial_coefs[str(order)] = np.array(scanner_shim_settings[str(order)])
-
-    # Make sure the initial coefficients are within the specified bounds
-    _initial_in_bounds(initial_coefs, constraints['coef_channel_minmax'])
-
-    # Update the bounds to what they should be by taking into account that the fieldmap was acquired using some
-    # shimming
-    constraints['coef_channel_minmax'] = new_bounds_from_currents(initial_coefs, constraints['coef_channel_minmax'])
-
-    return constraints
 
 
 def _save_nii_to_new_dir(list_fname, path_output):
@@ -1476,7 +1444,258 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
     logger.info(f"Txt file is located here:\n{fname_output}")
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('-i2', '--input2', 'fname_input2', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
+    """ Combine the shim coefficients from two files into a single file."""
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    coefs1 = read_txt_file(fname_input)
+    coefs2 = read_txt_file(fname_input2)
+
+    if coefs1.shape == coefs2.shape:
+        coefs = coefs1 + coefs2
+    else:
+        raise ValueError("The number of shim events and/or the number of channels is not the same in both text files")
+
+    logger.debug(coefs1)
+    logger.debug(coefs2)
+    logger.debug(coefs)
+    write_coefs_to_text_file(coefs, fname_output, 'slicewise')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('--input-file-format', 'i_format',
+              type=click.Choice(['volume', 'slicewise', 'chronological']), required=True,
+              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                   "Use 'slicewise' if the inputs in row 1, 2, 3, etc. are the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' if the inputs in row 1, 2, 3, etc. are the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. Use volume if the intput is a single set of shim "
+                   "coefficients.")
+@click.option('--output-file-format', 'o_format',
+              type=click.Choice(['volume', 'slicewise', 'chronological', 'custom-cl']), required=True,
+              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                   "captured by the controller of the shim amplifier. 'custom-cl' is a custom format for a "
+                   "collaborator. Use volume to output a single set of shim coefficients.")
+@click.option('--target', 'fname_target', nargs=1, type=click.Path(exists=True), required=False,
+              help="Target image the text file is based on. This is used to infer slice timing information when "
+                   "converting between 'slicewise' and 'chronological'. It is also used to infer the number of slices "
+                   "when converting from volume to any other format. Supported formats: .nii, .nii.gz")
+@click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
+              help="Reverse the order of the slices. Only relevant for 'custom-cl'", required=False)
+@click.option('--add-channels', 'to_add_channels',
+              help="Add channels to the text file that are 0s. ", type=click.STRING, default='', required=False)
+@click.option('-o', '--output', 'fname_output', type=click.Path(),
+              default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
+              show_default=True, help="Filename to output shim text file.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+              help="Be more verbose")
+def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev_slice_order, fname_output,
+                              to_add_channels, verbose):
+    """ Convert the shim coefficients from one format to another."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output, is_file=True)
+
+    if o_format == 'custom_cl' and i_format != 'slicewise':
+        raise ValueError("Custom-cl output format is only compatible with slicewise input format")
+    if i_format in ['chronological', 'volume'] or o_format == 'chronological':
+        if fname_target is None:
+            raise ValueError("The target image is required for the specified input/output formats")
+        nii_target = nib.load(fname_target)
+
+    coefs = read_txt_file(fname_input)
+
+    to_add_channels = parse_add_channels(to_add_channels, 9)
+    coefs = add_channels(coefs, to_add_channels)
+
+    # convert coefs
+    if i_format == 'volume':
+        # convert to slice_wise
+        coefs = np.repeat(coefs, nii_target.shape[2], axis=0)
+    elif i_format == 'chronological':
+        # convert to slice_wise
+        slices = parse_slices(fname_target)
+        tmp = np.zeros((nii_target.shape[2], coefs.shape[1]))
+        for i_slice, slice in enumerate(slices):
+            tmp[slice] = np.repeat(coefs[i_slice], len(slice))
+        coefs = tmp
+
+    # All coefficients should be in a slicewise format at this point
+    # Convert from slicewise to the desired format
+
+    if o_format == 'volume':
+        # convert to volume
+        for i_slice in range(coefs.shape[0]):
+            if not np.all(coefs[i_slice] == coefs[0]):
+                raise ValueError("All slices must have the same shim coefficients to convert to volume format")
+        coefs = coefs[0]
+
+    elif o_format == 'chronological':
+        # convert to chronological
+        slices = parse_slices(fname_target)
+        tmp = np.zeros((len(slices), coefs.shape[1]))
+        for i_shim in range(len(slices)):
+            for i_slice in range(len(slices[i_shim])):
+                if np.all(coefs[slices[i_shim][i_slice]] == coefs[slices[i_shim][0]]):
+                    tmp[i_shim] = coefs[slices[i_shim][0]]
+        coefs = tmp
+    elif o_format == 'custom_cl':
+        # Make sure there are 9 channels
+        if coefs.shape[1] != 9:
+            raise ValueError("The number of channels in one of the text files must be 9 for the custom-cl format")
+
+        # Make sure the 2nd order shims are the same for all slices
+        for i_shim in range(coefs.shape[0]):
+            if not np.all(np.isclose(coefs[i_shim][4:], coefs[0][4:])):
+                raise ValueError("The 2nd order shims must be the same for all slices to convert to 'custom-cl' format")
+
+        # Send to write_coefs_to_text_file in a slice-wise format, the formatting is handled in that function
+
+    write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order)
+
+
+def parse_add_channels(channels: str, n_channels: int):
+    """
+    Parse the channels to add to the shim coefficients
+    Args:
+        channels (str): String containing the channels to add
+        n_channels (int): Number of channels that there currently is
+
+    Returns:
+        list: List of channels to add
+    """
+    channels = channels.split(',')
+    try:
+        if channels == ['']:
+            return []
+        channels = [int(channel) for channel in channels]
+        channels.sort()
+        if len(channels) + n_channels <= max(channels):
+            raise ValueError(f"The provided channels to add would leave gaps in the channels")
+        return channels
+    except ValueError:
+        raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")
+
+
+def add_channels(coefs: np.array, channels: list):
+    """
+    Add channels to the shim coefficients
+    Args:
+        coefs (np.array): Shim coefficients (n_shims x n_channels)
+        channels (list): List of channels to add
+
+    Returns:
+        np.array: Shim coefficients with added channels
+
+    """
+    if len(channels) == 0:
+        return coefs
+    for channel in channels:
+        coefs = np.insert(coefs, channel, 0, axis=1)
+    return coefs
+
+
+def read_txt_file(fname_input):
+    """
+    Read the text file containing the shim coefficients
+    Args:
+        fname_input (str): Filename of the text file
+
+    Returns:
+        np.array: Array containing the shim coefficients
+    """
+    coefs = []
+    with open(fname_input, 'r') as f:
+        for i_line, line in enumerate(f):
+            list_line = line.strip('\n').split(',')
+            temp = []
+            for i, value in enumerate(list_line):
+                if value.strip(' ') != '':
+                    temp.append(float(value.strip()))
+            coefs.append(temp)
+    n_lines = i_line + 1
+    coefs = np.array(coefs)
+    logger.debug(f"Reading text file. Number of shim events: {n_lines}, number of channels: {coefs.shape[1]}")
+    return coefs
+
+
+def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=False):
+    if o_format == 'slicewise' or o_format == 'chronological':
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            for i_shim in range(coefs.shape[0]):
+                for i_coef, coef in enumerate(coefs[i_shim]):
+                    f.write(f"{coef:.6f},")
+                    if i_coef != coefs.shape[1] - 1:
+                        f.write(" ")
+                f.write("\n")
+    elif o_format == 'volume':
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            for i_coef, coef in enumerate(coefs):
+                f.write(f"{coef:.6f},")
+                if i_coef != len(coefs) - 1:
+                    f.write(" ")
+    elif o_format == 'custom-cl':
+        coefs[:, 0] *= -1
+        if coefs.shape[1] != 9:
+            raise ValueError("The number of channels in the text file must be 9 for the custom-cl format")
+        with open(fname_output, 'w', encoding='utf-8') as f:
+            f.write("(mA)%6s%11s%11s%11s%11s\n" % ("xy", "zy", "zx", "x2-y2", "z2"))
+            ref = coefs[0][4:]
+
+            for i_shim in range(coefs.shape[0]):
+                if not np.all(np.isclose(coefs[i_shim][4:], ref)):
+                    raise ValueError("The 2nd order shims must be the same for all slices")
+
+            coefs[..., 4:] = reorder_shim_to_scaling_ge(coefs[..., 4:])
+
+            f.write("%10s%11s%11s%11s%11s\n" % tuple(str(int(coefs[0][i_channel])) for i_channel in range(4, 9)))
+            f.write("\n(G/cm)%6s%13s%13s%13s\n" % ("x", "y", "z", "bo (Hz)"))
+
+            if rev_slice_order:
+                coefs = coefs[::-1]
+
+            cfxfull = 30082
+            cfyfull = 30430
+            cfzfull = 30454
+            cfxfs = cfyfs = cfzfs = 5
+            shim_scale = 16
+
+            coefs[:, 1] = coefs[:, 1] / cfxfull / shim_scale * cfxfs
+            coefs[:, 2] = coefs[:, 2] / cfyfull / shim_scale * cfyfs
+            coefs[:, 3] = coefs[:, 3] / cfzfull / shim_scale * cfzfs
+
+            for i_shim in range(coefs.shape[0]):
+                f.write("%12s%13s%13s%13s\n" % (f"{coefs[i_shim][1]:.6f}",
+                                                f"{coefs[i_shim][2]:.6f}",
+                                                f"{coefs[i_shim][3]:.6f}",
+                                                f"{coefs[i_shim][0]:.6f}"))
+
+
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
 b0shim_cli.add_command(max_intensity)
+b0shim_cli.add_command(add_shim_coefs)
+b0shim_cli.add_command(convert_shim_coefs_format)

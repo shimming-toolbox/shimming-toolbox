@@ -34,7 +34,7 @@ def test_st_plugin_b0shim_dyn_lsq_mse():
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
-def test_st_plugin_b0shim_dyn_lsq_mae():
+def test_st_plugin_b0shim_dyn_lsq_grad():
     options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Squared Error + Z gradient',
                'weighting-signal-loss': '0.01',
@@ -50,7 +50,7 @@ def test_st_plugin_b0shim_dyn_lsq_mae():
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
-def test_st_plugin_b0shim_dyn_lsq_grad():
+def test_st_plugin_b0shim_dyn_mae():
     options = {'optimizer-method': 'Least Squares',
                'optimizer-criteria': 'Mean Absolute Error',
                'slices': 'Auto detect',
@@ -240,7 +240,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         time_limit = 20  # s
         for i in range(time_limit):
             realYield()
-            overlay_file = overlayList.find("fieldmap_calculated_shim_masked")
+            overlay_file = overlayList.find("fieldmap_calculated_shim")
             time.sleep(1)
             if overlay_file:
                 break

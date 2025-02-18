@@ -8,24 +8,27 @@ Static B1+ shimming
     This is the tfl_rfmap sequence, which can be found under Siemens/Service Sequences in the Protocols. Not to be confused
     with the tfl_b1map sequence, which will not create the channel-specific B1+ maps necessary for the shim process.
 
-Open a Terminal and run:
-
-.. code:: bash
-
-    shimming-toolbox
-
-The plugin should open as a new panel in ``FSLeyes``.
-
 Download test data
 ~~~~~~~~~~~~~~~~~~
 
-From your terminal, cd to any folder and run:
+From your terminal, "cd" to any folder and run:
 
 .. code:: bash
 
     st_download_data data_b1_shimming
 
 This will download the example B1+ maps dataset in the folder from which you typed this command.
+
+Start the GUI of Shimming Toolbox
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In your terminal, run:
+
+.. code:: bash
+
+    shimming-toolbox
+
+The plugin should open as a new panel in ``FSLeyes``.
 
 Convert DICOM to NIfTI
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -35,20 +38,33 @@ In FSLeyes, click on the ``dicom_to_nifti`` tab.
 .. note::
     If you don't see the tab, drag the right edge of the ``Shimming Toolbox`` panel to make all the tabs appear.
 
-
 - Click on *Input Folder* to select the downloaded ``data_b1_shimming/dicoms`` path as an input.
 - Enter a subject name (e.g. "test").
-- *(optional)* Modify the output folder.
+- Modify the output folder path a new folder called "niftis" in the previously downloaded "data_b1_shimming" folder: ``<your-local-path>/data_b1_shimming/niftis``.
 - Click *Run*.
+- A B1+ map should automatically load in the overlay.
 
 Create a Mask
 ~~~~~~~~~~~~~
 
-- Load the target anatomical image.
-- Select The *Mask* Tab.
+In an actual experiment, a mask would probably be created from an anatomical image using a segmentation tool.
+However, in this tutorial, we will create a simple box mask from the B1+ acquisition.
+Since the B1+ acquisition has complex 4D B1+ data, we first convert it to a magnitude image and compute the average
+over the last dimension so that it can be used by the masking pipeline.
+We are then ready to create a box mask from that 3D image.
+
+In your terminal where you downloaded the b1 dataset, run:
+
+.. code:: bash
+
+    st_maths mag --complex data_b1_shimming/niftis/sub-test/rfmap/sub-test_TB1map_uncombined.nii.gz --output data_b1_shimming/niftis/derivatives/sub-test_TB1map_uncombined_mag.nii.gz
+    st_maths mean --input data_b1_shimming/niftis/derivatives/sub-test_TB1map_uncombined_mag.nii.gz --output data_b1_shimming/niftis/derivatives/sub-test_TB1map_uncombined_mean.nii.gz
+
+- Load the ``data_b1_shimming/niftis/derivatives/sub-test_TB1map_uncombined_mean.nii.gz`` image in FSLeyes (drag and drop).
+- Select the *Mask* Tab.
 - Select *Box* from the dropdown.
-- Select the target image from the overlay, click the button *Input*.
-- Input voxel indexes for *center* and *size*. Look at the Location panel of FSLeyes to locate the center of the ROI.
+- Select the ``sub-test_TB1map_uncombined_mean`` image from the overlay, click the button *Input*.
+- Input voxel indexes for *center* (suggestion: 48, 48, 19) and *size* (suggestion: 35, 50, 12). Look at the Location panel of FSLeyes to locate the center of the ROI.
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output mask should load automatically in the *Overlay list*.
@@ -62,7 +78,6 @@ Static B1+ shimming: CV reduction
   :alt: B1 shim option location
 
 Copy the SarDataUser.mat file from C:/Medcom/MriProduct/PhysConfig/ to the laptop on which Shimming Tooolbox is run
-
 
 - Navigate to the *B1+ Shim* Tab.
 - Select *CV reduction* in the dropdown menu (it should already be selected by default).
