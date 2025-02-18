@@ -352,19 +352,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                     coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
                     start_channel_scanner = end_channel_scanner_order
 
-                if 1 in scanner_coil_order:
-                    for i_shim in range(coefs.shape[0]):
-                        # Convert to RAS
-                        coefs_scanner[1][i_shim] = shim_to_phys_cs(coefs_scanner[1][i_shim], manufacturer, (1,))
-
-                    # Convert coef of 1st order sph harmonics to Gradient coord system
-                    coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_scanner[1][:, 0],
-                                                                               coefs_scanner[1][:, 1],
-                                                                               coefs_scanner[1][:, 2], fname_anat)
-                    coefs_scanner[1][:, 0] = coefs_freq
-                    coefs_scanner[1][:, 1] = coefs_phase
-                    coefs_scanner[1][:, 2] = coefs_slice
-
                 coefs_coil = coefs_scanner
 
             else:
