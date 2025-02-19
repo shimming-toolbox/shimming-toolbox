@@ -8,7 +8,7 @@ path_version = path.join(here, 'fsleyes_plugin_shimming_toolbox', 'version.txt')
 with open(path_version) as f:
     version = f.read().strip()
 
-requirements_path = path.join(path.dirname(here), "requirements_fsleyes.txt")
+requirements_path = path.join(path.dirname(here), "requirements_stplugin.txt")
 if path.exists(requirements_path):
     with open(requirements_path) as f:
         install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]
