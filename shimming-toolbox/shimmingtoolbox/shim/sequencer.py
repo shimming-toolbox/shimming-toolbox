@@ -468,19 +468,22 @@ class ShimSequencer(Sequencer):
                 full_Gy = np.zeros(corrections.shape)
                 shimmed_temp = corrections + unshimmed[..., np.newaxis]
 
-                full_Gz = np.gradient(shimmed_temp, axis=2)
+                # Can't calculate signal recovery in the through slice direction if there is only one slice
+                if corrections.shape[2] != 1:
+                    full_Gz = np.gradient(shimmed_temp, axis=2)
+                    full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
+                    # Plot gradient results
+                    self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
+
                 full_Gx = np.gradient(shimmed_temp, axis=0)
                 full_Gy = np.gradient(shimmed_temp, axis=1)
-
-                full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
                 full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
-                # Plot gradient realted results
-                self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
 
                 if logger.level <= getattr(logging, 'DEBUG'):
                     # x, y, z are in the patient's coordinate system
-                    self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
+                    if corrections.shape[2] != 1:
+                        self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
                     self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
                     self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
 
