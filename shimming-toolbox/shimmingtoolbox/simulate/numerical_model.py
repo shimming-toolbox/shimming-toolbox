@@ -135,7 +135,7 @@ class NumericalModel:
         elif field_type == "z":
             self.deltaB0 = m * Z + b
         else:
-            ValueError("Undefined deltaB0 field type")
+            raise ValueError("Undefined deltaB0 field type")
 
         self.deltaB0 = self.deltaB0 / (self.gamma / (2 * np.pi))
 
