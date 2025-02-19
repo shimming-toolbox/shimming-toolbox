@@ -617,13 +617,13 @@ class TestCliDynamic(object):
                 assert lines[15].strip() == "corr_vec[0][5]= 11.007908"
             with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001260"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.001260"
             with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.029665"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.029665"
             with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.060548"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.060548"
 
 
     def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -734,13 +734,13 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
             with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001980"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.001980"
             with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.032016"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.032016"
             with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.066749"
+                assert lines[15].strip() == "corr_vec[0][5]= -0.066749"
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
