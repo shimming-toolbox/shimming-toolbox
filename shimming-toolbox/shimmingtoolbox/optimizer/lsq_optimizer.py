@@ -172,8 +172,9 @@ class LsqOptimizer(OptimizerUtils):
         """
         residuals = unshimmed_vec + coil_mat @ coef
         if self._delta is None:
-            self._delta = np.max(residuals)
-        return np.sum(pseudo_huber(self._delta, np.abs(residuals))) / factor + np.abs(coef).dot(self.reg_vector)
+            # self._delta = np.max(np.abs(residuals))
+            self._delta = np.percentile(np.abs(residuals), 90)
+        return np.mean(pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
@@ -326,7 +327,7 @@ class LsqOptimizer(OptimizerUtils):
 
         def _apply_sum_constraint(inputs, indexes, coef_sum_max):
             # ineq constraint for scipy minimize function. Negative output is disregarded while positive output is kept.
-            return -1 * (np.sum(np.abs(inputs[indexes])) - coef_sum_max)
+            return -np.sum(np.abs(inputs[indexes])) + coef_sum_max
 
         # Set up constraints for max current for each coils
         constraints = []
