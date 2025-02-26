@@ -54,7 +54,7 @@ class OptimizerUtils(Optimizer):
             if coefs is not None:
                 self.initial_coefs = coefs
             else:
-                raise ValueError(f"There are no coefficients to set")
+                raise ValueError("There are no coefficients to set")
 
         self._initial_guess_method = method
 
