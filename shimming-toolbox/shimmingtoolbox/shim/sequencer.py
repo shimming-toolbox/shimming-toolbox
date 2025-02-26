@@ -1520,7 +1520,7 @@ class RealTimeSequencer(Sequencer):
             self.method = 'quad_prog_rt'
         if self.method == 'bfgs':
             self.method = 'bfgs_rt'
-        self.select_optimizer(riro, affine_fieldmap, self.pmu)
+        self.select_optimizer(riro, affine_fieldmap, self.pmu, mean_p=mean_p)
 
         # Static shim
         logger.info("Static optimization")
@@ -1542,7 +1542,7 @@ class RealTimeSequencer(Sequencer):
 
         return coef_static, coef_riro, mean_p, pressure_rms
 
-    def select_optimizer(self, unshimmed, affine, pmu: PmuResp = None):
+    def select_optimizer(self, unshimmed, affine, pmu: PmuResp = None, mean_p=None):
         """
         Select and initialize the optimizer
 
@@ -1551,6 +1551,7 @@ class RealTimeSequencer(Sequencer):
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
                            'least_squares_rt'.
+            mean_p (float): Mean pressure of the respiratory trace. Required for methods 'XXX_rt'.
 
         """
 
@@ -1568,10 +1569,13 @@ class RealTimeSequencer(Sequencer):
                 # Make sure pmu is defined
                 if pmu is None:
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
+                if mean_p is None:
+                    raise ValueError(f"mean_p parameter is required if using the optimization method: {self.method}")
 
                 # Add pmu to the realtime optimizer(s)
                 self.optimizer_riro = supported_optimizers[self.method](self.coils_riro, unshimmed, affine,
                                                                         self.opt_criteria, pmu,
+                                                                        mean_p=mean_p,
                                                                         reg_factor=self.reg_factor)
             elif self.method == 'quad_prog_rt':
                 # Make sure pmu is defined
