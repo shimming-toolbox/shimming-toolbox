@@ -637,14 +637,18 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 @click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
               show_default=True, help="Directory to output coil text file(s).")
 @click.option('--output-file-format-coil', 'o_format_coil',
-              type=click.Choice(['slicewise-ch', 'chronological-ch']), default='slicewise-ch', show_default=True,
+              type=click.Choice(['slicewise-ch', 'chronological-ch', 'chronological-coil', 'slicewise-coil']),
+              default='slicewise-ch', show_default=True,
               help="Syntax used to describe the sequence of shim events. "
                    "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
                    "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                    "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. For both 'slicewice' and 'chronological', "
+                   "captured by the controller of the shim amplifier. For 'XXXXX-ch', "
                    "there will be one output file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
-                   "time-varying and mean pressure are encoded in the columns of each file.")
+                   "time-varying and mean pressure are encoded in the columns of each file. For XXXXX-coil, there will "
+                   "be a single file per coil. The static and time-varying coefficients are encoded one after the "
+                   "other as columns (static-ch1, rt-ch1, static-ch2, rt-ch2, etc.). The mean pressure is encoded as "
+                   "the last row.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
               show_default=True,
@@ -1048,6 +1052,43 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                     if currents_riro is not None:
                         f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
                     f.write(f"{mean_p:.4f},\n")
+
+        elif o_format == 'chronological-coil':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                for i_shim in range(len(list_slices)):
+                    if options['fatsat']:
+                        for i_channel in range(n_channels):
+                            if default_st_coefs is None:
+                                # Output 0 (delta)
+                                f.write(f"{0:.1f}, {0:.1f}, ")
+                            else:
+                                # Output initial coefs (absolute)
+                                f.write(f"{default_st_coefs[i_channel]:.1f}, {0:.1f}, ")
+                        f.write("\n")
+
+                    for i_channel in range(n_channels):
+                        if currents_static is not None:
+                            f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                        if currents_riro is not None:
+                            f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+                    f.write("\n")
+                f.write(f"{mean_p:.4f},\n")
+
+        elif o_format == 'slicewise-coil':
+            fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
+            with open(fname_output, 'w', encoding='utf-8') as f:
+                # Each row will have one coef representing the static, riro and mean_p in slicewise order
+                n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
+                for i_slice in range(n_slices):
+                    i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+                    for i_channel in range(n_channels):
+                        if currents_static is not None:
+                            f.write(f"{currents_static[i_shim, i_channel]:.6f}, ")
+                        if currents_riro is not None:
+                            f.write(f"{currents_riro[i_shim, i_channel]:.12f}, ")
+                    f.write("\n")
+                f.write(f"{mean_p:.4f},\n")
 
         else:  # o_format == 'gradient':
             f0 = 'f0'

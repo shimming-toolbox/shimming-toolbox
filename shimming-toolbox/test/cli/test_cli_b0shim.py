@@ -1192,6 +1192,98 @@ class TestCLIRealtime(object):
             for i_channel in range(9):
                 assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_ch{i_channel}_Dummy_coil.txt"))
 
+    def test_cli_rt_custom_coil_chr_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--coil-riro', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--optimizer-method', 'pseudo_inverse',
+                                             '--output-file-format-coil', 'chronological-coil',
+                                             '--slice-factor', '2',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_Dummy_coil.txt"))
+
+    def test_cli_rt_custom_coil_sli_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--coil-riro', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--optimizer-method', 'pseudo_inverse',
+                                             '--output-file-format-coil', 'slicewise-coil',
+                                             '--slice-factor', '2',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_Dummy_coil.txt"))
+
     def test_cli_rt_debug(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
