@@ -1,0 +1,32 @@
+import numpy as np
+import pytest
+import scipy.optimize as opt
+from typing import List
+import warnings
+
+from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
+from shimmingtoolbox.coils.coil import Coil
+from shimmingtoolbox.coils.coordinates import generate_meshgrid
+from shimmingtoolbox.load_nifti import get_acquisition_times
+from shimmingtoolbox.masking.shapes import shapes
+from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer, resample_mask
+from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
+from shimmingtoolbox.shim.sequencer import shim_max_intensity
+from shimmingtoolbox.simulate.numerical_model import NumericalModel
+from shimmingtoolbox.utils import set_all_loggers
+from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
+from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.coils.coil import Coil
+
+
+class TestQpOptimizer():
+
+    def test_linear_equality():
+        
+    
+    def test_stability_factor():
+
+
