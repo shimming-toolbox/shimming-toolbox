@@ -52,4 +52,4 @@ jobs:
       - name: Create a Tag for the Version
         run: |
           git tag ${{ inputs.version }}
-          git push origin v${{ inputs.version }}
+          git push origin ${{ inputs.version }}
