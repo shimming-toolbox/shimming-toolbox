@@ -7,7 +7,6 @@ import numpy as np
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
 from skimage.morphology import disk
 
-from shimmingtoolbox.masking.shapes import shape_square
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
@@ -231,88 +230,33 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     return mask_dilated
 
 
-def basic_soft_square_mask(data, soft_width, soft_value, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
+def basic_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width, soft_value):
     """
-    Creates a basic square softmask. Returns softmask with the same shape as `data`.
+    Creates a softmask from a binary mask created with the `sct_deepseg` and `sct_create_mask` functions.
+    The final mask is the sum of the binary mask and a dilated version of the binary mask muliplied by a
+    soft value.
 
     Args:
-        data (numpy.ndarray): Data to mask, must be 2 dimensional array.
-        soft_width (int): Width of the soft zone (in pixels).
-        soft_value (float): Value of the intexnsity of the pixels in the soft zone.
-        len_dim1 (int): Length of the side of the square along first dimension (in pixels).
-        len_dim2 (int): Length of the side of the square along second dimension (in pixels).
-        center_dim1 (int): Center of the square along first dimension (in pixels). If no center is provided, the middle
-                           is used.
-        center_dim2 (int): Center of the square along second dimension (in pixels). If no center is provided, the middle
-                           is used.
-    Returns:
-        numpy.ndarray: Mask with floats.
-    """
-    bin_square_mask = shape_square(data, len_dim1, len_dim2, center_dim1, center_dim2)
-    dilated_mask = binary_dilation(bin_square_mask, disk(soft_width)).astype(float)
-    difference = dilated_mask - bin_square_mask
-    soft_square_mask = bin_square_mask + difference * soft_value
-    return soft_square_mask
-
-
-def soft_square_mask(data, soft_width, len_dim1, len_dim2, center_dim1=None, center_dim2=None) :
-    """
-    Creates a square softmask. Returns softmask with the same shape as `data`.
-
-    Args:
-        data (numpy.ndarray): Data to mask, must be 2 dimensional array.
-        soft_width (int): Width of the soft zone (in pixels).
-        len_dim1 (int): Length of the side of the square along first dimension (in pixels).
-        len_dim2 (int): Length of the side of the square along second dimension (in pixels).
-        center_dim1 (int): Center of the square along first dimension (in pixels). If no center is provided, the middle
-                           is used.
-        center_dim2 (int): Center of the square along second dimension (in pixels). If no center is provided, the middle
-                           is used.
-    Returns:
-        numpy.ndarray: Mask with floats.
-    """
-    bin_square_mask = shape_square(data, len_dim1, len_dim2, center_dim1, center_dim2)
-    soft_square_mask = np.zeros_like(data)
-    for i in range(soft_width):
-        dilated_mask = binary_dilation(bin_square_mask, disk(i)).astype(float)
-        difference = dilated_mask - soft_square_mask
-        soft_square_mask = soft_square_mask + difference * (1 - i/soft_width)
-    return soft_square_mask
-
-
-def basic_sct_soft_mask(path_sct_bin_mask, path_sct_soft_mask, soft_width, soft_value):
-    """
-    Creates a basic softmask from a binary mask created from the `sct_create_mask` function.
-
-    Args:
-        path_sct_bin_mask (str): Path to the binary mask created from the `sct_create_mask` function.
-        path_sct_soft_mask (str): Path to save the soft mask
+        path_sct_binmask (str): Path to the binary mask created from the `sct_create_mask` function.
+        path_sct_softmask (str): Path to save the soft mask
         soft_width (int): Width of the soft zone (in pixels).
         soft_value (float): Value of the intensity of the pixels in the soft zone.
     Returns:
-        nii_sct_soft_mask : NIFTI file containing the soft mask created from the binary mask.
+        nii_sct_softmask : NIFTI file containing the soft mask created from the binary mask.
     """
     # Load the binary mask from a NIFTI file
-    nifti_file = nib.load(path_sct_bin_mask)
-    sct_bin_mask = nifti_file.get_fdata()
+    nifti_file = nib.load(path_sct_binmask)
+    sct_binmask = nifti_file.get_fdata()
 
     # Create a np.array soft mask
-    sct_soft_mask = np.zeros_like(sct_bin_mask)
-    for i in range(sct_bin_mask.shape[2]):
-        slice = sct_bin_mask[:, :, i]
+    sct_softmask = np.zeros_like(sct_binmask)
+    for i in range(sct_binmask.shape[2]):
+        slice = sct_binmask[:, :, i]
         dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
         difference = dilated_slice - slice
-        sct_soft_mask[:, :, i] = slice + difference * soft_value
+        sct_softmask[:, :, i] = slice + difference * soft_value
 
     # Save the soft mask to a NIFTI file
-    nii_sct_soft_mask = nib.Nifti1Image(sct_soft_mask, nifti_file.affine, header=nifti_file.header)
-    nii_sct_soft_mask.set_data_dtype(float)
-    nii_sct_soft_mask.to_filename(path_sct_soft_mask)
-
-
-def gradient_sct_soft_mask() :
-    pass # TODO
-
-
-def gaussian_sct_soft_mask() :
-    pass # TODO
+    nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
+    nii_sct_softmask.set_data_dtype(float)
+    nii_sct_softmask.to_filename(path_sct_softmask)

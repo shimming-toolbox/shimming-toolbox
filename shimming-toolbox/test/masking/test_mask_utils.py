@@ -5,10 +5,9 @@ import os
 import nibabel as nib
 import numpy as np
 import pytest
-import matplotlib.pyplot as plt
 
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, basic_soft_square_mask, soft_square_mask
-from shimmingtoolbox.masking.shapes import shapes, shape_square
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, basic_sct_softmask
+from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
 dummy_image = np.zeros([10, 10, 10])
@@ -121,22 +120,18 @@ def test_resample_mask():
 
     assert np.all(nii_mask_res.get_fdata() == expected)
 
-def test_showing_basic_softmasks():
 
-    soft_width, soft_value, len_dim1, len_dim2 = 15, 0.5, 50, 50
+@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+    ("/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/centerline_masks/binmask_viewer_cylinder_sub-6_T1w.nii.gz",
+     "/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/centerline_masks/softmask_viewer_sub-6_T1w.nii.gz")])
+def test_basic_sct_softmask(path_sct_binmask, path_sct_softmask):
+    """ Test for the creation of a basic soft mask """
 
-    test_image = np.random.rand(128, 128)
-    bin_mask = shape_square(test_image, len_dim1, len_dim2)
-    basic_soft_mask = basic_soft_square_mask(test_image, soft_width, soft_value, len_dim1, len_dim2)
-    soft_mask = soft_square_mask(test_image, soft_width, len_dim1, len_dim2)
+    # Verify that the binary mask exists
+    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    # Verifiy that the output folder exists
+    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
 
-    plt.subplot(2,2,1)
-    plt.imshow(test_image, cmap='gray')
-    plt.subplot(2,2,2)
-    plt.imshow(bin_mask, cmap='gray')
-    plt.subplot(2,2,3)
-    plt.imshow(basic_soft_mask, cmap='gray')
-    plt.subplot(2,2,4)
-    plt.imshow(soft_mask, cmap='gray')
-
-    plt.show()
+    # Create a basic soft mask
+    basic_sct_softmask(path_sct_binmask, path_sct_softmask, 10, 0.5)
+    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
