@@ -1,11 +1,12 @@
-name: Automated Release
+name: Automated Version Branching
 
 on:
-  push:
-    branches:
-      - ab/release
-    # tags:
-    #   - 'v*'  # Runs when you push a tag like v1.0.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number for the release (e.g., 1.0.0)"
+        required: true
+        type: string
 
 jobs:
   release:
@@ -34,14 +35,16 @@ jobs:
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
 
-      - name: Upload `requirements-pinned.txt` to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ github.ref_name }}
-          name: "Release ${{ github.ref_name }}"
-          draft: false
-          prerelease: false
-          files: |
-            requirements_st-pinned.txt
-            requirements_stplugin-pinned.txt
+      - name: Commit and Push `requirements-pinned.txt`
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git checkout -b release/v${{ inputs.version }}
+          git add requirements_st-pinned.txt requirements_stplugin-pinned.txt
+          git commit -m "Generate pinned requirements for v${{ inputs.version }}"
+          git push origin release/v${{ inputs.version }}
+
+      - name: Create a Tag for the Version
+        run: |
+          git tag v${{ inputs.version }}
+          git push origin v${{ inputs.version }}
