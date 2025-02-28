@@ -14,36 +14,16 @@ with open(path_version) as f:
     version = f.read().strip()
 
 # Determine install_requires from requirements.txt if it exists
+requirements_pinned_path = path.join(path.dirname(here), "requirements_st-pinned.txt")
 requirements_path = path.join(path.dirname(here), "requirements_st.txt")
-if path.exists(requirements_path):
+if path.exists(requirements_pinned_path):
+    with open(requirements_pinned_path) as f:
+        install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]
+elif path.exists(requirements_path):
     with open(requirements_path) as f:
         install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]
 else:
-    install_requires = [
-        "click",
-        "cloup",
-        "dataclasses",
-        "dcm2bids>=3.0.1",
-        "dcm2niix>=1.0.20241211",
-        "importlib-metadata",
-        "joblib",
-        "matplotlib>=3.5",
-        "nibabel>=3.2.1",
-        "numpy>=1.21",
-        "phantominator~=0.6.4",
-        "pillow>=9.0.0",
-        "psutil>=5.8.0",
-        "pydicom",
-        "pytest>=6.2.5",
-        "pytest-cov>=2.5.1",
-        "quadprog",
-        "raven",
-        "requests",
-        "scikit-learn>=1.1.2",
-        "scipy>=1.7",
-        "spec2nii",
-        "tqdm"
-    ]
+    raise FileNotFoundError(f"requirements_st.txt not found at {requirements_path}")
 
 setup(
     name="shimmingtoolbox",

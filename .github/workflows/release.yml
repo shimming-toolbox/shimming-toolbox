@@ -1,0 +1,45 @@
+name: Automated Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Runs when you push a tag like v1.0.0
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Only Specified Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate  # On Windows, use venv\Scripts\activate
+          pip install --upgrade pip
+          pip install -r requirements_st.txt
+          pip install -r requirements_stplugin.txt
+
+      - name: Generate `requirements-pinned.txt` with Exact Versions
+        run: |
+          source venv/bin/activate  # Ensure we're in the virtual environment
+          pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
+          pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
+
+      - name: Upload `requirements-pinned.txt` to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          name: "Release ${{ github.ref_name }}"
+          draft: false
+          prerelease: false
+          files: |
+            requirements_st-pinned.txt
+            requirements_stplugin-pinned.txt
