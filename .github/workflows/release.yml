@@ -28,8 +28,8 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install -r requirements_st.txt
-          pip install -r requirements_stplugin.txt
+          pip install -r ./shimming-toolbox/requirements_st.txt
+          pip install -r ./fsleyes-plugin-shimming-toolbox/requirements_stplugin.txt
 
       - name: Generate `requirements-pinned.txt` with Exact Versions
         run: |
@@ -39,7 +39,7 @@ jobs:
           cd ../fsleyes-plugin-shimming-toolbox/
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
           cd ..
-          
+
       - name: Commit and Push `requirements-pinned.txt`
         run: |
           git config --global user.name "github-actions"
