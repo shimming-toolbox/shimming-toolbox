@@ -14,8 +14,8 @@ with open(path_version) as f:
     version = f.read().strip()
 
 # Determine install_requires from requirements.txt if it exists
-requirements_pinned_path = path.join(path.dirname(here), "requirements_st-pinned.txt")
-requirements_path = path.join(path.dirname(here), "requirements_st.txt")
+requirements_pinned_path = path.join(here, "requirements_st-pinned.txt")
+requirements_path = path.join(here, "requirements_st.txt")
 if path.exists(requirements_pinned_path):
     with open(requirements_pinned_path) as f:
         install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]

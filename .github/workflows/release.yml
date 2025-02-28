@@ -34,9 +34,12 @@ jobs:
       - name: Generate `requirements-pinned.txt` with Exact Versions
         run: |
           source venv/bin/activate
+          cd shimming-toolbox/
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
+          cd ../fsleyes-plugin-shimming-toolbox/
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
-
+          cd ..
+          
       - name: Commit and Push `requirements-pinned.txt`
         run: |
           git config --global user.name "github-actions"
@@ -48,5 +51,5 @@ jobs:
 
       - name: Create a Tag for the Version
         run: |
-          git tag v${{ inputs.version }}
+          git tag ${{ inputs.version }}
           git push origin v${{ inputs.version }}
