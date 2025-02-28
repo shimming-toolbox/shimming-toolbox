@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}  # This makes sure we check out the branch where the workflow runs
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -24,14 +26,14 @@ jobs:
       - name: Install Only Specified Dependencies
         run: |
           python -m venv venv
-          source venv/bin/activate  # On Windows, use venv\Scripts\activate
+          source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements_st.txt
           pip install -r requirements_stplugin.txt
 
       - name: Generate `requirements-pinned.txt` with Exact Versions
         run: |
-          source venv/bin/activate  # Ensure we're in the virtual environment
+          source venv/bin/activate
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
 
