@@ -45,7 +45,7 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git checkout -b release/v${{ inputs.version }}
-          git add requirements_st-pinned.txt requirements_stplugin-pinned.txt
+          git add ./shimming-toolbox/requirements_st-pinned.txt ./fsleyes-plugin-shimming-toolbox/requirements_stplugin-pinned.txt
           git commit -m "Generate pinned requirements for v${{ inputs.version }}"
           git push origin release/v${{ inputs.version }}
 

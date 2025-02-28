@@ -16,7 +16,6 @@ if path.exists(requirements_pinned_path):
 elif path.exists(requirements_path):
     with open(requirements_path) as f:
         install_requires = [line.strip() for line in f if line.strip() and not line.startswith("#")]
-        raise FileNotFoundError(f"requirements_stplugin-pinned.txt not found at {requirements_pinned_path}")
 else:
     raise FileNotFoundError(f"requirements_stplugin.txt not found at {requirements_path}")
 
