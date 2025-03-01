@@ -292,3 +292,38 @@ def gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width):
     nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
     nii_sct_softmask.set_data_dtype(float)
     nii_sct_softmask.to_filename(path_sct_softmask)
+
+
+def linear_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width):
+    """
+    Creates a softmask from a binary mask created with the `sct_deepseg` and `sct_create_mask` functions.
+    The final mask contains a linear gradient from the binary mask to the background.
+
+    Args:
+        path_sct_binmask (str): Path to the binary mask created from the `sct_create_mask` function.
+        path_sct_softmask (str): Path to save the soft mask
+        soft_width (int): Width of the soft zone (in pixels). In this case, the soft zone is a linear gradient from the
+                            binary mask to the background.
+    Returns:
+        nii_sct_softmask : NIFTI file containing the soft mask created from the binary mask.
+    """
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_sct_binmask)
+    sct_binmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    sct_softmask = np.array(sct_binmask, dtype=float)
+    for i in range(sct_binmask.shape[2]):
+        slice = sct_binmask[:, :, i]
+        previous_slice = slice
+        for j in range(1, soft_width + 1):
+            dilated_slice = binary_dilation(slice, disk(j)).astype(float)
+            mask_edge = (dilated_slice - previous_slice).astype(float)
+            sct_softmask[:, :, i] += mask_edge * (1 - j / (soft_width + 1))
+            previous_slice = dilated_slice
+    sct_softmask = np.clip(sct_softmask, 0, 1)
+
+    # Save the soft mask to a NIFTI file
+    nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
+    nii_sct_softmask.set_data_dtype(float)
+    nii_sct_softmask.to_filename(path_sct_softmask)
