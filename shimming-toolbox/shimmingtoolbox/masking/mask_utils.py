@@ -6,6 +6,7 @@ import nibabel as nib
 import numpy as np
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
 from skimage.morphology import disk
+from skimage.filters import gaussian
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -255,6 +256,37 @@ def basic_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width, soft_val
         dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
         difference = dilated_slice - slice
         sct_softmask[:, :, i] = slice + difference * soft_value
+
+    # Save the soft mask to a NIFTI file
+    nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
+    nii_sct_softmask.set_data_dtype(float)
+    nii_sct_softmask.to_filename(path_sct_softmask)
+
+
+def gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width):
+    """
+    Creates a softmask from a binary mask created with the `sct_deepseg` and `sct_create_mask` functions.
+    The final mask contains a gaussian blur from the binary mask to the background.
+
+    Args:
+        path_sct_binmask (str): Path to the binary mask created from the `sct_create_mask` function.
+        path_sct_softmask (str): Path to save the soft mask
+        soft_width (int): Width of the soft zone (in pixels). In this case, the soft zone is a gaussian blur and its
+                            width is defined by the number of pixels with an intensity larger than 0.5.
+    Returns:
+        nii_sct_softmask : NIFTI file containing the soft mask created from the binary mask.
+    """
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_sct_binmask)
+    sct_binmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    sct_softmask = np.zeros_like(sct_binmask)
+    for i in range(sct_binmask.shape[2]):
+        slice = sct_binmask[:, :, i]
+        dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
+        gaussian_slice = gaussian(dilated_slice, soft_width / 2)
+        sct_softmask[:, :, i] = np.clip(gaussian_slice + slice, 0, 1)
 
     # Save the soft mask to a NIFTI file
     nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
