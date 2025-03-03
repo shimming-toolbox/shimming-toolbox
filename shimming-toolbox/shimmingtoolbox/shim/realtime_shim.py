@@ -5,12 +5,10 @@ import numpy as np
 import os
 import nibabel as nib
 from sklearn.linear_model import LinearRegression
-from skimage.filters import gaussian
 from matplotlib.figure import Figure
 
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.utils import st_progress_bar
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.coils.coordinates import phys_gradient
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs
@@ -121,7 +119,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     # Fetch PMU timing
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_fmap)
     # TODO: deal with saturation
-    # fit PMU and fieldmap values
+    # fit PMU and field map values
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # Shim using PMU
@@ -134,14 +132,26 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
     #   solution 2: accounting for regularization during fitting
     #     pros: fitting more robust to noise
     #     cons: (from Ryan): regularized fitting took a lot of time on Matlab
-    mean_p = np.mean(acq_pressures)
-    pressure_rms = np.sqrt(np.mean((acq_pressures - mean_p) ** 2))
-    reg = LinearRegression().fit(acq_pressures.reshape(-1, 1) - mean_p,
-                                 -gradient.reshape(-1, gradient.shape[-1]).T)
-    # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
-    # between scans. This allows to compare results between scans.
-    riro = reg.coef_.reshape(gradient.shape[:-1]) * pressure_rms
-    static = reg.intercept_.reshape(gradient.shape[:-1])
+
+    # Calculate mean pressure from the pmu trace in the acquisition window
+    mean_p = pmu.mean(acq_timestamps[0].min(), acq_timestamps[-1].max())
+
+    # Calculate the rms of the pressure from the pmu trace in the acquisition window
+    pressure_rms = pmu.get_pressure_rms(acq_timestamps[0].min(), acq_timestamps[-1].max())
+
+    n_volumes = gradient.shape[-1]
+    n_fmap_slices = gradient.shape[-2]
+    riro = np.zeros_like(gradient)
+    static = np.zeros_like(gradient)
+
+    # Calculate the static and riro components
+    for i_slice in range(n_fmap_slices):
+        reg = LinearRegression().fit(acq_pressures[:, i_slice].reshape(-1, 1) - mean_p,
+                                     -gradient[..., i_slice, :].reshape(-1, n_volumes).T)
+        # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
+        # between scans. This allows to compare results between scans.
+        riro = reg.coef_.reshape(gradient.shape[:-1]) * pressure_rms
+        static = reg.intercept_.reshape(gradient.shape[:-1])
 
     # Resample static to target anatomical image
     resampled_static = np.array([np.zeros_like(anat), np.zeros_like(anat), np.zeros_like(anat)])
@@ -281,11 +291,8 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         fig.savefig(fname_figure)
 
         # Reshape pmu datapoints to fit those of the acquisition
-        pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
-        pmu_times_within_range = pmu_times[pmu_times > acq_timestamps[0]]
-        pmu_data_within_range = pmu.data[pmu_times > acq_timestamps[0]]
-        pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
-        pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < acq_timestamps[fieldmap.shape[3] - 1]]
+        pmu_times_within_range = pmu.get_times(acq_timestamps[0].min(), acq_timestamps[-1].max())
+        pmu_data_within_range = pmu.get_resp_trace(acq_timestamps[0].min(), acq_timestamps[-1].max())
 
         # Calc fieldmap average within static mask
         fieldmap_avg = np.zeros([fieldmap.shape[3]])
@@ -296,13 +303,13 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
         # Plot pmu vs B0 in static masked region
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(211)
-        ax.plot(acq_timestamps / 1000, acq_pressures, label='Interpolated pressures')
+        ax.plot(np.mean(acq_timestamps, axis=1) / 1000, acq_pressures, label='Interpolated pressures')
         # ax.plot(pmu_times / 1000, pmu.data, label='Raw pressures')
         ax.plot(pmu_times_within_range / 1000, pmu_data_within_range, label='Pmu pressures')
         ax.legend()
         ax.set_title("Pressure [0, 4095] vs time (s) ")
         ax = fig.add_subplot(212)
-        ax.plot(acq_timestamps / 1000, fieldmap_avg, label='Mean B0')
+        ax.plot(np.mean(acq_timestamps, axis=1) / 1000, fieldmap_avg, label='Mean B0')
         ax.legend()
         ax.set_title("Fieldmap average over unmasked region (Hz) vs time (s)")
         fname_figure = os.path.join(path_output, 'fig_realtime_xyzshim_pmu_vs_B0.png')
