@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, basic_sct_softmask, gaussian_sct_softmask, linear_sct_softmask
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
@@ -14,7 +14,6 @@ dummy_image = np.zeros([10, 10, 10])
 dummy_image[2, 2, 3] = 1
 dummy_image[7:10, 2, 5] = 1
 dummy_image[2, 6:8, 6:8] = 1
-
 
 @pytest.mark.parametrize(
     "input_mask,", [(
@@ -120,3 +119,51 @@ def test_resample_mask():
     expected[24:28, 27:29, 0] = 1
 
     assert np.all(nii_mask_res.get_fdata() == expected)
+
+
+@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_basic_sub-01_t2.nii.gz'))])
+def test_basic_sct_softmask(path_sct_binmask, path_sct_softmask):
+    """ Test for the creation of a basic soft mask """
+
+    # Verify that the binary mask exists
+    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    # Verifiy that the output folder exists
+    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+
+    # Create a basic soft mask
+    basic_sct_softmask(path_sct_binmask, path_sct_softmask, 7, 0.5)
+    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+
+
+@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+   (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+    os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_gaussian_sub-01_t2.nii.gz'))])
+def test_gaussian_sct_softmask(path_sct_binmask, path_sct_softmask):
+    """ Test for the creation of a gaussian soft mask """
+
+    # Verify that the binary mask exists
+    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    # Verifiy that the output folder exists
+    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+
+    # Create a gradient sof tmask
+    gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, 7)
+    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+
+
+@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_linear_sub-01_t2.nii.gz'))])
+def test_linear_sct_softmask(path_sct_binmask, path_sct_softmask):
+    """ Test for the creation of a gaussian soft mask """
+
+    # Verify that the binary mask exists
+    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    # Verifiy that the output folder exists
+    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+
+    # Create a gradient sof tmask
+    linear_sct_softmask(path_sct_binmask, path_sct_softmask, 7)
+    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
