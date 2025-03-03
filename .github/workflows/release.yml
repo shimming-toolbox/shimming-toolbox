@@ -43,8 +43,7 @@ jobs:
           git config --global user.email "github-actions@github.com"
           git checkout -b release/${{ inputs.version }}
           git add ./shimming-toolbox/requirements_st-pinned.txt ./fsleyes-plugin-shimming-toolbox/requirements_stplugin-pinned.txt
-          git commit -m "Generate pinned requirements for v${{ inputs.version }}"
-          git push origin release/${{ inputs.version }}
+          git commit -m "Generate pinned requirements for ${{ inputs.version }}"
 
       - name: Create a Tag for the Version
         run: |
