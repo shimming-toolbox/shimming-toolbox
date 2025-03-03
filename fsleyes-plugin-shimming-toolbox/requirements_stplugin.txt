@@ -1,3 +1,4 @@
 imageio
 fsleyes==1.12.4
+wxpython==4.2.1
 pre-commit>=2.10.0
