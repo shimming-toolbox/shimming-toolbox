@@ -1,0 +1,51 @@
+name: Automated Version Branching
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number for the release (e.g., 1.0.0)"
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}  # This makes sure we check out the branch where the workflow runs
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install Shimming Toolbox
+        run: |
+          pip install --upgrade pip
+          make install
+
+      - name: Generate `requirements-pinned.txt` with Exact Versions
+        run: |
+          source ~/shimming-toolbox/python/bin/activate
+          cd shimming-toolbox/
+          pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
+          cd ../fsleyes-plugin-shimming-toolbox/
+          pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_stplugin.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_stplugin-pinned.txt
+          cd ..
+
+      - name: Commit and Push `requirements-pinned.txt`
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git checkout -b release/${{ inputs.version }}
+          git add ./shimming-toolbox/requirements_st-pinned.txt ./fsleyes-plugin-shimming-toolbox/requirements_stplugin-pinned.txt
+          git commit -m "Generate pinned requirements for ${{ inputs.version }}"
+
+      - name: Create a Tag for the Version
+        run: |
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}
