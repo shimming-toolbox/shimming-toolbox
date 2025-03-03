@@ -23,17 +23,14 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Only Specified Dependencies
+      - name: Install Shimming Toolbox
         run: |
-          python -m venv venv
-          source venv/bin/activate
           pip install --upgrade pip
-          pip install -r ./shimming-toolbox/requirements_st.txt
-          pip install -r ./fsleyes-plugin-shimming-toolbox/requirements_stplugin.txt
+          make install
 
       - name: Generate `requirements-pinned.txt` with Exact Versions
         run: |
-          source venv/bin/activate
+          source ~/shimming-toolbox/python/bin/activate
           cd shimming-toolbox/
           pip list --format=freeze | grep -F -f <(cut -d= -f1 requirements_st.txt | sed 's/>.*//g' | sed 's/<.*//g') > requirements_st-pinned.txt
           cd ../fsleyes-plugin-shimming-toolbox/
