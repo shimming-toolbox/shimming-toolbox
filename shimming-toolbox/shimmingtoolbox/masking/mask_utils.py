@@ -4,9 +4,8 @@
 import logging
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
-from skimage.morphology import disk
-from skimage.filters import gaussian
+from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure, gaussian_filter
+from skimage.morphology import ball
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -250,12 +249,9 @@ def basic_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width, soft_val
     sct_binmask = nifti_file.get_fdata()
 
     # Create a np.array soft mask
-    sct_softmask = np.zeros_like(sct_binmask)
-    for i in range(sct_binmask.shape[2]):
-        slice = sct_binmask[:, :, i]
-        dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
-        difference = dilated_slice - slice
-        sct_softmask[:, :, i] = slice + difference * soft_value
+    dilated_mask = binary_dilation(sct_binmask, ball(soft_width)).astype(float)
+    difference = dilated_mask - sct_binmask
+    sct_softmask = sct_binmask + difference * soft_value
 
     # Save the soft mask to a NIFTI file
     nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
@@ -281,12 +277,10 @@ def gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width):
     sct_binmask = nifti_file.get_fdata()
 
     # Create a np.array soft mask
-    sct_softmask = np.zeros_like(sct_binmask)
-    for i in range(sct_binmask.shape[2]):
-        slice = sct_binmask[:, :, i]
-        dilated_slice = binary_dilation(slice, disk(soft_width)).astype(float)
-        gaussian_slice = gaussian(dilated_slice, soft_width / 2)
-        sct_softmask[:, :, i] = np.clip(gaussian_slice + slice, 0, 1)
+    sct_softmask = np.zeros_like(sct_binmask, dtype=float)
+    dilated_mask = binary_dilation(sct_binmask, ball(soft_width)).astype(float)
+    blurred_mask = gaussian_filter(dilated_mask, sigma = soft_width / 2)
+    sct_softmask = np.clip(blurred_mask + sct_binmask, 0, 1)
 
     # Save the soft mask to a NIFTI file
     nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine, header=nifti_file.header)
@@ -313,14 +307,12 @@ def linear_sct_softmask(path_sct_binmask, path_sct_softmask, soft_width):
 
     # Create a np.array soft mask
     sct_softmask = np.array(sct_binmask, dtype=float)
-    for i in range(sct_binmask.shape[2]):
-        slice = sct_binmask[:, :, i]
-        previous_slice = slice
-        for j in range(1, soft_width + 1):
-            dilated_slice = binary_dilation(slice, disk(j)).astype(float)
-            mask_edge = (dilated_slice - previous_slice).astype(float)
-            sct_softmask[:, :, i] += mask_edge * (1 - j / (soft_width + 1))
-            previous_slice = dilated_slice
+    previous_mask = np.array(sct_binmask, dtype=float)
+    for i in range(1, soft_width + 1):
+        dilated_mask = binary_dilation(previous_mask, structure=ball(1))
+        new_layer = dilated_mask & ~previous_mask.astype(bool)
+        sct_softmask[new_layer] = 1 - (i / (soft_width + 1))
+        previous_mask = dilated_mask
     sct_softmask = np.clip(sct_softmask, 0, 1)
 
     # Save the soft mask to a NIFTI file

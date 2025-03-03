@@ -122,8 +122,8 @@ def test_resample_mask():
 
 
 @pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
-    ("/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/centerline_masks/binmask_viewer_cylinder_sub-6_T1w.nii.gz",
-     "/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/centerline_masks/softmask_viewer_sub-6_T1w.nii.gz")])
+    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_basic_sub-01_t2.nii.gz'))])
 def test_basic_sct_softmask(path_sct_binmask, path_sct_softmask):
     """ Test for the creation of a basic soft mask """
 
@@ -133,13 +133,13 @@ def test_basic_sct_softmask(path_sct_binmask, path_sct_softmask):
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
 
     # Create a basic soft mask
-    basic_sct_softmask(path_sct_binmask, path_sct_softmask, 10, 0.5)
+    basic_sct_softmask(path_sct_binmask, path_sct_softmask, 7, 0.5)
     assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
 
 
 @pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
-    ("/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/segmentation_masks/binmask_deepseg_sub-6_T1w.nii.gz",
-     "/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/segmentation_masks/softmask_gaussian_sub-6_T1w.nii.gz")])
+   (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+    os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_gaussian_sub-01_t2.nii.gz'))])
 def test_gaussian_sct_softmask(path_sct_binmask, path_sct_softmask):
     """ Test for the creation of a gaussian soft mask """
 
@@ -149,13 +149,13 @@ def test_gaussian_sct_softmask(path_sct_binmask, path_sct_softmask):
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
 
     # Create a gradient sof tmask
-    gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, 10)
+    gaussian_sct_softmask(path_sct_binmask, path_sct_softmask, 7)
     assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
 
 
 @pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
-    ("/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/segmentation_masks/binmask_deepseg_sub-6_T1w.nii.gz",
-     "/Users/antoineguenette/Documents/donnees_projet_III/exemple_MPRAGE_arnaud/segmentation_masks/softmask_linear_sub-6_T1w.nii.gz")])
+    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
+     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_linear_sub-01_t2.nii.gz'))])
 def test_linear_sct_softmask(path_sct_binmask, path_sct_softmask):
     """ Test for the creation of a gaussian soft mask """
 
@@ -165,5 +165,5 @@ def test_linear_sct_softmask(path_sct_binmask, path_sct_softmask):
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
 
     # Create a gradient sof tmask
-    linear_sct_softmask(path_sct_binmask, path_sct_softmask, 10)
+    linear_sct_softmask(path_sct_binmask, path_sct_softmask, 7)
     assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
