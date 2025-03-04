@@ -122,7 +122,7 @@ class Optimizer(object):
         # Check for sizing errors
         self._check_sizing(mask)
         # Convert mask to float
-        if mask.dtype != np.float:
+        if mask.dtype != float:
             mask = mask.astype(float)
         # Reshape mask to 1D
         mask_vec = mask.reshape((-1,))
