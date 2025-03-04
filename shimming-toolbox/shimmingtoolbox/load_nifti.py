@@ -50,7 +50,6 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     if when == 'volume-start':
         return volume_start_times
     if when == 'volume-middle':
-
         return volume_start_times + (deltat_volume / 2)
 
     def get_middle_of_slice_timing(data, n_sli):
