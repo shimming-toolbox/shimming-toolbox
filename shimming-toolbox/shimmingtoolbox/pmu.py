@@ -148,10 +148,11 @@ class PmuResp(object):
             time_offset (int): Time offset in ms to what is read in the .resp file
 
         """
-        self.start_time_mdh += time_offset - self.time_offset
-        self.stop_time_mdh += time_offset - self.time_offset
-        self.start_time_mpcu += time_offset - self.time_offset
-        self.stop_time_mpcu += time_offset - self.time_offset
+        old_offset = self.time_offset
+        self.start_time_mdh += time_offset - old_offset
+        self.stop_time_mdh += time_offset - old_offset
+        self.start_time_mpcu += time_offset - old_offset
+        self.stop_time_mpcu += time_offset - old_offset
         self.time_offset = time_offset
 
     def get_times(self, start_time=None, stop_time=None):
@@ -164,17 +165,33 @@ class PmuResp(object):
         Returns:
             np.ndarray: Array containing the timepoints in ms of each data
         """
-        times = self._get_all_times()
         start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
+        times = self._get_all_times()
 
         return times[start_idx:stop_idx + 1]
 
     def _get_all_times(self):
+        """
+        Get all the timepoints from the respiratory file (in ms).
+
+        Returns:
+            np.ndarray: Array containing the timepoints in ms of each data
+        """
         raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data) - 1)
         times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
         return times
 
     def _get_time_indexes(self, start_time=None, stop_time=None):
+        """
+        Get the indexes of the data corresponding to the start and stop times
+
+        Args:
+            start_time:
+            stop_time:
+
+        Returns:
+            tuple: Tuple containing the indexes of the start and stop times
+        """
         times = self._get_all_times()
         if start_time is None:
             start_time = times[0]
@@ -214,12 +231,12 @@ class PmuResp(object):
         Returns:
             numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
         """
-        start_offset = np.min(acquisition_times - self.start_time_mdh)
-        stop_offset = np.min(self.stop_time_mdh - acquisition_times)
 
         if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
             # TODO: Explore why pmulog sequence raises an error for pmulog sequence
             logger.warning("acquisition_times don't fit within time limits for resp trace")
+            start_offset = np.min(acquisition_times - self.start_time_mdh)
+            stop_offset = np.min(self.stop_time_mdh - acquisition_times)
             logger.debug(f"start_offset: {start_offset}")
             logger.debug(f"stop_offset: {stop_offset}")
             # raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
