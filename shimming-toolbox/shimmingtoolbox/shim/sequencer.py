@@ -705,7 +705,7 @@ class ShimSequencer(Sequencer):
         metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
         fig = Figure(figsize=(15, 9))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+        fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
@@ -760,7 +760,7 @@ class ShimSequencer(Sequencer):
         max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
         fig = Figure(figsize=(8, 5))
-        fig.suptitle(f"Fieldmaps for all shim groups\nFieldmap Coordinate System")
+        fig.suptitle("Fieldmaps for all shim groups\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
@@ -952,7 +952,7 @@ class ShimSequencer(Sequencer):
                                                               metric='mean')
 
         fig = Figure(figsize=(60, 30))  # make the figure larger and higher resolution
-        fig.suptitle(f"Signal Percentage Loss Map\nFieldmap Coordinate System")
+        fig.suptitle("Signal Percentage Loss Map\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
@@ -1702,11 +1702,11 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(2, 3, 5)
         im = ax.imshow(np.rot90(shimmed_static[..., i_slice, i_t, i_shim]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
-        ax.set_title(f"shim static")
+        ax.set_title("shim static")
         ax = fig.add_subplot(2, 3, 6)
         im = ax.imshow(np.rot90(unshimmed[..., i_slice, i_t]), vmin=min_value, vmax=max_value)
         fig.colorbar(im)
-        ax.set_title(f"unshimmed")
+        ax.set_title("unshimmed")
         fname_figure = os.path.join(self.path_output, 'fig_realtime_masked_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
@@ -1914,7 +1914,7 @@ class RealTimeSequencer(Sequencer):
                         np.nanmax(mt_shimmed_masked[mt_shimmed_masked < shim_limit]))
 
         fig = Figure(figsize=(9, 6))
-        fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
+        fig.suptitle("Fieldmaps\nFieldmap Coordinate System\n\u0394B\u2080 STD over time ")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
@@ -1978,7 +1978,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     max_value = 100
 
     fig = Figure(figsize=(15, 9))
-    fig.suptitle(f"Fieldmaps\nFieldmap Coordinate System")
+    fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
 
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
