@@ -12,6 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
+from shimmingtoolbox.masking.mask_utils import basic_softmask, linear_softmask, gaussian_filter_softmask, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -441,9 +442,9 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
                   help="Adapt the gaussian filter created by sct_create_mask to create a soft mask"
                        " containing a gaussian blur from the binary mask to the background, while"
                        " keeping the binary mask.")
-@click.option('-i', '--input', 'path_sct_binmask', type=click.Path(), required=True,
+@click.option('-ib', '--inputbin', 'path_sct_binmask', type=click.Path(), required=True,
               help="Path to the binary mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
-@click.option('-g', '--gaussmask', 'path_sct_gaussmask', type=click.Path(), required=True,
+@click.option('-ig', '--inputgauss', 'path_sct_gaussmask', type=click.Path(), required=True,
               help="Path to the gaussian mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'path_sct_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Name of the output soft mask. Supported extensions are .nii or .nii.gz.")
@@ -473,9 +474,50 @@ def gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask, path_sct_softmas
     sct_softmask = np.clip(sct_gaussmask + sct_binmask, 0, 1)
 
     # Save the soft mask to a NIFTI file
-    nii_img = nib.Nifti1Image(sct_softmask, nifti_file.affine)
-    nib.save(nii_img, path_sct_softmask)
-    logger.info(f"The filename for the output soft mask is: {os.path.abspath(path_sct_softmask)}")
+    save_softmask(sct_softmask, path_sct_softmask, path_sct_binmask)
+    click.echo(f"The path of the output soft mask is: {os.path.abspath(path_sct_softmask)}\n")
+
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Creates a soft mask by creating a blur zone around the binary mask.")
+@click.option('-i', '--input', 'path_sct_binmask', type=click.Path(), required=True,
+              help="Path to the binary mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'path_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
+              show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-b', '--blur', type=click.Choice(['constant', 'linear', 'gaussian']), default='basic',
+              help="""Type of blur around the binary mask :
+              - constant: All blur zone coefficient have the same value. Specify blur_value (-b)
+              - linear: Radial linear gradient, from 1 to 0
+              - gaussian: 2D gaussian distribution with all coefficient over 0.1""")
+@click.option('-bw', '--blurwidth', 'blur_width', default = 12,
+              help="Width (in pixels) of the blurred zone. For linear and gaussian blurs, width must be a multiple of 3")
+@click.option('-bv', '--blurvalue', 'blur_value', default = 0.5,
+              help="Intensity of the constant blur. Use only on constant blurs")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def create_softmask(path_sct_binmask, path_softmask, blur, blur_width, blur_value, verbose) :
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output directory
+    create_output_dir(path_softmask, is_file=True)
+
+    # Create a np.array soft mask
+    if blur == 'constant' :
+        softmask = basic_softmask(path_sct_binmask, blur_width, blur_value)
+
+    elif blur == 'linear' :
+        softmask = linear_softmask(path_sct_binmask, blur_width)
+
+    elif blur == 'gaussian' :
+        softmask = gaussian_filter_softmask(path_sct_binmask, blur_width)
+
+    else :
+        raise ValueError("Invalid blur option. Impossible to create soft mask.")
+
+    # Save the soft mask to a NIFTI file
+    save_softmask(softmask, path_softmask, path_sct_binmask)
+    click.echo(f"The path of the output soft mask is: {os.path.abspath(path_softmask)}\n")
 
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
