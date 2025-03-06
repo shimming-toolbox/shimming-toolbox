@@ -437,6 +437,47 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
 
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Adapt the gaussian filter created by sct_create_mask to create a soft mask"
+                       " containing a gaussian blur from the binary mask to the background, while"
+                       " keeping the binary mask.")
+@click.option('-i', '--input', 'path_sct_binmask', type=click.Path(), required=True,
+              help="Path to the binary mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
+@click.option('-g', '--gaussmask', 'path_sct_gaussmask', type=click.Path(), required=True,
+              help="Path to the gaussian mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'path_sct_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
+              show_default=True, help="Name of the output soft mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask, path_sct_softmask, verbose):
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output directory
+    create_output_dir(path_sct_softmask, is_file=True)
+
+    # Make sure sct masks paths exists
+    if not os.path.exists(path_sct_binmask):
+        raise RuntimeError("Binary mask path does not exist")
+    if not os.path.exists(path_sct_gaussmask):
+        raise RuntimeError("Gaussian mask path does not exist")
+
+    # Load the sct masks from their NIFTI file
+    nifti_file = nib.load(path_sct_binmask)
+    sct_binmask = nifti_file.get_fdata()
+    nifti_file = nib.load(path_sct_gaussmask)
+    sct_gaussmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    sct_gaussmask[sct_gaussmask < 0.1] = 0
+    sct_softmask = np.clip(sct_gaussmask + sct_binmask, 0, 1)
+
+    # Save the soft mask to a NIFTI file
+    nii_img = nib.Nifti1Image(sct_softmask, nifti_file.affine)
+    nib.save(nii_img, path_sct_softmask)
+    logger.info(f"The filename for the output soft mask is: {os.path.abspath(path_sct_softmask)}")
+
+
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):
 #     """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
@@ -477,33 +518,3 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
 #
 #     else:
 #         raise ValueError("Could not get centerline.")
-
-
-@mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help = "Adapts the gaussian filter created by sct_create_mask to create a soft mask"
-                         "containing a gaussian blur from the binary mask to the background, while"
-                         "keeping the binary mask.")
-@click.option('-i', '--input', 'path_sct_binmask', type=click.Path(), required=True,
-              help="Path to the binary mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
-@click.option('-g', '--gaussmask', 'path_sct_gaussmask', type=click.Path(), required=True,
-              help="Path to the gaussian mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'path_sct_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
-              show_default=True, help="Name of the output soft mask. Supported extensions are .nii or .nii.gz.")
-def gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask, path_sct_softmask):
-
-    # Load the sct binary mask from a NIFTI file
-    nifti_file = nib.load(path_sct_binmask)
-    sct_binmask = nifti_file.get_fdata()
-
-    # Load the sct gaussian mask from a NIFTI file
-    nifti_file = nib.load(path_sct_gaussmask)
-    sct_gaussmask = nifti_file.get_fdata()
-
-    # Create a np.array soft mask
-    sct_gaussmask[sct_gaussmask < 0.1] = 0
-    sct_softmask = np.clip(sct_gaussmask + sct_binmask, 0, 1)
-
-    # Save the soft mask to a NIFTI file
-    nii_img = nib.Nifti1Image(sct_softmask, nifti_file.affine)
-    nib.save(nii_img, path_sct_softmask)
-    click.echo(f"The filename for the output soft mask is: {os.path.abspath(path_sct_softmask)}")
