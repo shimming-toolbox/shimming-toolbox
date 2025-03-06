@@ -238,7 +238,7 @@ def basic_softmask(path_sct_binmask, soft_width, soft_value):
 
     Args:
         path_sct_binmask (str): Path to the binary mask created from the `sct_create_mask` function.
-        soft_width (int): Width of the soft zone (in pixels).
+        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3.
         soft_value (float): Value of the intensity of the pixels in the soft zone.
     Returns:
         sct_softmask (numpy.ndarray): soft mask created from the binary mask.
@@ -247,10 +247,19 @@ def basic_softmask(path_sct_binmask, soft_width, soft_value):
     nifti_file = nib.load(path_sct_binmask)
     sct_binmask = nifti_file.get_fdata()
 
+    # Raise error if soft_width is not a multiple of 3
+    if soft_width % 3 != 0:
+        raise ValueError("soft_width must be a multiple of 3")
+
     # Create a np.array soft mask
-    dilated_mask = binary_dilation(sct_binmask, ball(soft_width)).astype(float)
-    difference = dilated_mask - sct_binmask
-    sct_softmask = sct_binmask + difference * soft_value
+    sct_softmask = np.array(sct_binmask, dtype=float)
+    previous_mask = np.array(sct_binmask, dtype=float)
+    for _ in range(soft_width // 3):
+        dilated_mask = binary_dilation(previous_mask, ball(3))
+        new_layer = dilated_mask & ~previous_mask.astype(bool)
+        sct_softmask[new_layer] = soft_value
+        previous_mask = dilated_mask
+    sct_softmask = np.clip(sct_softmask, 0, 1)
 
     return sct_softmask
 
@@ -291,7 +300,7 @@ def gaussian_filter_softmask(path_sct_binmask, soft_width):
 
     Args:
         path_sct_binmask (str): Path to the binary mask created from the `sct_create_mask` function.
-        soft_width (int): Width of the soft zone (in pixels). In this case, the soft zone is a gaussian blur and its
+        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3. In this case, the soft zone is a gaussian blur and its
                             width is defined by the number of pixels with an intensity larger than 0.5.
     Returns:
         sct_softmask (numpy.ndarray): soft mask created from the binary mask.
@@ -300,10 +309,17 @@ def gaussian_filter_softmask(path_sct_binmask, soft_width):
     nifti_file = nib.load(path_sct_binmask)
     sct_binmask = nifti_file.get_fdata()
 
+    # Raise error if soft_width is not a multiple of 3
+    if soft_width % 3 != 0:
+        raise ValueError("soft_width must be a multiple of 3")
+
     # Create a np.array soft mask
-    sct_softmask = np.zeros_like(sct_binmask, dtype=float)
-    dilated_mask = binary_dilation(sct_binmask, ball(soft_width)).astype(float)
-    blurred_mask = gaussian_filter(dilated_mask, sigma = soft_width / 2)
+    sct_softmask = np.array(sct_binmask, dtype=float)
+    previous_mask = np.array(sct_binmask, dtype=float)
+    for _ in range(soft_width // 3):
+        dilated_mask = binary_dilation(previous_mask, ball(3))
+        previous_mask = dilated_mask
+    blurred_mask = gaussian_filter(previous_mask.astype(float), soft_width / 2)
     blurred_mask[blurred_mask < 0.1] = 0
     sct_softmask = np.clip(blurred_mask + sct_binmask, 0, 1)
 

@@ -136,7 +136,7 @@ def test_basic_softmask(path_sct_binmask, path_sct_softmask):
     # Verifiy that the output folder exists
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
     # Create and load the basic soft mask
-    b_softmask = basic_softmask(path_sct_binmask, 7, 0.5)
+    b_softmask = basic_softmask(path_sct_binmask, 9, 0.5)
     softmask_nifti = save_softmask(b_softmask, path_sct_softmask, path_sct_binmask)
     softmask = softmask_nifti.get_fdata()
 
@@ -164,7 +164,7 @@ def test_linear_softmask(path_sct_binmask, path_sct_softmask):
     # Verify that the output folder exists
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
     # Create and load the linear soft mask
-    l_softmask = linear_softmask(path_sct_binmask, 7)
+    l_softmask = linear_softmask(path_sct_binmask, 9)
     softmask_nifti = save_softmask(l_softmask, path_sct_softmask, path_sct_binmask)
     softmask = softmask_nifti.get_fdata()
 
@@ -192,7 +192,7 @@ def test_gaussian_filter_softmask(path_sct_binmask, path_sct_softmask):
     # Verify that the output folder exists
     assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
     # Create and load the gaussian soft mask
-    g_softmask = gaussian_filter_softmask(path_sct_binmask, 7)
+    g_softmask = gaussian_filter_softmask(path_sct_binmask, 9)
     softmask_nifti = save_softmask(g_softmask, path_sct_softmask, path_sct_binmask)
     softmask = softmask_nifti.get_fdata()
 
