@@ -400,9 +400,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
-    logger.info(f" Plotting currents")
+    logger.info(" Plotting currents")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
@@ -420,7 +420,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                 _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
                             bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-        logger.info(f"Finished plotting figure(s)")
+        logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
@@ -456,7 +456,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-                        f.write(f"\n")
+                        f.write("\n")
 
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
@@ -965,9 +965,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                                        path_output, o_format_coil, options, i_coil, 0)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
-    logger.info(f"Plotting Currents")
+    logger.info("Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
     end_channel = 0
 
@@ -989,7 +989,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+    logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
@@ -1593,7 +1593,7 @@ def parse_add_channels(channels: str, n_channels: int):
         channels = [int(channel) for channel in channels]
         channels.sort()
         if len(channels) + n_channels <= max(channels):
-            raise ValueError(f"The provided channels to add would leave gaps in the channels")
+            raise ValueError("The provided channels to add would leave gaps in the channels")
         return channels
     except ValueError:
         raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")

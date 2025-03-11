@@ -9,7 +9,7 @@ import os
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.lsq_optimizer import PmuLsqOptimizer
 from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil, create_unshimmed_affine
-from shimmingtoolbox.masking.mask_utils import basic_softmask
+from shimmingtoolbox.masking.mask_utils import basic_softmask, linear_softmask, gaussian_filter_softmask
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
@@ -73,34 +73,27 @@ def generate_dummy_inputs():
     path_sct_binmask = os.path.join(__dir_testing__, 'tmp', 'binmask.nii.gz')
     os.makedirs(os.path.dirname(path_sct_binmask), exist_ok=True)
     nii_binmask.to_filename(path_sct_binmask)
-    softmask = basic_softmask(path_sct_binmask, 3, 0.5)
+    bsoftmask = basic_softmask(path_sct_binmask, 3, 0.5)
+    lsoftmask = linear_softmask(path_sct_binmask, 3)
+    gsoftmask = gaussian_filter_softmask(path_sct_binmask, 3)
     os.remove(path_sct_binmask)
     os.rmdir(os.path.join(__dir_testing__, 'tmp'))
 
-    return unshimmed, unshimmed_affine, coil, static_binmask, softmask
-
-# def test_get_coil_mat_and_unshimmed(self):
-#     # Get the input data
-#     unshimmed, unshimmed_affine, coil, static_binmask, softask = self.generate_dummy_inputs()
-
-#     # Run the optimizer
-#     optimizer = Optimizer([coil], unshimmed, unshimmed_affine)
-#     bin_coil_mat, bin_unshimmed_vec = optimizer.get_coil_mat_and_unshimmed(static_binmask)
-#     soft_coil_mat, soft_unshimmed_vec = optimizer.get_coil_mat_and_unshimmed(softask)
-
-#     return bin_coil_mat, bin_unshimmed_vec, soft_coil_mat, soft_unshimmed_vec
-
-        # Check the dimensions of the output
-        # assert coil_mat.ndim == 2, "The coil matrix must be two-dimensional."
-        # assert unshimmed_vec.ndim == 1, "The unshimmed vector must be one-dimensional."
-        # assert coil_mat.shape[0] == unshimmed_vec.shape[0], "The number of masked points must be the same in both arrays."
-        # assert unshimmed_vec.shape[0] == (softmask > 0).sum(), "The number of masked points must match the number of points in the softmask."
-
+    return unshimmed, unshimmed_affine, coil, static_binmask, bsoftmask, lsoftmask, gsoftmask
 
 if __name__ == "__main__" :
-    unshimmed, unshimmed_affine, coil, static_binmask, softmask = generate_dummy_inputs()
+    unshimmed, unshimmed_affine, coil, static_binmask, bsoftmask, lsoftmask, gsoftmask = generate_dummy_inputs()
     optimizer = Optimizer([coil], unshimmed, unshimmed_affine)
+
     bin_profiles = optimizer.optimize(static_binmask)
-    soft_profiles = optimizer.optimize(softmask)
-    print(bin_profiles)
-    print(soft_profiles)
+    bsoft_profiles = optimizer.optimize(bsoftmask)
+    lsoft_profiles = optimizer.optimize(lsoftmask)
+    gsoft_profiles = optimizer.optimize(gsoftmask)
+    print(
+        f"""
+        \nBinmask profiles:\n{bin_profiles}
+        \nBasic softmask profiles:\n{bsoft_profiles}
+        \nLinear softmask profiles:\n{lsoft_profiles}
+        \nGaussian softmask profiles:\n{gsoft_profiles}
+        """
+    )
