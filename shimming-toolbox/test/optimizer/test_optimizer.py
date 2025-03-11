@@ -2,10 +2,16 @@
 # -*- coding: utf-8
 
 import numpy as np
+import nibabel as nib
 import pytest
+import os
 
+from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.lsq_optimizer import PmuLsqOptimizer
-from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil
+from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil, create_unshimmed_affine
+from shimmingtoolbox.masking.mask_utils import basic_softmask, linear_softmask, gaussian_filter_softmask
+from shimmingtoolbox.masking.shapes import shapes
+from shimmingtoolbox import __dir_testing__
 
 nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
     define_rt_sim_inputs()
@@ -43,3 +49,51 @@ class TestPmuLsqOptimizer:
         if (np.any(test_coefs_min < original_bounds[0]) or np.any(test_coefs_min > original_bounds[1])
                 or np.any(test_coefs_max < original_bounds[0]) or np.any(test_coefs_max > original_bounds[1])):
             assert False
+
+
+def generate_dummy_inputs():
+    # Dimensions of the unshimmed volume
+    nx, ny, nz = 30, 30, 6  # Must be multiple of 3
+
+    # Create the unshimmed volume
+    unshimmed = np.random.rand(nx, ny, nz)
+    unshimmed_affine = create_unshimmed_affine()
+
+    # Create the coil profiles
+    coil_affine = unshimmed_affine * 2
+    coil_affine[3, 3] = 1
+    coil = create_coil(nx, ny, nz, create_constraints(1000, -1000, 2000), coil_affine)
+
+    # Create a binary mask
+    anat = np.ones((nx, ny, nz))
+    static_binmask = shapes(anat, 'cube', len_dim1=10, len_dim2=10, len_dim3=nz)
+    nii_binmask = nib.Nifti1Image(static_binmask.astype(np.uint8), unshimmed_affine)
+
+    # Create a softmask
+    path_sct_binmask = os.path.join(__dir_testing__, 'tmp', 'binmask.nii.gz')
+    os.makedirs(os.path.dirname(path_sct_binmask), exist_ok=True)
+    nii_binmask.to_filename(path_sct_binmask)
+    bsoftmask = basic_softmask(path_sct_binmask, 3, 0.5)
+    lsoftmask = linear_softmask(path_sct_binmask, 3)
+    gsoftmask = gaussian_filter_softmask(path_sct_binmask, 3)
+    os.remove(path_sct_binmask)
+    os.rmdir(os.path.join(__dir_testing__, 'tmp'))
+
+    return unshimmed, unshimmed_affine, coil, static_binmask, bsoftmask, lsoftmask, gsoftmask
+
+if __name__ == "__main__" :
+    unshimmed, unshimmed_affine, coil, static_binmask, bsoftmask, lsoftmask, gsoftmask = generate_dummy_inputs()
+    optimizer = Optimizer([coil], unshimmed, unshimmed_affine)
+
+    bin_profiles = optimizer.optimize(static_binmask)
+    bsoft_profiles = optimizer.optimize(bsoftmask)
+    lsoft_profiles = optimizer.optimize(lsoftmask)
+    gsoft_profiles = optimizer.optimize(gsoftmask)
+    print(
+        f"""
+        \nBinmask profiles:\n{bin_profiles}
+        \nBasic softmask profiles:\n{bsoft_profiles}
+        \nLinear softmask profiles:\n{lsoft_profiles}
+        \nGaussian softmask profiles:\n{gsoft_profiles}
+        """
+    )
