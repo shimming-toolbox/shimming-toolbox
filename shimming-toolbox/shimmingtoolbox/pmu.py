@@ -46,6 +46,7 @@ class PmuResp(object):
         self.min = attributes['min']
         self.time_offset = 0
         self.adjust_start_time(time_offset)
+        self.timepoints = self.get_all_times()
 
     def read_resp(self, fname_pmu):
         """
@@ -166,11 +167,10 @@ class PmuResp(object):
             np.ndarray: Array containing the timepoints in ms of each data
         """
         start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
-        times = self._get_all_times()
 
-        return times[start_idx:stop_idx + 1]
+        return self.timepoints[start_idx:stop_idx + 1]
 
-    def _get_all_times(self):
+    def get_all_times(self):
         """
         Get all the timepoints from the respiratory file (in ms).
 
@@ -192,14 +192,13 @@ class PmuResp(object):
         Returns:
             tuple: Tuple containing the indexes of the start and stop times
         """
-        times = self._get_all_times()
         if start_time is None:
-            start_time = times[0]
+            start_time = self.timepoints[0]
         if stop_time is None:
-            stop_time = times[-1]
+            stop_time = self.timepoints[-1]
 
-        start_idx = np.argmin(np.abs(times - start_time))
-        stop_idx = np.argmin(np.abs(times - stop_time))
+        start_idx = np.argmin(np.abs(self.timepoints - start_time))
+        stop_idx = np.argmin(np.abs(self.timepoints - stop_time))
 
         return start_idx, stop_idx
 
@@ -287,7 +286,6 @@ class PmuResp(object):
         Returns:
             numpy.ndarray: Array with the trigger times in ms of the resp trace
         """
-        times = self._get_all_times()
         index_start, index_stop = self._get_time_indexes(start_time, stop_time)
 
         trigger_times = []
@@ -297,7 +295,7 @@ class PmuResp(object):
                 if data != 5000:
                     logger.warning(f"Trigger value {data} not recognized")
                 if index_start <= i <= index_stop:
-                    trigger_times.append(float(times[i]))
+                    trigger_times.append(float(self.timepoints[i]))
             else:
                 i += 1
 

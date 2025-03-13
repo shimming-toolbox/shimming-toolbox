@@ -1202,27 +1202,28 @@ class RealTimeSequencer(Sequencer):
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
         acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
         n_samples = 1000
-        min_offset = max(-mean_respiratory_cycle_time / 2, self.pmu.start_time_mdh - acq_times.min())
-        max_offset = min(mean_respiratory_cycle_time / 2, self.pmu.stop_time_mdh - acq_times.max())
-        # min_offset = -mean_respiratory_cycle_time / 2
-        # max_offset = mean_respiratory_cycle_time / 2
-        time_offsets = np.linspace(min_offset, max_offset, n_samples)
+        min_bound_offset = max(-mean_respiratory_cycle_time / 2, self.pmu.start_time_mdh - acq_times.min())
+        max_bound_offset = min(mean_respiratory_cycle_time / 2, self.pmu.stop_time_mdh - acq_times.max())
+        # min_bound_offset = -mean_respiratory_cycle_time / 2
+        # max_bound_offset = mean_respiratory_cycle_time / 2
+        time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
 
         # Find best time offset
-        best_r2total = 0
+        best_r2_total = 0
         best_time_offset = 0
-        r2total_list = []
+        r2_total_list = []
         for time_offset in time_offsets:
             self.pmu.adjust_start_time(round(time_offset))
             r2_total = 0
             for i_slice in range(n_slices):
                 if i_slice in []:
                     continue
-                pressures = self.pmu.interp_resp_trace(acq_times) - 2048
+                # Todo: It was 2048, should it be the mean?
+                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
                 y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
                 y = (y - y.mean())
                 reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
@@ -1231,34 +1232,34 @@ class RealTimeSequencer(Sequencer):
                 # r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
                 r2_total += r2
             r2_total /= n_slices
-            r2total_list.append(r2_total)
-            if best_r2total < r2_total:
-                best_r2total = r2_total
+            r2_total_list.append(r2_total)
+            if best_r2_total < r2_total:
+                best_r2_total = r2_total
                 best_time_offset = time_offset
 
         logger.info(f"Best time offset: {round(best_time_offset)}ms")
-        logger.info(f"Average r2 score: {best_r2total} at this time offset")
+        logger.info(f"Average r2 score: {best_r2_total} at this time offset")
 
         if self.path_output is not None:
             fig = Figure(figsize=(8, 10))
             ax1 = fig.add_subplot(311)
-            ax1.plot(time_offsets, r2total_list)
+            ax1.plot(time_offsets, r2_total_list)
             ax1.set_xlabel("Time offset [ms]")
             ax1.set_ylabel("Average r2")
             ax1.set_title("R2 score for different time offsets")
             ax1.set_ylim([-0.1, 1.1])
 
             # 750 ms is chosen as the smoothing length
-            window_length = round(750 / ((max_offset - min_offset) / n_samples))
-            r2_list_smooth = savgol_filter(r2total_list, window_length, 4, mode='mirror')
+            window_length = round(750 / ((max_bound_offset - min_bound_offset) / n_samples))
+            r2_list_smooth = savgol_filter(r2_total_list, window_length, 4, mode='mirror')
             # The distance parameter is the minimum number of samples between adjacent peaks
             # 1000 ms is chosen as the minimum time between peaks
-            min_distance = round(500 / ((max_offset - min_offset) / n_samples))
+            min_distance = round(500 / ((max_bound_offset - min_bound_offset) / n_samples))
             peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
             for index in peak_indices:
                 ax1.vlines(time_offsets[index], -1, 2, colors='k', linestyles='dashed')
                 ax1.annotate(f"{round(time_offsets[index])}ms",
-                             (time_offsets[index] + 50, r2total_list[index] - 0.2))
+                             (time_offsets[index] + 50, r2_total_list[index] - 0.2))
 
             self.pmu.adjust_start_time(best_time_offset)
 
@@ -1529,8 +1530,7 @@ class RealTimeSequencer(Sequencer):
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
         self.bounds = new_bounds_from_currents_static_to_riro(
-            coef_static, self.optimizer.merged_bounds,
-                                                              self.coils_static, self.coils_riro)
+            coef_static, self.optimizer.merged_bounds, self.coils_static, self.coils_riro)
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(self.mask_riro_fmcs_per_shim_dil)
@@ -1886,7 +1886,6 @@ class RealTimeSequencer(Sequencer):
         create_output_dir(path_pressure_and_unshimmed_field)
 
         for i_plot, i_shim in enumerate(plots):
-
             fm_slices = []
             for i_slice_fm in range(n_slices_fm):
                 if np.any(mask_fm[..., i_slice_fm, i_shim] != 0):
