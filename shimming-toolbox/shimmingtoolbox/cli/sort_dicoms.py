@@ -37,6 +37,7 @@ def sort_dicoms(path_input, is_recursive, recursive_depth, path_output, verbose)
     # Create output directory
     create_output_dir(path_output)
 
+    extra = {}
     # For loop on all DICOMs in the directory
     for fname_dcm in sorted(list_dicoms):
         # Create the file path
@@ -50,7 +51,18 @@ def sort_dicoms(path_input, is_recursive, recursive_depth, path_output, verbose)
         if not os.path.isdir(path_folder_output):
             create_output_dir(path_folder_output)
 
-        fname_output = os.path.join(path_folder_output, os.path.basename(fname_dcm))
+        dcm_basename = os.path.basename(fname_dcm)
+        fname_output = os.path.join(path_folder_output, dcm_basename)
+        if os.path.exists(fname_output):
+            if extra.get(folder_name) is None:
+                extra[folder_name] = 0
+                logger.debug(f"Multiple files have the same name for acquisition {folder_name}. "
+                               f"Adding a suffix to the acquisition names.")
+
+            dcm_stem, dcm_ext = os.path.splitext(dcm_basename)
+            fname_output = os.path.join(path_output, folder_name, dcm_stem + f"_{extra[folder_name]}" + dcm_ext)
+            extra[folder_name] += 1
+
         # Copy files to the new folder
         shutil.copyfile(fname_dcm, fname_output)
 
