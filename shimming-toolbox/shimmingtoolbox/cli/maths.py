@@ -58,6 +58,78 @@ def mean(fname_input, fname_output, axis, verbose):
     nib.save(nii_output, fname_output)
 
 
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
+              help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_std.nii.gz]")
+@click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
+              help="Axis of the array to calculate the average")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def std(fname_input, fname_output, axis, verbose):
+    """Compute the STD from NIfTI data across an axis."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Load input
+    nii_input = nib.load(fname_input)
+
+    # Find index
+    dim_list = AXES
+    index = dim_list.index(axis)
+    if len(nii_input.shape) < index:
+        raise IndexError(f"Axis: {axis} is out of bounds for array of length: {len(nii_input.shape)}")
+
+    # Compute STD
+    std_data = np.std(nii_input.get_fdata(), axis=index)
+
+    # Change the output datatype to float64
+    header = nii_input.header
+    header.set_data_dtype(np.float64)
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(std_data, nii_input.affine, header=header)
+
+    # Save image
+    if fname_output is None:
+        _, filename = os.path.split(fname_input)
+        fname_output = add_suffix(os.path.join(os.curdir, filename), '_std')
+    nib.save(nii_output, fname_output)
+    a=1
+
+
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-i2', '--input2', 'fname_input2', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
+              help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_div.nii.gz]")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def div(fname_input, fname_input2, fname_output, verbose):
+    """Divide NIfTI input by NIfTI input 2."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Load input
+    nii_input = nib.load(fname_input)
+    nii_input2 = nib.load(fname_input2)
+
+    # Compute division
+    div_data = nii_input.get_fdata() / nii_input2.get_fdata()
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(div_data, nii_input.affine, header=nii_input.header)
+
+    # Save image
+    if fname_output is None:
+        _, filename = os.path.split(fname_input)
+        fname_output = add_suffix(os.path.join(os.curdir, filename), '_div')
+    nib.save(nii_output, fname_output)
+
+
 @command(context_settings=CONTEXT_SETTINGS)
 @option_group("Inputs",
               option('--real', 'fname_real', type=click.Path(exists=True), required=False,

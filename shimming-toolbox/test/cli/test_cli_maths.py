@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*
 
 from click.testing import CliRunner
+import math
 import nibabel as nib
 import numpy as np
 import os
@@ -28,6 +29,33 @@ def test_mean():
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
         assert nib.load(fname_output).shape == (128, 20)
+
+
+def test_std():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+        fname_output = os.path.join(tmp, 'std.nii.gz')
+        result = runner.invoke(maths_cli, ['std',
+                                           '--input', fname_input,
+                                           '--axis', '1',
+                                           '--output', fname_output], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert nib.load(fname_output).shape == (128, 20)
+        assert math.isclose(nib.load(fname_output).get_fdata()[10, 10], 4.4982695634814895)
+
+
+def test_div():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+        fname_output = os.path.join(tmp, 'div.nii.gz')
+        result = runner.invoke(maths_cli, ['div',
+                                           '-i', fname_input,
+                                           '-i2', fname_input,
+                                           '--output', fname_output], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert math.isclose(nib.load(fname_output).get_fdata()[10, 10, 10], 1)
 
 
 def test_mean_axis_out_of_bound():
