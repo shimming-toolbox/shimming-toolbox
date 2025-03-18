@@ -79,7 +79,7 @@ class TestCalculateMetricWithinMask:
     def test_calculate_metric_within_mask_std(self):
         """Test the 'std' (standard deviation) metric calculation with a weighted mask"""
         array = np.array([1, 2, 3, 4, 5])
-        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+        mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='std')
         mean_weighted = np.average(array, weights=mask)
@@ -90,7 +90,7 @@ class TestCalculateMetricWithinMask:
     def test_calculate_metric_within_mask_mae(self):
         """Test the 'mae' (mean absolute error) metric calculation with a weighted mask"""
         array = np.array([1, 2, 3, 4, 5])
-        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+        mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='mae')
         mean_weighted = np.average(array, weights=mask)
@@ -100,7 +100,7 @@ class TestCalculateMetricWithinMask:
     def test_calculate_metric_within_mask_mse(self):
         """Test the 'mse' (mean squared error) metric calculation with a weighted mask"""
         array = np.array([1, 2, 3, 4, 5])
-        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+        mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='mse')
         mean_weighted = np.average(array, weights=mask)
@@ -110,7 +110,7 @@ class TestCalculateMetricWithinMask:
     def test_calculate_metric_within_mask_rmse(self):
         """Test the 'rmse' (root mean squared error) metric calculation with a weighted mask"""
         array = np.array([1, 2, 3, 4, 5])
-        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+        mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='rmse')
         mean_weighted = np.average(array, weights=mask)

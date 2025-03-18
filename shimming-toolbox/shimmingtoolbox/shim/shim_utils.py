@@ -7,6 +7,7 @@ import nibabel as nib
 import json
 import numpy as np
 import logging
+import math
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
@@ -146,16 +147,16 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     mean_weighted = np.average(array, weights=mask, axis=axis)
 
     if metric == 'mean':
-        output = np.average(array, weights=mask, axis=axis)
+        output = mean_weighted
     elif metric == 'std':
         variance_weighted = np.average((array - mean_weighted) ** 2, weights=mask, axis=axis)
-        output = np.sqrt(variance_weighted)
+        output = math.sqrt(variance_weighted)
     elif metric == 'mae':
         output = np.average(np.ma.abs(ma_array - mean_weighted), weights=mask, axis=axis)
     elif metric == 'mse':
         output = np.ma.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
     elif metric == 'rmse':
-        output = np.sqrt(np.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis))
+        output = math.sqrt(np.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis))
     else:
         raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse'.")
 
