@@ -5,7 +5,7 @@ import logging
 import numpy as np
 import pytest
 
-from shimmingtoolbox.shim.shim_utils import dac_to_shim_units, phys_to_shim_cs, shim_to_phys_cs, logger
+from shimmingtoolbox.shim.shim_utils import dac_to_shim_units, phys_to_shim_cs, shim_to_phys_cs, calculate_metric_within_mask, logger
 
 
 class TestDacToShimUnits:
@@ -63,3 +63,65 @@ def test_phys_to_shim_cs():
 def test_shim_to_phys_cs():
     out = shim_to_phys_cs(np.array([1, 1, 1]), 'Siemens', orders=(1,))
     assert np.all(out == [-1, 1, -1])
+
+
+class TestCalculateMetricWithinMask:
+
+    def test_calculate_metric_within_mask_mean(self):
+        """Test the 'mean' metric calculation with a weighted mask"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])
+
+        result = calculate_metric_within_mask(array, mask, metric='mean')
+        expected_result = (1*1 + 2*0.5 + 3*1 + 4*0.75) / (1 + 0.5 + 1 + 0.75)
+        assert np.isclose(result, expected_result)
+
+    def test_calculate_metric_within_mask_std(self):
+        """Test the 'std' (standard deviation) metric calculation with a weighted mask"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+
+        result = calculate_metric_within_mask(array, mask, metric='std')
+        mean_weighted = np.average(array, weights=mask)
+        variance_weighted = np.average((array - mean_weighted) ** 2, weights=mask)
+        expected_result = np.sqrt(variance_weighted)
+        assert np.isclose(result, expected_result)
+
+    def test_calculate_metric_within_mask_mae(self):
+        """Test the 'mae' (mean absolute error) metric calculation with a weighted mask"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+
+        result = calculate_metric_within_mask(array, mask, metric='mae')
+        mean_weighted = np.average(array, weights=mask)
+        expected_result = np.average(np.abs(array - mean_weighted), weights=mask)
+        assert np.isclose(result, expected_result)
+
+    def test_calculate_metric_within_mask_mse(self):
+        """Test the 'mse' (mean squared error) metric calculation with a weighted mask"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+
+        result = calculate_metric_within_mask(array, mask, metric='mse')
+        mean_weighted = np.average(array, weights=mask)
+        expected_result = np.average(np.square(array - mean_weighted), weights=mask)
+        assert np.isclose(result, expected_result)
+
+    def test_calculate_metric_within_mask_rmse(self):
+        """Test the 'rmse' (root mean squared error) metric calculation with a weighted mask"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])  # Weighted mask
+
+        result = calculate_metric_within_mask(array, mask, metric='rmse')
+        mean_weighted = np.average(array, weights=mask)
+        mse_weighted = np.average(np.square(array - mean_weighted), weights=mask)
+        expected_result = np.sqrt(mse_weighted)
+        assert np.isclose(result, expected_result)
+
+    def test_calculate_metric_within_mask_invalid_metric(self):
+        """Test with an invalid metric that should raise an exception"""
+        array = np.array([1, 2, 3, 4, 5])
+        mask = np.array([1, 0.5, 1, 0.75, 0])
+
+        with pytest.raises(NotImplementedError, match="Metric 'invalid' not implemented. Available metrics:"):
+            calculate_metric_within_mask(array, mask, metric='invalid')

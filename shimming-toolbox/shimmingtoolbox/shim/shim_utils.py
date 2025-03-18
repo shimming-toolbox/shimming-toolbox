@@ -117,31 +117,47 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
 
 
 def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
-    """ Calculate a metric within a ROI defined by a mask
+    """Calculate a weighted metric within a region of interest (ROI) defined by a mask.
+
+    This function computes various metrics (mean, standard deviation, mean absolute error,
+    mean squared error, root mean squared error) over a 3D array, considering only the
+    elements within the mask. The mask can contain values between 0 and 1, where 0 indicates
+    the data is masked, or can contain binary values (0 or 1). If the mask contains values
+    between 0 and 1, the data is weighted accordingly.
 
     Args:
-        array (np.ndarray): 3d array
-        mask (np.ndarray): 3d array with the same shape as array
-        metric (string): Metric to calculate, supported: std, mean, mae, mse, rmse
-        axis (int): Axis to perform the metric
+        array (np.ndarray): 3D array of numerical values to compute the metric on.
+        mask (np.ndarray): 3D array with the same shape as `array`, with values between 0 and 1
+                           that define the region of interest (ROI).
+        metric (str): The metric to calculate. Options are:
+                      'mean' (average), 'std' (standard deviation),
+                      'mae' (mean absolute error), 'mse' (mean squared error),
+                      'rmse' (root mean squared error).
+        axis (int or None): Axis to compute the metric.
 
     Returns:
-        np.ndarray: Array containing the output metrics, if axis is None, the output is a single value
+        np.ndarray: The computed metric for each axis (if axis is provided) or a single value
+                    (if axis is None). Masked values are replaced by NaN.
     """
-    ma_array = np.ma.array(array, mask=mask == False)
-    ma_array = np.ma.array(ma_array, mask=np.isnan(ma_array))
+    if mask.dtype != float:
+        mask = mask.astype(float)
+
+    ma_array = np.ma.array(array, mask=(mask <= 0))
+    mean_weighted = np.average(array, weights=mask, axis=axis)
+
     if metric == 'mean':
-        output = np.ma.mean(ma_array, axis=axis)
+        output = np.average(array, weights=mask, axis=axis)
     elif metric == 'std':
-        output = np.ma.std(ma_array, axis=axis)
+        variance_weighted = np.average((array - mean_weighted) ** 2, weights=mask, axis=axis)
+        output = np.sqrt(variance_weighted)
     elif metric == 'mae':
-        output = np.ma.mean(np.ma.abs(ma_array), axis=axis)
+        output = np.average(np.ma.abs(ma_array - mean_weighted), weights=mask, axis=axis)
     elif metric == 'mse':
-        output = np.ma.mean(np.ma.power(ma_array, 2), axis=axis)
+        output = np.ma.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
     elif metric == 'rmse':
-        output = np.ma.sqrt(np.ma.mean(np.ma.power(ma_array, 2), axis=axis))
+        output = np.sqrt(np.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis))
     else:
-        raise NotImplementedError("Metric not implemented")
+        raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse'.")
 
     # Return nan if the output is masked, this avoids warnings for implicit conversions that could happen later
     if output is np.ma.masked:
