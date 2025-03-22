@@ -151,7 +151,7 @@ class ShimSequencer(Sequencer):
         nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         fmap_is_extended (bool) : Tells whether the fieldmap has been extended by the object.
-        masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
+        masks_fmap (np.ndarray) : Resampled soft mask on the original fieldmap
     """
 
     def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils,
@@ -198,7 +198,7 @@ class ShimSequencer(Sequencer):
         self.json_fieldmap = json_fieldmap
         self.nii_anat = self.get_anat(nii_anat)
         self.json_anat = json_anat
-        self.nii_mask_anat = self.get_mask(nii_mask_anat)
+        self.nii_mask_anat, self.nii_mask_anat_soft = self.get_masks(nii_mask_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
@@ -267,7 +267,7 @@ class ShimSequencer(Sequencer):
 
         return nii_anat
 
-    def get_mask(self, nii_mask_anat):
+    def get_masks(self, nii_mask_anat):
         """
         Get the mask and perform error checking.
 
@@ -276,8 +276,11 @@ class ShimSequencer(Sequencer):
                                               of interest.(only consider voxels with non-zero values)
 
         Returns:
-            nib.Nifti1Image: 3D anat mask used for the optimizer to shim in the region of interest.
-                              (Only consider voxels with non-zero values)
+            (tuple) : tuple containing:
+                    * nib.Nifti1Image: 3D anat binary mask used for the optimizer to shim in the region of interest.
+                                         (Only consider voxels with non-zero values)
+                    * nib.Nifti1Image: 3D anat soft mask used for the optimizer to shim in the region of interest.
+                                         (Only consider voxels with non-zero values)
 
         """
         anat = self.nii_anat.get_fdata()
@@ -307,13 +310,14 @@ class ShimSequencer(Sequencer):
             logger.debug("Resampling mask on the target anat")
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
+            # Change soft mask into binary mask (0.5 threshold)
+            tmp_mask = threshold(tmp_mask, thr=0.5, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
+                nib.save(nii_mask_anat_soft, os.path.join(self.path_output, "softmask_static_resampled_on_anat.nii.gz"))
 
-        return nii_mask_anat
+        return nii_mask_anat, nii_mask_anat_soft
 
     def get_resampled_masks(self):
         """
@@ -325,7 +329,7 @@ class ShimSequencer(Sequencer):
                 * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
-        nii_mask_anat = self.nii_mask_anat
+        nii_mask_anat = self.nii_mask_anat_soft
         optimizer = self.optimizer
         slices = self.slices
         dilation_kernel = self.mask_dilation_kernel
@@ -440,6 +444,7 @@ class ShimSequencer(Sequencer):
 
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
         shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
+        shimmed_masked_soft, mask_full_soft = self.calc_shimmed_full_softmask(unshimmed, corrections)
         if self.path_output is not None:
             # fmap space
             if len(self.slices) == 1:
@@ -461,6 +466,7 @@ class ShimSequencer(Sequencer):
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
+            # TODO : Adapt when other softmask optimizers are adapted
             if 'signal_recovery' in self.opt_criteria:
 
                 full_Gz = np.zeros(corrections.shape)
@@ -471,18 +477,21 @@ class ShimSequencer(Sequencer):
                 # Can't calculate signal recovery in the through slice direction if there is only one slice
                 if corrections.shape[2] != 1:
                     full_Gz = np.gradient(shimmed_temp, axis=2)
+                    # TODO : Adapt when other softmask optimizers are adapted
                     full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
                     # Plot gradient results
                     self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
 
                 full_Gx = np.gradient(shimmed_temp, axis=0)
                 full_Gy = np.gradient(shimmed_temp, axis=1)
+                # TODO : Adapt when other softmask optimizers are adapted
                 full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
                 if logger.level <= getattr(logging, 'DEBUG'):
                     # x, y, z are in the patient's coordinate system
                     if corrections.shape[2] != 1:
+                        # TODO : Adapt when other softmask optimizers are adapted
                         self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
                     self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
                     self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
@@ -496,10 +505,10 @@ class ShimSequencer(Sequencer):
                     corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
                     nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
                     nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
-                    # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
+                    # TODO: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
             # Figure that shows unshimmed vs shimmed for each slice
-            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, self.path_output)
+            plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -550,33 +559,31 @@ class ShimSequencer(Sequencer):
         # shimmed[..., i_shim] = corrections[..., i_shim] + unshimmed
         corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
         shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
-        self.display_shimmed_results(shimmed, unshimmed, coef)
+        self.display_shimmed_results(shimmed, unshimmed, self.nii_mask_anat_soft, coef)
 
         return shimmed, corrections, list_shim_slice
 
-    def display_shimmed_results(self, shimmed, unshimmed, coef):
+    def display_shimmed_results(self, shimmed, unshimmed, mask, coef):
         """
         Print the efficiency of the corrections according to the opt_criteria
 
         Args:
             shimmed (np.ndarray): Shimmed fieldmap
             unshimmed (np.ndarray): Original fieldmap not shimmed
+            mask (np.ndarray): Soft mask in the fieldmap space
             coef (np.ndarray): Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
 
         for i_shim in range(len(self.slices)):
-            mask = np.where(self.masks_fmap[..., i_shim], False, True)
-            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask, dtype=np.float32)
-            ma_unshimmed = np.ma.array(unshimmed, mask=mask, dtype=np.float32)
 
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Log shimmed results
-                mse_shimmed = np.ma.mean(np.square(ma_shimmed))
-                mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
-                mae_shimmed = np.ma.mean(np.abs(ma_shimmed))
-                mae_unshimmed = np.ma.mean(np.abs(ma_unshimmed))
-                std_shimmed = np.ma.std(ma_shimmed)
-                std_unshimmed = np.ma.std(ma_unshimmed)
+                mse_shimmed = calculate_metric_within_mask(shimmed, mask, 'mse')
+                mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
+                mae_shimmed = calculate_metric_within_mask(shimmed, mask, 'mae')
+                mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
+                std_shimmed = calculate_metric_within_mask(shimmed, mask, 'std')
+                std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
 
                 if mae_unshimmed < mae_shimmed and self.opt_criteria == 'mae':
                     logger.warning("Evaluating the mae, verify the shim parameters."
@@ -603,21 +610,21 @@ class ShimSequencer(Sequencer):
             else:
                 # Log shimmied results only if they are worse than no shimming
                 if self.opt_criteria == 'mae':
-                    mae_shimmed = np.ma.mean(np.abs(ma_shimmed))
-                    mae_unshimmed = np.ma.mean(np.abs(ma_unshimmed))
+                    mae_shimmed = calculate_metric_within_mask(shimmed, mask, 'mae')
+                    mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
                     if mae_unshimmed < mae_shimmed:
                         logger.warning("Evaluating the mae, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 elif self.opt_criteria == 'std':
-                    std_shimmed = np.ma.std(ma_shimmed)
-                    std_unshimmed = np.ma.std(ma_unshimmed)
+                    std_shimmed = calculate_metric_within_mask(shimmed, mask, 'std')
+                    std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
                     if std_unshimmed < std_shimmed:
                         logger.warning("Evaluating the std, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 else:
                     # self.opt_criteria is None or self.opt_criteria == 'mse' or ...
-                    mse_shimmed = np.ma.mean(np.square(ma_shimmed))
-                    mse_unshimmed = np.ma.mean(np.square(ma_unshimmed))
+                    mse_shimmed = calculate_metric_within_mask(shimmed, mask, 'mse')
+                    mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
                     if mse_unshimmed < mse_shimmed:
                         logger.warning("Evaluating the mse. Verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
@@ -653,6 +660,37 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
+    def calc_shimmed_full_softmask(self, unshimmed, correction):
+        """
+        Calculate the shimmed full soft mask
+
+        Args:
+            unshimmed (np.ndarray): Original fieldmap not shimmed
+            correction (np.ndarray): Corrections to apply to the fieldmap
+        Returns:
+            (tuple) : tuple containing:
+                * np.ndarray: Masked shimmed fieldmap
+                * np.ndarray: Soft mask in the fieldmap space
+        """
+        mask_full_soft = np.clip(resample_from_to(self.nii_mask_anat_soft,
+                                          self.nii_fieldmap_orig,
+                                          order=0,
+                                          mode='grid-constant',
+                                          cval=0).get_fdata(), 0, 1)
+
+        full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
+
+        # Calculate the weighted whole mask
+        mask_weight = np.sum(self.masks_fmap, axis=3)
+
+        # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_soft != 0)
+
+        # Apply the correction to the unshimmed image
+        shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_soft
+
+        return shimmed_masked, mask_full_soft
+
     def calc_shimmed_gradient_full_mask(self, gradient):
         """
         Calculate the shimmed gradient full mask
@@ -681,60 +719,6 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
-    def plot_full_mask(self, unshimmed, shimmed_masked, mask):
-        """
-        Plot and save the static full mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked(np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Binary mask in the fieldmap space
-        """
-        # Plot
-        mt_unshimmed = montage(unshimmed)
-        mt_unshimmed_masked = montage(unshimmed * mask)
-        mt_shimmed_masked = montage(shimmed_masked * mask)
-
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-
-        fig = Figure(figsize=(15, 9))
-        fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
-
-        ax = fig.add_subplot(1, 2, 1)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=-100, vmax=100, cmap='jet')
-        ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                     f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        ax = fig.add_subplot(1, 2, 2)
-        ax.imshow(mt_unshimmed, cmap='gray')
-        mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_shimmed_masked, vmin=-100, vmax=100, cmap='jet')  # ! FLAG: Had to change vmin and vmax
-        ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                     f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='5%', pad=0.05)
-        fig.colorbar(im, cax=cax)
-
-        # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed.png')
-        fig.savefig(fname_figure, bbox_inches='tight')
-
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
@@ -749,7 +733,7 @@ class ShimSequencer(Sequencer):
         mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
         mt_shimmed = montage(shimmed[:, :, a_slice, :])
 
-        unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0)
+        unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0.5)
         mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
         mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
 
@@ -909,6 +893,7 @@ class ShimSequencer(Sequencer):
         with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
 
+# TODO : Adapt when other softmask optimizers are implemented
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
         def calculate_signal_loss(gradient):
@@ -984,6 +969,7 @@ class ShimSequencer(Sequencer):
         fname_figure = os.path.join(self.path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
+# TODO : Adapt when other softmask optimizers are implemented
     def _plot_G_mask(self, unshimmed_G, shimmed_G, mask, name='G'):
         # Plot Gradient maps
 
@@ -1044,6 +1030,7 @@ class ShimSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
+# TODO : Adapt when other softmask optimizers are implemented
 class RealTimeSequencer(Sequencer):
     """
     Sequencer object that stores different nibabel object, and parameters. It's also doing real time optimization
@@ -1946,7 +1933,7 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
+def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     """
     Plot and save the static full mask
 
@@ -1954,25 +1941,26 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
         unshimmed (np.ndarray): Original fieldmap not shimmed
         shimmed_masked(np.ndarray): Masked shimmed fieldmap
         mask (np.ndarray): Binary mask in the fieldmap space
+        softmask (np.ndarray): Soft mask in the fieldmap space
         path_output (str): Path to the output folder
     """
 
     # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=mask == False, fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=mask == False, fill_value=np.nan)
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=~mask, fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=~mask, fill_value=np.nan)
 
     mt_unshimmed = montage(unshimmed)
     mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
     mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='wstd')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='wstd')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, softmask, metric='wm')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, softmask, metric='wm')
+    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='wmae')
+    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='wmae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='wrmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='wrmse')
 
     min_value = -100
     max_value = 100
