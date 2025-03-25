@@ -403,6 +403,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
     logger.info(" Plotting currents")
+    logger.info("CECI EST UN TEST")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
@@ -455,7 +456,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                                 f.write(f"{0:.1f}, ")
                             else:
                                 # Output initial coefs (absolute)
-                                f.write(f"{default_coefs[i_channel]:.6f}, ")
+                                f.write(f"{float(coefs[i_shim, i_channel]):.6f}, ")
                         f.write("\n")
 
                     for i_channel in range(n_channels):
