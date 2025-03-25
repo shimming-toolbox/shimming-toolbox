@@ -532,6 +532,9 @@ class ShimSequencer(Sequencer):
                 nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
 
+            # Display the shimming statistics
+            self.display_shimming_stats(shimmed, unshimmed, self.masks_fmap)
+
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
         Evaluate the shimming and print the efficiency of the corrections.
@@ -629,6 +632,31 @@ class ShimSequencer(Sequencer):
                         logger.warning("Evaluating the mse. Verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
+    def display_shimming_stats(unshimmed, shimmed_masked, softmask) :
+        """
+        Display the improvement in the standard deviation, mean absolute error and root mean squared error
+
+        Args:
+            unshimmed (np.ndarray): Original fieldmap not shimmed
+            shimmed_masked (np.ndarray): Masked shimmed fieldmap
+            softmask (np.ndarray): Soft mask in the fieldmap space
+        """
+
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='wstd')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='wstd')
+        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='wmae')
+        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='wmae')
+        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='wrmse')
+        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='wrmse')
+
+        improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
+        improvement_mae = (metric_unshimmed_mae - metric_shimmed_mae) / metric_unshimmed_mae * 100
+        improvement_rmse = (metric_unshimmed_rmse - metric_shimmed_rmse) / metric_unshimmed_rmse * 100
+
+        logger.info(f"Improvement in standard deviation: {improvement_std:.2f}%")
+        logger.info(f"Improvement in mean absolute error: {improvement_mae:.2f}%")
+        logger.info(f"Improvement in root mean squared error: {improvement_rmse:.2f}%")
+
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
         Calculate the shimmed full mask
@@ -719,6 +747,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
+#TODO : À CORRIGER (actuellement : affichage uniforme)
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
