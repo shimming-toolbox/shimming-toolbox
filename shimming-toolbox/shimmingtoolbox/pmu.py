@@ -292,9 +292,7 @@ class PmuResp(object):
         i = 0
         for data in self.data_triggers:
             if data > 4096:
-                if data != 5000:
-                    logger.warning(f"Trigger value {data} not recognized")
-                if index_start <= i <= index_stop:
+                if data == 5000 and (index_start <= i <= index_stop):
                     trigger_times.append(float(self.timepoints[i]))
             else:
                 i += 1
