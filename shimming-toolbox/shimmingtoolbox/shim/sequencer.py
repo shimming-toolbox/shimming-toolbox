@@ -113,6 +113,7 @@ class Sequencer(object):
 
         n_shims = len(self.slices)
         coefs = []
+
         for i in range(n_shims):
             # If there is nothing to shim in this shim group
             if np.all(masks_fmap[..., i] == 0):
@@ -507,14 +508,14 @@ class ShimSequencer(Sequencer):
                     nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
                     # TODO: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
+            self.plot_currents(coefs)
+
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 self.plot_partial_mask(unshimmed, shimmed)
-
-            self.plot_currents(coefs)
 
             self.calc_shimmed_anat_orient(coefs, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
@@ -533,7 +534,7 @@ class ShimSequencer(Sequencer):
                 nib.save(nii_correction, fname_correction)
 
             # Display the shimming statistics
-            self.display_shimming_stats(shimmed, unshimmed, self.masks_fmap)
+            self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft)
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
@@ -562,31 +563,34 @@ class ShimSequencer(Sequencer):
         # shimmed[..., i_shim] = corrections[..., i_shim] + unshimmed
         corrections = np.einsum('ijkl,lm->ijkm', merged_coils, coef.T, optimize='optimizer')
         shimmed = np.add(corrections, np.expand_dims(unshimmed, axis=3))
-        self.display_shimmed_results(shimmed, unshimmed, self.nii_mask_anat_soft, coef)
+        self.display_shimmed_results(shimmed, unshimmed, coef)
 
         return shimmed, corrections, list_shim_slice
 
-    def display_shimmed_results(self, shimmed, unshimmed, mask, coef):
+    def display_shimmed_results(self, shimmed, unshimmed, coef):
         """
         Print the efficiency of the corrections according to the opt_criteria
 
         Args:
             shimmed (np.ndarray): Shimmed fieldmap
             unshimmed (np.ndarray): Original fieldmap not shimmed
-            mask (np.ndarray): Soft mask in the fieldmap space
             coef (np.ndarray): Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
 
         for i_shim in range(len(self.slices)):
 
+            mask = np.where(self.masks_fmap[..., i_shim], False, True)
+            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask, dtype=np.float32)
+            ma_unshimmed = np.ma.array(unshimmed, mask=mask, dtype=np.float32)
+
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Log shimmed results
-                mse_shimmed = calculate_metric_within_mask(shimmed, mask, 'mse')
-                mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
-                mae_shimmed = calculate_metric_within_mask(shimmed, mask, 'mae')
-                mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
-                std_shimmed = calculate_metric_within_mask(shimmed, mask, 'std')
-                std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
+                mse_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mse')
+                mse_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mse')
+                mae_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mae')
+                mae_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mae')
+                std_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'std')
+                std_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'std')
 
                 if mae_unshimmed < mae_shimmed and self.opt_criteria == 'mae':
                     logger.warning("Evaluating the mae, verify the shim parameters."
@@ -613,41 +617,41 @@ class ShimSequencer(Sequencer):
             else:
                 # Log shimmied results only if they are worse than no shimming
                 if self.opt_criteria == 'mae':
-                    mae_shimmed = calculate_metric_within_mask(shimmed, mask, 'mae')
-                    mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
+                    mae_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mae')
+                    mae_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mae')
                     if mae_unshimmed < mae_shimmed:
                         logger.warning("Evaluating the mae, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 elif self.opt_criteria == 'std':
-                    std_shimmed = calculate_metric_within_mask(shimmed, mask, 'std')
-                    std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
+                    std_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'std')
+                    std_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'std')
                     if std_unshimmed < std_shimmed:
                         logger.warning("Evaluating the std, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 else:
                     # self.opt_criteria is None or self.opt_criteria == 'mse' or ...
-                    mse_shimmed = calculate_metric_within_mask(shimmed, mask, 'mse')
-                    mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
+                    mse_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mse')
+                    mse_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mse')
                     if mse_unshimmed < mse_shimmed:
                         logger.warning("Evaluating the mse. Verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
-    def display_shimming_stats(unshimmed, shimmed_masked, softmask) :
+    def display_shimming_stats(self, unshimmed, shimmed_masked, mask) :
         """
         Display the improvement in the standard deviation, mean absolute error and root mean squared error
 
         Args:
             unshimmed (np.ndarray): Original fieldmap not shimmed
             shimmed_masked (np.ndarray): Masked shimmed fieldmap
-            softmask (np.ndarray): Soft mask in the fieldmap space
+            mask (np.ndarray): Soft mask in the fieldmap space
         """
 
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='wstd')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='wstd')
-        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='wmae')
-        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='wmae')
-        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='wrmse')
-        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='wrmse')
+        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
+        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
+        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
         improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
         improvement_mae = (metric_unshimmed_mae - metric_shimmed_mae) / metric_unshimmed_mae * 100
@@ -747,7 +751,6 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
-#TODO : À CORRIGER (actuellement : affichage uniforme)
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
@@ -1975,21 +1978,21 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     """
 
     # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=~mask, fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=~mask, fill_value=np.nan)
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask==0), fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
     mt_unshimmed = montage(unshimmed)
     mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
     mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='wstd')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='wstd')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, softmask, metric='wm')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, softmask, metric='wm')
-    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='wmae')
-    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='wmae')
-    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='wrmse')
-    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='wrmse')
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, softmask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, softmask, metric='mean')
+    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='mae')
+    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='mae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='rmse')
 
     min_value = -100
     max_value = 100

@@ -102,7 +102,10 @@ class Optimizer(object):
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : pinv(1, N) * scalar --> (N, 1) * scalar --> (N, 1)
-        profiles = -1 * scipy.linalg.pinv(weighted_coil_mat[:, np.newaxis]) * weighted_unshimmed_vec
+        profiles = -1 * scipy.linalg.pinv(weighted_coil_mat) * weighted_unshimmed_vec
+        # Reshape profiles to match the number of channels
+        # dimensions : (1, N) --> (N,)
+        profiles = np.reshape(profiles, (-1,))
 
         return profiles
 
@@ -167,7 +170,7 @@ class Optimizer(object):
         # Get the non-zero mask coefficient values
         mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
         # Create a vector with the square root of the coefficient values
-        weight_vec = np.sqrt(mask_coefficients) # dimensions : (mV', 1)
+        weight_vec = np.sqrt(mask_coefficients) # dimensions : (mV',)
 
         # Define number of coil profiles (channels)
         n_channels = self.merged_coils.shape[3]
@@ -184,8 +187,9 @@ class Optimizer(object):
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]
 
         # Apply weights to the coil matrix and unshimmed vector
-        weighted_coil_mat = weight_vec.T @ coil_mat # dimensions : (1, mV') @ (mV', N) --> (1, N)
-        weighted_unshimmed_vec = weight_vec.T @ unshimmed_vec # dimensions : (1, mV') @ (mV', 1) --> scalar
+        weighted_coil_mat = weight_vec @ coil_mat # dimensions : (mV',) @ (mV', N) --> (N,)
+        weighted_coil_mat = weighted_coil_mat[np.newaxis, :] # dimensions : (1, N)
+        weighted_unshimmed_vec = weight_vec @ unshimmed_vec # dimensions : (1, mV') @ (mV',) --> scalar
 
         return weighted_coil_mat, weighted_unshimmed_vec
 

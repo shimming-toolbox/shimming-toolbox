@@ -400,10 +400,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
+    logger.info(" Plotting currents")
     logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
-    logger.info(" Plotting currents")
-    logger.info("CECI EST UN TEST")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
@@ -440,7 +439,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
         # Print the average shim coefficients without considering slices with 0s
         logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
-                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0)}")
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0):.6f}")
 
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
@@ -456,7 +455,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                                 f.write(f"{0:.1f}, ")
                             else:
                                 # Output initial coefs (absolute)
-                                f.write(f"{float(coefs[i_shim, i_channel]):.6f}, ")
+                                f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                         f.write("\n")
 
                     for i_channel in range(n_channels):
