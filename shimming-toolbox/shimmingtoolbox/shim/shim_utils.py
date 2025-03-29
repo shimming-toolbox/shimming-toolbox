@@ -117,7 +117,7 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
     return coefs_freq, coefs_phase, coefs_slice
 
 
-def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
+def calculate_metric_within_mask(array, mask, metric, axis=None):
     """Calculate a weighted metric within a region of interest (ROI) defined by a mask.
 
     This function computes various metrics (mean, standard deviation, mean absolute error,
@@ -133,7 +133,7 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
         metric (str): The metric to calculate. Options are:
                       'mean' (average), 'std' (standard deviation),
                       'mae' (mean absolute error), 'mse' (mean squared error),
-                      'rmse' (root mean squared error).
+                      'rmse' (root mean squared error), 'snr' (sound to noise ratio, in dB).
         axis (int or None): Axis to compute the metric.
 
     Returns:
@@ -143,22 +143,48 @@ def calculate_metric_within_mask(array, mask, metric='mean', axis=None):
     if mask.dtype != float:
         mask = mask.astype(float)
 
-    ma_array = np.ma.array(array, mask=(mask <= 0))
-    mean_weighted = np.average(array, weights=mask, axis=axis)
+    ma_array = np.ma.masked_where(mask == 0, array) # Inside the mask
+    # ma_array_out = np.ma.masked_where(mask != 0, array) # Outside the mask
 
     if metric == 'mean':
-        output = mean_weighted
+        output = np.average(ma_array, weights=mask, axis=axis)
+
     elif metric == 'std':
-        variance_weighted = np.average((array - mean_weighted) ** 2, weights=mask, axis=axis)
-        output = math.sqrt(variance_weighted)
+        mean_weighted = np.average(ma_array, weights=mask, axis=axis)
+        variance = np.average(np.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
+        output = np.sqrt(variance)
+
     elif metric == 'mae':
-        output = np.average(np.ma.abs(ma_array - mean_weighted), weights=mask, axis=axis)
-    elif metric == 'mse':
-        output = np.ma.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
+        abs_diff = np.abs(ma_array)
+        output = np.average(abs_diff, weights=mask, axis=axis)
+
+    elif metric == 'mse' :
+        squared_diff = np.power(ma_array, 2)
+        output = np.average(squared_diff, weights=mask, axis=axis)
+
     elif metric == 'rmse':
-        output = math.sqrt(np.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis))
+        squared_diff = np.power(ma_array, 2)
+        output = np.sqrt(np.average(squared_diff, weights=mask, axis=axis))
+
+    elif metric == 'snr':
+        mean_signal = np.average(abs(ma_array), weights=mask, axis=axis)
+        std_noise = np.sqrt(np.average(np.power(abs(ma_array) - mean_signal, 2), weights=mask, axis=axis))
+        snr = mean_signal / std_noise
+        output = 20 * np.log10(snr)
+
+        # TODO : Implement SNR calculation with the std outside the mask
+        # # Calculate the mean signal within the mask
+        # mean_signal = np.average(abs(ma_array), weights=mask, axis=axis)
+
+        # # Calculate the standard deviation of the noise outside the mask
+        # std_noise = np.std(abs(ma_array_out), axis=axis)
+
+        # # Calculate the SNR in dB
+        # snr = mean_signal / std_noise
+        # output = 20 * np.log10(snr)
+
     else:
-        raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse'.")
+        raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse', 'snr'.")
 
     # Return nan if the output is masked, this avoids warnings for implicit conversions that could happen later
     if output is np.ma.masked:
