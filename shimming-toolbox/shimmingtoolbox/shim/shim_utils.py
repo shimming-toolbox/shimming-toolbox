@@ -7,7 +7,6 @@ import nibabel as nib
 import json
 import numpy as np
 import logging
-import math
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
