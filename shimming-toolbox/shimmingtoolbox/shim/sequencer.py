@@ -317,6 +317,10 @@ class ShimSequencer(Sequencer):
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
                 nib.save(nii_mask_anat_soft, os.path.join(self.path_output, "softmask_static_resampled_on_anat.nii.gz"))
+        else:
+            nii_mask_anat_soft = nii_mask_anat
+            nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.5, scaled_thr=True)
+            nii_mask_anat = nib.Nifti1Image(nii_mask_anat_soft.get_fdata(), nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
 
         return nii_mask_anat, nii_mask_anat_soft
 
