@@ -165,23 +165,6 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
         squared_diff = np.power(ma_array, 2)
         output = np.sqrt(np.average(squared_diff, weights=mask, axis=axis))
 
-    elif metric == 'snr':
-        mean_signal = np.average(abs(ma_array), weights=mask, axis=axis)
-        std_noise = np.sqrt(np.average(np.power(abs(ma_array) - mean_signal, 2), weights=mask, axis=axis))
-        snr = mean_signal / std_noise
-        output = 20 * np.log10(snr)
-
-        # TODO : Implement SNR calculation with the std outside the mask
-        # # Calculate the mean signal within the mask
-        # mean_signal = np.average(abs(ma_array), weights=mask, axis=axis)
-
-        # # Calculate the standard deviation of the noise outside the mask
-        # std_noise = np.std(abs(ma_array_out), axis=axis)
-
-        # # Calculate the SNR in dB
-        # snr = mean_signal / std_noise
-        # output = 20 * np.log10(snr)
-
     else:
         raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse', 'snr'.")
 

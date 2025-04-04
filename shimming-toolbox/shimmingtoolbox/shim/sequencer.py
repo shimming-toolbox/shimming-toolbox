@@ -653,29 +653,17 @@ class ShimSequencer(Sequencer):
         metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
-        metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
-        metric_unshimmed_mse = calculate_metric_within_mask(unshimmed, mask, metric='mse')
-        metric_shimmed_mse = calculate_metric_within_mask(shimmed_masked, mask, metric='mse')
         metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
         metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-        metric_unshimmed_snr = calculate_metric_within_mask(unshimmed, mask, metric='snr')
-        metric_shimmed_snr = calculate_metric_within_mask(shimmed_masked, mask, metric='snr')
 
         improvement_mean = (np.abs(metric_unshimmed_mean) - np.abs(metric_shimmed_mean)) / np.abs(metric_unshimmed_mean) * 100
         improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
-        improvement_mae = (metric_unshimmed_mae - metric_shimmed_mae) / metric_unshimmed_mae * 100
-        improvement_mse = (metric_unshimmed_mse - metric_shimmed_mse) / metric_unshimmed_mse * 100
         improvement_rmse = (metric_unshimmed_rmse - metric_shimmed_rmse) / metric_unshimmed_rmse * 100
-        improvement_snr = (metric_unshimmed_snr - metric_shimmed_snr) / metric_unshimmed_snr * 100
 
         logger.info("Calculating the improvement in the shimmed fieldmap compared to the unshimmed fieldmap")
         logger.info(f"Average percentage increase of the weighted mean: {improvement_mean:.2f}%")
         logger.info(f"Average percentage decrease in standard deviation (std): {improvement_std:.2f}%")
-        logger.info(f"Average percentage decrease in mean absolute error (mae): {improvement_mae:.2f}%")
-        logger.info(f"Average percentage decrease in mean squared error (mse): {improvement_mse:.2f}%")
         logger.info(f"Average percentage decrease in root mean squared error (rmse): {improvement_rmse:.2f}%")
-        logger.info(f"Average percentage increase of the weighted mean signal to noise ratio (snr): {improvement_snr:.2f}%")
 
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
@@ -2009,8 +1997,6 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='mae')
     metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='rmse')
     metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='rmse')
-    metric_unshimmed_snr = calculate_metric_within_mask(unshimmed, softmask, metric='snr')
-    metric_shimmed_snr = calculate_metric_within_mask(shimmed_masked, softmask, metric='snr')
 
     min_value = -100
     max_value = 100
@@ -2022,8 +2008,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}\n"
-                 f"snr: {metric_unshimmed_snr:.3f} dB")
+                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}\n")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
@@ -2034,8 +2019,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}\n"
-                 f"snr: {metric_shimmed_snr:.3f} dB")
+                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}\n")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
