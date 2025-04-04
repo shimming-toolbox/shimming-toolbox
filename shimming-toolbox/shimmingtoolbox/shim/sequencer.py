@@ -12,7 +12,10 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
+from matplotlib.figure import Figure
+from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib as mpl
 import json
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
@@ -2001,34 +2004,68 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     min_value = -100
     max_value = 100
 
-    fig = Figure(figsize=(15, 9))
-    fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
+    # Apply global font and style settings
+    mpl.rcParams.update({
+        "font.family": "sans-serif",  # Or "Source Sans Pro" if installed
+        "font.size": 12,
+        "axes.titlesize": 13,
+        "axes.titleweight": 'medium',
+        "axes.labelsize": 11,
+        "xtick.labelsize": 10,
+        "ytick.labelsize": 10,
+        "text.color": "#234E70",  # Royal blue text (main color)
+        "axes.titlecolor": "#234E70"
+    })
 
+    # Create figure
+    fig = Figure(figsize=(15, 9))
+    fig.suptitle("Fieldmaps\nFieldmap Coordinate System", fontsize=20, color="#234E70")
+
+    # Custom colormap: royal blue → white → bordeaux
+    colors = ["#234E70", "#FFFFFF", "#8B1E3F"]
+    custom_cmap = LinearSegmentedColormap.from_list("blue-white-red", colors, N=256)
+
+    norm = TwoSlopeNorm(vmin=min_value, vcenter=0, vmax=max_value)
+
+    # FIRST PANEL – Before shimming
     ax = fig.add_subplot(1, 2, 1)
-    ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
-    ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}\n")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
+    ax.imshow(mt_unshimmed, cmap='gray')  # Background
+    im = ax.imshow(mt_unshimmed_masked, cmap=custom_cmap, norm=norm)
+    ax.set_title(
+        f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+        f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}"
+    )
+    ax.axis('off')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax)
+    cb = fig.colorbar(im, cax=cax)
+    cb.set_label("Hz", fontsize=11, color="#234E70")
+    cb.ax.tick_params(labelsize=10)
+    cb.ax.tick_params(labelsize=10)
 
+    # SECOND PANEL – After shimming
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
-    ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}\n")
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
+    im = ax.imshow(mt_shimmed_masked, cmap=custom_cmap, norm=norm)
+    ax.set_title(
+        f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+        f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}"
+    )
+    ax.axis('off')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
-    fig.colorbar(im, cax=cax)
+    cb = fig.colorbar(im, cax=cax)
+    cb.set_label("Hz", fontsize=11, color="#234E70")
+    cb.ax.tick_params(labelsize=10)
+    cb.ax.tick_params(labelsize=10)
 
-    # Save
-    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
-    fig.savefig(fname_figure, bbox_inches='tight')
+    # Export SVG for poster use
+    # fname_svg = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.svg')
+    # fig.savefig(fname_svg, format='svg', bbox_inches='tight')
+
+    # Optional high-res PNG
+    fname_png = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_png, dpi=300, bbox_inches='tight')
 
 
 def new_bounds_from_currents(currents: dict, old_bounds: dict):
