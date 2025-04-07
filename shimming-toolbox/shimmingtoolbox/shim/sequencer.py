@@ -14,6 +14,7 @@ import os
 from matplotlib.figure import Figure
 from matplotlib.figure import Figure
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import matplotlib as mpl
 import json
@@ -2017,9 +2018,12 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
         "axes.titlecolor": "#234E70"
     })
 
+    bg_color = '#E3E3E3'
+    text_color = '#0D1B2A'
+
     # Create figure
-    fig = Figure(figsize=(15, 9))
-    fig.suptitle("Fieldmaps\nFieldmap Coordinate System", fontsize=20, color="#234E70")
+    fig = Figure(figsize=(15, 7), facecolor=bg_color)
+    # fig.suptitle("Fieldmaps\nFieldmap Coordinate System", fontsize=20, color=text_color)
 
     # Custom colormap: royal blue → white → bordeaux
     colors = ["#234E70", "#FFFFFF", "#8B1E3F"]
@@ -2033,15 +2037,15 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     im = ax.imshow(mt_unshimmed_masked, cmap=custom_cmap, norm=norm)
     ax.set_title(
         f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-        f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}"
+        f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}",
+        color=text_color
     )
     ax.axis('off')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("Hz", fontsize=11, color="#234E70")
-    cb.ax.tick_params(labelsize=10)
-    cb.ax.tick_params(labelsize=10)
+    cb.set_label("Hz", fontsize=11, color=text_color)
+    cb.ax.tick_params(labelsize=10, colors=text_color)
 
     # SECOND PANEL – After shimming
     ax = fig.add_subplot(1, 2, 2)
@@ -2049,23 +2053,102 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     im = ax.imshow(mt_shimmed_masked, cmap=custom_cmap, norm=norm)
     ax.set_title(
         f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-        f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}"
+        f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}",
+        color=text_color
     )
     ax.axis('off')
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
     cb = fig.colorbar(im, cax=cax)
-    cb.set_label("Hz", fontsize=11, color="#234E70")
-    cb.ax.tick_params(labelsize=10)
-    cb.ax.tick_params(labelsize=10)
+    cb.set_label("Hz", fontsize=11, color=text_color)
+    cb.ax.tick_params(labelsize=10, colors=text_color)
 
     # Export SVG for poster use
-    # fname_svg = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.svg')
-    # fig.savefig(fname_svg, format='svg', bbox_inches='tight')
+    fname_svg = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.svg')
+    fig.savefig(fname_svg, format='svg', bbox_inches='tight')
 
     # Optional high-res PNG
     fname_png = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_png, dpi=300, bbox_inches='tight')
+
+
+def plot_shimming_stats_comparison(unshimmed, shimmed_masked, mask, path_output):
+    """
+    Create a stylized bar chart comparing shimming performance (before vs after) for mean, std, and rmse.
+
+    Args:
+        unshimmed (np.ndarray): Original fieldmap not shimmed
+        shimmed_masked (np.ndarray): Masked shimmed fieldmap
+        mask (np.ndarray): Soft mask in the fieldmap space
+        path_output (str): Path to the output folder
+    """
+
+    # Compute metrics
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
+
+    # Compute improvements (%)
+    improvement_mean = (np.abs(metric_unshimmed_mean) - np.abs(metric_shimmed_mean)) / np.abs(metric_unshimmed_mean) * 100
+    improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
+    improvement_rmse = (metric_unshimmed_rmse - metric_shimmed_rmse) / metric_unshimmed_rmse * 100
+
+    metrics = ['Mean', 'Std', 'RMSE']
+    before = [metric_unshimmed_mean, metric_unshimmed_std, metric_unshimmed_rmse]
+    after = [metric_shimmed_mean, metric_shimmed_std, metric_shimmed_rmse]
+    improvement = [improvement_mean, improvement_std, improvement_rmse]
+
+    # Bar positions
+    x = np.arange(len(metrics))
+    width = 0.35
+
+    # Styling
+    bg_color = "#F7F6F3"
+    red = "#8B1E3F"
+    blue = "#234E70"
+    gold = "#F1B24A"
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    fig.patch.set_facecolor(bg_color)
+    ax.set_facecolor(bg_color)
+
+    ax.bar(x - width/2, before, width, label='Unshimmed', color=red)
+    ax.bar(x + width/2, after, width, label='Shimmed', color=blue)
+
+    # Add percentage improvement labels
+    for i in range(len(metrics)):
+        y = after[i] + 0.02 * max(before)
+        ax.text(x[i] + width/2, y,
+                f"-{improvement[i]:.1f}%", ha='center', va='bottom',
+                fontsize=11, fontweight='bold', color=gold)
+
+    # Labels and style
+    ax.set_ylabel('Metric Value (Hz)', fontsize=12)
+    ax.set_title('Shimming Performance Comparison', fontsize=14, pad=15, color=blue)
+    ax.set_xticks(x)
+    ax.set_xticklabels(metrics, fontsize=12)
+    ax.legend(frameon=False, fontsize=11)
+
+    ax.spines[['top', 'right']].set_visible(False)
+    ax.spines['left'].set_color('#AAA')
+    ax.spines['bottom'].set_color('#AAA')
+    ax.tick_params(axis='y', labelsize=10)
+    ax.grid(axis='y', linestyle='--', linewidth=0.5, color="#DDD")
+
+    fig.tight_layout()
+
+    # Save SVG for high-quality printing
+    fname_svg = os.path.join(path_output, 'shimming_stats.svg')
+    fig.savefig(fname_svg, format='svg', bbox_inches='tight')
+
+    # Optional PNG (300 dpi)
+    fname_png = os.path.join(path_output, 'shimming_stats.png')
+    fig.savefig(fname_png, format='png', dpi=300, bbox_inches='tight')
+
+    plt.close(fig)
 
 
 def new_bounds_from_currents(currents: dict, old_bounds: dict):
