@@ -12,11 +12,8 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
-from matplotlib.figure import Figure
-from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-import matplotlib as mpl
 import json
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
@@ -2005,71 +2002,37 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     min_value = -100
     max_value = 100
 
-    # Apply global font and style settings
-    mpl.rcParams.update({
-        "font.family": "sans-serif",  # Or "Source Sans Pro" if installed
-        "font.size": 12,
-        "axes.titlesize": 13,
-        "axes.titleweight": 'medium',
-        "axes.labelsize": 11,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "text.color": "#234E70",  # Royal blue text (main color)
-        "axes.titlecolor": "#234E70"
-    })
-
-    bg_color = '#E3E3E3'
-    text_color = '#0D1B2A'
-
     # Create figure
-    fig = Figure(figsize=(15, 7), facecolor=bg_color)
-    # fig.suptitle("Fieldmaps\nFieldmap Coordinate System", fontsize=20, color=text_color)
-
-    # Custom colormap: royal blue → white → bordeaux
-    colors = ["#234E70", "#FFFFFF", "#8B1E3F"]
-    custom_cmap = LinearSegmentedColormap.from_list("blue-white-red", colors, N=256)
-
-    norm = TwoSlopeNorm(vmin=min_value, vcenter=0, vmax=max_value)
+    fig = Figure(figsize=(15, 7))
+    fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
 
     # FIRST PANEL – Before shimming
     ax = fig.add_subplot(1, 2, 1)
-    ax.imshow(mt_unshimmed, cmap='gray')  # Background
-    im = ax.imshow(mt_unshimmed_masked, cmap=custom_cmap, norm=norm)
-    ax.set_title(
-        f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-        f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}",
-        color=text_color
-    )
-    ax.axis('off')
+    ax.imshow(mt_unshimmed, cmap='gray')
+    im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
+    ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
+                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}\n")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
-    cb = fig.colorbar(im, cax=cax)
-    cb.set_label("Hz", fontsize=11, color=text_color)
-    cb.ax.tick_params(labelsize=10, colors=text_color)
+    fig.colorbar(im, cax=cax)
 
     # SECOND PANEL – After shimming
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
-    im = ax.imshow(mt_shimmed_masked, cmap=custom_cmap, norm=norm)
-    ax.set_title(
-        f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-        f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}",
-        color=text_color
-    )
-    ax.axis('off')
+    im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
+    ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
+                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}\n")
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
     cax = divider.append_axes('right', size='5%', pad=0.05)
-    cb = fig.colorbar(im, cax=cax)
-    cb.set_label("Hz", fontsize=11, color=text_color)
-    cb.ax.tick_params(labelsize=10, colors=text_color)
+    fig.colorbar(im, cax=cax)
 
-    # Export SVG for poster use
-    fname_svg = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.svg')
-    fig.savefig(fname_svg, format='svg', bbox_inches='tight')
-
-    # Optional high-res PNG
-    fname_png = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
-    fig.savefig(fname_png, dpi=300, bbox_inches='tight')
+    # Export PNG file
+    fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
+    fig.savefig(fname_figure, bbox_inches='tight')
 
 
 def plot_shimming_stats_comparison(unshimmed, shimmed_masked, mask, path_output):
