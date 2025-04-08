@@ -101,11 +101,8 @@ class Optimizer(object):
         weighted_coil_mat, weighted_unshimmed_vec = self.get_weighted_coil_mat_and_unshimmed(mask)
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
-        # dimensions : pinv(1, N) * scalar --> (N, 1) * scalar --> (N, 1)
-        profiles = -1 * scipy.linalg.pinv(weighted_coil_mat) * weighted_unshimmed_vec
-        # Reshape profiles to match the number of channels
-        # dimensions : (1, N) --> (N,)
-        profiles = np.reshape(profiles, (-1,))
+        # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
+        profiles = -1 * scipy.linalg.pinv(weighted_coil_mat) @ weighted_unshimmed_vec
 
         return profiles
 
@@ -131,16 +128,16 @@ class Optimizer(object):
 
         # Define number of coil profiles (channels)
         n_channels = self.merged_coils.shape[3]
-        # Transpose coil profile : (X, Y, Z, N) --> (N, X, Y, Z) or (N, [mask.shape])
+        # Transpose coil profile : (X, Y, Z, n_channels) --> (n_channels, X, Y, Z) or (n_channels, [mask.shape])
         merged_coils_transposed = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
-        # Reshape coil profile : (N, X, Y, Z) --> (N, X * Y * Z) or (N, mask.size)
+        # Reshape coil profile : (n_channels, X, Y, Z) --> (n_channels, X * Y * Z) or (n_channels, mask.size)
         merged_coils_reshaped = np.reshape(merged_coils_transposed, (n_channels, -1))
 
         # Extract the masked coil matrix
-        # dimensions : (N, mask.size) --> (mask.size, N) --> (masked values, N) or (mV', N)
+        # dimensions : (n_channels, mask.size) --> (mask.size, n_channels) --> (masked_values, n_channels)
         coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T
         # Extract the unshimmed vector
-        # dimensions : (mV',)
+        # dimensions : (masked_values,)
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]
 
         return coil_mat, unshimmed_vec
@@ -170,26 +167,25 @@ class Optimizer(object):
         # Get the non-zero mask coefficient values
         mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
         # Create a vector with the square root of the coefficient values
-        weight_vec = np.sqrt(mask_coefficients) # dimensions : (mV',)
+        weight_vec = np.sqrt(mask_coefficients) # dimensions : (masked_values,)
 
         # Define number of coil profiles (channels)
-        n_channels = self.merged_coils.shape[3]
-        # Transpose coil profile : (X, Y, Z, N) --> (N, X, Y, Z) or (N, [mask.shape])
+        n_channels = self.merged_coils.shape[3] # dimensions : (n_channels,)
+        # Transpose coil profile : (X, Y, Z, n_channels) --> (n_channels, X, Y, Z) or (n_channels, [mask.shape])
         merged_coils_transposed = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
-        # Reshape coil profile : (N, X, Y, Z) --> (N, X * Y * Z) or (N, mask.size)
+        # Reshape coil profile : (n_channels, X, Y, Z) --> (n_channels, X * Y * Z) or (n_channels, mask.size)
         merged_coils_reshaped = np.reshape(merged_coils_transposed, (n_channels, -1))
 
         # Extract the masked coil matrix
-        # dimensions : (N, mask.size) --> (mask.size, N) --> (masked values, N) or (mV', N)
+        # dimensions : (n_channels, mask.size) --> (mask.size, n_channels) --> (masked_values, n_channels)
         coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T
         # Extract the unshimmed vector
-        # dimensions : (mV', 1)
+        # dimensions : (masked_values,)
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]
 
         # Apply weights to the coil matrix and unshimmed vector
-        weighted_coil_mat = weight_vec @ coil_mat # dimensions : (mV',) @ (mV', N) --> (N,)
-        weighted_coil_mat = weighted_coil_mat[np.newaxis, :] # dimensions : (1, N)
-        weighted_unshimmed_vec = weight_vec @ unshimmed_vec # dimensions : (1, mV') @ (mV',) --> scalar
+        weighted_coil_mat = (weight_vec[:, np.newaxis] * coil_mat) # dimensions : (masked_values, 1) * (masked_values, n_channels) --> (masked_values, n_channels)
+        weighted_unshimmed_vec = weight_vec * unshimmed_vec # dimensions : (masked_values,) * (masked_values,) --> (masked_values,)
 
         return weighted_coil_mat, weighted_unshimmed_vec
 

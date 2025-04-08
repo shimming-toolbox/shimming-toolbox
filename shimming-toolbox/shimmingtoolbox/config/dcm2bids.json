@@ -1293,6 +1293,16 @@
                 "ProtocolName": "t1_mprage",
                 "ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE", "MAGNITUDE"]
             }
+        },
+        {
+            "datatype": "func",
+            "suffix": "bold",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\ep2d_bold_TTL",
+                "PulseSequenceName": "epfid2d1_128",
+                "ImageType": ["ORIGINAL", "PRIMARY", "FMRI", "NONE", "MAGNITUDE"]
+            }
         }
     ]
 }
