@@ -2012,7 +2012,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"Before shimming\nstd: {metric_unshimmed_std:.1f}, mean: {metric_unshimmed_mean:.1f}\n"
-                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}\n")
+                 f"mae: {metric_unshimmed_mae:.1f}, rmse: {metric_unshimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
@@ -2024,7 +2024,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
     ax.set_title(f"After shimming\nstd: {metric_shimmed_std:.1f}, mean: {metric_shimmed_mean:.1f}\n"
-                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}\n")
+                 f"mae: {metric_shimmed_mae:.1f}, rmse: {metric_shimmed_rmse:.1f}")
     ax.get_xaxis().set_visible(False)
     ax.get_yaxis().set_visible(False)
     divider = make_axes_locatable(ax)
