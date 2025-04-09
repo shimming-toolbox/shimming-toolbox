@@ -472,7 +472,7 @@ class ShimSequencer(Sequencer):
 
             # TODO: Add units if possible
             # TODO: Add in anat space?
-            # TODO : Adapt when other softmask optimizers are adapted
+            # TODO : Signal recovery needs to be adapted for soft masks
             if 'signal_recovery' in self.opt_criteria:
 
                 full_Gz = np.zeros(corrections.shape)
@@ -483,21 +483,21 @@ class ShimSequencer(Sequencer):
                 # Can't calculate signal recovery in the through slice direction if there is only one slice
                 if corrections.shape[2] != 1:
                     full_Gz = np.gradient(shimmed_temp, axis=2)
-                    # TODO : Adapt when other softmask optimizers are adapted
+                    # TODO : Needs to be adapted for softmask signal recovery
                     full_Gz, _ = self.calc_shimmed_gradient_full_mask(full_Gz)
                     # Plot gradient results
                     self._plot_static_signal_recovery_mask(unshimmed, full_Gz, mask_full_binary)
 
                 full_Gx = np.gradient(shimmed_temp, axis=0)
                 full_Gy = np.gradient(shimmed_temp, axis=1)
-                # TODO : Adapt when other softmask optimizers are adapted
+                # TODO : Needs to be adapted for softmask signal recovery
                 full_Gx, _ = self.calc_shimmed_gradient_full_mask(full_Gx)
                 full_Gy, _ = self.calc_shimmed_gradient_full_mask(full_Gy)
 
                 if logger.level <= getattr(logging, 'DEBUG'):
                     # x, y, z are in the patient's coordinate system
                     if corrections.shape[2] != 1:
-                        # TODO : Adapt when other softmask optimizers are adapted
+                        # TODO : Needs to be adapted for softmask signal recovery
                         self._plot_G_mask(np.gradient(unshimmed, axis=2), full_Gz, mask_full_binary, name='Gz')
                     self._plot_G_mask(np.gradient(unshimmed, axis=0), full_Gx, mask_full_binary, name='Gx')
                     self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
@@ -728,6 +728,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_soft
 
+    # TODO : Needs to be adapted for softmask signal recovery
     def calc_shimmed_gradient_full_mask(self, gradient):
         """
         Calculate the shimmed gradient full mask
@@ -930,7 +931,7 @@ class ShimSequencer(Sequencer):
         with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
 
-# TODO : Adapt when other softmask optimizers are implemented
+    # TODO : Needs to be adapted for softmask signal recovery
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
         def calculate_signal_loss(gradient):
@@ -1006,7 +1007,7 @@ class ShimSequencer(Sequencer):
         fname_figure = os.path.join(self.path_output, 'fig_signal_loss_metric_shimmed_vs_unshimmed.png')
         fig.savefig(fname_figure, bbox_inches='tight')
 
-# TODO : Adapt when other softmask optimizers are implemented
+    # TODO : Needs to be adapted for softmask signal recovery
     def _plot_G_mask(self, unshimmed_G, shimmed_G, mask, name='G'):
         # Plot Gradient maps
 
@@ -1067,7 +1068,7 @@ class ShimSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-# TODO : Adapt when other softmask optimizers are implemented
+# TODO : Adapt for soft masks
 class RealTimeSequencer(Sequencer):
     """
     Sequencer object that stores different nibabel object, and parameters. It's also doing real time optimization

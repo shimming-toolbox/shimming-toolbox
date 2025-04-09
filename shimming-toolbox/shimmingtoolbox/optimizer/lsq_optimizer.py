@@ -126,7 +126,7 @@ class LsqOptimizer(OptimizerUtils):
             self._prepare_signal_recovery_data(mask)
 
         self.mask = mask
-        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        coil_mat, unshimmed_vec = self.get_weighted_coil_mat_and_unshimmed(mask)
         # Set up output currents
         currents_0 = self.get_initial_guess()
         # If what to shim is already 0s
