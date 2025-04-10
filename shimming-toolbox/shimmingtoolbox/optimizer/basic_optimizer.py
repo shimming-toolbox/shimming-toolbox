@@ -48,7 +48,9 @@ class Optimizer(object):
         self.unshimmed_affine = []
         self.merged_coils = []
         self.merged_bounds = []
+        self.mask_vec = None
         self.set_unshimmed(unshimmed, affine)
+
 
     def set_unshimmed(self, unshimmed, affine):
         """
@@ -108,7 +110,6 @@ class Optimizer(object):
     def get_coil_mat_and_unshimmed(self, mask):
         """
         Returns the coil matrix, and the unshimmed vector used for the optimization
-
         Args:
             mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
                               unshimmed
@@ -117,7 +118,6 @@ class Optimizer(object):
                 * np.ndarray: 2D flattened array (point, channel) of masked coils
                               (axis 0 must align with unshimmed_vec)
                 * np.ndarray: 1D flattened array (point) of the masked unshimmed map
-
         """
         # Check for sizing errors
         self._check_sizing(mask)
@@ -129,10 +129,9 @@ class Optimizer(object):
         merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
                                            (n_channels, -1))
         masked_points_indices = np.where(mask_vec != 0)
-
+        self.mask_vec = np.reshape(mask, (-1,))[masked_points_indices[0]]
         coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
-
         return coil_mat, unshimmed_vec
 
     def merge_coils(self, unshimmed, affine):

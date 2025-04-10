@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import os
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
-
+from scipy.ndimage import convolve, maximum_filter
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
@@ -38,32 +38,92 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         from_slices = tuple(range(mask_from.shape[2]))
 
     # Initialize a sliced mask and select the slices from from_slices
-    sliced_mask = np.full_like(mask_from, fill_value=False)
+    sliced_mask = np.full_like(mask_from, fill_value=0)
     sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
+
+    # If we want to go with adding slices on EPI, rather easy
+
+    # If we want to go with adding pixels on fmap
+    # - max_filter
+    # - mean
+
 
     # Create nibabel object of sliced mask
     nii_mask = nib.Nifti1Image(sliced_mask.astype(float), nii_mask_from.affine, header=nii_mask_from.header)
     # Resample the sliced mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
+    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
     # TODO: Deal with soft mask
-    # Find highest value and stretch to 1
-    # Look into dilation of soft mask
+    # 2 options:
+    # - max_filter
+    # - mean
+
+    # mean_filter
+    # kernel = np.array([[[0, 0, 0],
+    #                              [0, 1, 0],
+    #                              [0, 0, 0]],
+    #                             [[0, 1, 0],
+    #                              [1, 1, 1],
+    #                              [0, 1, 0]],
+    #                             [[0, 0, 0],
+    #                              [0, 1, 0],
+    #                              [0, 0, 0]]]) / 3
+    # mean_filter = convolve(nii_mask_target.get_fdata(), kernel, mode='grid-constant')
+    # mean_filter[nii_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_mask_target.get_fdata() != 0]
+    # nii_sliced_mask_convolve = nib.Nifti1Image(mean_filter, nii_mask_target.affine, header=nii_mask_target.header)
+
+    # max_filter
+    kernel = np.array([[[0, 0, 0],
+                                 [0, 1, 0],
+                                 [0, 0, 0]],
+                                [[0, 1, 0],
+                                 [1, 1, 1],
+                                 [0, 1, 0]],
+                                [[0, 0, 0],
+                                 [0, 1, 0],
+                                 [0, 0, 0]]])
+    max_filter = maximum_filter(nii_mask_target.get_fdata(), footprint=kernel, mode='grid-constant')
+    max_filter[nii_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_mask_target.get_fdata() != 0]
+    nii_sliced_mask_max_filter = nib.Nifti1Image(max_filter, nii_mask_target.affine, header=nii_mask_target.header)
+
+    path_output = "/Users/alexandredastous/Downloads/tm2_soft_mask/output"
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        nib.save(nii_sliced_mask_max_filter, os.path.join(path_output, "mask_res_on_fmap_slice_max_filter.nii.gz"))
+
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        nib.save(nii_mask_target, os.path.join(path_output, "mask_res_on_fmap_slice.nii.gz"))
+
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        nib.save(nii_full_mask_target, os.path.join(path_output, "mask_res_on_fmap_full.nii.gz"))
 
     # Dilate the mask to add more pixels in particular directions
-    mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
-    # Make sure the mask is within the original ROI
-    mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
-    nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
+    # mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
+    mask_dilated = max_filter
 
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        nii_sliced_mask_dilated = nib.Nifti1Image(mask_dilated, nii_mask_target.affine, header=nii_mask_target.header)
+        nib.save(nii_sliced_mask_dilated, os.path.join(path_output, "mask_res_on_fmap_dilated.nii.gz"))
+
+    # Make sure the mask is within the original ROI
+    max_filter[nii_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_mask_target.get_fdata() != 0]
+    mask_dilated_in_roi = np.zeros_like(mask_dilated)
+    mask_dilated_in_roi[nii_full_mask_target.get_fdata() != 0] = mask_dilated[nii_full_mask_target.get_fdata() != 0]
+
+    # mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
+    nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
+    if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
+        nib.save(nii_mask_dilated, os.path.join(path_output, "mask_dilated_restricted.nii.gz"))
     # if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
     #     nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
     #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
     #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
 
     if return_non_dil_mask:
-        mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
+        # Todo: Probably not important to do the logical and?
+        # mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
+        mask_in_roi = np.zeros_like(mask_dilated)
+        mask_in_roi[nii_full_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_full_mask_target.get_fdata() != 0]
         nii_mask_resampled = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
         return nii_mask_resampled, nii_mask_dilated

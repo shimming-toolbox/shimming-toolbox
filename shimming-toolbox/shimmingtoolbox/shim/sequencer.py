@@ -302,13 +302,16 @@ class ShimSequencer(Sequencer):
         else:
             raise ValueError("Mask must be in 3d or 4d")
 
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+            nib.save(nii_mask_anat, os.path.join(self.path_output, "orig_mask_in_get_mask.nii.gz"))
+
         if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(
                 nii_mask_anat.affine == self.nii_anat.affine):
             logger.debug("Resampling mask on the target anat")
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
+            # tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
