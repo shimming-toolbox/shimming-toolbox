@@ -14,7 +14,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber', 'mse_soft']
+allowed_opt_criteria = ['mse', 'mae', 'std', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
 logger = logging.getLogger(__name__)
 
 class LsqOptimizer(OptimizerUtils):
@@ -55,8 +55,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[3]: self._residuals_mse_signal_recovery,
             allowed_opt_criteria[4]: self._residuals_rmse,
             allowed_opt_criteria[5]: self._residuals_rmse_signal_recovery,
-            allowed_opt_criteria[6]: self._residuals_ps_huber,
-            allowed_opt_criteria[7]: self._residuals_mse_soft
+            allowed_opt_criteria[6]: self._residuals_ps_huber
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
@@ -65,8 +64,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[3]: self._residuals_mse_signal_recovery_jacobian,
             allowed_opt_criteria[4]: None,
             allowed_opt_criteria[5]: None,
-            allowed_opt_criteria[6]: None,
-            allowed_opt_criteria[7]: None
+            allowed_opt_criteria[6]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -205,23 +203,6 @@ class LsqOptimizer(OptimizerUtils):
         # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
         return a @ coef @ coef + b @ coef + c
 
-    def _residuals_mse_soft(self, coef, unshimmed_vec, coil_mat, factor, mask):
-
-        # Get the weights form mask
-        self.mask = mask
-        mask_vec = mask.reshape((-1,))
-        masked_points_indices = np.where(mask_vec != 0.0)
-        mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
-        weights_vec = np.sqrt(mask_coefficients)
-
-        # Calculate the residuals
-        residual = (unshimmed_vec + coil_mat @ coef) / factor
-        b0_mse_coef = np.mean((residual * weights_vec) ** 2)
-        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
-
-        # MSE regularized to minimize currents
-        return b0_mse_coef + current_regularization_coef
-
     def _residuals_mse_signal_recovery(self, coef, a, b, c, e):
         result = coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
         return result
@@ -275,7 +256,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        b0_rmse_coef = norm(self.weights * (unshimmed_vec + coil_mat @ coef) / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         # RMSE regularized to minimize currents
@@ -371,16 +352,6 @@ class LsqOptimizer(OptimizerUtils):
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
-        elif self.opt_criteria == 'mse_soft':
-            currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(unshimmed_vec, coil_mat, factor, self.mask),
-                                       method='SLSQP',
-                                       bounds=self.merged_bounds,
-                                       constraints=tuple(scipy_constraints),
-                                       jac=self._jacobian_func,
-                                       options={'maxiter': 10000, 'ftol': 1e-9})
-
-
         elif self.opt_criteria == 'mse_signal_recovery':
             a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
 
@@ -420,10 +391,6 @@ class LsqOptimizer(OptimizerUtils):
                 stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
-            elif self.opt_criteria == 'mse_soft':
-                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
-                                                        np.zeros_like(coil_mat),
-                                                        factor=1, mask=self.mask)
             else:
                 stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
                                                        np.zeros_like(coil_mat),

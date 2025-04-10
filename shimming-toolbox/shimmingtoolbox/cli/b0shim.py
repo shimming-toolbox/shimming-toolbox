@@ -88,7 +88,7 @@ def b0shim_cli():
                    "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
                    "optimizer_method.")
 @click.option('--optimizer-criteria', 'opt_criteria',
-              type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber', 'mse_soft']), required=False,
+              type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
                    "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
