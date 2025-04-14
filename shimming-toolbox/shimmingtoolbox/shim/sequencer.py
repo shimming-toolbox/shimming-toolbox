@@ -518,6 +518,9 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
 
+            # Figure that shows unshimmed vs shimmed for extreme deviations slices
+            plot_extreme_slices(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
+
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 self.plot_partial_mask(unshimmed, shimmed)
@@ -2035,6 +2038,91 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
 
+def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
+    """
+    Plot and save the most extreme slices (max and min average field deviation) before and after shimming.
+    The non-masked areas appear in grayscale, while the masked areas appear in a bwr colormap.
+    """
+    # Create masked arrays that are used for statistics only
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask == 0), fill_value=np.nan)
+
+    # Identify valid slices where the softmask is not empty
+    valid_slices = [i for i in range(unshimmed.shape[2]) if np.any(softmask[:, :, i])]
+    if len(valid_slices) == 0:
+        print("No valid slices found with softmask. Aborting.")
+        return
+
+    # Compute mean on the masked region for each valid slice
+    slice_means = [np.ma.mean(nan_unshimmed_masked[:, :, i]) for i in valid_slices]
+
+    # Determine indices for min and max slice
+    idx_max = valid_slices[np.ma.argmax(slice_means)]
+    idx_min = valid_slices[np.ma.argmin(slice_means)]
+    slices_to_show = [idx_min, idx_max]
+    titles = ["Min Deviation\nSlice", "Max Deviation\nSlice"]
+
+    # Create figure and axes
+    fig, axes = plt.subplots(2, 2, figsize=(8, 9),
+                             gridspec_kw={'wspace': 0.0, 'hspace': 0.0})
+    fig.patch.set_facecolor('white')
+    fig.suptitle("Extreme Slices\nFieldmap Coordinate System", fontsize=14)
+
+    vmin, vmax = -100, 100
+    ims = []
+
+    for i, idx in enumerate(slices_to_show):
+        # -- Grayscale background (entire unshimmed slice) --
+        ax1 = axes[i, 0]
+        ax1.imshow(unshimmed[:, :, idx], cmap='gray', aspect='equal')
+        ax1.set_facecolor('white')
+
+        # Overlay color only on the mask
+        masked_unshimmed = np.ma.array(unshimmed[:, :, idx], mask=(mask[:, :, idx] == 0))
+        im1 = ax1.imshow(masked_unshimmed, vmin=vmin, vmax=vmax,
+                         cmap='bwr', aspect='equal', interpolation='nearest')
+        ax1.set_title(f"{titles[i]} – Before", fontsize=10)
+        ax1.axis('off')
+
+        # Zoom on bounding box
+        coords = np.argwhere(mask[:, :, idx] != 0)
+        if coords.size > 0:
+            y_min, x_min = coords.min(axis=0)
+            y_max, x_max = coords.max(axis=0)
+            padding = 3
+            ax1.set_xlim([x_min - padding, x_max + padding])
+            ax1.set_ylim([y_max + padding, y_min - padding])
+
+        ims.append(im1)
+
+        # -- Grayscale background (entire unshimmed slice) for the "After" subplot --
+        ax2 = axes[i, 1]
+        ax2.imshow(unshimmed[:, :, idx], cmap='gray', aspect='equal')
+        ax2.set_facecolor('white')
+
+        # Overlay color with the shimmed data on the mask
+        masked_shimmed = np.ma.array(shimmed_masked[:, :, idx], mask=(mask[:, :, idx] == 0))
+        im2 = ax2.imshow(masked_shimmed, vmin=vmin, vmax=vmax,
+                         cmap='bwr', aspect='equal', interpolation='nearest')
+        ax2.set_title("Corresponding\nslice – After", fontsize=10)
+        ax2.axis('off')
+
+        # Same bounding box
+        if coords.size > 0:
+            ax2.set_xlim([x_min - padding, x_max + padding])
+            ax2.set_ylim([y_max + padding, y_min - padding])
+
+        ims.append(im2)
+
+    # Single colorbar on the right
+    cbar_ax = fig.add_axes([0.92, 0.3, 0.02, 0.4])  # left, bottom, width, height
+    cbar = fig.colorbar(ims[-1], cax=cbar_ax)
+    cbar.set_label("Fieldmap deviation (Hz)", rotation=90, labelpad=10)
+
+    # Save figure
+    out_png = os.path.join(path_output, 'fig_extreme_slices.png')
+    fig.savefig(out_png, bbox_inches='tight', dpi=150)
+    plt.close(fig)
+    print(f"Saved {out_png}")
 
 def plot_shimming_stats_comparison(unshimmed, shimmed_masked, mask, path_output):
     """
