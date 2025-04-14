@@ -12,7 +12,9 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
+from matplotlib.colors import LinearSegmentedColormap
 import matplotlib.pyplot as plt
+
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
@@ -2043,6 +2045,9 @@ def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
     Plot and save the most extreme slices (max and min average field deviation) before and after shimming.
     The non-masked areas appear in grayscale, while the masked areas appear in a bwr colormap.
     """
+    # Define custom colormap
+    royal_white_bordeaux = LinearSegmentedColormap.from_list("royal-white-bordeaux", ["#234E70", "#FFFFFF", "#8B1E3F"], N=256)
+
     # Create masked arrays that are used for statistics only
     nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask == 0), fill_value=np.nan)
 
@@ -2059,13 +2064,13 @@ def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
     idx_max = valid_slices[np.ma.argmax(slice_means)]
     idx_min = valid_slices[np.ma.argmin(slice_means)]
     slices_to_show = [idx_min, idx_max]
-    titles = ["Min Deviation\nSlice", "Max Deviation\nSlice"]
+    titles = ["Tranche de déviation\nnégative maximale", "Tranche de déviation\npositive maximale"]
 
     # Create figure and axes
-    fig, axes = plt.subplots(2, 2, figsize=(8, 9),
+    fig, axes = plt.subplots(2, 2, figsize=(8, 10),
                              gridspec_kw={'wspace': 0.0, 'hspace': 0.0})
-    fig.patch.set_facecolor('white')
-    fig.suptitle("Extreme Slices\nFieldmap Coordinate System", fontsize=14)
+    fig.patch.set_facecolor('#E3E3E3')
+    # fig.suptitle("Extreme Slices\nFieldmap Coordinate System", fontsize=14, color='#0D1B2A')
 
     vmin, vmax = -100, 100
     ims = []
@@ -2074,13 +2079,13 @@ def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
         # -- Grayscale background (entire unshimmed slice) --
         ax1 = axes[i, 0]
         ax1.imshow(unshimmed[:, :, idx], cmap='gray', aspect='equal')
-        ax1.set_facecolor('white')
+        ax1.set_facecolor('#E3E3E3')
 
         # Overlay color only on the mask
         masked_unshimmed = np.ma.array(unshimmed[:, :, idx], mask=(mask[:, :, idx] == 0))
         im1 = ax1.imshow(masked_unshimmed, vmin=vmin, vmax=vmax,
-                         cmap='bwr', aspect='equal', interpolation='nearest')
-        ax1.set_title(f"{titles[i]} – Before", fontsize=10)
+                         cmap=royal_white_bordeaux, aspect='equal', interpolation='nearest')
+        ax1.set_title(f"{titles[i]}\nAvant shimming", fontsize=14, color="#0D1B2A")
         ax1.axis('off')
 
         # Zoom on bounding box
@@ -2097,13 +2102,13 @@ def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
         # -- Grayscale background (entire unshimmed slice) for the "After" subplot --
         ax2 = axes[i, 1]
         ax2.imshow(unshimmed[:, :, idx], cmap='gray', aspect='equal')
-        ax2.set_facecolor('white')
+        ax2.set_facecolor('#E3E3E3')
 
         # Overlay color with the shimmed data on the mask
         masked_shimmed = np.ma.array(shimmed_masked[:, :, idx], mask=(mask[:, :, idx] == 0))
         im2 = ax2.imshow(masked_shimmed, vmin=vmin, vmax=vmax,
-                         cmap='bwr', aspect='equal', interpolation='nearest')
-        ax2.set_title("Corresponding\nslice – After", fontsize=10)
+                         cmap=royal_white_bordeaux, aspect='equal', interpolation='nearest')
+        ax2.set_title("Tranche correspondante\nAprès shimming", fontsize=14, color="#0D1B2A")
         ax2.axis('off')
 
         # Same bounding box
@@ -2116,13 +2121,15 @@ def plot_extreme_slices(unshimmed, shimmed_masked, mask, softmask, path_output):
     # Single colorbar on the right
     cbar_ax = fig.add_axes([0.92, 0.3, 0.02, 0.4])  # left, bottom, width, height
     cbar = fig.colorbar(ims[-1], cax=cbar_ax)
-    cbar.set_label("Fieldmap deviation (Hz)", rotation=90, labelpad=10)
+    cbar.set_label("Déviation du champ magnétique local (Hz)", rotation=90, labelpad=18, color='#0D1B2A', fontsize=12)
 
     # Save figure
     out_png = os.path.join(path_output, 'fig_extreme_slices.png')
+    out_svg = os.path.join(path_output, 'fig_extreme_slices.svg')
     fig.savefig(out_png, bbox_inches='tight', dpi=150)
+    fig.savefig(out_svg, bbox_inches='tight', dpi=300)
     plt.close(fig)
-    print(f"Saved {out_png}")
+
 
 def plot_shimming_stats_comparison(unshimmed, shimmed_masked, mask, path_output):
     """
