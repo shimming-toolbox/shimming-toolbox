@@ -2181,8 +2181,6 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
     fig.savefig(fname_figure, bbox_inches='tight')
 
 
-
-
 def new_bounds_from_currents(currents: dict, old_bounds: dict):
     """
     Uses the currents to determine the appropriate bounds for the next optimization. It assumes that
