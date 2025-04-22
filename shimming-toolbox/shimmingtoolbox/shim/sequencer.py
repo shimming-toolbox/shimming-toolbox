@@ -211,7 +211,6 @@ class ShimSequencer(Sequencer):
         self.masks_fmap = None
         self.mask_seg = nib.load(mask_seg) if mask_seg else None
         self.mask_seg_resampled, _ = self.get_masks(self.mask_seg) if mask_seg else (None, None)
-        # self.mask_seg_resampled = resample_from_to(self.mask_seg, self.nii_fieldmap, order=0, mode='nearest') if mask_seg else None
         self.w_signal_loss = w_signal_loss
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
