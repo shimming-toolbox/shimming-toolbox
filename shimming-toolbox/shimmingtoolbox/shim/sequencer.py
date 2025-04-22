@@ -962,9 +962,10 @@ class ShimSequencer(Sequencer):
         cbar = fig.colorbar(ims[-1], cax=cbar_ax)
         cbar.set_label("B₀ Magnetic Field Deviation (Hz)", rotation=90, labelpad=18, color='#0D1B2A', fontsize=12)
 
-        # Add legend for contour
-        legend_element = Line2D([0], [0], color='#6C3BAA', lw=2, label='Spinal cord\ncontour')
-        fig.legend(handles=[legend_element], loc='center left', bbox_to_anchor=(0.9, 0.75), fontsize=10, frameon=False)
+        # Add legend for segmentation contour, if given
+        if mask_seg is not None:
+            legend_element = Line2D([0], [0], color='#6C3BAA', lw=2, label='Spinal cord\ncontour')
+            fig.legend(handles=[legend_element], loc='center left', bbox_to_anchor=(0.9, 0.75), fontsize=10, frameon=False)
 
         # Save figure
         out_png = os.path.join(path_output, 'fig_extreme_slices.png')
