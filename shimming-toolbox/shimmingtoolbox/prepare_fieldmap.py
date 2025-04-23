@@ -98,6 +98,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         phasediff = complex_difference(echo_0, echo_1)
         nii_phasediff = nib.Nifti1Image(phasediff, list_nii_phase[0].affine, header=list_nii_phase[0].header)
 
+        nib.save(nii_phasediff, "/Users/arnaud/Downloads/phase_diff.nii.gz")  # Save the phase difference image
+        
         # Calculate the echo time difference
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
         # Run the unwrapper
