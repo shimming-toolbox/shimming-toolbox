@@ -21,7 +21,7 @@ required_constraints = [
 
 SCANNER_CONSTRAINTS = {
     "Siemens": {
-        "Prisma_fit": {
+        "MAGNETOM Prisma Fit": {
             "0": [[123100100, 123265000]],
             "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
             "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
@@ -63,7 +63,7 @@ SCANNER_CONSTRAINTS = {
 # One can use the Siemens commandline AdjValidate tool to get all the values below
 SCANNER_CONSTRAINTS_DAC = {
     "Siemens": {
-        "Prisma_fit": {
+        "MAGNETOM Prisma Fit": {
             "1": [14436.0, 14265.0, 14045.0],
             "2": [9998.0] * 5,
             "3": []
