@@ -258,6 +258,16 @@
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
+                "PulseSequenceName": ".*tfl3d1.*",
+                "ProtocolName": "T1w",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "T1w",
+            "criteria": {
+                "Manufacturer": "Siemens",
                 "SequenceName": ".*fl3d1",
                 "ProtocolName": "GRE-T1w",
                 "ImageType": [".*", ".*", "M", "NORM", ".*", "MAGNITUDE"]
