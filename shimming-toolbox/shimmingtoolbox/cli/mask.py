@@ -12,7 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.mask_utils import basic_softmask, linear_softmask, gaussian_filter_softmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import create_2vals_softmask, create_linear_softmask, create_gaussian_softmask, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -481,18 +481,18 @@ def gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask, path_sct_softmas
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Creates a soft mask by creating a blur zone around the binary mask.")
 @click.option('-i', '--input', 'path_sct_binmask', type=click.Path(), required=True,
-              help="Path to the binary mask created from the `sct_create_mask` function. Supported extensions are .nii or .nii.gz.")
+              help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'path_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-b', '--blur', type=click.Choice(['constant', 'linear', 'gaussian']), default='basic',
-              help="""Type of blur around the binary mask :
-              - constant: All blur zone coefficient have the same value. Specify blur_value (-b)
-              - linear: Radial linear gradient, from 1 to 0
-              - gaussian: 2D gaussian distribution with all coefficient over 0.1""")
+@click.option('-b', '--blur', type=click.Choice(['2vals', 'linear', 'gaussian']), default='2vals',
+              help="""Type of blur around the binary mask :\n
+              - 2vals: All blur zone coefficient have the same value. Specify blur_value (-b)\n
+              - linear: Radial linear gradient, from 1 to 0.\n
+              - gaussian: Gaussian distribution.""")
 @click.option('-bw', '--blurwidth', 'blur_width', default = 12,
               help="Width (in pixels) of the blurred zone. For linear and gaussian blurs, width must be a multiple of 3")
 @click.option('-bv', '--blurvalue', 'blur_value', default = 0.5,
-              help="Intensity of the constant blur. Use only on constant blurs")
+              help="Intensity of the constant blur. Use only on 2vals blurs")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_softmask(path_sct_binmask, path_softmask, blur, blur_width, blur_value, verbose) :
 
@@ -503,14 +503,14 @@ def create_softmask(path_sct_binmask, path_softmask, blur, blur_width, blur_valu
     create_output_dir(path_softmask, is_file=True)
 
     # Create a np.array soft mask
-    if blur == 'constant' :
-        softmask = basic_softmask(path_sct_binmask, blur_width, blur_value)
+    if blur == '2vals' :
+        softmask = create_2vals_softmask(path_sct_binmask, blur_width, blur_value)
 
     elif blur == 'linear' :
-        softmask = linear_softmask(path_sct_binmask, blur_width)
+        softmask = create_linear_softmask(path_sct_binmask, blur_width)
 
     elif blur == 'gaussian' :
-        softmask = gaussian_filter_softmask(path_sct_binmask, blur_width)
+        softmask = create_gaussian_softmask(path_sct_binmask, blur_width)
 
     else :
         raise ValueError("Invalid blur option. Impossible to create soft mask.")
