@@ -525,6 +525,10 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for extreme deviations slices
             self.plot_extreme_slices(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output, self.mask_seg_resampled)
 
+            # Display the shimming statistics
+            if logger.level <= getattr(logging, 'DEBUG'):
+                self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft, self.mask_seg_resampled)
+
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 self.plot_partial_mask(unshimmed, shimmed)
@@ -544,9 +548,6 @@ class ShimSequencer(Sequencer):
                 fname_correction = os.path.join(self.path_output, 'fig_shimmed_4thdim_ishim.nii.gz')
                 nii_correction = nib.Nifti1Image(self.masks_fmap * shimmed, self.optimizer.unshimmed_affine)
                 nib.save(nii_correction, fname_correction)
-
-            # Display the shimming statistics
-            self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft, self.mask_seg_resampled)
 
     def evaluate_shimming(self, unshimmed, coef, merged_coils):
         """
@@ -693,16 +694,16 @@ class ShimSequencer(Sequencer):
             improvement_rmse_seg = (metric_unshimmed_rmse_seg - metric_shimmed_rmse_seg) / metric_unshimmed_rmse_seg * 100
 
         # Log the results
-        print("\nCalculating the improvement in the shimmed fieldmap compared to the unshimmed fieldmap...")
-        print("\nResults in the mask :")
-        print(f"Mean : Before => {metric_unshimmed_mean:.2f} | After => {metric_shimmed_mean:.2f} | Improvement => {improvement_mean:.2f}%")
-        print(f"Standard deviation : Before => {metric_unshimmed_std:.2f} | After => {metric_shimmed_std:.2f} | Improvement => {improvement_std:.2f}%")
-        print(f"Root mean squared error : Before => {metric_unshimmed_rmse:.2f} | After => {metric_shimmed_rmse:.2f} | Improvement => {improvement_rmse:.2f}%")
+        logger.debug()("\nCalculating the improvement in the shimmed fieldmap compared to the unshimmed fieldmap...")
+        logger.debug()("\nResults in the mask :")
+        logger.debug()(f"Mean : Before => {metric_unshimmed_mean:.2f} | After => {metric_shimmed_mean:.2f} | Improvement => {improvement_mean:.2f}%")
+        logger.debug()(f"Standard deviation : Before => {metric_unshimmed_std:.2f} | After => {metric_shimmed_std:.2f} | Improvement => {improvement_std:.2f}%")
+        logger.debug()(f"Root mean squared error : Before => {metric_unshimmed_rmse:.2f} | After => {metric_shimmed_rmse:.2f} | Improvement => {improvement_rmse:.2f}%")
         if mask_seg is not None:
-            print("\nResults in the segmentation :")
-            print(f"Mean : Before => {metric_unshimmed_mean_seg:.2f} | After => {metric_shimmed_mean_seg:.2f} | Improvement => {improvement_mean_seg:.2f}%")
-            print(f"Standard deviation : Before => {metric_unshimmed_std_seg:.2f} | After => {metric_shimmed_std_seg:.2f} | Improvement => {improvement_std_seg:.2f}%")
-            print(f"Root mean squared error : Before => {metric_unshimmed_rmse_seg:.2f} | After => {metric_shimmed_rmse_seg:.2f} | Improvement => {improvement_rmse_seg:.2f}%")
+            logger.debug()("\nResults in the segmentation :")
+            logger.debug()(f"Mean : Before => {metric_unshimmed_mean_seg:.2f} | After => {metric_shimmed_mean_seg:.2f} | Improvement => {improvement_mean_seg:.2f}%")
+            logger.debug()(f"Standard deviation : Before => {metric_unshimmed_std_seg:.2f} | After => {metric_shimmed_std_seg:.2f} | Improvement => {improvement_std_seg:.2f}%")
+            logger.debug()(f"Root mean squared error : Before => {metric_unshimmed_rmse_seg:.2f} | After => {metric_shimmed_rmse_seg:.2f} | Improvement => {improvement_rmse_seg:.2f}%")
 
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
@@ -971,7 +972,7 @@ class ShimSequencer(Sequencer):
         out_png = os.path.join(path_output, 'fig_extreme_slices.png')
         fig.savefig(out_png, bbox_inches='tight', dpi=150)
         plt.close(fig)
-        print(f"Saved {out_png}")
+        logger.info()(f"Saved {out_png}")
 
     def calc_shimmed_anat_orient(self, coefs, list_shim_slice):
         """
