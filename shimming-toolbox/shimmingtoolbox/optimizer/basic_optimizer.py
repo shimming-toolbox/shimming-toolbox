@@ -105,8 +105,6 @@ class Optimizer(object):
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
         currents = -1 * scipy.linalg.pinv(weighted_coil_mat) @ weighted_unshimmed_vec
 
-        # Normalize the currents by dividing by half of the maximum value
-        # currents /= (np.max(np.abs(profiles)) / 2)
 
         return currents
 
