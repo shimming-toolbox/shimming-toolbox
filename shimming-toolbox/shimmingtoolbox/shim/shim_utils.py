@@ -132,7 +132,7 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
         metric (str): The metric to calculate. Options are:
                       'mean' (average), 'std' (standard deviation),
                       'mae' (mean absolute error), 'mse' (mean squared error),
-                      'rmse' (root mean squared error), 'snr' (sound to noise ratio, in dB).
+                      'rmse' (root mean squared error).
         axis (int or None): Axis to compute the metric.
 
     Returns:
@@ -166,7 +166,7 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
         output = np.sqrt(np.average(squared_diff, weights=mask, axis=axis))
 
     else:
-        raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse', 'snr'.")
+        raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse'.")
 
     # Return nan if the output is masked, this avoids warnings for implicit conversions that could happen later
     if output is np.ma.masked:
