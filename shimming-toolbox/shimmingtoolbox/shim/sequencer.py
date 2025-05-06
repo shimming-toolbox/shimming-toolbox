@@ -12,8 +12,6 @@ import logging
 from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
-from matplotlib.lines import Line2D
-import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import json
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
@@ -159,7 +157,7 @@ class ShimSequencer(Sequencer):
 
     def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils,
                  method='least_squares', opt_criteria='mse',
-                 mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, mask_seg=None, reg_factor=0, w_signal_loss=None,
+                 mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
         Initialization for the ShimSequencer class
@@ -189,7 +187,6 @@ class ShimSequencer(Sequencer):
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                               For example, a kernel of size 3 will dilate the mask by 1 pixel.
-            mask_seg (nib.Nifti1Image): 3D segmentation mask used for the optimizer to shim in the region of interest.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -209,8 +206,6 @@ class ShimSequencer(Sequencer):
         self.opt_criteria = opt_criteria
         self.method = method
         self.masks_fmap = None
-        self.mask_seg = nib.load(mask_seg) if mask_seg else None
-        self.mask_seg_resampled, _ = self.get_masks(self.mask_seg) if mask_seg else (None, None)
         self.w_signal_loss = w_signal_loss
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
@@ -522,12 +517,10 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
 
-            # Figure that shows unshimmed vs shimmed for extreme deviations slices
-            self.plot_extreme_slices(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output, self.mask_seg_resampled)
 
             # Display the shimming statistics
             if logger.level <= getattr(logging, 'DEBUG'):
-                self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft, self.mask_seg_resampled)
+                self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -649,7 +642,7 @@ class ShimSequencer(Sequencer):
                         logger.warning("Evaluating the mse. Verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
-    def display_shimming_stats(self, unshimmed, shimmed_masked, mask, mask_seg=None) :
+    def display_shimming_stats(self, unshimmed, shimmed_masked, mask) :
         """
         Display the improvement in the standard deviation, mean absolute error and root mean squared error
 
@@ -666,32 +659,10 @@ class ShimSequencer(Sequencer):
         metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
         metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
-        # Calculate the metrics in the segmentation mask
-        if mask_seg is not None:
-
-            mask_seg = mask_seg.get_fdata()
-            if mask_seg.shape != unshimmed.shape:
-                logger.warning(f"Segmentation mask shape {mask_seg.shape} is different from unshimmed shape {unshimmed.shape}, resampling...")
-                mask_seg_nii = nib.Nifti1Image(mask_seg, self.nii_mask_anat.affine)
-                seg_mask_nii_resampled = resample_from_to(mask_seg_nii, self.nii_fieldmap_orig, order=0, mode='nearest')
-                mask_seg = seg_mask_nii_resampled.get_fdata()
-
-            metric_unshimmed_mean_seg = calculate_metric_within_mask(unshimmed, mask_seg, metric='mean')
-            metric_shimmed_mean_seg = calculate_metric_within_mask(shimmed_masked, mask_seg, metric='mean')
-            metric_unshimmed_std_seg = calculate_metric_within_mask(unshimmed, mask_seg, metric='std')
-            metric_shimmed_std_seg = calculate_metric_within_mask(shimmed_masked, mask_seg, metric='std')
-            metric_unshimmed_rmse_seg = calculate_metric_within_mask(unshimmed, mask_seg, metric='rmse')
-            metric_shimmed_rmse_seg = calculate_metric_within_mask(shimmed_masked, mask_seg, metric='rmse')
-
         # Calculate the improvement in the metrics
         improvement_mean = (np.abs(metric_unshimmed_mean) - np.abs(metric_shimmed_mean)) / np.abs(metric_unshimmed_mean) * 100
         improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
         improvement_rmse = (metric_unshimmed_rmse - metric_shimmed_rmse) / metric_unshimmed_rmse * 100
-
-        if mask_seg is not None:
-            improvement_mean_seg = (np.abs(metric_unshimmed_mean_seg) - np.abs(metric_shimmed_mean_seg)) / np.abs(metric_unshimmed_mean_seg) * 100
-            improvement_std_seg = (metric_unshimmed_std_seg - metric_shimmed_std_seg) / metric_unshimmed_std_seg * 100
-            improvement_rmse_seg = (metric_unshimmed_rmse_seg - metric_shimmed_rmse_seg) / metric_unshimmed_rmse_seg * 100
 
         # Log the results
         logger.debug()("\nCalculating the improvement in the shimmed fieldmap compared to the unshimmed fieldmap...")
@@ -699,11 +670,6 @@ class ShimSequencer(Sequencer):
         logger.debug()(f"Mean : Before => {metric_unshimmed_mean:.2f} | After => {metric_shimmed_mean:.2f} | Improvement => {improvement_mean:.2f}%")
         logger.debug()(f"Standard deviation : Before => {metric_unshimmed_std:.2f} | After => {metric_shimmed_std:.2f} | Improvement => {improvement_std:.2f}%")
         logger.debug()(f"Root mean squared error : Before => {metric_unshimmed_rmse:.2f} | After => {metric_shimmed_rmse:.2f} | Improvement => {improvement_rmse:.2f}%")
-        if mask_seg is not None:
-            logger.debug()("\nResults in the segmentation :")
-            logger.debug()(f"Mean : Before => {metric_unshimmed_mean_seg:.2f} | After => {metric_shimmed_mean_seg:.2f} | Improvement => {improvement_mean_seg:.2f}%")
-            logger.debug()(f"Standard deviation : Before => {metric_unshimmed_std_seg:.2f} | After => {metric_shimmed_std_seg:.2f} | Improvement => {improvement_std_seg:.2f}%")
-            logger.debug()(f"Root mean squared error : Before => {metric_unshimmed_rmse_seg:.2f} | After => {metric_shimmed_rmse_seg:.2f} | Improvement => {improvement_rmse_seg:.2f}%")
 
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
@@ -866,113 +832,6 @@ class ShimSequencer(Sequencer):
         fname_figure = os.path.join(self.path_output, 'fig_currents.png')
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
-
-    def plot_extreme_slices(self, unshimmed, shimmed_masked, mask, softmask, path_output=None, mask_seg=None):
-        """
-        Plot and save the most extreme slices (max and min average field deviation) before and after shimming.
-        The non-masked areas appear in grayscale, while the masked areas appear in a bwr colormap.
-        """
-        # Create masked arrays that are used for statistics only
-        nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask == 0), fill_value=np.nan)
-
-        # Identify valid slices where the segmentation is not empty
-        if mask_seg is not None:
-            seg_data = mask_seg.get_fdata()
-            if mask_seg.shape != unshimmed.shape:
-                logger.warning(f"Segmentation mask shape {mask_seg.shape} is different from unshimmed shape {unshimmed.shape}, resampling...")
-                mask_seg_nii = nib.Nifti1Image(mask_seg, self.nii_mask_anat.affine)
-                seg_mask_nii_resampled = resample_from_to(nib.Nifti1Image(seg_data.astype(np.float32), mask_seg_nii.affine), self.nii_fieldmap_orig, order=0, mode='nearest')
-                seg_data = seg_mask_nii_resampled.get_fdata()
-
-            valid_slices = [
-                i for i in range(min(seg_data.shape[2], softmask.shape[2]))
-                if np.any(seg_data[:, :, i] > 0) and np.any(softmask[:, :, i])
-            ]
-
-        else:
-            valid_slices = [i for i in range(unshimmed.shape[2]) if np.any(softmask[:, :, i])]
-
-        # Compute mean on the masked region for each valid slice
-        slice_means = [np.ma.mean(nan_unshimmed_masked[:, :, i]) for i in valid_slices]
-
-        # Determine indices for min and max slice
-        idx_max = valid_slices[np.ma.argmax(slice_means)]
-        idx_min = valid_slices[np.ma.argmin(slice_means)]
-        slices_to_show = [idx_min, idx_max]
-        titles = ["Slice with the largest average\nB₀ field decrease", "Slice with the largest average\nB₀ field increase"]
-
-        # Create figure and axes
-        fig, axes = plt.subplots(2, 2, figsize=(8, 11),
-                                gridspec_kw={'wspace': 0.0, 'hspace': 0.0})
-        fig.patch.set_facecolor('white')
-        fig.suptitle("Extreme Slices\nFieldmap Coordinate System", fontsize=14)
-
-        vmin, vmax = -100, 100
-        ims = []
-
-        for i, idx in enumerate(slices_to_show):
-            # -- Grayscale background (entire unshimmed slice) --
-            ax1 = axes[i, 0]
-            ax1.imshow(np.rot90(unshimmed[:, :, idx]), cmap='gray', aspect='equal')
-            ax1.set_facecolor('white')
-
-            # Overlay color only on the mask
-            masked_unshimmed = np.ma.array(np.rot90(unshimmed[:, :, idx]), mask=(mask[:, :, idx] == 0))
-            im1 = ax1.imshow(np.rot90(masked_unshimmed), vmin=vmin, vmax=vmax,
-                            cmap='bwr', aspect='equal', interpolation='nearest')
-            ax1.set_title(f"{titles[i]}\nBefore shimming simulation", fontsize=14)
-            if mask_seg is not None:
-                seg_slice = np.rot90(seg_data[:, :, idx])
-                ax1.contour(seg_slice, levels=[0.5], colors='#6C3BAA', linewidths=1, zorder=10)
-            ax1.axis('off')
-
-            # Zoom on bounding box
-            coords = np.argwhere(np.rot90(mask[:, :, idx]) != 0)
-            if coords.size > 0:
-                y_min, x_min = coords.min(axis=0)
-                y_max, x_max = coords.max(axis=0)
-                padding = 3
-                ax1.set_xlim([x_min - padding, x_max + padding])
-                ax1.set_ylim([y_max + padding, y_min - padding])
-
-            ims.append(im1)
-
-            # -- Grayscale background (entire unshimmed slice) for the "After" subplot --
-            ax2 = axes[i, 1]
-            ax2.imshow(np.rot90(unshimmed[:, :, idx]), cmap='gray', aspect='equal')
-            ax2.set_facecolor('white')
-
-            # Overlay color with the shimmed data on the mask
-            masked_shimmed = np.ma.array(shimmed_masked[:, :, idx], mask=(mask[:, :, idx] == 0))
-            im2 = ax2.imshow(np.rot90(masked_shimmed), vmin=vmin, vmax=vmax,
-                            cmap='bwr', aspect='equal', interpolation='nearest')
-            ax2.set_title("Corresponding slice\nAfter shimming simulation", fontsize=14)
-            if mask_seg is not None:
-                ax2.contour(seg_slice, levels=[0.5], colors='#6C3BAA', linewidths=1, zorder=10)
-            ax2.axis('off')
-
-            # Same bounding box
-            if coords.size > 0:
-                ax2.set_xlim([x_min - padding, x_max + padding])
-                ax2.set_ylim([y_max + padding, y_min - padding])
-
-            ims.append(im2)
-
-        # Single colorbar on the right
-        cbar_ax = fig.add_axes([0.92, 0.3, 0.02, 0.4])  # left, bottom, width, height
-        cbar = fig.colorbar(ims[-1], cax=cbar_ax)
-        cbar.set_label("B₀ Magnetic Field Deviation (Hz)", rotation=90, labelpad=18, color='#0D1B2A', fontsize=12)
-
-        # Add legend for segmentation contour, if given
-        if mask_seg is not None:
-            legend_element = Line2D([0], [0], color='#6C3BAA', lw=2, label='Spinal cord\ncontour')
-            fig.legend(handles=[legend_element], loc='center left', bbox_to_anchor=(0.9, 0.75), fontsize=10, frameon=False)
-
-        # Save figure
-        out_png = os.path.join(path_output, 'fig_extreme_slices.png')
-        fig.savefig(out_png, bbox_inches='tight', dpi=150)
-        plt.close(fig)
-        logger.info()(f"Saved {out_png}")
 
     def calc_shimmed_anat_orient(self, coefs, list_shim_slice):
         """

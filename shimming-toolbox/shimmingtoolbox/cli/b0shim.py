@@ -114,8 +114,6 @@ def b0shim_cli():
                    "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
                    "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
                    "linear term. When using 2nd order or more, more dilation is necessary.")
-@click.option('--segmentation-mask', 'mask_seg', type=click.Path(exists=True), required=False,
-              help="Optional segmentation mask to overlay in visualizations.")
 @click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
               help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
                    "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
@@ -160,7 +158,7 @@ def b0shim_cli():
               help="Be more verbose")
 @timeit
 def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
-            dilation_kernel_size, scanner_coil_order, fname_sph_constr, mask_seg, fatsat, path_output, o_format_coil,
+            dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
             o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
@@ -325,7 +323,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                               mask_dilation_kernel='sphere',
                               mask_dilation_kernel_size=dilation_kernel_size,
                               reg_factor=reg_factor,
-                              mask_seg=mask_seg,
                               w_signal_loss=w_signal_loss,
                               w_signal_loss_xy=w_signal_loss_xy,
                               epi_te=epi_te,
