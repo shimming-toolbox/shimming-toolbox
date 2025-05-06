@@ -407,21 +407,21 @@ def gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask):
     return sct_softmask
 
 
-def save_softmask(sct_softmask, path_sct_softmask, path_sct_binmask):
+def save_softmask(softmask, path_softmask, path_binmask):
     """
     Save the soft mask to a NIFTI file
 
     Args:
-        sct_softmask (numpy.ndarray): Soft mask to save.
-        path_sct_softmask (str): Path to save the soft mask.
-        path_sct_binmask (str): Path to the binary mask.
+        softmask (numpy.ndarray): Soft mask to save.
+        path_softmask (str): Path to save the soft mask.
+        path_binmask (str): Path to the binary mask.
     Returns:
-        nii_sct_softmask : NIFTI file containing the soft mask created from the binary mask.
+        nib.Nifti1Image : NIFTI file containing the soft mask created from the binary mask.
     """
-    nifti_file = nib.load(path_sct_binmask)
+    nifti_file = nib.load(path_binmask)
 
-    nii_sct_softmask = nib.Nifti1Image(sct_softmask, nifti_file.affine)
-    nii_sct_softmask.set_data_dtype(float)
-    nii_sct_softmask.to_filename(path_sct_softmask)
+    nii_softmask = nib.Nifti1Image(softmask, nifti_file.affine)
+    nii_softmask.set_data_dtype(float)
+    nii_softmask.to_filename(path_softmask)
 
-    return nii_sct_softmask
+    return nii_softmask
