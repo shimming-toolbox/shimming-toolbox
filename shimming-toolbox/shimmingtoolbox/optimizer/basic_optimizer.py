@@ -96,7 +96,7 @@ class Optimizer(object):
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
-            profiles (np.ndarray): Coefficients corresponding to the coil profiles that minimize the objective function.
+            np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
         weighted_coil_mat, weighted_unshimmed_vec = self.get_weighted_coil_mat_and_unshimmed(mask)
@@ -116,7 +116,7 @@ class Optimizer(object):
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
-            (tuple) : tuple containing:
+            tuple: tuple containing:
                 * np.ndarray: 2D flattened array (point, channel) of masked coils
                               (axis 0 must align with unshimmed_vec)
                 * np.ndarray: 1D flattened array (point) of the masked unshimmed map
@@ -160,7 +160,7 @@ class Optimizer(object):
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
-            (tuple) : tuple containing:
+            tuple: tuple containing:
                 * np.ndarray: 2D flattened array (point, channel) of masked coils
                               (axis 0 must align with unshimmed_vec)
                 * np.ndarray: 1D flattened array (point) of the masked unshimmed map
