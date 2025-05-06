@@ -2,16 +2,10 @@
 # -*- coding: utf-8
 
 import numpy as np
-import nibabel as nib
 import pytest
-import os
 
-from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.lsq_optimizer import PmuLsqOptimizer
-from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil, create_unshimmed_affine
-from shimmingtoolbox.masking.mask_utils import basic_softmask, linear_softmask, gaussian_filter_softmask
-from shimmingtoolbox.masking.shapes import shapes
-from shimmingtoolbox import __dir_testing__
+from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil
 
 nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
     define_rt_sim_inputs()
