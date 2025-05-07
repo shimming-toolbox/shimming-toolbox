@@ -517,7 +517,6 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
 
-
             # Display the shimming statistics
             if logger.level <= getattr(logging, 'DEBUG'):
                 self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft)
@@ -585,18 +584,20 @@ class ShimSequencer(Sequencer):
 
         for i_shim in range(len(self.slices)):
 
-            mask = np.where(self.masks_fmap[..., i_shim], False, True)
-            ma_shimmed = np.ma.array(shimmed[..., i_shim], mask=mask, dtype=np.float32)
-            ma_unshimmed = np.ma.array(unshimmed, mask=mask, dtype=np.float32)
+            mask = self.masks_fmap[..., i_shim]
+            if np.sum(mask) == 0:
+                logger.warning(f"Mask for shim group {i_shim} is empty. Skipping evaluation.")
+                continue
+            i_shimmed = shimmed[..., i_shim]
 
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Log shimmed results
-                mse_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mse')
-                mse_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mse')
-                mae_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mae')
-                mae_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mae')
-                std_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'std')
-                std_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'std')
+                mse_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'mse')
+                mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
+                mae_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'mae')
+                mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
+                std_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'std')
+                std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
 
                 if mae_unshimmed < mae_shimmed and self.opt_criteria == 'mae':
                     logger.warning("Evaluating the mae, verify the shim parameters."
@@ -623,23 +624,22 @@ class ShimSequencer(Sequencer):
             else:
                 # Log shimmied results only if they are worse than no shimming
                 if self.opt_criteria == 'mae':
-                    mae_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mae')
-                    mae_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mae')
+                    mae_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'mae')
+                    mae_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mae')
                     if mae_unshimmed < mae_shimmed:
                         logger.warning("Evaluating the mae, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 elif self.opt_criteria == 'std':
-                    std_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'std')
-                    std_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'std')
+                    std_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'std')
+                    std_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'std')
                     if std_unshimmed < std_shimmed:
                         logger.warning("Evaluating the std, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
-                else:
-                    # self.opt_criteria is None or self.opt_criteria == 'mse' or ...
-                    mse_shimmed = calculate_metric_within_mask(ma_shimmed, mask, 'mse')
-                    mse_unshimmed = calculate_metric_within_mask(ma_unshimmed, mask, 'mse')
+                else :
+                    mse_shimmed = calculate_metric_within_mask(i_shimmed, mask, 'mse')
+                    mse_unshimmed = calculate_metric_within_mask(unshimmed, mask, 'mse')
                     if mse_unshimmed < mse_shimmed:
-                        logger.warning("Evaluating the mse. Verify the shim parameters."
+                        logger.warning("Evaluating the mse, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
     def display_shimming_stats(self, unshimmed, shimmed_masked, mask) :
@@ -702,6 +702,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
+    #TODO : Needs to be removed
     def calc_shimmed_full_softmask(self, unshimmed, correction):
         """
         Calculate the shimmed full soft mask
@@ -733,7 +734,6 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_soft
 
-    # TODO : Needs to be adapted for softmask signal recovery
     def calc_shimmed_gradient_full_mask(self, gradient):
         """
         Calculate the shimmed gradient full mask

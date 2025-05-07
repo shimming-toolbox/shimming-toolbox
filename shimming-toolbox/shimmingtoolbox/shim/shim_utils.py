@@ -142,8 +142,7 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
     if mask.dtype != float:
         mask = mask.astype(float)
 
-    ma_array = np.ma.masked_where(mask == 0, array) # Inside the mask
-    # ma_array_out = np.ma.masked_where(mask != 0, array) # Outside the mask
+    ma_array = np.ma.masked_where(mask == 0, array)
 
     if metric == 'mean':
         output = np.average(ma_array, weights=mask, axis=axis)
