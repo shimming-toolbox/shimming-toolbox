@@ -19,15 +19,18 @@ required_constraints = [
     "coef_sum_max"
 ]
 
-SCANNER_CONSTRAINTS = {
-    "Siemens": {
-        "MAGNETOM Prisma Fit": {
+SIEMENS_PRISMA_CONSTRAINTS = {
             "0": [[123100100, 123265000]],
             "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
             "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
                   [-3487.302, 3487.302]],
             "3": []
-        },
+        }
+
+SCANNER_CONSTRAINTS = {
+    "Siemens": {
+        "MAGNETOM Prisma Fit": SIEMENS_PRISMA_CONSTRAINTS,
+        "Prisma_fit": SIEMENS_PRISMA_CONSTRAINTS,
         "Investigational_Device_7T": {
             "0": [[296490000, 297490000]],
             "1": [[-4999.976, 4999.976], [-4999.980, 4999.980], [-4999.957, 4999.957]],
@@ -60,14 +63,17 @@ SCANNER_CONSTRAINTS = {
     }
 }
 
+SIEMENS_PRISMA_DAC_CONSTRAINTS = {
+    "1": [14436.0, 14265.0, 14045.0],
+    "2": [9998.0] * 5,
+    "3": []
+}
+
 # One can use the Siemens commandline AdjValidate tool to get all the values below
 SCANNER_CONSTRAINTS_DAC = {
     "Siemens": {
-        "MAGNETOM Prisma Fit": {
-            "1": [14436.0, 14265.0, 14045.0],
-            "2": [9998.0] * 5,
-            "3": []
-        },
+        "MAGNETOM Prisma Fit": SIEMENS_PRISMA_DAC_CONSTRAINTS,
+        "Prisma_fit": SIEMENS_PRISMA_DAC_CONSTRAINTS,
         "Investigational_Device_7T": {
             "1": [62479.0, 62264.0, 54082.0],
             "2": [18000.0] * 5,

@@ -122,7 +122,7 @@ def b0shim_cli():
                                       "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
-                                 'gradient']),
+                                 'slicewise-hrd', 'chronological-hrd']),
               default='slicewise-coil',
               show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -134,8 +134,7 @@ def b0shim_cli():
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file. Use "
-                                      "'gradient' to output the 1st order in the Gradient CS, otherwise, it outputs in "
-                                      "the Shim CS.")
+                                      "'-hrd' to output a human readable file with the shim coefficients ")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
               show_default=True,
               help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
@@ -341,7 +340,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
-            if o_format_sph == 'gradient':
+            if 'hrd' in o_format_sph:
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
 
                 # Fill in a dictionary with the coefficients for each order
@@ -487,7 +486,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
-    else:  # o_format == 'gradient':
+    
+    else:  # o_format == 'human readable':
         
         fname_output = os.path.join(path_output, f"scanner_shim.txt")
 
@@ -497,17 +497,19 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
             column_names.append('f0')
         if 1 in coefs.keys():
             column_names.extend(['Gx', 'Gy', 'Gz'])
+        if 2 in coefs.keys():
+            column_names.extend(['Gxx', 'Gxy', 'Gxz', 'Gyx', 'Gyy', 'Gyz', 'Gzx', 'Gzy', 'Gzz'])
 
         # Transform dict into usable array (nb_slices, n_channels)
         arrays = [coefs[order] / 1000 if order == 1 else coefs[order] for order in sorted(coefs.keys())]
         coefs_array = np.hstack(arrays)
 
-        # reorder according to list_slices
-        # Build a reverse mapping: from list_slices to target positions
-        inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
-
-        # Reorder the array
-        coefs_array = coefs_array[inverse_slice_order, :]
+        if "slicewise" in o_format:
+             # reorder according to list_slices
+            # Build a reverse mapping: from list_slices to target positions
+            inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
+            # Reorder the array
+            coefs_array = coefs_array[inverse_slice_order, :]
         
         # Compute column widths
         # 1. Get max formatted value length in each column

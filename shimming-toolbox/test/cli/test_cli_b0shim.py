@@ -97,8 +97,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--anat', fname_anat,
                                              '--mask', fname_mask,
-                                             '--scanner-coil-order', '0, 1',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.1',
                                              '--slices', 'ascending',
                                              '--output', tmp],
@@ -582,7 +581,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_dynamic_format_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_hrd_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -604,28 +603,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 11.007908"
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.001260"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.029665"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.060548"
-
+                assert lines[15].strip() == "-18.511886 |  0.001398 | -0.015534 | -0.076382"
 
     def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -660,15 +646,12 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
     def test_cli_dynamic_format_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -693,15 +676,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 119.644382"
+                assert lines[15].strip() == "68.853567"
 
     def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -725,23 +708,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.001980"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.032016"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= -0.066749"
+                assert lines[15].strip() == '-0.003530 | -0.013124 | -0.031381'
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
