@@ -448,8 +448,7 @@ class ShimSequencer(Sequencer):
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
 
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
-        shimmed_masked, mask_full_binary = self.calc_shimmed_full_mask(unshimmed, corrections)
-        shimmed_masked_soft, mask_full_soft = self.calc_shimmed_full_softmask(unshimmed, corrections)
+        shimmed_masked, mask_full_binary, mask_full_soft = self.calc_shimmed_full_mask(unshimmed, corrections)
         if self.path_output is not None:
             # fmap space
             if len(self.slices) == 1:
@@ -515,11 +514,11 @@ class ShimSequencer(Sequencer):
             self.plot_currents(coefs)
 
             # Figure that shows unshimmed vs shimmed for each slice
-            plot_full_mask(unshimmed, shimmed_masked_soft, mask_full_binary, mask_full_soft, self.path_output)
+            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, mask_full_soft, self.path_output)
 
             # Display the shimming statistics
             if logger.level <= getattr(logging, 'DEBUG'):
-                self.display_shimming_stats(unshimmed, shimmed_masked_soft, mask_full_soft)
+                self.display_shimming_stats(unshimmed, shimmed_masked, mask_full_soft)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -689,32 +688,6 @@ class ShimSequencer(Sequencer):
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
 
-        full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
-
-        # Calculate the weighted whole mask
-        mask_weight = np.sum(self.masks_fmap, axis=3)
-
-        # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
-
-        # Apply the correction to the unshimmed image
-        shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
-
-        return shimmed_masked, mask_full_binary
-
-    #TODO : Needs to be removed
-    def calc_shimmed_full_softmask(self, unshimmed, correction):
-        """
-        Calculate the shimmed full soft mask
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            correction (np.ndarray): Corrections to apply to the fieldmap
-        Returns:
-            (tuple) : tuple containing:
-                * np.ndarray: Masked shimmed fieldmap
-                * np.ndarray: Soft mask in the fieldmap space
-        """
         mask_full_soft = np.clip(resample_from_to(self.nii_mask_anat_soft,
                                           self.nii_fieldmap_orig,
                                           order=0,
@@ -727,12 +700,12 @@ class ShimSequencer(Sequencer):
         mask_weight = np.sum(self.masks_fmap, axis=3)
 
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_soft != 0)
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
 
         # Apply the correction to the unshimmed image
-        shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_soft
+        shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
 
-        return shimmed_masked, mask_full_soft
+        return shimmed_masked, mask_full_binary, mask_full_soft
 
     def calc_shimmed_gradient_full_mask(self, gradient):
         """
