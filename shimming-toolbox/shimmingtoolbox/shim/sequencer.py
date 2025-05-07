@@ -311,15 +311,15 @@ class ShimSequencer(Sequencer):
             logger.debug("Resampling mask on the target anat")
             nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
-            # Change soft mask into binary mask (0.5 threshold)
-            tmp_mask = threshold(tmp_mask, thr=0.5, scaled_thr=True)
+            # Change soft mask into binary mask (0.1 threshold)
+            tmp_mask = threshold(tmp_mask, thr=0.1, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
                 nib.save(nii_mask_anat_soft, os.path.join(self.path_output, "softmask_static_resampled_on_anat.nii.gz"))
         else:
             nii_mask_anat_soft = nii_mask_anat
-            nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.5, scaled_thr=True)
+            nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.1, scaled_thr=True)
             nii_mask_anat = nib.Nifti1Image(nii_mask_anat_soft.get_fdata(), nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
 
         return nii_mask_anat, nii_mask_anat_soft
@@ -514,7 +514,7 @@ class ShimSequencer(Sequencer):
             self.plot_currents(coefs)
 
             # Figure that shows unshimmed vs shimmed for each slice
-            plot_full_mask(unshimmed, shimmed_masked, mask_full_binary, mask_full_soft, self.path_output)
+            plot_full_mask(unshimmed, shimmed_masked, mask_full_soft, self.path_output)
 
             # Display the shimming statistics
             if logger.level <= getattr(logging, 'DEBUG'):
@@ -681,7 +681,9 @@ class ShimSequencer(Sequencer):
             (tuple) : tuple containing:
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
+                * np.ndarray: Soft mask in the fieldmap space
         """
+        # TODO: When soft mask signal recovery is implemented, this should be changed to use only the soft mask (the general mask)
         mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
                                                             self.nii_fieldmap_orig,
                                                             order=0,
@@ -1944,34 +1946,36 @@ class RealTimeSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-def plot_full_mask(unshimmed, shimmed_masked, mask, softmask, path_output):
+def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     """
     Plot and save the static full mask
 
     Args:
         unshimmed (np.ndarray): Original fieldmap not shimmed
         shimmed_masked(np.ndarray): Masked shimmed fieldmap
-        mask (np.ndarray): Binary mask in the fieldmap space
-        softmask (np.ndarray): Soft mask in the fieldmap space
+        mask (np.ndarray): Mask in the fieldmap space
         path_output (str): Path to the output folder
     """
 
+    # Get the binary mask from the soft mask
+    bin_mask = threshold(mask, thr=0.1, scaled_thr=True)
+
     # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask==0), fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(mask==0), fill_value=np.nan)
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(bin_mask==0), fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(bin_mask==0), fill_value=np.nan)
 
     mt_unshimmed = montage(unshimmed)
     mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
     mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
-    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, softmask, metric='std')
-    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, softmask, metric='std')
-    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, softmask, metric='mean')
-    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, softmask, metric='mean')
-    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, softmask, metric='mae')
-    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, softmask, metric='mae')
-    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, softmask, metric='rmse')
-    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, softmask, metric='rmse')
+    metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
+    metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
+    metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
+    metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
+    metric_unshimmed_mae = calculate_metric_within_mask(unshimmed, mask, metric='mae')
+    metric_shimmed_mae = calculate_metric_within_mask(shimmed_masked, mask, metric='mae')
+    metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
+    metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
 
     min_value = -100
     max_value = 100
