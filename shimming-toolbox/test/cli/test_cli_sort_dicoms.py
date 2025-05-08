@@ -49,3 +49,21 @@ def test_sort_dicoms_cli_recursive():
         outputs = os.listdir(path_output)
         assert '06-a_gre_DYNshim' in outputs
         assert '07-a_gre_DYNshim' in outputs
+
+
+def test_sort_dicoms_cli_recursive_same_name():
+    path = os.path.join(__dir_testing__, 'dicom_unsorted')
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        path_subfolder = copy.deepcopy(tmp)
+        for i_subfolder in range(1, 5):
+            path_subfolder = os.path.join(path_subfolder, 'subfolder' + str(i_subfolder))
+            os.mkdir(path_subfolder)
+
+        path_new_dicoms = os.path.join(path_subfolder, 'dicoms')
+        shutil.copytree(path, path_new_dicoms)
+        shutil.copyfile(os.path.join(path_new_dicoms, "001_000001_000001.dcm"), os.path.join(path_subfolder, "001_000001_000001.dcm"))
+
+        path_output = os.path.join(tmp, 'sorted')
+        result = CliRunner().invoke(sort_dicoms, ['-i', tmp, '-r', '-o', path_output], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert os.path.isfile(os.path.join(path_output, '06-a_gre_DYNshim', "001_000001_000001_0.dcm"))
