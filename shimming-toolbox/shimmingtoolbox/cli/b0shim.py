@@ -350,6 +350,33 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if type(coil) == ScannerCoil:
             manufacturer = json_anat_data['Manufacturer']
 
+            # If volume shim, we can update the input constraints
+            if (fname_sph_constr is not None) and (slices == 'volume'):
+                coefs_scanner = {}
+                start_channel_scanner = 0
+                for order in scanner_coil_order:
+                    end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+                    coefs_scanner[f"{order}"] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order][0]
+                    start_channel_scanner = end_channel_scanner_order
+
+                coefs_used = {}
+                for order in coil.coefs_used.keys():
+                    if coefs_scanner.get(order) is None:
+                        coefs_used[order] = coil.coefs_used[order]
+                    else:
+                        coefs_used[order] = np.nan_to_num(np.array(coil.coefs_used[order], dtype=float), nan=0) + coefs_scanner[order]
+
+                data_calculated_constraints = {
+                    "name": coil.name,
+                    "coef_channel_minmax": {order: [[float(coefs_channel[0]), float(coefs_channel[1])] for coefs_channel in coefs] for order, coefs in coil.coef_channel_minmax.items()},
+                    "coef_sum_max": coil.coef_sum_max,
+                    "coefs_used": {order: coefs.tolist() for order, coefs in coefs_used.items()},
+                }
+                logging.info(data_calculated_constraints)
+                fname_output_json_constraints = os.path.join(path_output, "calculated_scanner_constraints.json")
+                with open(fname_output_json_constraints, "w") as outfile:
+                    json.dump(data_calculated_constraints, outfile, indent=4)
+
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
@@ -1169,11 +1196,11 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
-        
-        # If 3D, extend to 4D by adding singleton dimension 
+
+        # If 3D, extend to 4D by adding singleton dimension
         if coil_data.ndim == 3:
             coil_data = coil_data[..., np.newaxis]
-        
+
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
         list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
