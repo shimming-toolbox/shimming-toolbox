@@ -606,7 +606,6 @@ class ShimSequencer(Sequencer):
 
             mask = self.masks_fmap[..., i_shim]
             if np.sum(mask) == 0:
-                logger.warning(f"Mask for shim group {i_shim} is empty. Skipping evaluation.")
                 continue
             i_shimmed = shimmed[..., i_shim]
 
@@ -626,7 +625,6 @@ class ShimSequencer(Sequencer):
                     logger.warning("Evaluating the std, verify the shim parameters."
                                    " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
                 elif mse_unshimmed < mse_shimmed:
-                    # self.opt_criteria is None or self.opt_criteria == 'mse'
                     logger.warning("Evaluating the mse, verify the shim parameters."
                                    " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 

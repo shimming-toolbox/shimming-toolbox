@@ -49,7 +49,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
 
-    # # Dilate the mask to add more pixels in particular directions
+    # Dilate the mask to add more pixels in particular directions
     if np.array_equal(np.unique(nii_mask_target.get_fdata()), [0, 1]):
         mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
     else :
