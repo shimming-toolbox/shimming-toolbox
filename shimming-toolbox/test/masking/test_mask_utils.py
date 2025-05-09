@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, basic_softmask, linear_softmask, gaussian_filter_softmask, gaussian_sct_softmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, create_2levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
@@ -121,27 +121,27 @@ def test_resample_mask():
     assert np.all(nii_mask_res.get_fdata() == expected)
 
 
-@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+@pytest.mark.parametrize("path_binmask, path_softmask", [
     (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
      os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_basic_sub-01_t2.nii.gz'))])
-def test_basic_softmask(path_sct_binmask, path_sct_softmask):
-    """ Test for the creation of a basic soft mask """
+def test_create_2levels_softmask(path_binmask, path_softmask):
+    """ Test for the creation of a 2 levels soft mask """
 
     # Verify that the binary mask exists
-    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    assert os.path.exists(path_binmask), "The binary mask does not exist"
     # Load the binary mask
-    binmask_nifti = nib.load(path_sct_binmask)
+    binmask_nifti = nib.load(path_binmask)
     binmask = binmask_nifti.get_fdata()
 
     # Verifiy that the output folder exists
-    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+    assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the basic soft mask
-    b_softmask = basic_softmask(path_sct_binmask, 9, 0.5)
-    softmask_nifti = save_softmask(b_softmask, path_sct_softmask, path_sct_binmask)
+    b_softmask = create_2levels_softmask(path_binmask, 9, 0.5)
+    softmask_nifti = save_softmask(b_softmask, path_softmask, path_binmask)
     softmask = softmask_nifti.get_fdata()
 
     # Verify that the soft mask has been created
-    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+    assert os.path.exists(path_softmask), "The soft mask has not been created"
     # Verify that the soft mask has the correct dimensions and values
     assert softmask.shape == binmask.shape, "The soft mask has incorrect dimensions"
     assert np.array_equal(binmask_nifti.affine, softmask_nifti.affine), "The affine matrices do not match."
@@ -149,27 +149,27 @@ def test_basic_softmask(path_sct_binmask, path_sct_softmask):
     assert np.array_equal((softmask == 1.0), binmask.astype(bool)), "Mismatch in binary regions between binmask and softmask"
 
 
-@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+@pytest.mark.parametrize("path_binmask, path_softmask", [
     (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
      os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_linear_sub-01_t2.nii.gz'))])
-def test_linear_softmask(path_sct_binmask, path_sct_softmask):
+def test_create_linear_softmask(path_binmask, path_softmask):
     """ Test for the creation of a linear soft mask """
 
     # Verify that the binary mask exists
-    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    assert os.path.exists(path_binmask), "The binary mask does not exist"
     # Load the binary mask
-    binmask_nifti = nib.load(path_sct_binmask)
+    binmask_nifti = nib.load(path_binmask)
     binmask = binmask_nifti.get_fdata()
 
     # Verify that the output folder exists
-    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+    assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the linear soft mask
-    l_softmask = linear_softmask(path_sct_binmask, 9)
-    softmask_nifti = save_softmask(l_softmask, path_sct_softmask, path_sct_binmask)
+    l_softmask = create_linear_softmask(path_binmask, 9)
+    softmask_nifti = save_softmask(l_softmask, path_softmask, path_binmask)
     softmask = softmask_nifti.get_fdata()
 
     # Verify that the soft mask has been created
-    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+    assert os.path.exists(path_softmask), "The soft mask has not been created"
     # Verify that the soft mask has the correct dimensions and values
     assert softmask.shape == binmask.shape, "The soft mask has incorrect dimensions"
     assert np.array_equal(binmask_nifti.affine, softmask_nifti.affine), "The affine matrices do not match."
@@ -177,27 +177,27 @@ def test_linear_softmask(path_sct_binmask, path_sct_softmask):
     assert np.array_equal((softmask == 1.0), binmask.astype(bool)), "Mismatch in binary regions between binmask and softmask"
 
 
-@pytest.mark.parametrize("path_sct_binmask, path_sct_softmask", [
+@pytest.mark.parametrize("path_binmask, path_softmask", [
    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_gaussfilt_sub-01_t2.nii.gz'))])
-def test_gaussian_filter_softmask(path_sct_binmask, path_sct_softmask):
+def test_create_gaussian_softmask(path_binmask, path_softmask):
     """ Test for the creation of a gaussian soft mask """
 
     # Verify that the binary mask exists
-    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    assert os.path.exists(path_binmask), "The binary mask does not exist"
     # Load the binary mask
-    binmask_nifti = nib.load(path_sct_binmask)
+    binmask_nifti = nib.load(path_binmask)
     binmask = binmask_nifti.get_fdata()
 
     # Verify that the output folder exists
-    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+    assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the gaussian soft mask
-    g_softmask = gaussian_filter_softmask(path_sct_binmask, 9)
-    softmask_nifti = save_softmask(g_softmask, path_sct_softmask, path_sct_binmask)
+    g_softmask = create_gaussian_softmask(path_binmask, 9)
+    softmask_nifti = save_softmask(g_softmask, path_softmask, path_binmask)
     softmask = softmask_nifti.get_fdata()
 
     # Verify that the soft mask has been created
-    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+    assert os.path.exists(path_softmask), "The soft mask has not been created"
     # Verify that the soft mask has the correct dimensions and values
     assert softmask.shape == binmask.shape, "The soft mask has incorrect dimensions"
     assert np.array_equal(binmask_nifti.affine, softmask_nifti.affine), "The affine matrices do not match."
@@ -205,34 +205,34 @@ def test_gaussian_filter_softmask(path_sct_binmask, path_sct_softmask):
     assert np.array_equal((softmask == 1.0), binmask.astype(bool)), "Mismatch in binary regions between binmask and softmask"
 
 
-@pytest.mark.parametrize("path_sct_binmask, path_sct_gaussmask, path_sct_softmask", [
+@pytest.mark.parametrize("path_binmask, path_gaussmask, path_softmask", [
    (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'gaussmask_sub-01_t2.nii.gz'),
     os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_gaussct_sub-01_t2.nii.gz'))])
-def test_gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask, path_sct_softmask):
+def test_gaussian_sct_softmask(path_binmask, path_gaussmask, path_softmask):
     """ Test for the creation of a gaussian soft mask """
 
     # Verify that the binary mask exists
-    assert os.path.exists(path_sct_binmask), "The binary mask does not exist"
+    assert os.path.exists(path_binmask), "The binary mask does not exist"
     # Load the binary mask
-    binmask_nifti = nib.load(path_sct_binmask)
+    binmask_nifti = nib.load(path_binmask)
     binmask = binmask_nifti.get_fdata()
 
     #Verify that the gaussian mask exists
-    assert os.path.exists(path_sct_gaussmask), "The gaussian mask does not exist"
+    assert os.path.exists(path_gaussmask), "The gaussian mask does not exist"
     # Load the gaussian mask
-    gaussmask_nifti = nib.load(path_sct_gaussmask)
+    gaussmask_nifti = nib.load(path_gaussmask)
     gaussmask = gaussmask_nifti.get_fdata()
 
     # Verify that the output folder exists
-    assert os.path.exists(os.path.dirname(path_sct_softmask)), "The output folder does not exist"
+    assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the gaussian soft mask
-    g_softmask = gaussian_sct_softmask(path_sct_binmask, path_sct_gaussmask)
-    softmask_nifti = save_softmask(g_softmask, path_sct_softmask, path_sct_binmask)
+    g_softmask = add_softmask_to_binmask(path_binmask, path_gaussmask)
+    softmask_nifti = save_softmask(g_softmask, path_softmask, path_binmask)
     softmask = softmask_nifti.get_fdata()
 
     # Verify that the soft mask has been created
-    assert os.path.exists(path_sct_softmask), "The soft mask has not been created"
+    assert os.path.exists(path_softmask), "The soft mask has not been created"
     # Verify that the soft mask has the correct dimensions and values
     assert softmask.shape == binmask.shape and softmask.shape == gaussmask.shape, "The soft mask has incorrect dimensions"
     assert np.array_equal(binmask_nifti.affine, softmask_nifti.affine) and np.array_equal(gaussmask_nifti.affine, softmask_nifti.affine), "The affine matrices do not match."

@@ -115,7 +115,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
 
                     np.array([[[0 0 0 0 0],
                                [0 0 0 0 0],
-                               [0 0  1 0 0],
+                               [0 0 1 0 0],
                                [0 0 0 0 0],
                                [0 0 0 0 0]],
                               [[0 0 0 0 0],
