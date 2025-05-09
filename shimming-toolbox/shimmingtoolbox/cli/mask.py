@@ -12,6 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
+from shimmingtoolbox.masking.mask_utils import create_2levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -436,6 +437,49 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     nib.save(nii_img, output)
     logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
+
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Creates a soft mask by creating a blur zone around the binary mask.")
+@click.option('-i', '--input', 'path_input_binmask', type=click.Path(), required=True,
+              help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-is', '--input-softmask', 'path_input_softmask', type=click.Path(), default=None,
+              help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'path_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
+              show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
+              help="""Type of soft mask :\n
+              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-bv)\n
+              - linear: Radial linear gradient, from 1 to 0.\n
+              - gaussian: Gaussian distribution.\n
+              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
+              """)
+@click.option('-bw', '--blur-width', 'blur_width', default = 12,
+              help="Width (in pixels) of the blurred zone. For 2levels-type and gaussian-type softmasks, width must be a multiple of 3")
+@click.option('-bv', '--blur-value', 'blur_value', default = 0.5,
+              help="Intensity of the coefficients in the blurred zone. Use only on 2levels-type softmask")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def create_softmask(path_input_binmask, path_input_softmask, path_output_softmask, type, blur_width, blur_value, verbose) :
+
+    # Set all loggers
+    set_all_loggers(verbose)
+
+    # Prepare the output directory
+    create_output_dir(path_output_softmask, is_file=True)
+
+    # Create a np.array soft mask
+    if type == '2levels' :
+        softmask = create_2levels_softmask(path_input_binmask, blur_width, blur_value)
+    elif type == 'linear' :
+        softmask = create_linear_softmask(path_input_binmask, blur_width)
+    elif type == 'gaussian' :
+        softmask = create_gaussian_softmask(path_input_binmask, blur_width)
+    elif type == 'sum' :
+        softmask = add_softmask_to_binmask(path_input_binmask, path_input_softmask)
+    else :
+        raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
+
+    # Save the soft mask to a NIFTI file
+    save_softmask(softmask, path_output_softmask, path_input_binmask)
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):

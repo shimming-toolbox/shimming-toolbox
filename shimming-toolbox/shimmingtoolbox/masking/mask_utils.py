@@ -4,8 +4,9 @@
 import logging
 import nibabel as nib
 import numpy as np
-import os
-from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
+
+from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure, gaussian_filter, maximum_filter
+from skimage.morphology import ball
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -38,38 +39,42 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         from_slices = tuple(range(mask_from.shape[2]))
 
     # Initialize a sliced mask and select the slices from from_slices
-    sliced_mask = np.full_like(mask_from, fill_value=False)
+    sliced_mask = np.full_like(mask_from, fill_value=0)
     sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
 
     # Create nibabel object of sliced mask
     nii_mask = nib.Nifti1Image(sliced_mask.astype(float), nii_mask_from.affine, header=nii_mask_from.header)
     # Resample the sliced mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
+    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
-    # TODO: Deal with soft mask
-    # Find highest value and stretch to 1
-    # Look into dilation of soft mask
 
     # Dilate the mask to add more pixels in particular directions
-    mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
+    if np.array_equal(np.unique(nii_mask_target.get_fdata()), [0, 1]) or nii_mask_target.get_fdata().dtype == bool:
+        mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
+    else :
+        previous_mask = np.array(nii_mask_target.get_fdata(), dtype=float)
+        kernel = ball(1)
+        for _ in range(dilation_size//2):
+            max_filter = maximum_filter(previous_mask, footprint=kernel, mode='grid-constant')
+            max_filter[nii_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_mask_target.get_fdata() != 0]
+            previous_mask = max_filter
+        mask_dilated = max_filter
+
     # Make sure the mask is within the original ROI
-    mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
+    mask_dilated_in_roi = np.zeros_like(mask_dilated)
+    mask_dilated_in_roi[nii_full_mask_target.get_fdata() != 0] = mask_dilated[nii_full_mask_target.get_fdata() != 0]
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
-    # if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
-    #     nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
-    #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
-
+    # Return non dilated mask if requested
     if return_non_dil_mask:
-        mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
+        mask_in_roi = np.zeros_like(mask_dilated)
+        mask_in_roi[nii_full_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_full_mask_target.get_fdata() != 0]
         nii_mask_resampled = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
         return nii_mask_resampled, nii_mask_dilated
 
     else:
-
         return nii_mask_dilated
 
 
@@ -110,7 +115,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
 
                     np.array([[[0 0 0 0 0],
                                [0 0 0 0 0],
-                               [0 0  1 0 0],
+                               [0 0 1 0 0],
                                [0 0 0 0 0],
                                [0 0 0 0 0]],
                               [[0 0 0 0 0],
@@ -228,3 +233,143 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
         raise ValueError("Use of non supported algorithm for dilating the mask")
 
     return mask_dilated
+
+
+def create_2levels_softmask(path_binmask, soft_width, soft_value):
+    """
+    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version muliplied by
+    a soft value.
+
+    Args:
+        path_binmask (str): Path to the binary mask.
+        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3.
+        soft_value (float): Value of the intensity of the pixels in the soft zone.
+    Returns:
+        numpy.ndarray : Soft mask created from the binary mask.
+    """
+    # Raise error if soft_width is not a multiple of 3
+    if soft_width % 3 != 0:
+        raise ValueError("soft_width must be a multiple of 3")
+
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_binmask)
+    binmask = nifti_file.get_fdata()
+
+    # Create a soft mask
+    softmask = np.array(binmask, dtype=float)
+    previous_mask = np.array(binmask, dtype=float)
+    for _ in range(soft_width // 3):
+        dilated_mask = binary_dilation(previous_mask, ball(3))
+        new_layer = dilated_mask & ~previous_mask.astype(bool)
+        softmask[new_layer] = soft_value
+        previous_mask = dilated_mask
+    softmask = np.clip(softmask, 0, 1)
+
+    return softmask
+
+
+def create_linear_softmask(path_binmask, soft_width):
+    """
+    Creates a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
+    the background.
+
+    Args:
+        path_binmask (str): Path to the binary mask.
+        soft_width (int): Width of the soft zone (in pixels).
+    Returns:
+        numpy.ndarray: Soft mask created from the binary mask.
+    """
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_binmask)
+    binmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    softmask = np.array(binmask, dtype=float)
+    previous_mask = np.array(binmask, dtype=float)
+    for i in range(1, soft_width + 1):
+        dilated_mask = binary_dilation(previous_mask, structure=ball(1))
+        new_layer = dilated_mask & ~previous_mask.astype(bool)
+        softmask[new_layer] = 1 - (i / (soft_width + 1))
+        previous_mask = dilated_mask
+    softmask = np.clip(softmask, 0, 1)
+
+    return softmask
+
+
+def create_gaussian_softmask(path_binmask, soft_width):
+    """
+    Creates a softmask from a binary mask. The final mask contains a gaussian blur from the binary mask to
+    the background.
+
+    Args:
+        path_binmask (str): Path to the binary mask.
+        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3.
+    Returns:
+        numpy.ndarray: Soft mask created from the binary mask.
+    """
+   # Raise error if soft_width is not a multiple of 3
+    if soft_width % 3 != 0:
+        raise ValueError("soft_width must be a multiple of 3")
+
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_binmask)
+    binmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    softmask = np.array(binmask, dtype=float)
+    previous_mask = np.array(binmask, dtype=float)
+    for _ in range(soft_width // 3):
+        dilated_mask = binary_dilation(previous_mask, ball(3))
+        previous_mask = dilated_mask
+    blurred_mask = gaussian_filter(previous_mask.astype(float), soft_width)
+    softmask = np.clip(blurred_mask + binmask, 0, 1)
+
+    # Crop the soft mask to the soft width
+    softmask[previous_mask == 0] = 0
+
+    return softmask
+
+
+def add_softmask_to_binmask(path_binmask, path_softmask):
+    """
+    Adds a soft mask to a binary mask to create a new soft mask.
+
+    Args:
+        path_binmask (str): Path to the binary mask.
+        path_softmask (str): Path to the soft mask.
+    Returns:
+        numpy.ndarray: New soft mask.
+    """
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_binmask)
+    binmask = nifti_file.get_fdata()
+
+    # Load the soft mask from a NIFTI file
+    nifti_file = nib.load(path_softmask)
+    softmask = nifti_file.get_fdata()
+
+    # Create a np.array soft mask
+    softmask[softmask < 0.1] = 0
+    softmask = np.clip(softmask + binmask, 0, 1)
+
+    return softmask
+
+
+def save_softmask(softmask, path_softmask, path_binmask):
+    """
+    Save the soft mask to a NIFTI file
+
+    Args:
+        softmask (numpy.ndarray): Soft mask to save.
+        path_softmask (str): Path to save the soft mask.
+        path_binmask (str): Path to the binary mask used to create the soft mask.
+    Returns:
+        nib.Nifti1Image : NIFTI file containing the soft mask created from the binary mask.
+    """
+    nifti_file = nib.load(path_binmask)
+
+    nii_softmask = nib.Nifti1Image(softmask, nifti_file.affine)
+    nii_softmask.set_data_dtype(float)
+    nii_softmask.to_filename(path_softmask)
+
+    return nii_softmask
