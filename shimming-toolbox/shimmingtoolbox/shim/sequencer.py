@@ -537,10 +537,6 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked, mask_full, self.path_output)
 
-            # Display the shimming statistics
-            if logger.level <= getattr(logging, 'DEBUG'):
-                self.display_shimming_stats(unshimmed, shimmed_masked, mask_full)
-
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 self.plot_partial_mask(unshimmed, shimmed)
@@ -659,35 +655,6 @@ class ShimSequencer(Sequencer):
                     if mse_unshimmed < mse_shimmed:
                         logger.warning("Evaluating the mse, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
-
-    def display_shimming_stats(self, unshimmed, shimmed_masked, mask) :
-        """
-        Display the improvement in the standard deviation, mean absolute error and root mean squared error
-
-        Args:
-            unshimmed (np.ndarray): Original fieldmap not shimmed
-            shimmed_masked (np.ndarray): Masked shimmed fieldmap
-            mask (np.ndarray): Soft mask in the fieldmap space
-        """
-        # Calculate the metrics in the mask
-        metric_unshimmed_mean = calculate_metric_within_mask(unshimmed, mask, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(shimmed_masked, mask, metric='mean')
-        metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
-        metric_unshimmed_rmse = calculate_metric_within_mask(unshimmed, mask, metric='rmse')
-        metric_shimmed_rmse = calculate_metric_within_mask(shimmed_masked, mask, metric='rmse')
-
-        # Calculate the improvement in the metrics
-        improvement_mean = (np.abs(metric_unshimmed_mean) - np.abs(metric_shimmed_mean)) / np.abs(metric_unshimmed_mean) * 100
-        improvement_std = (metric_unshimmed_std - metric_shimmed_std) / metric_unshimmed_std * 100
-        improvement_rmse = (metric_unshimmed_rmse - metric_shimmed_rmse) / metric_unshimmed_rmse * 100
-
-        # Log the results
-        logger.debug()("\nCalculating the improvement in the shimmed fieldmap compared to the unshimmed fieldmap...")
-        logger.debug()("\nResults in the mask :")
-        logger.debug()(f"Mean : Before => {metric_unshimmed_mean:.2f} | After => {metric_shimmed_mean:.2f} | Improvement => {improvement_mean:.2f}%")
-        logger.debug()(f"Standard deviation : Before => {metric_unshimmed_std:.2f} | After => {metric_shimmed_std:.2f} | Improvement => {improvement_std:.2f}%")
-        logger.debug()(f"Root mean squared error : Before => {metric_unshimmed_rmse:.2f} | After => {metric_shimmed_rmse:.2f} | Improvement => {improvement_rmse:.2f}%")
 
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
