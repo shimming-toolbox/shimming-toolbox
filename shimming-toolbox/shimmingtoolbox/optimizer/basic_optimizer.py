@@ -99,27 +99,26 @@ class Optimizer(object):
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
-        weighted_coil_mat, weighted_unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
-        currents = -1 * scipy.linalg.pinv(weighted_coil_mat) @ weighted_unshimmed_vec
-
+        currents = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec
 
         return currents
 
     def get_coil_mat_and_unshimmed(self, mask):
         """
-        Returns the weighted coil matrix, and the weighted unshimmed vector used for the optimization
+        Returns the coil matrix, and the unshimmed vector used for the optimization
 
         Args:
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
             tuple: tuple containing:
-                * np.ndarray: 2D flattened array (point, channel) of masked coils
+                * np.ndarray: 2D flattened array (masked_values, n_channels) of masked coils
                               (axis 0 must align with unshimmed_vec)
-                * np.ndarray: 1D flattened array (point) of the masked unshimmed map
+                * np.ndarray: 1D flattened array (masked_values,) of the masked unshimmed map
         """
         # Check for sizing errors
         self._check_sizing(mask)

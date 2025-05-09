@@ -437,6 +437,7 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     nib.save(nii_img, output)
     logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
+
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Creates a soft mask by creating a blur zone around the binary mask.")
 @click.option('-i', '--input', 'path_input_binmask', type=click.Path(), required=True,
@@ -453,9 +454,9 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
               """)
 @click.option('-bw', '--blur-width', 'blur_width', default = 12,
-              help="Width (in pixels) of the blurred zone. For linear and gaussian blurs, width must be a multiple of 3")
+              help="Width (in pixels) of the blurred zone. For 2levels-type and gaussian-type softmasks, width must be a multiple of 3")
 @click.option('-bv', '--blur-value', 'blur_value', default = 0.5,
-              help="Intensity of the constant blur. Use only on 2levels-type softmask")
+              help="Intensity of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_softmask(path_input_binmask, path_input_softmask, path_output_softmask, type, blur_width, blur_value, verbose) :
 
@@ -468,23 +469,17 @@ def create_softmask(path_input_binmask, path_input_softmask, path_output_softmas
     # Create a np.array soft mask
     if type == '2levels' :
         softmask = create_2levels_softmask(path_input_binmask, blur_width, blur_value)
-
     elif type == 'linear' :
         softmask = create_linear_softmask(path_input_binmask, blur_width)
-
     elif type == 'gaussian' :
         softmask = create_gaussian_softmask(path_input_binmask, blur_width)
-
     elif type == 'sum' :
         softmask = add_softmask_to_binmask(path_input_binmask, path_input_softmask)
-
     else :
-        raise ValueError("Invalid blur option. Impossible to create soft mask.")
+        raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
 
     # Save the soft mask to a NIFTI file
     save_softmask(softmask, path_output_softmask, path_input_binmask)
-    click.echo(f"The path of the output soft mask is: {os.path.abspath(path_output_softmask)}\n")
-
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):

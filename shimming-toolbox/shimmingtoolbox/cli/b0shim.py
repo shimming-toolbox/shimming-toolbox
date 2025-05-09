@@ -400,7 +400,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(" Plotting currents")
+    logger.info("Plotting currents")
     logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
 
@@ -455,7 +455,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                                 f.write(f"{0:.1f}, ")
                             else:
                                 # Output initial coefs (absolute)
-                                f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+                                f.write(f"{default_coefs[i_channel]:.6f}, ")
                         f.write("\n")
 
                     for i_channel in range(n_channels):
@@ -970,7 +970,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
-        if isinstance(coil, ScannerCoil):
+        if not isinstance(coil, ScannerCoil):
             if coil in list_coils_riro:
                 coefs_coil_riro = copy.deepcopy(
                     coefs_riro[:, coil_indexes_riro[coil.name][0]:coil_indexes_riro[coil.name][1]])

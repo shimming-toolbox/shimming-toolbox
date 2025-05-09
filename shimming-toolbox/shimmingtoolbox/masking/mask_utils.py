@@ -50,7 +50,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
 
     # Dilate the mask to add more pixels in particular directions
-    if np.array_equal(np.unique(nii_mask_target.get_fdata()), [0, 1]):
+    if np.array_equal(np.unique(nii_mask_target.get_fdata()), [0, 1]) or nii_mask_target.get_fdata().dtype == bool:
         mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
     else :
         previous_mask = np.array(nii_mask_target.get_fdata(), dtype=float)
@@ -237,7 +237,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
 
 def create_2levels_softmask(path_binmask, soft_width, soft_value):
     """
-    Creates a soft mask from a binary mask. The final mask combines the binary mask and a dilated version muliplied by
+    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version muliplied by
     a soft value.
 
     Args:
@@ -247,13 +247,13 @@ def create_2levels_softmask(path_binmask, soft_width, soft_value):
     Returns:
         numpy.ndarray : Soft mask created from the binary mask.
     """
-    # Load the binary mask from a NIFTI file
-    nifti_file = nib.load(path_binmask)
-    binmask = nifti_file.get_fdata()
-
     # Raise error if soft_width is not a multiple of 3
     if soft_width % 3 != 0:
         raise ValueError("soft_width must be a multiple of 3")
+
+    # Load the binary mask from a NIFTI file
+    nifti_file = nib.load(path_binmask)
+    binmask = nifti_file.get_fdata()
 
     # Create a soft mask
     softmask = np.array(binmask, dtype=float)
@@ -307,13 +307,13 @@ def create_gaussian_softmask(path_binmask, soft_width):
     Returns:
         numpy.ndarray: Soft mask created from the binary mask.
     """
+   # Raise error if soft_width is not a multiple of 3
+    if soft_width % 3 != 0:
+        raise ValueError("soft_width must be a multiple of 3")
+
     # Load the binary mask from a NIFTI file
     nifti_file = nib.load(path_binmask)
     binmask = nifti_file.get_fdata()
-
-    # Raise error if soft_width is not a multiple of 3
-    if soft_width % 3 != 0:
-        raise ValueError("soft_width must be a multiple of 3")
 
     # Create a np.array soft mask
     softmask = np.array(binmask, dtype=float)
@@ -332,7 +332,7 @@ def create_gaussian_softmask(path_binmask, soft_width):
 
 def add_softmask_to_binmask(path_binmask, path_softmask):
     """
-    Adds a binary mask to a soft mask to create a new soft mask. Values range from 0 to 1.
+    Adds a soft mask to a binary mask to create a new soft mask.
 
     Args:
         path_binmask (str): Path to the binary mask.
@@ -340,7 +340,7 @@ def add_softmask_to_binmask(path_binmask, path_softmask):
     Returns:
         numpy.ndarray: New soft mask.
     """
-    # Load the  binary mask from a NIFTI file
+    # Load the binary mask from a NIFTI file
     nifti_file = nib.load(path_binmask)
     binmask = nifti_file.get_fdata()
 
@@ -362,7 +362,7 @@ def save_softmask(softmask, path_softmask, path_binmask):
     Args:
         softmask (numpy.ndarray): Soft mask to save.
         path_softmask (str): Path to save the soft mask.
-        path_binmask (str): Path to the binary mask.
+        path_binmask (str): Path to the binary mask used to create the soft mask.
     Returns:
         nib.Nifti1Image : NIFTI file containing the soft mask created from the binary mask.
     """

@@ -308,7 +308,7 @@ class ShimSequencer(Sequencer):
         # Check if the mask needs to be resampled
         if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == self.nii_anat.affine):
             # For binary masks
-            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]):
+            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]) or nii_mask_anat.get_fdata().dtype == bool:
                 nii_mask_anat_soft = None
                 # Resample the mask on the target anatomical image
                 logger.debug("Resampling mask on the target anat")
@@ -331,7 +331,7 @@ class ShimSequencer(Sequencer):
                     nib.save(nii_mask_anat_soft, os.path.join(self.path_output, "softmask_static_resampled_on_anat.nii.gz"))
         else:
             # For binary masks
-            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]):
+            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]) or nii_mask_anat.get_fdata().dtype == bool:
                 nii_mask_anat_soft = None
             # For soft masks
             else :
