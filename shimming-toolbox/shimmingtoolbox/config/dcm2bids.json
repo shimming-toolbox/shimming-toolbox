@@ -1234,7 +1234,7 @@
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "%CustomerSeq%\\\\gre_TTL",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\(gre_TTL|gre_shimming)",
                 "PulseSequenceName": "fl2d2",
                 "ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE", "MAGNITUDE"],
                 "EchoNumber": "1"
@@ -1245,7 +1245,7 @@
             "suffix": "magnitude2",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "%CustomerSeq%\\\\gre_TTL",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\(gre_TTL|gre_shimming)",
                 "PulseSequenceName": "fl2d2",
                 "ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE", "MAGNITUDE"],
                 "EchoNumber": "2"
@@ -1256,7 +1256,7 @@
             "suffix": "phase1",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "%CustomerSeq%\\\\gre_TTL",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\(gre_TTL|gre_shimming)",
                 "PulseSequenceName": "fl2d2",
                 "ImageType": ["ORIGINAL", "PRIMARY", "P", "NONE", "PHASE"],
                 "EchoNumber": "1"
@@ -1267,7 +1267,7 @@
             "suffix": "phase2",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "%CustomerSeq%\\\\gre_TTL",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\(gre_TTL|gre_shimming)",
                 "PulseSequenceName": "fl2d2",
                 "ImageType": ["ORIGINAL", "PRIMARY", "P", "NONE", "PHASE"],
                 "EchoNumber": "2"
@@ -1278,8 +1278,8 @@
             "suffix": "bold",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "%CustomerSeq%\\\\ep2d_bold_TTL",
-                "PulseSequenceName": "(epfid2d1_74|epfid2d1_128)",
+                "PulseSequenceDetails": "%CustomerSeq%\\\\(ep2d_bold_TTL|ep2d_bold_shimming)",
+                "PulseSequenceName": "(epfid2d1_74|epfid2d1_128|epfid2d1_50z)",
                 "ImageType": ["ORIGINAL", "PRIMARY", "FMRI", "NONE", "MAGNITUDE"]
             }
         },
@@ -1289,8 +1289,8 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "%SiemensSeq%\\\\tfl",
-                "PulseSequenceName": ".*tfl3d1_176",
-                "ProtocolName": "t1_mprage",
+                "PulseSequenceName": ".*tfl3d1_(176|192)",
+                "ProtocolName": "(t1_mprage|T1w)",
                 "ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE", "MAGNITUDE"]
             }
         }
