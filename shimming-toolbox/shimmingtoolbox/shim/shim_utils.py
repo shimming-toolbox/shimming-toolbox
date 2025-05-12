@@ -136,8 +136,7 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
         axis (int or None): Axis to compute the metric.
 
     Returns:
-        np.ndarray: The computed metric for each axis (if axis is provided) or a single value
-                    (if axis is None). Masked values are replaced by NaN.
+        np.ndarray: Array containing the output metrics, if axis is None, the output is a single value
     """
     if mask.dtype != float:
         mask = mask.astype(float)

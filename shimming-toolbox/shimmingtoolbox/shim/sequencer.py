@@ -152,7 +152,7 @@ class ShimSequencer(Sequencer):
         nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         fmap_is_extended (bool) : Tells whether the fieldmap has been extended by the object.
-        masks_fmap (np.ndarray) : Resampled soft mask on the original fieldmap
+        masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
     def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils,
@@ -270,7 +270,7 @@ class ShimSequencer(Sequencer):
 
     def get_masks(self, nii_mask_anat):
         """
-        Get the mask and perform error checking.
+        Get the masks and perform error checking.
 
         Args:
             nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region
@@ -281,7 +281,7 @@ class ShimSequencer(Sequencer):
                     * nib.Nifti1Image: 3D anat binary mask used for the optimizer to shim in the region of interest.
                                          (Only consider voxels with non-zero values)
                     * nib.Nifti1Image: 3D anat soft mask used for the optimizer to shim in the region of interest.
-                                         (Only consider voxels with non-zero values)
+                                        None if the mask is binary. (Only consider voxels with non-zero values)
 
         """
         anat = self.nii_anat.get_fdata()
@@ -744,7 +744,7 @@ class ShimSequencer(Sequencer):
         mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
         mt_shimmed = montage(shimmed[:, :, a_slice, :])
 
-        unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0.5)
+        unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0)
         mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
         mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
 
@@ -1974,10 +1974,10 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     max_value = 100
 
     # Create figure
-    fig = Figure(figsize=(15, 7))
+    fig = Figure(figsize=(15, 9))
     fig.suptitle("Fieldmaps\nFieldmap Coordinate System")
 
-    # FIRST PANEL – Before shimming
+    # LEFT PANEL – Before shimming
     ax = fig.add_subplot(1, 2, 1)
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
@@ -1989,7 +1989,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im, cax=cax)
 
-    # SECOND PANEL – After shimming
+    # RIGHT PANEL – After shimming
     ax = fig.add_subplot(1, 2, 2)
     ax.imshow(mt_unshimmed, cmap='gray')
     im = ax.imshow(mt_shimmed_masked, vmin=min_value, vmax=max_value, cmap='bwr')
@@ -2001,7 +2001,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(im, cax=cax)
 
-    # Export PNG file
+    # Save
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
 
