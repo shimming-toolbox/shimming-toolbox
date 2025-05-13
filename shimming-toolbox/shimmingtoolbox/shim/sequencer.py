@@ -199,7 +199,7 @@ class ShimSequencer(Sequencer):
         self.json_fieldmap = json_fieldmap
         self.nii_anat = self.get_anat(nii_anat)
         self.json_anat = json_anat
-        self.nii_mask_anat, self.nii_mask_anat_soft = self.get_masks(nii_mask_anat)
+        self.nii_mask_anat = self.get_mask(nii_mask_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
@@ -268,20 +268,17 @@ class ShimSequencer(Sequencer):
 
         return nii_anat
 
-    def get_masks(self, nii_mask_anat):
+    def get_mask(self, nii_mask_anat):
         """
-        Get the masks and perform error checking.
+        Get the mask and perform error checking.
 
         Args:
             nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region
                                               of interest.(only consider voxels with non-zero values)
 
         Returns:
-            (tuple) : tuple containing:
-                    * nib.Nifti1Image: 3D anat binary mask used for the optimizer to shim in the region of interest.
-                                         (Only consider voxels with non-zero values)
-                    * nib.Nifti1Image: 3D anat soft mask used for the optimizer to shim in the region of interest.
-                                        None if the mask is binary. (Only consider voxels with non-zero values)
+            nib.Nifti1Image: 3D anat mask used for the optimizer to shim in the region of interest.
+                              (Only consider voxels with non-zero values)
 
         """
         anat = self.nii_anat.get_fdata()
@@ -307,40 +304,14 @@ class ShimSequencer(Sequencer):
 
         # Check if the mask needs to be resampled
         if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(nii_mask_anat.affine == self.nii_anat.affine):
-            # For binary masks
-            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]) or nii_mask_anat.get_fdata().dtype == bool:
-                nii_mask_anat_soft = None
-                # Resample the mask on the target anatomical image
-                logger.debug("Resampling mask on the target anat")
-                nii_mask_anat = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
-                # Save the resampled mask
-                if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                    nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
-            # For soft masks
-            else :
-                # Resample the mask on the target anatomical image
-                logger.debug("Resampling mask on the target anat")
-                nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
-                # Convert soft mask into a binary mask (0.001 threshold)
-                tmp_mask = nii_mask_anat_soft.get_fdata()
-                tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
-                nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
-                # Save the resampled mask
-                if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                    nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
-                    nib.save(nii_mask_anat_soft, os.path.join(self.path_output, "softmask_static_resampled_on_anat.nii.gz"))
-        else:
-            # For binary masks
-            if np.array_equal(np.unique(nii_mask_anat.get_fdata()), [0, 1]) or nii_mask_anat.get_fdata().dtype == bool:
-                nii_mask_anat_soft = None
-            # For soft masks
-            else :
-                nii_mask_anat_soft = nii_mask_anat
-                # Convert soft mask into a binary mask (0.001 threshold)
-                nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.001, scaled_thr=True)
-                nii_mask_anat = nib.Nifti1Image(nii_mask_anat_soft.get_fdata(), nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
+            # Resample the mask on the target anatomical image
+            logger.debug("Resampling mask on the target anat")
+            nii_mask_anat = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
+            # Save the resampled mask
+            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+                nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
 
-        return nii_mask_anat, nii_mask_anat_soft
+        return nii_mask_anat
 
     def get_resampled_masks(self):
         """
@@ -352,10 +323,7 @@ class ShimSequencer(Sequencer):
                 * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
-        if self.nii_mask_anat_soft is not None:
-            nii_mask_anat = self.nii_mask_anat_soft
-        else:
-            nii_mask_anat = self.nii_mask_anat
+        nii_mask_anat = self.nii_mask_anat
         optimizer = self.optimizer
         slices = self.slices
         dilation_kernel = self.mask_dilation_kernel
@@ -532,14 +500,14 @@ class ShimSequencer(Sequencer):
                     nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
                     # TODO: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
 
-            self.plot_currents(coefs)
-
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked, mask_full, self.path_output)
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 self.plot_partial_mask(unshimmed, shimmed)
+
+            self.plot_currents(coefs)
 
             self.calc_shimmed_anat_orient(coefs, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
@@ -668,26 +636,12 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Mask in the fieldmap space
         """
-        if self.nii_mask_anat_soft is not None:
-            mask_full_soft = np.clip(resample_from_to(self.nii_mask_anat_soft,
-                                            self.nii_fieldmap_orig,
-                                            order=0,
-                                            mode='grid-constant',
-                                            cval=0).get_fdata(), 0, 1)
-            mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
-                                                            self.nii_fieldmap_orig,
-                                                            order=0,
-                                                            mode='grid-constant',
-                                                            cval=0).get_fdata()), 0, 1)
-            mask_full = mask_full_soft.copy()
-        else:
-            mask_full_soft = None
-            mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
-                                                            self.nii_fieldmap_orig,
-                                                            order=0,
-                                                            mode='grid-constant',
-                                                            cval=0).get_fdata()), 0, 1)
-            mask_full = mask_full_binary.copy()
+        mask_full = np.clip(resample_from_to(self.nii_mask_anat,
+                                        self.nii_fieldmap_orig,
+                                        order=0,
+                                        mode='grid-constant',
+                                        cval=0).get_fdata(), 0, 1)
+        mask_full_binary = threshold(mask_full, thr=0.001, scaled_thr=True)
 
         full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
 
