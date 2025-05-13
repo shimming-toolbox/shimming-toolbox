@@ -440,11 +440,11 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
                   help="Creates a soft mask by creating a blur zone around the binary mask.")
-@click.option('-i', '--input', 'path_input_binmask', type=click.Path(), required=True,
+@click.option('-i', '--input', 'fname_input_binmask', type=click.Path(), required=True,
               help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-is', '--input-softmask', 'path_input_softmask', type=click.Path(), default=None,
+@click.option('-is', '--input-softmask', 'fname_input_softmask', type=click.Path(), default=None,
               help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'path_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
+@click.option('-o', '--output', 'fname_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
               help="""Type of soft mask :\n
@@ -453,32 +453,39 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               - gaussian: Gaussian distribution.\n
               - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
               """)
-@click.option('-bw', '--blur-width', 'blur_width', default = 12,
+@click.option('-bw', '--blur-width', 'blur_width', default = 6,
               help="Width (in pixels) of the blurred zone. For 2levels-type and gaussian-type softmasks, width must be a multiple of 3")
 @click.option('-bv', '--blur-value', 'blur_value', default = 0.5,
               help="Intensity of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_softmask(path_input_binmask, path_input_softmask, path_output_softmask, type, blur_width, blur_value, verbose) :
+def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, blur_value, verbose) :
 
     set_all_loggers(verbose)
 
+    # Load the input masks from their NIFTI file
+    nifti_input_binmask = nib.load(fname_input_binmask)
+    input_binmask = nifti_input_binmask.get_fdata()
+    if fname_input_softmask is not None:
+        nifti_input_softmask = nib.load(fname_input_softmask)
+        input_softmask = nifti_input_softmask.get_fdata()
+
     # Prepare the output
-    create_output_dir(path_output_softmask, is_file=True)
+    create_output_dir(fname_output_softmask, is_file=True)
 
     softmask_funcs = {
-        '2levels': lambda: create_2levels_softmask(path_input_binmask, blur_width, blur_value),
-        'linear': lambda: create_linear_softmask(path_input_binmask, blur_width),
-        'gaussian': lambda: create_gaussian_softmask(path_input_binmask, blur_width),
-        'sum': lambda: add_softmask_to_binmask(path_input_binmask, path_input_softmask)
+        '2levels': lambda: create_2levels_softmask(input_binmask, blur_width, blur_value),
+        'linear': lambda: create_linear_softmask(input_binmask, blur_width),
+        'gaussian': lambda: create_gaussian_softmask(input_binmask, blur_width),
+        'sum': lambda: add_softmask_to_binmask(input_binmask, input_softmask)
     }
 
     # Create a soft mask
     if type in softmask_funcs:
-        softmask = softmask_funcs[type]()
+        output_softmask = softmask_funcs[type]()
     else:
         raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
 
-    save_softmask(softmask, path_output_softmask, path_input_binmask)
+    save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
 #                     centerline_smooth='30', verbose='1'):
