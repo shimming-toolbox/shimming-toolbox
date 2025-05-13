@@ -400,9 +400,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info("Plotting currents")
     logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
+    logger.info("Plotting currents")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
