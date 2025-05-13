@@ -235,25 +235,34 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     return mask_dilated
 
 
-def create_two_levels_softmask(binary_mask, soft_width, soft_value):
+def create_two_levels_softmask(nii_binary_mask, soft_width, soft_value, soft_width_units='mm'):
     """
-    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version muliplied by
-    a soft value.
+    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version
+    multiplied by a soft value.
 
     Args:
-        binary_mask (numpy.ndarray): 3D array containing the binary mask.
-        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3.
+        nii_binary_mask (nib.Nifti1Image): Nifti image object containing the binary mask.
+        soft_width (Union[int, str]): Width of the soft zone.
         soft_value (float): Value of the intensity of the pixels in the soft zone.
-    Returns:
-        numpy.ndarray : Soft mask created from the binary mask.
-    """
-    # Raise error if soft_width is not a multiple of 3
-    if soft_width % 3 != 0:
-        raise ValueError("soft_width must be a multiple of 3")
+        soft_width_units (str): Units of the soft width. Can be 'mm' or 'px'
 
+    Returns:
+        numpy.ndarray: Soft mask created from the binary mask.
+    """
+    # Get the soft width in pixels
+    if soft_width_units == 'mm' :
+        voxel_sizes = nii_binary_mask.header.get_zooms()
+        max_voxel_size = min(voxel_sizes)
+        soft_width = int(round(float(soft_width)/ max_voxel_size))
+    elif soft_width_units == 'px':
+        soft_width = int(soft_width)
+    else:
+        raise ValueError("soft_width_units must be 'mm' or 'voxels'")
+
+    # Create the soft mask
+    binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
-
     for _ in range(soft_width // 3):
         dilated_mask = binary_dilation(previous_mask, ball(3))
         new_layer = dilated_mask & ~previous_mask.astype(bool)
@@ -264,20 +273,33 @@ def create_two_levels_softmask(binary_mask, soft_width, soft_value):
     return soft_mask
 
 
-def create_linear_softmask(binary_mask, soft_width):
+def create_linear_softmask(nii_binary_mask, soft_width, soft_width_units='mm'):
     """
     Creates a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
     the background.
 
     Args:
-        binary_mask (numpy.ndarray): 3D array containing the binary mask.
-        soft_width (int): Width of the soft zone (in pixels).
+        nii_binary_mask (nib.Nifti1Image): Nifti image object containing the binary mask.
+        soft_width (Union[int, str]): Width of the soft zone.
+        soft_width_units (str): Units of the soft width. Can be 'mm' or 'px'
+
     Returns:
         numpy.ndarray: Soft mask created from the binary mask.
     """
+    # Get the soft width in pixels
+    if soft_width_units == 'mm' :
+        voxel_sizes = nii_binary_mask.header.get_zooms()
+        max_voxel_size = min(voxel_sizes)
+        soft_width = int(round(float(soft_width)/ max_voxel_size))
+    elif soft_width_units == 'px':
+        soft_width = int(soft_width)
+    else:
+        raise ValueError("soft_width_units must be 'mm' or 'voxels'")
+
+    # Create the soft mask
+    binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
-
     for i in range(1, soft_width + 1):
         dilated_mask = binary_dilation(previous_mask, structure=ball(1))
         new_layer = dilated_mask & ~previous_mask.astype(bool)
@@ -288,24 +310,33 @@ def create_linear_softmask(binary_mask, soft_width):
     return soft_mask
 
 
-def create_gaussian_softmask(binary_mask, soft_width):
+def create_gaussian_softmask(nii_binary_mask, soft_width, soft_width_units='mm'):
     """
     Creates a soft mask from a binary mask. The final mask contains a gaussian blur from the binary mask to
     the background.
 
     Args:
-        binary_mask (numpy.ndarray): 3D array containing the binary mask.
-        soft_width (int): Width of the soft zone (in pixels). Must be a multiple of 3.
+        nii_binary_mask (nib.Nifti1Image): Nifti image object containing the binary mask.
+        soft_width (Union[int, str]): Width of the soft zone.
+        soft_width_units (str): Units of the soft width. Can be 'mm' or 'px'
+
     Returns:
         numpy.ndarray: Soft mask created from the binary mask.
     """
-   # Raise error if soft_width is not a multiple of 3
-    if soft_width % 3 != 0:
-        raise ValueError("soft_width must be a multiple of 3")
+    # Get the soft width in pixels
+    if soft_width_units == 'mm' :
+        voxel_sizes = nii_binary_mask.header.get_zooms()
+        max_voxel_size = min(voxel_sizes)
+        soft_width = int(round(float(soft_width)/ max_voxel_size))
+    elif soft_width_units == 'px':
+        soft_width = int(soft_width)
+    else:
+        raise ValueError("soft_width_units must be 'mm' or 'voxels'")
 
+    # Create the soft mask
+    binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
-
     for _ in range(soft_width // 3):
         dilated_mask = binary_dilation(previous_mask, ball(3))
         previous_mask = dilated_mask
@@ -323,6 +354,7 @@ def add_softmask_to_binmask(soft_mask, binary_mask):
     Args:
         soft_mask (numpy.ndarray): 3D array containing the soft mask.
         binary_mask (numpy.ndarray): 3D array containing the binary mask.
+
     Returns:
         numpy.ndarray: New soft mask.
     """
@@ -339,6 +371,7 @@ def save_softmask(soft_mask, fname_soft_mask, fname_binary_mask):
         soft_mask (numpy.ndarray): 3D array containing the soft mask.
         fname_soft_mask (str): Path to save the soft mask.
         fname_binary_mask (str): Path to the binary mask used to create the soft mask.
+
     Returns:
         nib.Nifti1Image : NIFTI file containing the soft mask created from the binary mask.
     """

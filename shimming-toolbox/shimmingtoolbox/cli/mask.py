@@ -453,12 +453,14 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               - gaussian: Gaussian distribution.\n
               - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
               """)
-@click.option('-bw', '--blur-width', 'blur_width', default = 6,
-              help="Width (in pixels) of the blurred zone. For 2levels-type and gaussian-type softmasks, width must be a multiple of 3")
+@click.option('-bw', '--blur-width', 'blur_width', default = '6mm',
+              help="Width of the blurred zone.")
+@click.option('-bu', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
+              help="Units of the blur width. Can be in pixels (px) or in millimeters (mm).")
 @click.option('-bv', '--blur-value', 'blur_value', default = 0.5,
               help="Intensity of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, blur_value, verbose) :
+def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, blur_units, blur_value, verbose) :
 
     set_all_loggers(verbose)
 
@@ -473,9 +475,9 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
     create_output_dir(fname_output_softmask, is_file=True)
 
     softmask_funcs = {
-        '2levels': lambda: create_two_levels_softmask(input_binmask, blur_width, blur_value),
-        'linear': lambda: create_linear_softmask(input_binmask, blur_width),
-        'gaussian': lambda: create_gaussian_softmask(input_binmask, blur_width),
+        '2levels': lambda: create_two_levels_softmask(nifti_input_binmask, blur_width, blur_value, blur_units),
+        'linear': lambda: create_linear_softmask(nifti_input_binmask, blur_width, blur_units),
+        'gaussian': lambda: create_gaussian_softmask(nifti_input_binmask, blur_width, blur_units),
         'sum': lambda: add_softmask_to_binmask(input_binmask, input_softmask)
     }
 
