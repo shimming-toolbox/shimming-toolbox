@@ -326,7 +326,7 @@ def add_softmask_to_binmask(soft_mask, binary_mask):
     Returns:
         numpy.ndarray: New soft mask.
     """
-    soft_mask[soft_mask < 0.1] = 0
+    soft_mask[soft_mask < 0.001] = 0
     soft_mask = np.clip(soft_mask + binary_mask, 0, 1)
 
     return soft_mask

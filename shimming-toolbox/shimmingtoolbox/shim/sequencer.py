@@ -321,9 +321,9 @@ class ShimSequencer(Sequencer):
                 # Resample the mask on the target anatomical image
                 logger.debug("Resampling mask on the target anat")
                 nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
-                # Convert soft mask into a binary mask (0.1 threshold)
+                # Convert soft mask into a binary mask (0.001 threshold)
                 tmp_mask = nii_mask_anat_soft.get_fdata()
-                tmp_mask = threshold(tmp_mask, thr=0.1, scaled_thr=True)
+                tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
                 nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
                 # Save the resampled mask
                 if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -336,8 +336,8 @@ class ShimSequencer(Sequencer):
             # For soft masks
             else :
                 nii_mask_anat_soft = nii_mask_anat
-                # Convert soft mask into a binary mask (0.1 threshold)
-                nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.1, scaled_thr=True)
+                # Convert soft mask into a binary mask (0.001 threshold)
+                nii_mask_anat = threshold(nii_mask_anat_soft.get_fdata(), thr=0.001, scaled_thr=True)
                 nii_mask_anat = nib.Nifti1Image(nii_mask_anat_soft.get_fdata(), nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
 
         return nii_mask_anat, nii_mask_anat_soft
@@ -1951,7 +1951,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     """
 
     # Get the binary mask from the soft mask
-    bin_mask = threshold(mask, thr=0.1, scaled_thr=True)
+    bin_mask = threshold(mask, thr=0.001, scaled_thr=True)
 
     # Plot
     nan_unshimmed_masked = np.ma.array(unshimmed, mask=(bin_mask==0), fill_value=np.nan)
