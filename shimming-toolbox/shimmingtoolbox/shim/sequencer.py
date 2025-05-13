@@ -641,7 +641,7 @@ class ShimSequencer(Sequencer):
                                         order=0,
                                         mode='grid-constant',
                                         cval=0).get_fdata(), 0, 1)
-        mask_full_binary = threshold(mask_full, thr=0.001, scaled_thr=True)
+        mask_full_binary = (mask_full != 0).astype(int)
 
         full_correction = np.einsum('ijkl,ijkl->ijk', self.masks_fmap, correction, optimize='optimizer')
 
@@ -1905,7 +1905,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     """
 
     # Get the binary mask from the soft mask
-    bin_mask = threshold(mask, thr=0.001, scaled_thr=True)
+    bin_mask = (mask != 0).astype(int)
 
     # Plot
     nan_unshimmed_masked = np.ma.array(unshimmed, mask=(bin_mask==0), fill_value=np.nan)
