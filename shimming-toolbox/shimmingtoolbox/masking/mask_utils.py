@@ -235,7 +235,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     return mask_dilated
 
 
-def create_2levels_softmask(binary_mask, soft_width, soft_value):
+def create_two_levels_softmask(binary_mask, soft_width, soft_value):
     """
     Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version muliplied by
     a soft value.

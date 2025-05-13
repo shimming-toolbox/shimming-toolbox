@@ -6,7 +6,7 @@ import nibabel as nib
 import numpy as np
 import pytest
 
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, create_2levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask, resample_mask, create_two_levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 
@@ -124,7 +124,7 @@ def test_resample_mask():
 @pytest.mark.parametrize("path_binmask, path_softmask", [
     (os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'binmask_sub-01_t2.nii.gz'),
      os.path.join(__dir_testing__, 'ds_spine', 'derivatives', 'ds_spine_masks', 'softmask_basic_sub-01_t2.nii.gz'))])
-def test_create_2levels_softmask(path_binmask, path_softmask):
+def test_create_two_levels_softmask(path_binmask, path_softmask):
     """ Test for the creation of a 2 levels soft mask """
 
     # Verify that the binary mask exists
@@ -136,7 +136,7 @@ def test_create_2levels_softmask(path_binmask, path_softmask):
     # Verifiy that the output folder exists
     assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the basic soft mask
-    b_softmask = create_2levels_softmask(path_binmask, 9, 0.5)
+    b_softmask = create_two_levels_softmask(path_binmask, 9, 0.5)
     softmask_nifti = save_softmask(b_softmask, path_softmask, path_binmask)
     softmask = softmask_nifti.get_fdata()
 

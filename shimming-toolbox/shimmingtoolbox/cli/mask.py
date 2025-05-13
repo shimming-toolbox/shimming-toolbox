@@ -12,7 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.mask_utils import create_2levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import create_two_levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -473,7 +473,7 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
     create_output_dir(fname_output_softmask, is_file=True)
 
     softmask_funcs = {
-        '2levels': lambda: create_2levels_softmask(input_binmask, blur_width, blur_value),
+        '2levels': lambda: create_two_levels_softmask(input_binmask, blur_width, blur_value),
         'linear': lambda: create_linear_softmask(input_binmask, blur_width),
         'gaussian': lambda: create_gaussian_softmask(input_binmask, blur_width),
         'sum': lambda: add_softmask_to_binmask(input_binmask, input_softmask)
