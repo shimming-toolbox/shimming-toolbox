@@ -367,6 +367,7 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
               help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbose):
+
     set_all_loggers(verbose)
 
     # Prepare the output
@@ -424,7 +425,6 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def mrs(fname_input, output, raw_data, center, size, verbose):
 
-    # Set all loggers
     set_all_loggers(verbose)
 
     # Prepare the output
@@ -460,25 +460,24 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_softmask(path_input_binmask, path_input_softmask, path_output_softmask, type, blur_width, blur_value, verbose) :
 
-    # Set all loggers
     set_all_loggers(verbose)
 
-    # Prepare the output directory
+    # Prepare the output
     create_output_dir(path_output_softmask, is_file=True)
 
-    # Create a np.array soft mask
-    if type == '2levels' :
-        softmask = create_2levels_softmask(path_input_binmask, blur_width, blur_value)
-    elif type == 'linear' :
-        softmask = create_linear_softmask(path_input_binmask, blur_width)
-    elif type == 'gaussian' :
-        softmask = create_gaussian_softmask(path_input_binmask, blur_width)
-    elif type == 'sum' :
-        softmask = add_softmask_to_binmask(path_input_binmask, path_input_softmask)
-    else :
+    softmask_funcs = {
+        '2levels': lambda: create_2levels_softmask(path_input_binmask, blur_width, blur_value),
+        'linear': lambda: create_linear_softmask(path_input_binmask, blur_width),
+        'gaussian': lambda: create_gaussian_softmask(path_input_binmask, blur_width),
+        'sum': lambda: add_softmask_to_binmask(path_input_binmask, path_input_softmask)
+    }
+
+    # Create a soft mask
+    if type in softmask_funcs:
+        softmask = softmask_funcs[type]()
+    else:
         raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
 
-    # Save the soft mask to a NIFTI file
     save_softmask(softmask, path_output_softmask, path_input_binmask)
 
 # def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
