@@ -263,11 +263,19 @@ def create_two_levels_softmask(nii_binary_mask, soft_width, soft_value, soft_wid
     binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
+
     for _ in range(soft_width // 3):
         dilated_mask = binary_dilation(previous_mask, ball(3))
         new_layer = dilated_mask & ~previous_mask.astype(bool)
         soft_mask[new_layer] = soft_value
         previous_mask = dilated_mask
+
+    remainder = soft_width % 3
+    if remainder > 0:
+        dilated_mask = binary_dilation(previous_mask, ball(remainder))
+        new_layer = dilated_mask & ~previous_mask.astype(bool)
+        soft_mask[new_layer] = soft_value
+
     soft_mask = np.clip(soft_mask, 0, 1)
 
     return soft_mask
@@ -300,11 +308,13 @@ def create_linear_softmask(nii_binary_mask, soft_width, soft_width_units='mm'):
     binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
+
     for i in range(1, soft_width + 1):
         dilated_mask = binary_dilation(previous_mask, structure=ball(1))
         new_layer = dilated_mask & ~previous_mask.astype(bool)
         soft_mask[new_layer] = 1 - (i / (soft_width + 1))
         previous_mask = dilated_mask
+
     soft_mask = np.clip(soft_mask, 0, 1)
 
     return soft_mask
@@ -337,9 +347,14 @@ def create_gaussian_softmask(nii_binary_mask, soft_width, soft_width_units='mm')
     binary_mask = nii_binary_mask.get_fdata()
     soft_mask = np.array(binary_mask, dtype=float)
     previous_mask = np.array(binary_mask, dtype=float)
+
     for _ in range(soft_width // 3):
-        dilated_mask = binary_dilation(previous_mask, ball(3))
-        previous_mask = dilated_mask
+        previous_mask = binary_dilation(previous_mask, ball(3))
+
+    remainder = soft_width % 3
+    if remainder > 0:
+        previous_mask = binary_dilation(previous_mask, ball(remainder))
+
     blurred_mask = gaussian_filter(previous_mask.astype(float), soft_width)
     soft_mask = np.clip(blurred_mask + binary_mask, 0, 1)
     soft_mask[previous_mask == 0] = 0
