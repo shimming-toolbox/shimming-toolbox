@@ -12,7 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.mask_utils import create_two_levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import convert_to_pixels, create_two_levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -454,13 +454,7 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
         input_softmask = nifti_input_softmask.get_fdata()
 
     # Convert blur width to pixels
-    if blur_units == 'mm':
-            voxel_sizes = nifti_input_binmask.header.get_zooms()
-            blur_width_px = int(round(float(blur_width) / min(voxel_sizes)))
-    elif blur_units == 'px':
-        blur_width_px = int(blur_width)
-    else:
-        raise ValueError("blur_units must be 'mm' or 'px'")
+    blur_width_px = convert_to_pixels(blur_width, blur_units, nifti_input_binmask.header)
 
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
