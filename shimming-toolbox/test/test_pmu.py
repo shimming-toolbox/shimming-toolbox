@@ -83,24 +83,16 @@ def test_timing_images():
         masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
         fieldmap_avg[i_time] = np.ma.average(masked_array)
 
-    # Reshape pmu datapoints to fit those of the acquisition
-    pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
-    pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-
     # Compute correlation
-    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, fieldmap_avg.shape[0])
-    pearson = np.corrcoef(fieldmap_avg, pmu_data_within_range_ds)
+    pearson = np.corrcoef(fieldmap_avg, acquisition_pressures[:, 0])
 
-    assert(np.isclose(pearson[0, 1], 0.6031485150782748))
+    assert(np.isclose(pearson[0, 1], 0.97095326))
 
 
 def test_pmu_fake_data():
     pmu.data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
-    pmu.stop_time_mdh = 250 * (len(pmu.data) - 1)
-    pmu.start_time_mdh = 0
+    pmu.stop_time_mdh = 250 * (len(pmu.data) - 1) + 125
+    pmu.start_time_mdh = 125
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
 
@@ -108,4 +100,5 @@ def test_pmu_fake_data():
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
-    assert np.all(acq_pressures == pmu.data)
+    # 10 volumes, 1 slice
+    assert np.all(acq_pressures[:, 0] == pmu.data)
