@@ -133,7 +133,7 @@ def b0shim_cli():
                                       "all coil channels are encoded across multiple columns in the text file.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
-                                 'gradient']),
+                                 'slicewise-hrd', 'chronological-hrd']),
               default='slicewise-coil',
               show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
@@ -145,10 +145,9 @@ def b0shim_cli():
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file. Use "
-                                      "'gradient' to output the 1st order in the Gradient CS, otherwise, it outputs in "
-                                      "the Shim CS.")
-@click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
-              default='delta', show_default=True,
+                                      "'-hrd' to output a human readable file with the shim coefficients ")
+@click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
+              show_default=True,
               help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
                    "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
                    "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
@@ -280,7 +279,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta. Only Siemens gradient coordinate system has been defined
-    if o_format_sph == 'gradient':
+    if 'hrd' in o_format_sph:
         if output_value_format != 'delta':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
@@ -353,7 +352,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
-            if o_format_sph == 'gradient':
+            if 'hrd' in o_format_sph:
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
 
                 # Fill in a dictionary with the coefficients for each order
@@ -363,19 +362,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                     end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
                     coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
                     start_channel_scanner = end_channel_scanner_order
-
-                if 1 in scanner_coil_order:
-                    for i_shim in range(coefs.shape[0]):
-                        # Convert to RAS
-                        coefs_scanner[1][i_shim] = shim_to_phys_cs(coefs_scanner[1][i_shim], manufacturer, (1,))
-
-                    # Convert coef of 1st order sph harmonics to Gradient coord system
-                    coefs_freq, coefs_phase, coefs_slice = phys_to_gradient_cs(coefs_scanner[1][:, 0],
-                                                                               coefs_scanner[1][:, 1],
-                                                                               coefs_scanner[1][:, 2], fname_anat)
-                    coefs_scanner[1][:, 0] = coefs_freq
-                    coefs_scanner[1][:, 1] = coefs_phase
-                    coefs_scanner[1][:, 2] = coefs_slice
 
                 coefs_coil = coefs_scanner
 
@@ -512,42 +498,63 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
-    else:  # o_format == 'gradient':
-        # coefs is a dictionary
-        f0 = 'f0'
-        gradients = ['x', 'y', 'z']
+    
+    else:  # o_format == 'human readable':
+        
+        fname_output = os.path.join(path_output, f"scanner_shim.txt")
 
-        names = {
-            0: (f0,),
-            1: (gradients[0], gradients[1], gradients[2])
-        }
+        # Create column names: "orderX_channelY"
+        column_names = []
+        if 0 in coefs.keys():
+            column_names.append('f0')
+        if 1 in coefs.keys():
+            column_names.extend(['Gx', 'Gy', 'Gz'])
+        if 2 in coefs.keys():
+            column_names.extend(['Gxx', 'Gxy', 'Gxz', 'Gyx', 'Gyy', 'Gyz', 'Gzx', 'Gzy', 'Gzz'])
 
-        for i_order, order in enumerate(coefs):
-            for i_channel in range(coefs[order].shape[1]):
-                fname_output = os.path.join(path_output, f"{names[order][i_channel]}shim_gradients.txt")
-                with open(fname_output, 'w', encoding='utf-8') as f:
-                    n_slices = np.sum([len(a_tuple) for a_tuple in list_slices])
-                    for i_slice in range(n_slices):
-                        i_shim = [list_slices.index(i) for i in list_slices if i_slice in i][0]
+        # Transform dict into usable array (nb_slices, n_channels)
+        arrays = [coefs[order] / 1000 if order == 1 else coefs[order] for order in sorted(coefs.keys())]
+        coefs_array = np.hstack(arrays)
 
-                        if names[order][i_channel] == f0:
-                            # f0, Output is in Hz
-                            f.write(f"corr_vec[0][{i_slice}]= "
-                                    f"{coefs[order][i_shim, i_channel]:.6f}\n")
-                        elif names[order][i_channel] in gradients:
-                            # For Gx, Gy, Gz: Divide by 1000 for mT/m
-                            f.write(f"corr_vec[0][{i_slice}]= "
-                                    f"{coefs[order][i_shim, i_channel] / 1000:.6f}\n")
-                        else:
-                            raise ValueError(f"Unsupported name: {names[order][i_channel]}")
+        if "slicewise" in o_format:
+             # reorder according to list_slices
+            # Build a reverse mapping: from list_slices to target positions
+            inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
+            # Reorder the array
+            coefs_array = coefs_array[inverse_slice_order, :]
+        
+        # Compute column widths
+        # 1. Get max formatted value length in each column
+        formatted_values = []
+        col_widths = []
 
-                        # Static shimming does not have a riro component
-                        f.write(f"corr_vec[1][{i_slice}]= "
-                                f"{0:.12f}\n")
-                        # Arbitrarily chose a mean pressure of 2000 to satisfy the sequence
-                        f.write(f"corr_vec[2][{i_slice}]= {2000:.3f}\n")
+        for col_idx in range(coefs_array.shape[1]):
+            col_vals = coefs_array[:, col_idx]
+            formatted_col = [f"{val:.6f}" for val in col_vals]
+            formatted_values.append(formatted_col)
+            max_val_len = max(len(s) for s in formatted_col)
+            col_name_len = len(column_names[col_idx])
+            col_width = max(max_val_len, col_name_len)
+            col_widths.append(col_width)
 
-                list_fname_output.append(os.path.abspath(fname_output))
+        # Write to file manually
+        with open(fname_output, 'w') as f:
+            # Write header (centered titles)
+            header_cells = [column_names[i].center(col_widths[i]) for i in range(len(column_names))]
+            header = ' | '.join(header_cells)
+            f.write(header + '\n')
+            
+            # Write each row of shim values (right-aligned)
+            nb_rows = coefs_array.shape[0]
+            for row_idx in range(nb_rows):
+                row_cells = [
+                    formatted_values[col_idx][row_idx].rjust(col_widths[col_idx])
+                    for col_idx in range(len(column_names))
+                ]
+                row_str = ' | '.join(row_cells)
+                f.write(row_str + '\n')
+
+        list_fname_output.append(os.path.abspath(fname_output))        
 
     return list_fname_output
 
