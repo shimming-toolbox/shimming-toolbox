@@ -1175,11 +1175,18 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     list_coils = []
 
     # Load custom coils
+    # Load custom coils
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
+        coil_data = nii_coil_profiles.get_fdata()
+        
+        # If 3D, extend to 4D by adding singleton dimension 
+        if coil_data.ndim == 3:
+            coil_data = coil_data[..., np.newaxis]
+        
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
-        list_coils.append(Coil(nii_coil_profiles.get_fdata(), nii_coil_profiles.affine, constraints))
+        list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
 
     if len(list_coils) != len(set(list_coils)):
         raise ValueError("Coils must be unique. Make sure different coils have different names.")
