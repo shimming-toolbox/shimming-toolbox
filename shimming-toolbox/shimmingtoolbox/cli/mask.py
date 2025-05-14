@@ -471,13 +471,22 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
         nifti_input_softmask = nib.load(fname_input_softmask)
         input_softmask = nifti_input_softmask.get_fdata()
 
+    # Convert blur width to pixels
+    if blur_units == 'mm':
+            voxel_sizes = nifti_input_binmask.header.get_zooms()
+            blur_width_px = int(round(float(blur_width) / min(voxel_sizes)))
+    elif blur_units == 'px':
+        blur_width_px = int(blur_width)
+    else:
+        raise ValueError("blur_units must be 'mm' or 'px'")
+
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
     softmask_funcs = {
-        '2levels': lambda: create_two_levels_softmask(nifti_input_binmask, blur_width, blur_value, blur_units),
-        'linear': lambda: create_linear_softmask(nifti_input_binmask, blur_width, blur_units),
-        'gaussian': lambda: create_gaussian_softmask(nifti_input_binmask, blur_width, blur_units),
+        '2levels': lambda: create_two_levels_softmask(input_binmask, blur_width_px, blur_value),
+        'linear': lambda: create_linear_softmask(input_binmask, blur_width_px),
+        'gaussian': lambda: create_gaussian_softmask(input_binmask, blur_width_px),
         'sum': lambda: add_softmask_to_binmask(input_binmask, input_softmask)
     }
 
