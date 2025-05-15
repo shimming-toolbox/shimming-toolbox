@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 import logging
 import numpy as np
 from numpy.linalg import norm
@@ -152,7 +153,7 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+        return np.mean(self.weights * np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
         """ Pseudo huber objective function to minimize mean squared error or mean absolute error.
