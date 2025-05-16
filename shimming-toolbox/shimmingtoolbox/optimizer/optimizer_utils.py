@@ -163,13 +163,13 @@ class OptimizerUtils(Optimizer):
         inv_factor = 1 / (len(unshimmed_vec) * factor)
 
         # Apply weights to the coil matrix and unshimmed vector
-        weighted_coil_mat = self.weights[:, np.newaxis] * coil_mat
-        weighted_unshimmed_vec = self.weights * unshimmed_vec
+        coil_mat = self.weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = self.weights * unshimmed_vec
 
         # Compute the quadratic terms
-        a = inv_factor * (weighted_coil_mat.T @ weighted_coil_mat) + np.diag(self.reg_vector)
-        b = 2 * inv_factor * (weighted_unshimmed_vec @ weighted_coil_mat)
-        c = inv_factor * (weighted_unshimmed_vec @ weighted_unshimmed_vec)
+        a = inv_factor * (coil_mat.T @ coil_mat) + np.diag(self.reg_vector)
+        b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
+        c = inv_factor * (unshimmed_vec @ unshimmed_vec)
 
         return a, b, c
 
