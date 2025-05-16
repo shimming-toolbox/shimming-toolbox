@@ -222,7 +222,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        shimmed_vec = unshimmed_vec + coil_mat @ coef
+        shimmed_vec = self.weights * (unshimmed_vec + coil_mat @ coef)
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
