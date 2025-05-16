@@ -101,9 +101,13 @@ class Optimizer(object):
         """
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
+        # Apply weights to the coil matrix and unshimmed vector
+        weighted_coil_mat = self.weights[:, np.newaxis] * coil_mat
+        weighted_unshimmed_vec = self.weights * unshimmed_vec
+
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
-        currents = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec
+        currents = -1 * scipy.linalg.pinv(weighted_coil_mat) @ weighted_unshimmed_vec
 
         return currents
 
@@ -148,11 +152,7 @@ class Optimizer(object):
         # dimensions : (masked_values,)
         unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]
 
-        # Apply weights to the coil matrix and unshimmed vector
-        weighted_coil_mat = (self.weights[:, np.newaxis] * coil_mat) # dimensions : (masked_values, 1) * (masked_values, n_channels) --> (masked_values, n_channels)
-        weighted_unshimmed_vec = self.weights * unshimmed_vec # dimensions : (masked_values,) * (masked_values,) --> (masked_values,)
-
-        return weighted_coil_mat, weighted_unshimmed_vec
+        return coil_mat, unshimmed_vec
 
     def merge_coils(self, unshimmed, affine):
         """
