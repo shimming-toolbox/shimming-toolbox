@@ -171,7 +171,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        residuals = unshimmed_vec + coil_mat @ coef
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
         if self._delta is None:
             # self._delta = np.max(np.abs(residuals))
             self._delta = np.percentile(np.abs(residuals), 90)
