@@ -241,7 +241,7 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # STD regularized to minimize currents
-        return np.std(unshimmed_vec + coil_mat @ coef) / factor + np.abs(coef).dot(self.reg_vector)
+        return np.std(self.weights * (unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
