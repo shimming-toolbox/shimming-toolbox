@@ -36,9 +36,8 @@ class PmuResp(object):
         attributes = self.read_resp(fname_pmu)
 
         self.fname = attributes['fname']
-        self.data = attributes['data']
-        self.start_time_mdh = attributes['start_time_mdh']
-        self.stop_time_mdh = attributes['stop_time_mdh']
+        self.set_data(attributes['data'])
+        self.set_start_and_stop_time(attributes['start_time_mdh'], attributes['stop_time_mdh'])
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
         self.data_triggers = attributes['data_triggers']
@@ -46,8 +45,43 @@ class PmuResp(object):
         self.min = attributes['min']
         self.time_offset = 0
         self.adjust_start_time(time_offset)
-        self.timepoints = self.get_all_times()
 
+    def set_data(self, data):
+        """
+        Set the data of the PMU object
+
+        Args:
+            data (numpy.ndarray): Pressure values ranging from 0 to 4095
+        """
+        self.__data = data
+        self.timepoints = self.get_all_times()
+        
+    def get_data(self):
+        """
+        Retrieves the data of the PMU object
+        """
+        return self.__data
+        
+    def set_start_and_stop_time(self, start_time_mdh, stop_time_mdh):
+        """
+        Set the start and stop time of the PMU object
+
+        Args:
+            start_time_mdh (int): Start time in milliseconds past midnight (mdh clock is expected to be the closest to
+                                  the image header)
+            stop_time_mdh (int): Stop time in milliseconds past midnight (mdh clock is expected to be the closest to
+                                 the image header)
+        """
+        self.__start_time_mdh = start_time_mdh
+        self.__stop_time_mdh = stop_time_mdh
+        self.timepoints = self.get_all_times()
+        
+    def get_start_and_stop_time(self):
+        """
+        Retrieves the start and stop time of the PMU object
+        """
+        return self.__start_time_mdh, self.__stop_time_mdh
+        
     def read_resp(self, fname_pmu):
         """
         Read a Siemens Physiological Log file. Returns a tuple with the logging data as numpy integer array and times
@@ -150,8 +184,7 @@ class PmuResp(object):
 
         """
         old_offset = self.time_offset
-        self.start_time_mdh += time_offset - old_offset
-        self.stop_time_mdh += time_offset - old_offset
+        self.set_start_and_stop_time(time_offset - old_offset, time_offset - old_offset)
         self.start_time_mpcu += time_offset - old_offset
         self.stop_time_mpcu += time_offset - old_offset
         self.time_offset = time_offset
@@ -177,8 +210,8 @@ class PmuResp(object):
         Returns:
             np.ndarray: Array containing the timepoints in ms of each data
         """
-        raster = float(self.stop_time_mdh - self.start_time_mdh) / (len(self.data) - 1)
-        times = (self.start_time_mdh + raster * np.arange(len(self.data)))  # ms
+        raster = float(self.__stop_time_mdh - self.__start_time_mdh) / (len(self.__data) - 1)
+        times = (self.__start_time_mdh + raster * np.arange(len(self.__data)))  # ms
         return times
 
     def _get_time_indexes(self, start_time=None, stop_time=None):
@@ -216,7 +249,7 @@ class PmuResp(object):
 
         start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
         # +1 is needed to include the stop_idx
-        return self.data[start_idx:stop_idx + 1]
+        return self.__data[start_idx:stop_idx + 1]
 
     def interp_resp_trace(self, acquisition_times):
         """
@@ -225,23 +258,23 @@ class PmuResp(object):
         Args:
             acquisition_times (numpy.ndarray): Array of the times in milliseconds past midnight of the desired
                                                times to interpolate the resp_trace. Times must be within
-                                               ``self.start_time_mdh`` and ``self.stop_time_mdh``
+                                               ``self.__start_time_mdh`` and ``self.__stop_time_mdh``
 
         Returns:
             numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
         """
 
-        if np.any(self.start_time_mdh > acquisition_times) or np.any(self.stop_time_mdh < acquisition_times):
+        if np.any(self.__start_time_mdh > acquisition_times) or np.any(self.__stop_time_mdh < acquisition_times):
             # TODO: Explore why pmulog sequence raises an error for pmulog sequence
             logger.warning("acquisition_times don't fit within time limits for resp trace")
-            start_offset = np.min(acquisition_times - self.start_time_mdh)
-            stop_offset = np.min(self.stop_time_mdh - acquisition_times)
+            start_offset = np.min(acquisition_times - self.__start_time_mdh)
+            stop_offset = np.min(self.__stop_time_mdh - acquisition_times)
             logger.debug(f"start_offset: {start_offset}")
             logger.debug(f"stop_offset: {stop_offset}")
             # raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()
-        interp_data = np.interp(acquisition_times, times, self.data)
+        interp_data = np.interp(acquisition_times, times, self.__data)
 
         return interp_data
 

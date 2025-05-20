@@ -1202,8 +1202,9 @@ class RealTimeSequencer(Sequencer):
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
         acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
         n_samples = 1000
-        min_bound_offset = max(-mean_respiratory_cycle_time / 2, self.pmu.start_time_mdh - acq_times.min())
-        max_bound_offset = min(mean_respiratory_cycle_time / 2, self.pmu.stop_time_mdh - acq_times.max())
+        start_time_mdh, stop_time_mdh = self.pmu.get_times()
+        min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
+        max_bound_offset = min(mean_respiratory_cycle_time / 2, stop_time_mdh - acq_times.max())
         # min_bound_offset = -mean_respiratory_cycle_time / 2
         # max_bound_offset = mean_respiratory_cycle_time / 2
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
