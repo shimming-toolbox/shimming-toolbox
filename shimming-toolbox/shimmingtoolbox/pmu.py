@@ -36,15 +36,15 @@ class PmuResp(object):
         attributes = self.read_resp(fname_pmu)
 
         self.fname = attributes['fname']
-        self.set_data(attributes['data'])
-        self.set_start_and_stop_time(attributes['start_time_mdh'], attributes['stop_time_mdh'])
+        self.__data = attributes['data']
+        self.__start_time_mdh = attributes['start_time_mdh']
+        self.__stop_time_mdh = attributes['stop_time_mdh']
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
         self.data_triggers = attributes['data_triggers']
         self.max = attributes['max']
         self.min = attributes['min']
         self.time_offset = 0
-        self.adjust_start_time(time_offset)
 
     def set_data(self, data):
         """
