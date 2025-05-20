@@ -914,7 +914,7 @@ class ShimSequencer(Sequencer):
         # Plot signal loss maps
         def calculate_signal_loss(gradient):
             slice_thickness = self.json_anat['SliceThickness']
-            B0_map_thickness = self.json_fieldmap['SliceThickness']
+            B0_map_thickness = self.nii_fieldmap.header['pixdim'][3]
             phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
             # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
             signal_map = abs(np.sinc(phi / (2 * math.pi)))
