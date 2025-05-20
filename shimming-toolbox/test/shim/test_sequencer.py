@@ -408,6 +408,7 @@ def define_rt_sim_inputs():
     pmu.data = np.array([3000, 2000, 1000, 2000, 3000])
     pmu.stop_time_mdh = 1000
     pmu.start_time_mdh = 0
+    pmu.timepoints = pmu.get_all_times()
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
