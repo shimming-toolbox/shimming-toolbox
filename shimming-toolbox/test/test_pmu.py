@@ -28,7 +28,7 @@ def test_read_resp():
     expected_stop_time_mpcu = 44343040
 
     data = pmu.get_data()
-    start_time_mdh, stop_time_mdh = pmu.get_start_stop_times_mdh()
+    start_time_mdh, stop_time_mdh = pmu.get_start_and_stop_times()
     assert np.all([
         np.all(expected_first_data == data[:5]),
         np.all(expected_last_data == data[-5:]),
@@ -42,7 +42,7 @@ def test_read_resp():
 def test_interp_resp_trace():
     # Create time series to interpolate the PMU to
     num_points = 20
-    start_time_mdh, stop_time_mdh = pmu.get_start_stop_times_mdh()
+    start_time_mdh, stop_time_mdh = pmu.get_start_and_stop_times()
     acq_times = np.linspace(start_time_mdh, stop_time_mdh, num_points)
 
     acq_pressure = pmu.interp_resp_trace(acq_times)
@@ -96,7 +96,7 @@ def test_timing_images():
 def test_pmu_fake_data():
     fake_data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
     pmu.set_data(fake_data)
-    pmu.set_start_stop_time(250 * (len(fake_data) - 1) + 125, 125)
+    pmu.set_start_and_stop_times(250 * (len(fake_data) - 1) + 125, 125)
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
 

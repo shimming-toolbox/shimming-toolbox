@@ -45,6 +45,8 @@ class PmuResp(object):
         self.max = attributes['max']
         self.min = attributes['min']
         self.time_offset = 0
+        self.adjust_start_time(time_offset)
+        self.timepoints = self.get_all_times()
 
     def set_data(self, data):
         """
@@ -62,7 +64,7 @@ class PmuResp(object):
         """
         return self.__data
         
-    def set_start_and_stop_time(self, start_time_mdh, stop_time_mdh):
+    def set_start_and_stop_times(self, start_time_mdh, stop_time_mdh):
         """
         Set the start and stop time of the PMU object
 
@@ -76,7 +78,7 @@ class PmuResp(object):
         self.__stop_time_mdh = stop_time_mdh
         self.timepoints = self.get_all_times()
         
-    def get_start_and_stop_time(self):
+    def get_start_and_stop_times(self):
         """
         Retrieves the start and stop time of the PMU object
         """
@@ -184,7 +186,7 @@ class PmuResp(object):
 
         """
         old_offset = self.time_offset
-        self.set_start_and_stop_time(time_offset - old_offset, time_offset - old_offset)
+        self.set_start_and_stop_times(self.__start_time_mdh + time_offset - old_offset, self.__stop_time_mdh + time_offset - old_offset)
         self.start_time_mpcu += time_offset - old_offset
         self.stop_time_mpcu += time_offset - old_offset
         self.time_offset = time_offset
