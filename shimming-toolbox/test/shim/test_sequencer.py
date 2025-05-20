@@ -407,7 +407,7 @@ def define_rt_sim_inputs():
     # Change pmu so that it uses fake data. The fake data is essentially a sinusoid with 4 points
     fake_data = np.array([3000, 2000, 1000, 2000, 3000])
     pmu.set_data(fake_data)
-    pmu.set_start_stop_times(0, 1000)
+    pmu.set_start_stop_time(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
