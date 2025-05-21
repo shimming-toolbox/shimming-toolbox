@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 import logging
 import numpy as np
 from numpy.linalg import norm
@@ -152,7 +153,7 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+        return np.mean(self.weights * np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
         """ Pseudo huber objective function to minimize mean squared error or mean absolute error.
@@ -170,7 +171,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        residuals = unshimmed_vec + coil_mat @ coef
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
         if self._delta is None:
             # self._delta = np.max(np.abs(residuals))
             self._delta = np.percentile(np.abs(residuals), 90)
@@ -221,7 +222,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        shimmed_vec = unshimmed_vec + coil_mat @ coef
+        shimmed_vec = self.weights * (unshimmed_vec + coil_mat @ coef)
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
@@ -240,7 +241,7 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # STD regularized to minimize currents
-        return np.std(unshimmed_vec + coil_mat @ coef) / factor + np.abs(coef).dot(self.reg_vector)
+        return np.std(self.weights * (unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
@@ -256,7 +257,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        b0_rmse_coef = norm(self.weights * (unshimmed_vec + coil_mat @ coef) / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         # RMSE regularized to minimize currents
