@@ -107,6 +107,10 @@ class QuadProgOpt(OptimizerUtils):
         Returns:
             float: Residuals for quad_prog optimization
         """
+        # Apply weights to the coil matrix and unshimmed vector
+        coil_mat = self.weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = self.weights * unshimmed_vec
+
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 

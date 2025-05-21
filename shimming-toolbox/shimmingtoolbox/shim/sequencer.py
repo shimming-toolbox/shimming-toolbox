@@ -656,6 +656,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full
 
+    # TODO : Needs to be adapted for softmask signal recovery
     def calc_shimmed_gradient_full_mask(self, gradient):
         """
         Calculate the shimmed gradient full mask
@@ -684,6 +685,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full_binary
 
+    # TODO : Needs to be fixed
     def plot_partial_mask(self, unshimmed, shimmed):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
