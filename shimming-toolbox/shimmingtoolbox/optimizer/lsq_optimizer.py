@@ -81,6 +81,8 @@ class LsqOptimizer(OptimizerUtils):
         self.counter += 1
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
+        # Convert soft mask into binary mask
+        mask = (mask != 0).astype(int)
         # Personalized parameters to LSQ
         mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='erode')
         mask_erode_vec = mask_erode.reshape((-1,))
@@ -278,7 +280,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        b0_rmse_coef = norm(self.weights * (unshimmed_vec + coil_mat @ coef) / factor, 2)
         signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
@@ -415,6 +417,10 @@ class LsqOptimizer(OptimizerUtils):
         inv_factor = 1 / (len_unshimmed * factor)
         w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
         w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
+
+        # Apply weights to the coil matrix and unshimmed vector
+        coil_mat = self.weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = self.weights * unshimmed_vec
 
         # MSE term for unshimmed_vec and coil_mat
         a1 = inv_factor * (coil_mat.T @ coil_mat)
