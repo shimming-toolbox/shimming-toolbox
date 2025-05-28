@@ -153,7 +153,6 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
                              for the different time points.
 
     """
-
     from_img = nii_from_img.get_fdata()
     if from_img.ndim == 2:
         nii_from_img_3d = nib.Nifti1Image(np.expand_dims(from_img, -1), nii_from_img.affine, header=nii_from_img.header)
