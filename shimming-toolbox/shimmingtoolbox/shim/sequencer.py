@@ -501,7 +501,7 @@ class ShimSequencer(Sequencer):
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                self.plot_partial_mask(unshimmed, shimmed)
+                self.plot_partial_mask(unshimmed, shimmed, 0)
 
             self.plot_currents(coefs)
 
@@ -683,8 +683,7 @@ class ShimSequencer(Sequencer):
 
         return shimmed_masked, mask_full
 
-    # TODO : Needs to be fixed
-    def plot_partial_mask(self, unshimmed, shimmed):
+    def plot_partial_mask(self, unshimmed, shimmed, slice):
         """
         This figure shows a single fieldmap slice for all shim groups. The shimmed and unshimmed fieldmaps are in
         the background and the correction is overlaid in color.
@@ -692,29 +691,32 @@ class ShimSequencer(Sequencer):
         Args:
             unshimmed (np.ndarray): Original fieldmap not shimmed
             shimmed (np.ndarray): Shimmed fieldmap
+            slice (int): Slice to plot
         """
-        a_slice = 0
-        unshimmed_repeated = unshimmed[..., np.newaxis] * np.ones(self.masks_fmap.shape[-1])
-        mt_unshimmed = montage(unshimmed_repeated[:, :, a_slice, :])
-        mt_shimmed = montage(shimmed[:, :, a_slice, :])
+        # Binarize the mask
+        bin_mask = (self.masks_fmap != 0).astype(int)
 
-        unshimmed_masked = unshimmed_repeated * np.greater(self.masks_fmap, 0)
-        mt_unshimmed_masked = montage(unshimmed_masked[:, :, a_slice, :])
-        mt_shimmed_masked = montage(shimmed[:, :, a_slice, :] * np.ceil(self.masks_fmap[:, :, a_slice, :]))
+        unshimmed_repeated = unshimmed[..., np.newaxis] * np.ones(self.masks_fmap.shape[-1])
+        nan_unshimmed_masked = np.ma.array(unshimmed_repeated, mask=(bin_mask == 0), fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(shimmed, mask=(bin_mask == 0), fill_value=np.nan)
+
+        mt_unshimmed = montage(unshimmed_repeated[:, :, slice, :])
+        mt_shimmed = montage(shimmed[:, :, slice, :])
+        mt_unshimmed_masked = montage(nan_unshimmed_masked[:, :, slice, :].filled())
+        mt_shimmed_masked = montage(nan_shimmed_masked[:, :, slice, :].filled() * np.ceil(self.masks_fmap[:, :, slice, :]))
 
         min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
         max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
-
         min_fmap_value = np.nanmin([mt_unshimmed, mt_shimmed])
         max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
-        fig = Figure(figsize=(8, 5))
-        fig.suptitle("Fieldmaps for all shim groups\nFieldmap Coordinate System")
+        fig = Figure(figsize=(15, 9))
+        fig.suptitle(f"Slice {slice} fieldmap for all shim groups\nFieldmap Coordinate System")
 
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
         im = ax.imshow(mt_unshimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
-        ax.set_title("Unshimmed")
+        ax.set_title("Before shimming")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -724,7 +726,7 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         ax.imshow(mt_shimmed, vmin=min_fmap_value, vmax=max_fmap_value, cmap='gray')
         im = ax.imshow(mt_shimmed_masked, vmin=min_masked_value, vmax=max_masked_value, cmap='viridis')
-        ax.set_title("Shimmed")
+        ax.set_title("After shimming")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
