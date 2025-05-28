@@ -654,17 +654,20 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "other as columns (static-ch1, rt-ch1, static-ch2, rt-ch2, etc.). The mean pressure is encoded as "
                    "the last row.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
-              type=click.Choice(['slicewise-ch', 'chronological-ch', 'gradient']), default='slicewise-ch',
-              show_default=True,
-              help="Syntax used to describe the sequence of shim events. "
-                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. In both cases, there will be one output "
-                   "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). The static, "
-                   "time-varying and mean pressure are encoded in the columns of each file. Use "
-                   "'gradient' to output the scanner 1st order in the Gradient CS, otherwise, it outputs "
-                   "in the Shim CS.")
+              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
+                                 'slicewise-hrd', 'chronological-hrd']),
+              default='slicewise-coil',
+              show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
+                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                                      "captured by the controller of the shim amplifier. If there is a fat saturation "
+                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
+                                      "text file before each slice coefficients. Use 'ch' to output one "
+                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
+                                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
+                                      "all coil channels are encoded across multiple columns in the text file. Use "
+                                      "'-hrd' to output a human readable file with the shim coefficients ")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']),
               default='delta', show_default=True,
               help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "

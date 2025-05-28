@@ -721,7 +721,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "68.853567"
+                assert lines[15].strip() == "68.853567 | 0.000000 | 0.000000 | 0.000000"
 
     def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -753,7 +753,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == '-0.003530 | -0.013124 | -0.031381'
+                assert lines[15].strip() == '0.000000 | -0.003530 | -0.013124 | -0.031381'
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
