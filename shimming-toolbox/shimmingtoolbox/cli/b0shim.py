@@ -504,16 +504,15 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
         fname_output = os.path.join(path_output, f"scanner_shim.txt")
 
         # Create column names: "orderX_channelY"
-        column_names = []
-        if 0 in coefs.keys():
-            column_names.append('f0')
-        if 1 in coefs.keys():
-            column_names.extend(['Gx', 'Gy', 'Gz'])
+        column_names = ['f0', 'Gx', 'Gy', 'Gz']
+        orders = [0, 1]
         if 2 in coefs.keys():
             column_names.extend(['Gxx', 'Gxy', 'Gxz', 'Gyx', 'Gyy', 'Gyz', 'Gzx', 'Gzy', 'Gzz'])
+            orders.append(2)
 
         # Transform dict into usable array (nb_slices, n_channels)
-        arrays = [coefs[order] / 1000 if order == 1 else coefs[order] for order in sorted(coefs.keys())]
+        arrays = [coefs.get(order, np.zeros((len(list_slices), 2*order+1))) / 1000 \
+            if order == 1 else coefs.get(order, np.zeros((len(list_slices), 2*order+1))) for order in orders]
         coefs_array = np.hstack(arrays)
 
         if "slicewise" in o_format:
