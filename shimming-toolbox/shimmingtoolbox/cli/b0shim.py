@@ -655,7 +655,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                    "the last row.")
 @click.option('--output-file-format-scanner', 'o_format_sph',
               type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
-                                 'slicewise-hrd', 'chronological-hrd']),
+                                 'slicewise-hrd', 'chronological-hrd', 'gradient']),
               default='slicewise-ch',
               show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
                                       "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
