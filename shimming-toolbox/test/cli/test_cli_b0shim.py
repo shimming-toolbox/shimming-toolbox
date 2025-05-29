@@ -1372,7 +1372,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_rt_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_rt_hrd_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -1399,27 +1399,21 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim_riro.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 10.809849" and lines[16].strip() == "corr_vec[1][5]= -0.015250208108"
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                assert lines[6].strip() == "10.809849 | -0.001234 | -0.029466 | -0.060462"\
+                   and lines[15].strip() == "6.831677 | -0.000068 | -0.008440 | -0.024067"
+            with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001234" and lines[16].strip() == "corr_vec[1][5]= -0.000000000000"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.029466" and lines[16].strip() == "corr_vec[1][5]= 0.000005085765"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.060462" and lines[16].strip() == "corr_vec[1][5]= 0.000015264637"
+                assert lines[0].strip() == "Mean pressure = 1454.19" \
+                    and lines[7].strip() == "-0.015250 | 0.000000 | -0.000005 | -0.000015"
 
     def test_cli_rt_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1449,26 +1443,21 @@ class TestCLIRealtime(object):
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
                                              '--scanner-coil-order-riro', '1',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim_riro.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
                 assert lines[15].strip() == "corr_vec[0][5]= 0.001942" and lines[16].strip() == ("corr_vec[1][5]= "
                                                                                                  "-0.000001141655")
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+            with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
                 assert lines[15].strip() == "corr_vec[0][5]= 0.031768" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "0.000003641422")
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.066558" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "0.000005009869")
+                                                                                                 "0.000003641422")                                                       "0.000005009869")
 
     def test_cli_rt_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):

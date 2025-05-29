@@ -283,7 +283,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if output_value_format != 'delta':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order == [0, 1] or scanner_coil_order == [1] or scanner_coil_order == [0]):
+        if not set(scanner_coil_order).issubset({0, 1}):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}. Supported orders are: [0, 1], [1], [0]")
         if json_fm_data.get('Manufacturer') != 'Siemens':
@@ -373,16 +373,16 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                         # abs_coef = delta + initial
                         coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
-                    list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output,
+                    list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output,
                                                                    o_format_sph, options, coil_number=i_coil,
                                                                    default_coefs=initial_coefs)
                     continue
 
-            list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_sph,
+            list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output, o_format_sph,
                                                            options, coil_number=i_coil)
 
         else:
-            list_fname_output += _save_to_text_file_static(coil, coefs_coil, list_slices, path_output, o_format_coil,
+            list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output, o_format_coil,
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
@@ -409,8 +409,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         logger.info(f"Finished plotting figure(s)")
 
 
-def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
-                              default_coefs=None):
+def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options, coil_number,
+                              default_coefs=None, mean_pressure=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     logger.info(f"Saving to text file with format: {o_format}")
@@ -500,9 +500,11 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
             list_fname_output.append(os.path.abspath(fname_output))
     
     else:  # o_format == 'human readable':
+        if mean_pressure is None:
+            fname_output = os.path.join(path_output, f"scanner_shim.txt")
+        else:
+            fname_output = os.path.join(path_output, f"scanner_shim_riro.txt")
         
-        fname_output = os.path.join(path_output, f"scanner_shim.txt")
-
         # Create column names: "orderX_channelY"
         column_names = ['f0', 'Gx', 'Gy', 'Gz']
         orders = [0, 1]
@@ -538,6 +540,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
         # Write to file manually
         with open(fname_output, 'w') as f:
+            if mean_pressure is not None:
+                f.write(f"Mean pressure = {mean_pressure:.2f}\n")
             # Write header (centered titles)
             header_cells = [column_names[i].center(col_widths[i]) for i in range(len(column_names))]
             header = ' | '.join(header_cells)
@@ -690,18 +694,18 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
     --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
+    
+    logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
+
+    # Set logger level
+    set_all_loggers(verbose)
+    
     # Set coils and scanner order for riro if none were indicated
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
 
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
-
-    # Set logger level
-    set_all_loggers(verbose)
-
-    # Prepare the output
-    create_output_dir(path_output)
 
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
@@ -726,6 +730,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     else:
         nii_fmap = copy.deepcopy(nii_fmap_orig)
 
+    # Prepare the output
+    create_output_dir(path_output)
+    
     # Load the anat
     nii_anat = nib.load(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
@@ -752,8 +759,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         nii_mask_anat_riro = nib.load(fname_mask_anat_riro)
     else:
         # If no mask is provided, shim the whole anat volume
-        nii_mask_anat_riro = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine,
-                                             header=nii_anat.header)
+        nii_mask_anat_riro = copy.deepcopy(nii_mask_anat_static)
 
     # Open json of the fmap
     fname_json = fname_fmap.split('.nii')[0] + '.json'
@@ -766,15 +772,15 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
-    if o_format_sph == 'gradient':
+    if 'hrd' in o_format_sph:
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
                              f"{o_format_sph}")
-        if not (scanner_coil_order_static == [0, 1] or scanner_coil_order_static == [
-            1] or scanner_coil_order_static == [0]) or \
-                not (scanner_coil_order_riro == [0, 1] or scanner_coil_order_riro == [1] or scanner_coil_order_riro == [
-                    0]):
+        if not set(scanner_coil_order_static).issubset({0, 1}):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_static} for output file format: "
+                             f"{o_format_sph}")
+        if not set(scanner_coil_order_riro).issubset({0, 1}):
+            raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_riro} for output file format: "
                              f"{o_format_sph}")
         if json_fm_data['Manufacturer'] != 'Siemens':
             raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
@@ -832,8 +838,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                   path_output=path_output,
                                   is_pmu_time_offset_auto=is_pmu_time_offset_auto)
     # 2) Launch the sequencer
-    out = sequencer.shim()
-    coefs_static, coefs_riro, mean_p, p_rms = out
+    coefs_static, coefs_riro, mean_p, p_rms = sequencer.shim()
 
     # Output
     # Load output options
@@ -876,84 +881,70 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            if coil in list_coils_common:
-                keys = [str(order) for order in AVAILABLE_ORDERS
-                        if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
-                                             or str(order) in coil_indexes_static[coil.name]))]
-            elif coil in coil_static_only:
-                keys = [str(order) for order in AVAILABLE_ORDERS
-                        if (order != -1 and str(order) in coil_indexes_static[coil.name])]
-            elif coil in coil_riro_only:
-                keys = [str(order) for order in AVAILABLE_ORDERS
-                        if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
-
-            save_coefs_static = None
-            save_coefs_riro = None
-            for key in keys:
-                if coil in list_coils_riro:
-                    if key in coil_indexes_riro[coil.name]:
-                        coefs_coil_riro = copy.deepcopy(
-                            coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
+            if 'hrd' in o_format_sph:
+                logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
+                
+                def _coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
+                    # Fill in a dictionary with the coefficients for each order
+                    coefs_scanner = {}
+                    start_channel_scanner = 0
+                    for order in scanner_coil_order:
+                        end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+                        coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+                        start_channel_scanner = end_channel_scanner_order
+                    coefs_coil = coefs_scanner
+                    
+                    return coefs_coil
+                
+                coefs_coil_static = _coefs_to_dict(coefs_static, scanner_coil_order_static,
+                                                   json_anat_data['Manufacturer'])
+                coefs_coil_riro = _coefs_to_dict(coefs_riro, scanner_coil_order_riro,
+                                                 json_anat_data['Manufacturer'])
+                list_fname_output += _save_to_text_file(coil, coefs_coil_static, list_slices, path_output,
+                                                        o_format_sph, options, coil_number=i_coil)
+                list_fname_output += _save_to_text_file(coil, coefs_coil_riro, list_slices, path_output,
+                                                        o_format_sph, options, coil_number=i_coil,
+                                                        mean_pressure=mean_p)
+            else:
+                if coil in list_coils_common:
+                    keys = [str(order) for order in AVAILABLE_ORDERS
+                            if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
+                                                or str(order) in coil_indexes_static[coil.name]))]
+                elif coil in coil_static_only:
+                    keys = [str(order) for order in AVAILABLE_ORDERS
+                            if (order != -1 and str(order) in coil_indexes_static[coil.name])]
+                elif coil in coil_riro_only:
+                    keys = [str(order) for order in AVAILABLE_ORDERS
+                            if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
+                
+                for key in keys:
+                    if coil in list_coils_riro:
+                        if key in coil_indexes_riro[coil.name]:
+                            coefs_coil_riro = copy.deepcopy(
+                                coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
+                        else:
+                            coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:
+                                                                        coil_indexes_static[coil.name][key][1]])
                     else:
-                        coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                     coil_indexes_static[coil.name][key][1]])
-                else:
-                    coefs_coil_riro = np.zeros_like(
-                        coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
+                        coefs_coil_riro = np.zeros_like(
+                            coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
 
-                if coil in list_coils_static:
-                    if key in coil_indexes_static[coil.name]:
-                        coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                       coil_indexes_static[coil.name][key][1]])
+                    if coil in list_coils_static:
+                        if key in coil_indexes_static[coil.name]:
+                            coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:
+                                                                        coil_indexes_static[coil.name][key][1]])
+                        else:
+                            coefs_coil_static = np.zeros_like(coefs_coil_riro)
                     else:
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
-                else:
-                    coefs_coil_static = np.zeros_like(coefs_coil_riro)
 
-                manufacturer = json_anat_data['Manufacturer']
-                # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
-                # The check has already been done earlier in the program to avoid processing and throw an error
-                # afterwards.
-                # Therefore, we can only check for the o_format_sph.
-                if o_format_sph == 'gradient':
-                    if key == '0':
-                        pass
-                    elif key == '1':
-                        if coefs_coil_static is not None:
-                            logger.debug("Converting scanner coil static from Shim CS to Gradient CS")
-                            for i_shim in range(coefs_coil_static.shape[0]):
-                                coefs_coil_static[i_shim] = shim_to_phys_cs(coefs_coil_static[i_shim], manufacturer,
-                                                                            (1,))
-                            # RAS to gradient
-                            coefs_st_freq, coefs_st_phase, coefs_st_slice = phys_to_gradient_cs(
-                                coefs_coil_static[:, 0],
-                                coefs_coil_static[:, 1],
-                                coefs_coil_static[:, 2],
-                                fname_anat)
-                            coefs_coil_static[:, 0] = coefs_st_freq
-                            coefs_coil_static[:, 1] = coefs_st_phase
-                            coefs_coil_static[:, 2] = coefs_st_slice
+                    manufacturer = json_anat_data['Manufacturer']
+                    # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
+                    # The check has already been done earlier in the program to avoid processing and throw an error
+                    # afterwards.
+                    # Therefore, we can only check for the o_format_sph.
 
-                        if coefs_coil_riro is not None:
-                            logger.debug("Converting scanner coil riro from Shim CS to Gradient CS")
-                            for i_shim in range(coefs_coil_riro.shape[0]):
-                                coefs_coil_riro[i_shim] = shim_to_phys_cs(coefs_coil_riro[i_shim], manufacturer, (1,))
-                            # RAS to gradient
-                            coefs_riro_freq, coefs_riro_phase, coefs_riro_slice = phys_to_gradient_cs(
-                                coefs_coil_riro[:, 0],
-                                coefs_coil_riro[:, 1],
-                                coefs_coil_riro[:, 2],
-                                fname_anat)
-                            coefs_coil_riro[:, 0] = coefs_riro_freq
-                            coefs_coil_riro[:, 1] = coefs_riro_phase
-                            coefs_coil_riro[:, 2] = coefs_riro_slice
-
-                    else:
-                        raise NotImplementedError("Only order 1 and 0 supported for gradient file format")
-
-                else:
-
-                    # If the output format is absolute, add the initial coefs
+                        # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
                         initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
                         for i_channel in range(coefs_coil_static.shape[-1]):
@@ -962,14 +953,14 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                             # riro does not change
 
                             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                                       list_slices, path_output, o_format_sph, options,
-                                                                       i_coil, int(key) ** 2,
-                                                                       default_st_coefs=initial_coefs)
+                                                                    list_slices, path_output, o_format_sph, options,
+                                                                    i_coil, int(key) ** 2,
+                                                                    default_st_coefs=initial_coefs)
                         continue
 
-                list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                           list_slices,
-                                                           path_output, o_format_sph, options, i_coil, int(key) ** 2)
+                    list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
+                                                            list_slices,
+                                                            path_output, o_format_sph, options, i_coil, int(key) ** 2)
 
         else:  # Custom coil
             if coil in list_coils_riro:
@@ -986,13 +977,12 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
                                                        path_output, o_format_coil, options, i_coil, 0)
-
+            
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
     logger.info(f"Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
 
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
