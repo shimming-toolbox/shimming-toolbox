@@ -565,9 +565,13 @@ class B0ShimTab(Tab):
                 "option_value": "chronological-ch"
             },
             {
-                "label": "Gradient per Channel",
-                "option_value": "gradient"
+                "label": "Chronological - Human readable",
+                "option_value": "chronological-hrd"
             },
+            {
+                "label": "Slicewise - Human readable",
+                "option_value": "slicewise-hrd"
+            }
         ]
 
         dropdown_scanner_format = DropdownComponent(
