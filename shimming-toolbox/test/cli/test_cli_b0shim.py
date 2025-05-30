@@ -618,7 +618,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
 
-    def test_cli_dynamic_format_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+    def test_cli_dynamic_format_hrd_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -640,28 +640,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 11.007908"
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001260"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.029665"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.060548"
-
+                assert lines[15].strip() == "-18.511886 |  0.001398 | -0.015534 | -0.076382"
 
     def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -696,15 +683,12 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0,1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
     def test_cli_dynamic_format_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -729,15 +713,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '0',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 119.644382"
+                assert lines[15].strip() == "68.853567 | 0.000000 | 0.000000 | 0.000000"
 
     def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -761,23 +745,15 @@ class TestCliDynamic(object):
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '1',
                                              '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001980"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.032016"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.066749"
+                assert lines[15].strip() == '0.000000 | -0.003530 | -0.013124 | -0.031381'
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -1016,6 +992,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
+                                             '--time-offset', '0',
                                              '--output', tmp,
                                              '-v', 'debug'],
                                 catch_exceptions=False)
@@ -1029,7 +1006,50 @@ class TestCLIRealtime(object):
                 lines = file.readlines()
                 line = lines[5].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
-            assert values == [11.007908, -0.014577058094, 1311.6784]
+            assert values == [10.809849, -0.015250208108, 1454.1917]
+
+    def test_cli_rt_time_offset_auto(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,1',
+                                             '--time-offset', 'auto',
+                                             '--output', tmp,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[5].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+            assert values == [10.834912, -0.014710841563, 1504.1091]
 
     def test_cli_rt_sph_order_0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1379,27 +1399,19 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim_riro.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 11.007908" and lines[16].strip() == "corr_vec[1][5]= -0.014577058094"
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+                assert lines[15].strip() == "6.831677 | -0.000068 | -0.008440 | -0.024067" and lines[7].strip() == "-3.759444 |  0.000411 | -0.023287 | -0.072897"
+            with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001260" and lines[16].strip() == "corr_vec[1][5]= -0.000000000000"
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.029665" and lines[16].strip() == "corr_vec[1][5]= 0.000005532449"
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.060548" and lines[16].strip() == "corr_vec[1][5]= 0.000013492875"
+                assert lines[15].strip() == "-0.000639 | 0.000000 | -0.000001 | -0.000004" and lines[0].strip() == "Mean pressure = 1454.19"
 
     def test_cli_rt_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1429,26 +1441,21 @@ class TestCLIRealtime(object):
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '1',
                                              '--scanner-coil-order-riro', '1',
-                                             '--output-file-format-scanner', 'gradient',
+                                             '--output-file-format-scanner', 'chronological-hrd',
                                              '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "xshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "yshim_gradients.txt"))
-            assert os.path.isfile(os.path.join(tmp, "zshim_gradients.txt"))
-            with open(os.path.join(tmp, "xshim_gradients.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim_riro.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.001980" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "-0.000001091261")
-            with open(os.path.join(tmp, "yshim_gradients.txt"), 'r') as file:
+                assert lines[15].strip() == "0.000000 |  0.004741 | -0.008354 | -0.065768" and \
+                    lines[3].strip() == ("0.000000 | -0.001942 | -0.031768 | -0.066558")
+            with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.032016" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "0.000004151859")
-            with open(os.path.join(tmp, "zshim_gradients.txt"), 'r') as file:
-                lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 0.066749" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "0.000003690757")
+                assert lines[15].strip() == "0.000000 | 0.000002 | -0.000002 | -0.000006" and \
+                    lines[0].strip() == ("Mean pressure = 1454.19")
 
     def test_cli_rt_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1486,8 +1493,8 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "f0shim_gradients.txt"))
             with open(os.path.join(tmp, "f0shim_gradients.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "corr_vec[0][5]= 119.644383" and lines[16].strip() == ("corr_vec[1][5]= "
-                                                                                                 "0.009161744842")
+                assert lines[15].strip() == "corr_vec[0][5]= 119.149609" and lines[16].strip() == ("corr_vec[1][5]= "
+                                                                                                 "0.010310378220")
 
     def test_cli_rt_gradient_order01_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1653,6 +1660,44 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+
+    def test_cli_rt_lsq(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_anat = os.path.join(tmp, 'anat.nii.gz')
+            fname_anat_json = os.path.join(tmp, 'anat.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_anat=nii_anat, fname_anat=fname_anat,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         anat_data=anat_data, fname_anat_json=fname_anat_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--anat', fname_anat,
+                                             '--mask-static', fname_mask,
+                                             '--mask-riro', fname_mask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,1',
+                                             '--optimizer-method', 'least_squares',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+
 
     def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

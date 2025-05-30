@@ -27,11 +27,13 @@ def test_read_resp():
     expected_start_time_mpcu = 44294295
     expected_stop_time_mpcu = 44343040
 
+    data = pmu.get_data()
+    start_time_mdh, stop_time_mdh = pmu.get_start_and_stop_times()
     assert np.all([
-        np.all(expected_first_data == pmu.data[:5]),
-        np.all(expected_last_data == pmu.data[-5:]),
-        expected_start_time_mdh == pmu.start_time_mdh,
-        expected_stop_time_mdh == pmu.stop_time_mdh,
+        np.all(expected_first_data == data[:5]),
+        np.all(expected_last_data == data[-5:]),
+        expected_start_time_mdh == start_time_mdh,
+        expected_stop_time_mdh == stop_time_mdh,
         expected_start_time_mpcu == pmu.start_time_mpcu,
         expected_stop_time_mpcu == pmu.stop_time_mpcu
     ])
@@ -40,14 +42,16 @@ def test_read_resp():
 def test_interp_resp_trace():
     # Create time series to interpolate the PMU to
     num_points = 20
-    acq_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, num_points)
+    start_time_mdh, stop_time_mdh = pmu.get_start_and_stop_times()
+    acq_times = np.linspace(start_time_mdh, stop_time_mdh, num_points)
 
     acq_pressure = pmu.interp_resp_trace(acq_times)
-
-    index_pmu_data = np.linspace(0, len(pmu.data) - 1, int(num_points)).astype(int)
+    data = pmu.get_data()
+    
+    index_pmu_data = np.linspace(0, len(data) - 1, int(num_points)).astype(int)
     index_pmu_interp = np.linspace(0, num_points - 1, int(num_points)).astype(int)
 
-    assert(np.all(np.isclose(acq_pressure[index_pmu_interp], pmu.data[index_pmu_data], atol=1, rtol=0.08)))
+    assert(np.all(np.isclose(acq_pressure[index_pmu_interp], data[index_pmu_data], atol=1, rtol=0.08)))
 
 
 def test_timing_images():
@@ -83,24 +87,16 @@ def test_timing_images():
         masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
         fieldmap_avg[i_time] = np.ma.average(masked_array)
 
-    # Reshape pmu datapoints to fit those of the acquisition
-    pmu_times = np.linspace(pmu.start_time_mdh, pmu.stop_time_mdh, len(pmu.data))
-    pmu_times_within_range = pmu_times[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu.data[pmu_times > fieldmap_timestamps[0]]
-    pmu_data_within_range = pmu_data_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-    pmu_times_within_range = pmu_times_within_range[pmu_times_within_range < fieldmap_timestamps[fieldmap.shape[3] - 1]]
-
     # Compute correlation
-    pmu_data_within_range_ds = scipy.signal.resample(pmu_data_within_range, fieldmap_avg.shape[0])
-    pearson = np.corrcoef(fieldmap_avg, pmu_data_within_range_ds)
+    pearson = np.corrcoef(fieldmap_avg, acquisition_pressures[:, 0])
 
-    assert(np.isclose(pearson[0, 1], 0.6031485150782748))
+    assert(np.isclose(pearson[0, 1], 0.97095326))
 
 
 def test_pmu_fake_data():
-    pmu.data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
-    pmu.stop_time_mdh = 250 * (len(pmu.data) - 1)
-    pmu.start_time_mdh = 0
+    fake_data = np.array([3000, 2000, 1000, 2000, 3000, 2000, 1000, 2000, 3000, 2000])
+    pmu.set_data(fake_data)
+    pmu.set_start_and_stop_times(125, 250 * (len(fake_data) - 1) + 125)
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
 
@@ -108,4 +104,5 @@ def test_pmu_fake_data():
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
-    assert np.all(acq_pressures == pmu.data)
+    # 10 volumes, 1 slice
+    assert np.all(acq_pressures[:, 0] == fake_data)

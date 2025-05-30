@@ -405,14 +405,13 @@ def define_rt_sim_inputs():
                               'sub-realtime_PMUresp_signal.resp')
     pmu = PmuResp(fname_resp)
     # Change pmu so that it uses fake data. The fake data is essentially a sinusoid with 4 points
-    pmu.data = np.array([3000, 2000, 1000, 2000])
-    pmu.stop_time_mdh = 750
-    pmu.start_time_mdh = 0
+    fake_data = np.array([3000, 2000, 1000, 2000, 3000])
+    pmu.set_data(fake_data)
+    pmu.set_start_and_stop_times(0, 1000)
 
-    # Define a dummy json data with the bare minimum fields and calculate the pressures pressure
+    # Define a dummy json data with the bare minimum fields and calculate the pressures
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
-    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
-    acq_pressures = pmu.interp_resp_trace(acq_timestamps)
+    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data, when='volume-start')
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
@@ -481,6 +480,8 @@ class TestShimRTpmuSimData(object):
         shim_trace_static = []
         shim_trace_riro = []
         unshimmed_trace = []
+        data = pmu.get_data()
+        
         for i_shim in range(len(slices)):
             # Calculate static correction
             correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
@@ -492,7 +493,7 @@ class TestShimRTpmuSimData(object):
                                                          dilation_kernel='sphere').get_fdata()
             for i_t in range(nii_fieldmap.shape[3]):
                 # Apply the static and riro correction
-                correction_riro = riro_profile * (pmu.data[i_t] - mean_p)
+                correction_riro = riro_profile * (data[i_t] - mean_p)
                 shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
                 shimmed_static_riro[..., i_t, i_shim] = shimmed_static[..., i_t, i_shim] + correction_riro
                 shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
