@@ -18,18 +18,30 @@ mask_operations = {'dilate': binary_dilation, 'erode': binary_erosion}
 def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='None', dilation_size=3,
                   path_output=None, return_non_dil_mask=False):
     """
-    Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
+    Resample a source mask (`nii_mask_from`) onto a target image (`nii_target`) while selecting specific slices
+    and applying optional dilation restricted to the region of interest (ROI).
+
+    This function performs the following steps:
+    1. **Slice Selection**: If `from_slices` is specified, only the corresponding axial slices from the input mask are used.
+    2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`
+    using nearest-neighbor interpolation (`order=0`).
+    3. **Dilation**: If the mask is binary (i.e., contains only 0/1 or boolean values), a morphological dilation is applied
+    using the specified kernel and size. If the mask is soft (i.e., contains float values between 0 and 1), a custom dilation
+    is performed using a maximum filter within a spherical neighborhood.
+    4. **ROI Constraint**: The dilated mask is intersected with the resampled full original mask (before slice selection)
+    to ensure that added voxels remain within the originally defined anatomical region.
+    5. **Output**: The function returns the final mask (dilated and ROI-restricted). If `return_non_dil_mask` is True,
+    it also returns the undilated mask.
 
     Args:
-        nii_mask_from (nib.Nifti1Image): Mask to resample from. False or 0 signifies not included.
-        nii_target (nib.Nifti1Image): Target image to resample onto.
-        from_slices (tuple): Tuple containing the slices to select from nii_mask_from. None selects all the slices.
-        dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                               'cube'. See :func:`modify_binary_mask` for more details.
-        dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
-                                         a kernel of size 3 will dilate the mask by 1 pixel.
-        path_output (str): Path to output debug artefacts.
-        return_non_dil_mask (bool): See if we want to return the dilated and non dilated resampled mask
+        nii_mask_from (nib.Nifti1Image): Source mask to resample. Voxels with value 0 or False are considered outside the mask.
+        nii_target (nib.Nifti1Image): Target image defining the desired output space.
+        from_slices (tuple): Indices of the slices to select from `nii_mask_from`. If None, all slices are used.
+        dilation_kernel (str): Shape of the kernel used for dilation. Allowed shapes: 'sphere', 'cross', 'line', 'cube'.
+                            See :func:`modify_binary_mask` for more details.
+        dilation_size (int): Size of the 3D dilation kernel. Must be odd. For instance, a size of 3 dilates the mask by 1 voxel.
+        path_output (str): Optional path to save masks when debugging.
+        return_non_dil_mask (bool): If True, both the dilated and undilated resampled masks are returned.
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
