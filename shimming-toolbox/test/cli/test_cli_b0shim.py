@@ -1060,8 +1060,7 @@ class TestCLIRealtime(object):
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
                                              '--time-offset', 'auto',
-                                             '--output', tmp,
-                                             '-v', 'debug'],
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0

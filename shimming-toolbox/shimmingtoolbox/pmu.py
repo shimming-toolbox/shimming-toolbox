@@ -57,13 +57,13 @@ class PmuResp(object):
         """
         self.__data = data
         self.timepoints = self.get_all_times()
-        
+
     def get_data(self):
         """
         Retrieves the data of the PMU object
         """
         return self.__data
-        
+
     def set_start_and_stop_times(self, start_time_mdh, stop_time_mdh):
         """
         Set the start and stop time of the PMU object
@@ -77,13 +77,13 @@ class PmuResp(object):
         self.__start_time_mdh = start_time_mdh
         self.__stop_time_mdh = stop_time_mdh
         self.timepoints = self.get_all_times()
-        
+
     def get_start_and_stop_times(self):
         """
         Retrieves the start and stop time of the PMU object
         """
         return self.__start_time_mdh, self.__stop_time_mdh
-        
+
     def read_resp(self, fname_pmu):
         """
         Read a Siemens Physiological Log file. Returns a tuple with the logging data as numpy integer array and times
@@ -267,13 +267,12 @@ class PmuResp(object):
         """
 
         if np.any(self.__start_time_mdh > acquisition_times) or np.any(self.__stop_time_mdh < acquisition_times):
-            # TODO: Explore why pmulog sequence raises an error for pmulog sequence
             logger.warning("acquisition_times don't fit within time limits for resp trace")
             start_offset = np.min(acquisition_times - self.__start_time_mdh)
             stop_offset = np.min(self.__stop_time_mdh - acquisition_times)
             logger.debug(f"start_offset: {start_offset}")
             logger.debug(f"stop_offset: {stop_offset}")
-            # raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
+            raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()
         interp_data = np.interp(acquisition_times, times, self.__data)
