@@ -1262,7 +1262,7 @@ class RealTimeSequencer(Sequencer):
 
             acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
-            pmu_plot_pressures = (self.pmu.get_resp_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
+            pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
 
             ax2 = fig.add_subplot(312)
             ax2.plot((pmu_plot_times - pmu_plot_times.min()) / 1000, pmu_plot_pressures, label='pmu')
@@ -1935,8 +1935,8 @@ class RealTimeSequencer(Sequencer):
         """
         # Get the pmu data values in the range of the acquisition
         pmu_timestamps = self.pmu.get_times(self.acq_timestamps[0].min() - 1000, self.acq_timestamps[-1].max() + 1000)
-        pmu_pressures = self.pmu.get_resp_trace(self.acq_timestamps[0].min() - 1000,
-                                                self.acq_timestamps[-1].max() + 1000)
+        pmu_pressures = self.pmu.get_trace(self.acq_timestamps[0].min() - 1000,
+                                           self.acq_timestamps[-1].max() + 1000)
 
         # Select slices shimmed
         curated_unshimmed_trace = unshimmed_trace[self.index_shimmed]
