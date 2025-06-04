@@ -19,13 +19,13 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.load_nifti import get_isocenter
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
-from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
+from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
@@ -400,9 +400,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                                            options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
-    logger.info(f" Plotting currents")
+    logger.info("Plotting currents")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
@@ -420,7 +420,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                 _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
                             bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-        logger.info(f"Finished plotting figure(s)")
+        logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, options, coil_number,
@@ -439,7 +439,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 
         # Print the average shim coefficients without considering slices with 0s
         logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
-                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0)}")
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0):.6f}")
 
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
@@ -456,7 +456,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-                        f.write(f"\n")
+                        f.write("\n")
 
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
@@ -868,8 +868,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 keys = [str(order) for order in AVAILABLE_ORDERS
                         if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
 
-            save_coefs_static = None
-            save_coefs_riro = None
             for key in keys:
                 if coil in list_coils_riro:
                     if key in coil_indexes_riro[coil.name]:
@@ -969,11 +967,10 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                                        path_output, o_format_coil, options, i_coil, 0)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
-    logger.info(f"Plotting Currents")
+    logger.info("Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
-    end_channel = 0
 
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
@@ -993,7 +990,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+    logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
@@ -1641,7 +1638,7 @@ def parse_add_channels(channels: str, n_channels: int):
         channels = [int(channel) for channel in channels]
         channels.sort()
         if len(channels) + n_channels <= max(channels):
-            raise ValueError(f"The provided channels to add would leave gaps in the channels")
+            raise ValueError("The provided channels to add would leave gaps in the channels")
         return channels
     except ValueError:
         raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")
