@@ -347,7 +347,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
 
         # If it's a scanner
-        if isinstance(coil, ScannerCoil):
+        if type(coil) == ScannerCoil:
             manufacturer = json_anat_data['Manufacturer']
 
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
@@ -413,7 +413,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             start_channel = end_channel
             end_channel = start_channel + n_channels
 
-            if not isinstance(coil, ScannerCoil):
+            if type(coil) != ScannerCoil:
                 # Select the coefficients for a coil
                 coefs_coil = copy.deepcopy(coefs[:, start_channel:end_channel])
                 # Plot a figure of the coefficients
@@ -826,7 +826,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     index = 0
     coil_indexes_static = {}
     for coil in list_coils_static:
-        if isinstance(coil, Coil):
+        if type(coil) == Coil:
             coil_indexes_static[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
@@ -838,7 +838,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     index = 0
     coil_indexes_riro = {}
     for coil in list_coils_riro:
-        if isinstance(coil, Coil):
+        if type(coil) == Coil:
             coil_indexes_riro[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
@@ -852,7 +852,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         # Figure out the start and end channels for a coil to be able to select it from the coefs
 
         # If it's a scanner
-        if isinstance(coil, ScannerCoil):
+        if type(coil) == ScannerCoil:
             if coil in list_coils_common:
                 keys = [str(order) for order in AVAILABLE_ORDERS
                         if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
@@ -970,7 +970,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     for i_coil, coil in enumerate(all_coils):
         # Figure out the start and end channels for a coil to be able to select it from the coefs
-        if not isinstance(coil, ScannerCoil):
+        if type(coil) != ScannerCoil:
             if coil in list_coils_riro:
                 coefs_coil_riro = copy.deepcopy(
                     coefs_riro[:, coil_indexes_riro[coil.name][0]:coil_indexes_riro[coil.name][1]])

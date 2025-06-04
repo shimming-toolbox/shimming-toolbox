@@ -23,8 +23,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
 
     This function performs the following steps:
     1. **Slice Selection**: If `from_slices` is specified, only the corresponding axial slices from the input mask are used.
-    2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`
-    using nearest-neighbor interpolation (`order=0`).
+    2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`.
     3. **Dilation**: If the mask is binary (i.e., contains only 0/1 or boolean values), a morphological dilation is applied
     using the specified kernel and size. If the mask is soft (i.e., contains float values between 0 and 1), a custom dilation
     is performed using a maximum filter within a spherical neighborhood.
@@ -58,7 +57,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     # Create nibabel object of sliced mask
     nii_mask = nib.Nifti1Image(sliced_mask.astype(float), nii_mask_from.affine, header=nii_mask_from.header)
     # Resample the sliced mask onto nii_target
-    nii_mask_target = resample_from_to(nii_mask, nii_target, order=0, mode='grid-constant', cval=0)
+    nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
 

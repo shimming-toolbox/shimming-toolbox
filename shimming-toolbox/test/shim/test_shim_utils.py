@@ -93,8 +93,7 @@ class TestCalculateMetricWithinMask:
         mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='mae')
-        mean_weighted = np.average(array, weights=mask)
-        expected_result = np.average(np.abs(array - mean_weighted), weights=mask)
+        expected_result = np.average(np.abs(array), weights=mask)
         assert np.isclose(result, expected_result)
 
     def test_calculate_metric_within_mask_mse(self):
@@ -103,8 +102,7 @@ class TestCalculateMetricWithinMask:
         mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='mse')
-        mean_weighted = np.average(array, weights=mask)
-        expected_result = np.average(np.square(array - mean_weighted), weights=mask)
+        expected_result = np.average(np.square(array), weights=mask)
         assert np.isclose(result, expected_result)
 
     def test_calculate_metric_within_mask_rmse(self):
@@ -113,8 +111,7 @@ class TestCalculateMetricWithinMask:
         mask = np.array([1, 0.5, 1, 0.75, 0])
 
         result = calculate_metric_within_mask(array, mask, metric='rmse')
-        mean_weighted = np.average(array, weights=mask)
-        mse_weighted = np.average(np.square(array - mean_weighted), weights=mask)
+        mse_weighted = np.average(np.square(array), weights=mask)
         expected_result = np.sqrt(mse_weighted)
         assert np.isclose(result, expected_result)
 

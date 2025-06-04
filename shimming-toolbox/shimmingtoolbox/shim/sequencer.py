@@ -1784,10 +1784,10 @@ class RealTimeSequencer(Sequencer):
 
         unshimmed_repeat = np.repeat(unshimmed[..., np.newaxis], mask.shape[-1], axis=-1)
         mask_repeats = np.repeat(mask[:, :, :, np.newaxis, :], unshimmed.shape[3], axis=3)
-        ma_unshimmed = np.ma.array(unshimmed_repeat, mask=not mask_repeats)
-        ma_shim_static = np.ma.array(shimmed_static, mask=not mask_repeats)
-        ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=not mask_repeats)
-        ma_shim_riro = np.ma.array(shimmed_riro, mask=not mask_repeats)
+        ma_unshimmed = np.ma.array(unshimmed_repeat, mask=mask_repeats==0)
+        ma_shim_static = np.ma.array(shimmed_static, mask=mask_repeats==0)
+        ma_shim_static_riro = np.ma.array(shimmed_static_riro, mask=mask_repeats==0)
+        ma_shim_riro = np.ma.array(shimmed_riro, mask=mask_repeats==0)
 
         # Temporal
         temp_shim_static = np.ma.mean(np.ma.std(ma_shim_static, 3))
@@ -1837,8 +1837,8 @@ class RealTimeSequencer(Sequencer):
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
 
         # Plot
-        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=not mask, fill_value=np.nan)
-        nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=not mask, fill_value=np.nan)
+        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=(mask!=0), fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
         mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
@@ -2004,7 +2004,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
     index = 0
     coil_indexes = {}
     for coil in coils_static:
-        if isinstance(coil, Coil):
+        if type(coil) == Coil:
             coil_indexes[coil.name] = [index, index + len(coil.coef_channel_minmax['coil'])]
             index += len(coil.coef_channel_minmax['coil'])
         else:
@@ -2015,7 +2015,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
 
     for i, coil in enumerate(coils_riro):
         if coil.name in static_coil_names:
-            if isinstance(coil, Coil):
+            if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
                                           currents[:, coil_indexes[coil.name][0]:coil_indexes[coil.name][1]],
                                           axis=1)
@@ -2038,7 +2038,7 @@ def new_bounds_from_currents_static_to_riro(currents, old_bounds, coils_static=[
                         old_bounds_riro.extend(coil.coef_channel_minmax[order])
 
         else:
-            if isinstance(coil, Coil):
+            if type(coil) == Coil:
                 currents_riro = np.append(currents_riro,
                                           np.zeros((currents.shape[0], len(coil.coef_channel_minmax['coil']))),
                                           axis=1)

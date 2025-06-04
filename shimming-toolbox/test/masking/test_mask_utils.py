@@ -214,16 +214,16 @@ def test_create_sum_softmask(path_binmask, path_gaussmask, path_softmask):
     binmask_nifti = nib.load(path_binmask)
     binmask = binmask_nifti.get_fdata()
 
-    #Verify that the gaussian mask exists
-    assert os.path.exists(path_gaussmask), "The gaussian mask does not exist"
-    # Load the gaussian mask
-    gaussmask_nifti = nib.load(path_gaussmask)
-    gaussmask = gaussmask_nifti.get_fdata()
+    # Verify that the output folder exists
+    assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
+    # Create and load the gaussian soft mask
+    gaussmask = create_softmask(path_binmask, type='gaussian', soft_width=6, soft_units='mm')
+    gaussmask_nifti = save_softmask(gaussmask, path_gaussmask, path_binmask)
 
     # Verify that the output folder exists
     assert os.path.exists(os.path.dirname(path_softmask)), "The output folder does not exist"
     # Create and load the gaussian soft mask
-    softmask = create_softmask(path_binmask, path_softmask_input=path_gaussmask, type='sum')
+    softmask = create_softmask(path_binmask, fname_softmask=path_gaussmask, type='sum')
     softmask_nifti = save_softmask(softmask, path_softmask, path_binmask)
 
     # Verify that the soft mask has been created

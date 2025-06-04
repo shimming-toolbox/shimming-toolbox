@@ -144,6 +144,11 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
     ma_array = np.ma.masked_where(mask == 0, array)
     ma_array = np.ma.array(ma_array, mask=np.isnan(ma_array))
 
+    # Prevent division by zero in all metrics using weights by checking np.sum(mask)
+    if np.sum(mask) == 0:
+        # mask = np.ones_like(mask)
+        return np.nan
+
     if metric == 'mean':
         output = np.average(ma_array, weights=mask, axis=axis)
 
