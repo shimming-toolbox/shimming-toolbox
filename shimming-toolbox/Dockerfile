@@ -1,12 +1,11 @@
-FROM python:3.10-slim
+FROM ubuntu:latest
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y git build-essential
+    apt-get install -y git make build-essential curl unzip vim xvfb python3 python3-pip
 
 # Install ST
-RUN mkdir /ST_code && \
-    git clone https://github.com/shimming-toolbox/shimming-toolbox.git /ST_code
-
-# Install python dependencies
-RUN pip3 install -r ST_code/shimming-toolbox/requirements_st.txt
+RUN mkdir -p /code/ST && \
+    git clone https://github.com/shimming-toolbox/shimming-toolbox.git /code/ST  && \
+    cd /code/ST && \
+    make install
