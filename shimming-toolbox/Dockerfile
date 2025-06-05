@@ -20,3 +20,8 @@ RUN cd .. && \
 SHELL ["/bin/bash", "-c"]
 RUN echo 'source $HOME/shimming-toolbox/python/etc/profile.d/conda.sh' >> ~/.bashrc && \
     echo 'conda activate ~/shimming-toolbox/python' >> ~/.bashrc
+
+# Clean up to reduce image size
+RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    rm -rf /code/SCT/.git /code/ST/.git && \
+    ~/shimming-toolbox/python/bin/conda clean -afy
