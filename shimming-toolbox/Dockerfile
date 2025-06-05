@@ -1,8 +1,16 @@
 FROM ubuntu:latest
 
+# Avoid interactive prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y git make build-essential curl unzip vim xvfb python3 python3-pip bzip2 libglib2.0-0 libgl1 libxrender1 libxkbcommon-x11-0 libdbus-1-3
+    apt-get install -y git make curl unzip vim xvfb bzip2 build-essential \
+                    python3 python3-pip libglib2.0-0 libgl1 libxrender1 libxkbcommon-x11-0 libdbus-1-3 && \
+    apt-get clean
+
+# Install FSL
+RUN curl -Ls https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/getfsl.sh | sh -s
 
 # Install SCT
 RUN mkdir -p code/SCT && \
