@@ -34,7 +34,7 @@ class QuadProgOpt(OptimizerUtils):
             initial_guess_method (str): method to find the initial guess
         """
         if reg_factor < 0:
-            raise TypeError("reg_factor is negative, and would cause optimization to crash."
+            raise TypeError("reg_factor is negative, and would cause optimization to crash. "
                             "If you want to keep this reg_factor please use lsq_optimizer")
         self.opt_criteria = None
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
