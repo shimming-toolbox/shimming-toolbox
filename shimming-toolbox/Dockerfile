@@ -21,9 +21,8 @@ RUN mkdir -p code/sct && \
     ./install_sct -y
 
 # Install ST
-# TODO : Fix installation of ST (updated version dcm2niix craches the process)
 RUN mkdir -p code/st && \
-    git clone --branch v1.2 --depth 1 https://github.com/shimming-toolbox/shimming-toolbox.git /code/st && \
+    git clone --branch 1.2 --depth 1 https://github.com/shimming-toolbox/shimming-toolbox.git /code/st && \
     cd /code/st && \
     make install
 
@@ -34,5 +33,4 @@ RUN echo 'source /code/st/python/etc/profile.d/conda.sh' >> ~/.bashrc && \
 
 # Clean up to reduce image size
 RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-    rm -rf /code/sct/.git /code/st/.git && \
-    /code/st/python/bin/conda clean -afy
+    rm -rf /code/sct/.git /code/st/.git
