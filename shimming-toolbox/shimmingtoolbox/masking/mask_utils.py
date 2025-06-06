@@ -5,7 +5,6 @@ import logging
 import os
 import nibabel as nib
 import numpy as np
-
 from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure, gaussian_filter, maximum_filter
 from skimage.morphology import ball
 
