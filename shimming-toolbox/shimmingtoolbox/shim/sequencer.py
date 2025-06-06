@@ -501,7 +501,8 @@ class ShimSequencer(Sequencer):
 
             # Figure that shows shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                self.plot_partial_mask(unshimmed, shimmed, 0)
+                # The 0th slice is selected here, but can be changed for debugging purposes
+                self.plot_partial_mask(unshimmed, shimmed, slice=0)
 
             self.plot_currents(coefs)
 
