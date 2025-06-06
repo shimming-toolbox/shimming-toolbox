@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from scipy import optimize as opt
+
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 
 class BFGSOpt(LsqOptimizer):
