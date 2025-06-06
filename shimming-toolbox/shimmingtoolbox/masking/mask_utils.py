@@ -252,46 +252,6 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
     return mask_dilated
 
 
-def create_softmask(fname_binmask, fname_softmask=None, type='gaussian', soft_width=6, soft_units='mm', soft_value=0.5) :
-    """
-    Create a soft mask from a binary mask by adding a soft zone around the binary mask.
-
-    Args:
-        fname_binmask (str): Path to the binary mask.
-        fname_softmask (str): Path to an existing soft mask. Used only if type is 'sum'.
-        type (str): Type of soft mask to create. Allowed types are: '2levels', 'linear', 'gaussian', 'sum'.
-        soft_width (float): Width of the soft zone.
-        soft_units (str): Units of the soft width ('mm' or 'px').
-        soft_value (float): Value of the intensity of the pixels in the soft zone. Used only if type is '2levels'.
-
-    Returns:
-        numpy.ndarray: 3D array containing the soft mask.
-    """
-
-    # Load the masks from their NIFTI file
-    nifti_binmask = nib.load(fname_binmask)
-    binmask = nifti_binmask.get_fdata()
-    if fname_softmask is not None:
-        nifti_softmask = nib.load(fname_softmask)
-        softmask = nifti_softmask.get_fdata()
-
-    # Convert blur width to pixels
-    soft_width_px = convert_to_pixels(soft_width, soft_units, nifti_binmask.header)
-
-    softmask_funcs = {
-        '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
-        'linear': lambda: create_linear_softmask(binmask, soft_width_px),
-        'gaussian': lambda: create_gaussian_softmask(binmask, soft_width_px),
-        'sum': lambda: add_softmask_to_binmask(binmask, softmask)
-    }
-
-    # Create a soft mask
-    if type in softmask_funcs:
-        return softmask_funcs[type]()
-    else:
-        raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
-
-
 def convert_to_pixels(lenght, units, header):
     """
     Convert a lenght from mm to pixels based on voxel size.
@@ -416,6 +376,41 @@ def add_softmask_to_binmask(soft_mask, binary_mask):
     return soft_mask
 
 
+def create_softmask(fname_binmask, fname_softmask=None, type='gaussian', soft_width=6, soft_units='mm', soft_value=0.5):
+    """
+    Create a soft mask from a binary mask by adding a soft zone around the binary mask.
+
+    Args:
+        fname_binmask (str): Path to the binary mask.
+        fname_softmask (str): Path to an existing soft mask. Used only if type is 'sum'.
+        type (str): Type of soft mask to create. Allowed types are: '2levels', 'linear', 'gaussian', 'sum'.
+        soft_width (float): Width of the soft zone.
+        soft_units (str): Units of the soft width ('mm' or 'px').
+        soft_value (float): Value of the intensity of the pixels in the soft zone. Used only if type is '2levels'.
+
+    Returns:
+        numpy.ndarray: 3D array containing the soft mask.
+    """
+    nifti_binmask = nib.load(fname_binmask)
+    binmask = nifti_binmask.get_fdata()
+    softmask = None
+    if fname_softmask is not None:
+        nifti_softmask = nib.load(fname_softmask)
+        softmask = nifti_softmask.get_fdata()
+
+    soft_width_px = convert_to_pixels(soft_width, soft_units, nifti_binmask.header)
+
+    if type not in SOFTMASK_FUNCS:
+        raise ValueError(f"Invalid soft mask type. Must be one of: {list(SOFTMASK_FUNCS.keys())}")
+
+    if type == 'sum':
+        return SOFTMASK_FUNCS[type](binmask, softmask)
+    elif type == '2levels':
+        return SOFTMASK_FUNCS[type](binmask, soft_width_px, soft_value)
+    else:
+        return SOFTMASK_FUNCS[type](binmask, soft_width_px)
+
+
 def save_softmask(soft_mask, fname_soft_mask, fname_binary_mask):
     """
     Save the soft mask to a NIFTI file
@@ -435,3 +430,11 @@ def save_softmask(soft_mask, fname_soft_mask, fname_binary_mask):
     nii_softmask.to_filename(fname_soft_mask)
 
     return nii_softmask
+
+
+SOFTMASK_FUNCS = {
+    '2levels': create_two_levels_softmask,
+    'linear': create_linear_softmask,
+    'gaussian': create_gaussian_softmask,
+    'sum': add_softmask_to_binmask
+}

@@ -12,7 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.mask_utils import convert_to_pixels, create_two_levels_softmask, create_linear_softmask, create_gaussian_softmask, add_softmask_to_binmask, save_softmask
+from shimmingtoolbox.masking.mask_utils import SOFTMASK_FUNCS, save_softmask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -428,13 +428,8 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'fname_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
-              help="""Type of soft mask :\n
-              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-bv)\n
-              - linear: Radial linear gradient, from 1 to 0.\n
-              - gaussian: Gaussian distribution.\n
-              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
-              """)
+@click.option('-t', '--type', type=click.Choice(list(SOFTMASK_FUNCS.keys())), default='2levels',
+              help=f"Type of soft mask. Allowed: {', '.join(SOFTMASK_FUNCS.keys())}")
 @click.option('-bw', '--blur-width', 'blur_width', default = '6mm',
               help="Width of the blurred zone.")
 @click.option('-bu', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
@@ -446,30 +441,8 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
 
     set_all_loggers(verbose)
 
-    # Load the input masks from their NIFTI file
-    nifti_input_binmask = nib.load(fname_input_binmask)
-    input_binmask = nifti_input_binmask.get_fdata()
-    if fname_input_softmask is not None:
-        nifti_input_softmask = nib.load(fname_input_softmask)
-        input_softmask = nifti_input_softmask.get_fdata()
-
-    # Convert blur width to pixels
-    blur_width_px = convert_to_pixels(blur_width, blur_units, nifti_input_binmask.header)
-
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
-    softmask_funcs = {
-        '2levels': lambda: create_two_levels_softmask(input_binmask, blur_width_px, blur_value),
-        'linear': lambda: create_linear_softmask(input_binmask, blur_width_px),
-        'gaussian': lambda: create_gaussian_softmask(input_binmask, blur_width_px),
-        'sum': lambda: add_softmask_to_binmask(input_binmask, input_softmask)
-    }
-
-    # Create a soft mask
-    if type in softmask_funcs:
-        output_softmask = softmask_funcs[type]()
-    else:
-        raise ValueError("Invalid soft mask type. Impossible to create soft mask.")
-
+    output_softmask = create_softmask(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
     save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)
