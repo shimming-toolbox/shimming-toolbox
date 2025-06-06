@@ -99,8 +99,8 @@ class Pmu(object):
         Get the indexes of the data corresponding to the start and stop times
 
         Args:
-            start_time:
-            stop_time:
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
 
         Returns:
             tuple: Tuple containing the indexes of the start and stop times
@@ -229,6 +229,10 @@ class Pmu(object):
         """
         Returns the trigger times in ms of the resp trace. These triggers estimate the beginning of a new respiratory
         cycle
+
+        Args:
+            start_time (int): Start time in milliseconds past midnight
+            stop_time (int): Stop time in milliseconds past midnight
 
         Returns:
             numpy.ndarray: Array with the trigger times in ms of the resp trace
@@ -388,3 +392,44 @@ class PmuExt(Pmu):
             fname_pmu (str): Filename of the Siemens .trig file
         """
         super().__init__(fname_pmu)
+
+    def get_acquisition_time(self, n_volumes, n_slices, echo_time, fat_suppression=False, delay=2,
+                             acq_time_start=None, acq_time_stop=None):
+        """
+        Calculates when the middle of the echo occurs based on the time a trigger occurs.
+        That is: trigger_time + echo_time + delay.
+
+        Args:
+            n_volumes (int): Number of volumes in the acquisition.
+            n_slices (int): Number of slices in the acquisition.
+            echo_time (float): Echo time in ms.
+            fat_suppression (bool): If True, discard half the trigger as being for indicative of a fat sat trigger.
+            delay (int): Delay in ms to apply to the acquisition timestamps. This delay is implement in the pulse
+                         sequence to let time for the currents to change.
+            acq_time_start (int): Acquisition start time in milliseconds past midnight.
+            acq_time_stop (int): Acquisition stop time in milliseconds past midnight.
+
+        Returns:
+            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
+        """
+
+        trigger_times = self.get_trigger_times(acq_time_start, acq_time_stop)
+        if len(trigger_times) == 0:
+            raise ValueError("No trigger times found in the specified range.")
+
+        # If fat suppression, discard half the triggers
+        if fat_suppression:
+            # Todo: Verify if the first trigger is a fatsat trigger or an imaging trigger
+            trigger_times = trigger_times[::2]
+
+        # Make sure we have the expected number of triggers
+        if len(trigger_times) != n_volumes * n_slices:
+            raise ValueError("Not enough trigger times for the specified number of volumes and slices.")
+
+        # Calculate acquisition timestamps
+        acquisition_timestamps = np.array(trigger_times) + echo_time + delay
+
+        # Reshape to (n_volumes, n_slices)
+        acquisition_timestamps = acquisition_timestamps.reshape(n_volumes, n_slices)
+
+        return acquisition_timestamps

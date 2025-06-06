@@ -24,7 +24,7 @@ from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, S
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.load_nifti import get_acquisition_times
-from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.pmu import PmuResp, PmuExt
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
@@ -1098,7 +1098,8 @@ class RealTimeSequencer(Sequencer):
 
     def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
                  coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
-                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
+                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None, pmu_ext=None,
+                 is_pmu_time_offset_auto=False):
         """
         Initialization of the RealTimeSequencer class
 
@@ -1136,12 +1137,14 @@ class RealTimeSequencer(Sequencer):
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
+            pmu_ext (PmuExt): PmuExt object containing trigger information.
             is_pmu_time_offset_auto (bool): If True, the PMU time offset will be automatically calculated.
 
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.json_fmap = json_fmap
         self.pmu = pmu
+        self.pmu_ext = pmu_ext
         self.coils_static = coils_static
         self.coils_riro = coils_riro
         self.method = method
@@ -1193,13 +1196,17 @@ class RealTimeSequencer(Sequencer):
 
     def calculate_best_pmu_time_offset(self):
         logger.info(f"Calculating best time offset")
-        # Probably sweep at all times but centered on the frequency added
         n_slices = self.nii_fieldmap_orig.shape[2]
 
         previous_time_offset = self.pmu.time_offset
         self.pmu.adjust_start_time(0)
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
-        acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
+        if self.pmu_ext is not None:
+            # TODO: Fill in missing arguments
+            acq_times = self.pmu_ext.get_acquisition_time()
+        else:
+            acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
+
         n_samples = 1000
         start_time_mdh, stop_time_mdh = self.pmu.get_start_and_stop_times()
         min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
@@ -1260,7 +1267,7 @@ class RealTimeSequencer(Sequencer):
 
             self.pmu.adjust_start_time(best_time_offset)
 
-            acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+            # acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
             pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
 
@@ -1399,8 +1406,14 @@ class RealTimeSequencer(Sequencer):
         Returns:
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
-        # Fetch PMU timing
-        self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+        # Fetch the acquisition time of each colume and slice
+        if self.pmu_ext is not None:
+            # TODO: Fill in missing arguments
+            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times()
+        else:
+            self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+
+        # Fix the timestamps if the fmap was extended
         if self.extended_fmap:
             # If the field map was extended, we need to add extra slices to the acq_timestamps
             n_slices_to_extend = int((self.nii_fieldmap.shape[2] - self.acq_timestamps_orig.shape[1]) / 2)
@@ -1413,7 +1426,7 @@ class RealTimeSequencer(Sequencer):
             self.acq_timestamps = self.acq_timestamps_orig
 
         # TODO: deal with saturation
-        # fit PMU and fieldmap values
+        # Fetch the pressure values at the acquisition timestamps
         self.acq_pressures_orig = self.pmu.interp_resp_trace(self.acq_timestamps_orig)
         self.acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
 
