@@ -3,7 +3,6 @@ cloup==3.0.5
 coverage==7.6.11
 dataclasses==0.6
 dcm2bids==3.2.0
-dcm2niix==1.0.20241211
 importlib-metadata==6.8
 joblib==1.4.2
 matplotlib==3.10
