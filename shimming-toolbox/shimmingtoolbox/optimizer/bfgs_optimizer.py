@@ -5,6 +5,7 @@ from scipy import optimize as opt
 
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 
+
 class BFGSOpt(LsqOptimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize (args) to optimize a given mask. The algorithm uses a gradient based solver (L-BFGS-B)
