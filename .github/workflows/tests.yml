@@ -24,7 +24,6 @@ jobs:
           - 'macos-15'
           - 'ubuntu-24.04'
           - 'ubuntu-22.04'
-          - 'ubuntu-20.04'
         python-version:
           - '3.10'
         tests:
@@ -136,7 +135,6 @@ jobs:
         run: |
           echo "Check Bash scripts"
           if [[ -n "$(ls examples/*.sh)" ]]; then shellcheck examples/*.sh; fi
-
 
       - name: Upload Coverage
         run: |

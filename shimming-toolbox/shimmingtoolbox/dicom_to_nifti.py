@@ -1,7 +1,7 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-from distutils.dir_util import copy_tree
+from shutil import copytree
 import json
 import logging
 import nibabel as nib
@@ -55,8 +55,12 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     if not os.path.exists(path_derivatives):
         os.makedirs(path_derivatives)
 
+    # Check if path_nifti is inside path_dicom for recursive copying issues
+    if os.path.commonpath([path_dicom, path_nifti]) == path_dicom:
+        raise ValueError("path_nifti cannot be inside path_dicom, as it may cause recursive copying issues.")
+
     # Copy original dicom files into nifti_path/sourcedata
-    copy_tree(path_dicom, os.path.join(path_nifti, 'sourcedata'))
+    copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
 
     # Update the PATH environment variable to include the dcm2niix executable
     # TODO: Try this out on Windows, path could be Scripts instead of bin
