@@ -6,6 +6,7 @@ import numpy as np
 from scipy.ndimage import binary_dilation, gaussian_filter
 from skimage.morphology import ball
 
+
 def create_softmasks(fname_binmask, fname_softmask=None, type='gaussian', soft_width=6, soft_units='mm', soft_value=0.5):
     """
     Create a soft mask from a binary mask by adding a soft zone around the binary mask.
@@ -40,6 +41,7 @@ def create_softmasks(fname_binmask, fname_softmask=None, type='gaussian', soft_w
         return add_softmask_to_binmask(binmask, softmask)
     else:
         raise ValueError("Invalid soft mask type. Must be one of: '2levels', 'linear', 'gaussian', 'sum'")
+
 
 def convert_to_pixels(lenght, units, header):
     """
