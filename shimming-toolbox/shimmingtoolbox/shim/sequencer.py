@@ -1838,7 +1838,7 @@ class RealTimeSequencer(Sequencer):
         std_unshimmed = np.std(unshimmed, axis=-1, dtype=np.float64)
 
         # Plot
-        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=(mask!=0), fill_value=np.nan)
+        nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=(mask==0), fill_value=np.nan)
         nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
         mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
