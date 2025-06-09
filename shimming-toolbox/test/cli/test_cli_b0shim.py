@@ -104,8 +104,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -141,8 +141,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -189,8 +189,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -242,8 +242,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -351,7 +351,7 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_coils(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil"""
@@ -417,7 +417,7 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_sph_order_3(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 3 with default constraints"""
@@ -444,7 +444,7 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_coils_and_sph(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil and scanner coil"""
@@ -483,7 +483,7 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with chronological-coil o_format"""
@@ -512,7 +512,7 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_fatsat(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with input coil"""
@@ -580,10 +580,10 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
             # There should be 4 x 10 x 1 value
 
     def test_cli_dynamic_format_slicewise_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
@@ -613,10 +613,10 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_format_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -805,7 +805,7 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
             # Artefacts of the debug verbose
             assert os.path.isfile(os.path.join(tmp, "tmp_extended_fmap.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fmap.nii.gz"))
@@ -839,8 +839,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -1022,11 +1022,11 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[5].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -1064,11 +1064,11 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
-            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"), 'r') as file:
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"), 'r') as file:
                 lines = file.readlines()
                 line = lines[5].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
@@ -1105,7 +1105,7 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
 
     def test_cli_rt_sph_order_02(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1138,12 +1138,12 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch4_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch5_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch6_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch7_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch8_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch4_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch5_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch6_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch7_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch8_Prisma_fit_167006.txt"))
 
     def test_cli_rt_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1315,10 +1315,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
             # Artefacts of the debug verbose
             assert os.path.isfile(os.path.join(tmp, "tmp_extended_fmap.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fmap.nii.gz"))
@@ -1353,10 +1353,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_rt_chronological_ch(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1390,10 +1390,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_rt_gradient_order01(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1618,10 +1618,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_rt_pseudo_inverse(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1655,10 +1655,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_rt_bfgs(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1692,10 +1692,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
     def test_cli_rt_lsq(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1729,10 +1729,10 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit.txt"))
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
 
     def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):

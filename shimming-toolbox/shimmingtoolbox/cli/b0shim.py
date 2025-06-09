@@ -1171,6 +1171,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
     if manufacturers_model_name is not None:
         manufacturers_model_name.replace(' ', '_')
+    device_serial_number = json_fm_data.get('DeviceSerialNumber')
 
     list_coils = []
 
@@ -1179,11 +1180,11 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
-        
-        # If 3D, extend to 4D by adding singleton dimension 
+
+        # If 3D, extend to 4D by adding singleton dimension
         if coil_data.ndim == 3:
             coil_data = coil_data[..., np.newaxis]
-        
+
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
         list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
@@ -1197,10 +1198,17 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 external_contraints = json.load(json_file)
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
-                                                         scanner_shim_settings, external_contraints)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+                                                         orders,
+                                                         manufacturer,
+                                                         device_serial_number,
+                                                         scanner_shim_settings,
+                                                         external_contraints)
         else:
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+                                                         orders,
+                                                         manufacturer,
+                                                         device_serial_number,
                                                          scanner_shim_settings)
 
         isocenter = get_isocenter(json_fm_data)
