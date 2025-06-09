@@ -9,6 +9,8 @@ import logging
 from matplotlib.figure import Figure
 import numpy as np
 
+from shimmingtoolbox.load_nifti import get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on
+
 logger = logging.getLogger(__name__)
 
 
@@ -393,8 +395,43 @@ class PmuExt(Pmu):
         """
         super().__init__(fname_pmu)
 
-    def get_acquisition_time(self, n_volumes, n_slices, echo_time, fat_suppression=False, delay=2,
-                             acq_time_start=None, acq_time_stop=None):
+    def get_acquisition_times(self, nii_data, json_data):
+        """ Calculates when the middle of the echo occurs based on the time a trigger occurs.
+            That is: trigger_time + echo_time + delay.
+
+        Args:
+            nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
+            json_data (dict): Json dict corresponding to a nifti sidecar (BIDS format).
+
+        Returns:
+            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
+        """
+
+        if len(nii_data.shape) == 4:
+            n_volumes = nii_data.shape[3]
+        else:
+            n_volumes = 1
+
+        if len(nii_data.shape) == 2:
+            n_slices = nii_data.shape[2]
+        else:
+            n_slices = 1
+
+        # Offset time in ms to add a buffer to the imprecise timing of the DICOMS
+        offset = 5000
+        acq_start_time = int(get_acquisition_start_time(nii_data)) - offset
+        acq_stop_time = int(get_acquisition_stop_time(nii_data, json_data)) + offset
+
+        if 'EchoTime' in json_data:
+            echo_time = json_data['EchoTime'] * 1000
+        else:
+            raise ValueError("EchoTime not found in json_data. Please provide a valid json_data with EchoTime.")
+
+        return self._get_acquisition_times(n_volumes, n_slices, echo_time, fat_suppression=is_fatsat_on(json_data),
+                                           delay=2, acq_time_start=acq_start_time, acq_time_stop=acq_stop_time)
+
+    def _get_acquisition_times(self, n_volumes, n_slices, echo_time, fat_suppression=False, delay=2,
+                               acq_time_start=None, acq_time_stop=None):
         """
         Calculates when the middle of the echo occurs based on the time a trigger occurs.
         That is: trigger_time + echo_time + delay.
@@ -419,7 +456,8 @@ class PmuExt(Pmu):
 
         # If fat suppression, discard half the triggers
         if fat_suppression:
-            # Todo: Verify if the first trigger is a fatsat trigger or an imaging trigger
+            # If there is fat sat, the 2nd, 4th, ... times correspond to a fat sat trigger
+            # We only keep the imaging triggers (i.e.: 1st, 3rd, ... -> index 0, 2, 4...)
             trigger_times = trigger_times[::2]
 
         # Make sure we have the expected number of triggers

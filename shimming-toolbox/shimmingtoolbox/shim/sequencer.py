@@ -1202,9 +1202,10 @@ class RealTimeSequencer(Sequencer):
         self.pmu.adjust_start_time(0)
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
         if self.pmu_ext is not None:
-            # TODO: Fill in missing arguments
-            acq_times = self.pmu_ext.get_acquisition_time()
+            # Use the external triggers
+            acq_times = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
         else:
+            # Infer everything from the BIDS sidecar
             acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
 
         n_samples = 1000
@@ -1267,7 +1268,6 @@ class RealTimeSequencer(Sequencer):
 
             self.pmu.adjust_start_time(best_time_offset)
 
-            # acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
             pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
 
@@ -1406,11 +1406,12 @@ class RealTimeSequencer(Sequencer):
         Returns:
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
-        # Fetch the acquisition time of each colume and slice
+        # Fetch the acquisition time of each volume and slice
         if self.pmu_ext is not None:
-            # TODO: Fill in missing arguments
-            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times()
+            # Use the external triggers
+            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
         else:
+            # Infer everything from the BIDS sidecar
             self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
 
         # Fix the timestamps if the fmap was extended

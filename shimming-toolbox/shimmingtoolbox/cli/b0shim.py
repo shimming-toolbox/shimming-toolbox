@@ -21,7 +21,7 @@ from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
-from shimmingtoolbox.load_nifti import get_isocenter
+from shimmingtoolbox.load_nifti import get_isocenter, is_fatsat_on
 from shimmingtoolbox.pmu import PmuResp, PmuExt
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
@@ -332,7 +332,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     coefs = sequencer.shim()
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    options['fatsat'] = get_fatsat_option(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -814,7 +814,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     pmu = PmuResp(fname_resp, time_offset=time_offset)
     if fname_ext is not None:
         # Load external trigger file if provided
-        pmu_ext = PmuExt(fname_ext, time_offset=time_offset)
+        pmu_ext = PmuExt(fname_ext)
     else:
         pmu_ext = None
 
@@ -836,7 +836,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    options['fatsat'] = get_fatsat_option(json_anat_data, fatsat)
 
     # Get common coils between static and riro // Comparison based on coil name
     coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
@@ -1234,9 +1234,9 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nib.save(nii, fname_to_save)
 
 
-def _get_fatsat_option(json_anat, fatsat):
-    """ Return if the fat saturation option should be turned on or off. This function mainly exists to resolve the 'auto'
-        case
+def get_fatsat_option(json_anat, fatsat):
+    """ Return if the fat saturation option should be turned on or off.
+        This function mainly exists to resolve the 'auto' case
 
     Args:
         json_anat (dict): BIDS Json sidecar
@@ -1248,12 +1248,13 @@ def _get_fatsat_option(json_anat, fatsat):
     fatsat_option = False
 
     if fatsat == 'auto':
-        if 'ScanOptions' in json_anat:
-            if 'FS' in json_anat['ScanOptions']:
-                logger.debug("Fat Saturation pulse detected")
-                fatsat_option = True
+        fatsat_option = is_fatsat_on(json_anat)
     elif fatsat == 'yes':
         fatsat_option = True
+    elif fatsat == 'no':
+        pass
+    else:
+        raise ValueError(f"Invalid fatsat option: {fatsat}. Must be 'yes', 'no' or 'auto'.")
 
     return fatsat_option
 

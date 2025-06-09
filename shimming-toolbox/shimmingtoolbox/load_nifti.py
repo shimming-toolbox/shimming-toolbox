@@ -13,6 +13,7 @@ from shimmingtoolbox.utils import iso_times_to_ms
 logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 POSSIBLE_TIMINGS = ['slice-middle', 'volume-start', 'volume-middle']
+SECONDS_IN_A_DAY = 24 * 60 * 60
 
 
 def get_acquisition_times(nii_data, json_data, when='slice-middle'):
@@ -34,13 +35,17 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     n_volumes = nii_data.header['dim'][4]
     n_slices = nii_data.shape[2]
 
+    if json_data.get('RepetitionTimeExcitation') is None:
+        # EPI data includes RepetitionTimeExcitation and RepetitionTime. If RepetitionTimeExcitation is not defined,
+        # then the RepetitionTime is the time between 2 RF pulses, which is not what we want, we want the time between
+        # 2 volumes.
+        raise NotImplementedError("get_acquisition_times is not implemented for non EPI data.")
+
     # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
     deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
 
-    # Time the acquisition of data for this image started (ISO format)
-    acq_start_time_iso = json_data['AcquisitionTime']
-    # todo: dummy scans?
-    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]
+    # Time the acquisition of data that this image started (ISO format)
+    acq_start_time_ms = get_acquisition_start_time(json_data)
 
     # Start time for each volume [ms]
     volume_start_times = np.linspace(acq_start_time_ms,
@@ -84,12 +89,16 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         # Convert to ms
         slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
 
-        phase_encode_steps = int(data.get('PhaseEncodingSteps'))
-        repetition_slice_excitation = float(data.get('RepetitionTimeExcitation'))
+        phase_encode_steps = data.get('PhaseEncodingSteps')
+        repetition_slice_excitation = data.get('RepetitionTimeExcitation')
         if repetition_slice_excitation is None or phase_encode_steps is None:
             logger.warning("Not enough information to figure out each slice time. "
                            "Either/Both of RepetitionTimeExcitation and PhaseEncodingSteps is/are undefined")
             return np.zeros(n_slices)
+
+        # Convert to int and float if it was not None
+        phase_encode_steps = int(phase_encode_steps)
+        repetition_slice_excitation = float(repetition_slice_excitation)
 
         # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
         # (more than one slice acquired within a TR excitation)
@@ -107,9 +116,10 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             logger.warning("No PulseSequenceDetails name found in JSON file.")
             return np.zeros(n_slices)
 
-        if "%CustomerSeq%\\gre_field_mapping_PMUlog" == pulse_sequence_details:
+        if "gre_field_mapping" in pulse_sequence_details:
             # This protocol acquires 2 echos with 2 different TRs
             deltat_slice = repetition_slice_excitation * phase_encode_steps * 2
+            logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
         elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
             deltat_slice = repetition_slice_excitation * phase_encode_steps
         else:
@@ -172,6 +182,95 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             timing[i, :] = volume_start_times[i] + slice_timing_middle  # [ms]
 
     return timing  # [ms]
+
+
+def get_acquisition_duration(nii_data, json_data):
+    """ Compute the acquisition duration from the nifti data and the json sidecar.
+
+    Args:
+        nii_data (nibabel.Nifti1Image): Nibabel object containing the image data.
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Acquisition duration in milliseconds.
+    """
+
+    if nii_data.ndim == 4:
+        n_volumes = nii_data.shape[3]
+    else:
+        # If the data is not 4D, then there is no time dimension, so there is only a single volume
+        n_volumes = 1
+
+    if json_data.get('RepetitionTimeExcitation') is not None and json_data.get('RepetitionTime') is not None:
+        # if both RepetitionTimeExcitation and RepetitionTime are defined, then the RepetitionTime is the time between
+        # 2 volumes and RepetitionTimeExcitation is the time between 2 RF pulses.
+        deltat_volume = float(json_data['RepetitionTime']) * 1000
+    elif json_data.get('RepetitionTimeExcitation') is None and json_data.get('RepetitionTime') is not None:
+        # if only RepetitionTime is defined, then it is the time between 2 RF pulses
+        repetition_time = float(json_data.get('RepetitionTime')) * 1000  # [ms]
+        phase_encode_steps = int(json_data.get('PhaseEncodingSteps'))
+
+        pulse_sequence_details = json_data.get('PulseSequenceDetails')
+        if pulse_sequence_details is None:
+            raise ValueError("PulseSequenceDetails not found in JSON sidecar.")
+
+        if "gre_field_mapping" in pulse_sequence_details:
+            # This protocol acquires 2 echos with 2 different TRs
+            deltat_slice = repetition_time * phase_encode_steps * 2
+            logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
+        elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
+            deltat_slice = repetition_time * phase_encode_steps
+        else:
+            deltat_slice = repetition_time * phase_encode_steps
+            logger.warning("Protocol name not recognized. Cannot compute acquisition duration.")
+
+        n_slices = nii_data.shape[2]
+
+        deltat_volume = deltat_slice * n_slices  # [ms]
+
+    else:
+        raise ValueError("RepetitionTime is not defined in the JSON sidecar. Can't compute acquisition duration.")
+
+    return n_volumes * deltat_volume  # [ms]
+
+
+def get_acquisition_start_time(json_data):
+    """
+    Get the acquisition start time in milliseconds past midnight from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Acquisition start time in milliseconds past midnight.
+
+    """
+    acq_start_time_iso = json_data.get('AcquisitionTime')
+    if acq_start_time_iso is None:
+        raise ValueError("Acquisition time not found in json sidecar.")
+    # todo: dummy scans?
+    acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+    return acq_start_time_ms
+
+
+def get_acquisition_stop_time(nii_data, json_data):
+    """
+    Get the acquisition stop time in milliseconds past midnight from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Acquisition stop time in milliseconds past midnight.
+
+    """
+
+    acq_start_time = get_acquisition_start_time(json_data)
+    acq_duration = get_acquisition_duration(nii_data, json_data)
+    acq_stop_time = acq_start_time + acq_duration
+
+    # If the acquisition stop time is greater than 24 hours, then it is the next day
+    return acq_stop_time % (SECONDS_IN_A_DAY * 1000)
 
 
 def load_nifti(path_data, modality='phase'):
@@ -451,3 +550,26 @@ def get_isocenter(json_data):
     isocenter = -table_position_ras
 
     return isocenter
+
+
+def is_fatsat_on(json_data):
+    """ Return if the scan was acquired using fat sat.
+
+    Args:
+        json_anat (dict): BIDS Json sidecar
+
+    Returns:
+        bool: Whether fat sat is on
+    """
+
+    if 'ScanOptions' in json_data:
+        if 'FS' in json_data['ScanOptions']:
+            logger.debug("Fat Saturation pulse detected")
+            is_fatsat = True
+        else:
+            logger.debug("No Fat Saturation pulse detected")
+            is_fatsat = False
+    else:
+        raise ValueError("ScanOptions not found in json sidecar.")
+
+    return is_fatsat
