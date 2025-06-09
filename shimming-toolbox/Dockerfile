@@ -5,14 +5,9 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y git make curl unzip vim xvfb bzip2 build-essential python3 python3-pip \
+    apt-get install -y git make curl sudo unzip vim xvfb bzip2 build-essential python3 python3-pip \
                     libglib2.0-0 libgl1 libxrender1 libxkbcommon-x11-0 libdbus-1-3 && \
     apt-get clean
-
-# Install FSL
-RUN mkdir code && \
-    curl -Ls https://fsl.fmrib.ox.ac.uk/fsldownloads/fslconda/releases/getfsl.sh | sh -s && \
-    mv ~/fsl /code/
 
 # Install SCT
 RUN mkdir -p code/sct && \
@@ -25,6 +20,12 @@ RUN mkdir -p code/st && \
     git clone --branch 1.2 --depth 1 https://github.com/shimming-toolbox/shimming-toolbox.git /code/st && \
     cd /code/st && \
     make install
+
+# Install prelude
+RUN mkdir -p code/prelude && \
+    mkdir prelude && \
+    curl -o prelude/prelude -JL https://github.com/shimming-toolbox/binaries/raw/master/prelude_macos && \
+    sudo install prelude/prelude /code/prelude
 
 # Activate ST environment
 SHELL ["/bin/bash", "-c"]
