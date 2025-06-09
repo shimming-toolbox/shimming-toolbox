@@ -155,7 +155,8 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # MAE regularized to minimize currents
-        return np.mean(self.weights * np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        return np.mean(np.abs(residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
         """ Pseudo huber objective function to minimize mean squared error or mean absolute error.
@@ -243,7 +244,8 @@ class LsqOptimizer(OptimizerUtils):
         """
 
         # STD regularized to minimize currents
-        return np.std(self.weights * (unshimmed_vec + coil_mat @ coef)) / factor + np.abs(coef).dot(self.reg_vector)
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        return np.std(residuals) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
@@ -259,7 +261,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        b0_rmse_coef = norm(self.weights * (unshimmed_vec + coil_mat @ coef) / factor, 2)
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        b0_rmse_coef = norm(residuals / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         # RMSE regularized to minimize currents
@@ -280,7 +283,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        b0_rmse_coef = norm(self.weights * (unshimmed_vec + coil_mat @ coef) / factor, 2)
+        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        b0_rmse_coef = norm(residuals / factor, 2)
         signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
