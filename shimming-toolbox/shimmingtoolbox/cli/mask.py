@@ -12,7 +12,7 @@ import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.mask_utils import SOFTMASK_FUNCS, save_softmask
+from shimmingtoolbox.masking.softmasks import save_softmask, create_softmasks
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -428,8 +428,13 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'fname_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-t', '--type', type=click.Choice(list(SOFTMASK_FUNCS.keys())), default='2levels',
-              help=f"Type of soft mask. Allowed: {', '.join(SOFTMASK_FUNCS.keys())}")
+@click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
+              help="""Type of soft mask :\n
+              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-bv)\n
+              - linear: Radial linear gradient, from 1 to 0.\n
+              - gaussian: Gaussian distribution.\n
+              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
+              """)
 @click.option('-bw', '--blur-width', 'blur_width', default = '6mm',
               help="Width of the blurred zone.")
 @click.option('-bu', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
@@ -444,5 +449,5 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
-    output_softmask = create_softmask(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
+    output_softmask = create_softmasks(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
     save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)
