@@ -159,7 +159,7 @@ def create_fname_from_path(path, file_default):
     return os.path.abspath(fname)
 
 
-def set_all_loggers(verbose, list_exclude=('matplotlib',)):
+def set_all_loggers(verbose, list_exclude=('matplotlib', 'indexed_gzip')):
     """ Set all loggers in the root manager to the verbosity level. Exclude any logger with the name in list_exclude
 
     Args:

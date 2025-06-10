@@ -55,6 +55,9 @@ def mean(fname_input, fname_output, axis, verbose):
     if fname_output is None:
         _, filename = os.path.split(fname_input)
         fname_output = add_suffix(os.path.join(os.curdir, filename), '_mean')
+
+    create_output_dir(fname_output, is_file=True)
+
     nib.save(nii_output, fname_output)
 
 
