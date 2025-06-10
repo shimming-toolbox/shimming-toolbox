@@ -40,7 +40,7 @@ function edit_shellrc() {
 source "${ST_DIR}/${PYTHON_DIR}/bin/activate"
 
 print info "Installing python"
-"$ST_DIR"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge python=3.10 dcm2niix=1.0.20241211
+"$ST_DIR"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge python=3.10
 
 print info "Installing shimming-toolbox"
 cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/dcm2bids.json" "${ST_DIR}/dcm2bids.json"

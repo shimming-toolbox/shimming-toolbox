@@ -1193,7 +1193,6 @@ class RealTimeSequencer(Sequencer):
 
     def calculate_best_pmu_time_offset(self):
         logger.info(f"Calculating best time offset")
-        # Todo: deal with loads of warnings when setting the time offset
         # Probably sweep at all times but centered on the frequency added
         n_slices = self.nii_fieldmap_orig.shape[2]
 
@@ -1205,8 +1204,6 @@ class RealTimeSequencer(Sequencer):
         start_time_mdh, stop_time_mdh = self.pmu.get_start_and_stop_times()
         min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
         max_bound_offset = min(mean_respiratory_cycle_time / 2, stop_time_mdh - acq_times.max())
-        # min_bound_offset = -mean_respiratory_cycle_time / 2
-        # max_bound_offset = mean_respiratory_cycle_time / 2
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
@@ -1223,7 +1220,6 @@ class RealTimeSequencer(Sequencer):
             for i_slice in range(n_slices):
                 if i_slice in []:
                     continue
-                # Todo: It was 2048, should it be the mean?
                 pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
                 y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
                 y = (y - y.mean())

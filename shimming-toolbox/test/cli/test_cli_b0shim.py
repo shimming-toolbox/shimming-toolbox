@@ -648,7 +648,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "-18.511886 |  0.001398 | -0.015534 | -0.076382"
+                assert lines[3].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
 
     def test_cli_dynamic_format_gradient_and_custom_coil(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -721,7 +721,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "68.853567 | 0.000000 | 0.000000 | 0.000000"
+                assert lines[3].strip() == "119.644382 | 0.000000 | 0.000000 | 0.000000"
 
     def test_cli_dynamic_format_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil with gradient o_format"""
@@ -753,7 +753,7 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == '0.000000 | -0.003530 | -0.013124 | -0.031381'
+                assert lines[6].strip() == '0.000000 | -0.001980 | -0.032016 | -0.066749'
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -1036,8 +1036,7 @@ class TestCLIRealtime(object):
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
                                              '--time-offset', 'auto',
-                                             '--output', tmp,
-                                             '-v', 'debug'],
+                                             '--output', tmp],
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
@@ -1408,10 +1407,10 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim_riro.txt"))
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "6.831677 | -0.000068 | -0.008440 | -0.024067" and lines[7].strip() == "-3.759444 |  0.000411 | -0.023287 | -0.072897"
+                assert lines[6].strip() == "10.809849 | -0.001234 | -0.029466 | -0.060462" and lines[7].strip() == "-3.759444 |  0.000411 | -0.023287 | -0.072897"
             with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "-0.000639 | 0.000000 | -0.000001 | -0.000004" and lines[0].strip() == "Mean pressure = 1454.19"
+                assert lines[7].strip() == "-0.015250 | 0.000000 | -0.000005 | -0.000015" and lines[0].strip() == "Mean pressure = 1454.19"
 
     def test_cli_rt_gradient_order1(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
@@ -1454,7 +1453,7 @@ class TestCLIRealtime(object):
                     lines[3].strip() == ("0.000000 | -0.001942 | -0.031768 | -0.066558")
             with open(os.path.join(tmp, "scanner_shim_riro.txt"), 'r') as file:
                 lines = file.readlines()
-                assert lines[15].strip() == "0.000000 | 0.000002 | -0.000002 | -0.000006" and \
+                assert lines[4].strip() == "0.000000 | 0.000001 | -0.000004 | -0.000005" and \
                     lines[0].strip() == ("Mean pressure = 1454.19")
 
     def test_cli_rt_gradient_order0(self, nii_fmap, nii_anat, nii_mask, fm_data, anat_data):

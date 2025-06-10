@@ -68,7 +68,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         mr_acquisition_type = data.get('MRAcquisitionType')
         if mr_acquisition_type != '2D':
             # mr_acquisition_type is None or 3D
-            logger.warning("MR acquisition type is not 2D or not set.")
+            logger.warning("MR acquisition type is not 2D.")
             return np.zeros(n_slices)
 
         # list containing the time at which each slice was acquired
@@ -133,14 +133,22 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             if fourier is None:
                 logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
                 fourier = 1.0
+            elif fourier < 1/2:
+                raise ValueError("Partial fourier value is less than 1/2. That should not be possible.")
             else:
                 fourier = float(fourier)
                 if not (0 <= fourier <= 1):
                     logger.warning("Partial Fourier value format not supported, make sure it is between 0 and 1.")
                     return np.zeros(n_slices)
 
-            # When partial fourier is used, crossing of the middle of k-space is shifted
-            # For Siemens, it seems to start with the "smaller" side
+            # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
+            # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,
+            # it would acquire the center-line of k-space after 3/7 of the time it takes to acquire a slice.
+            # (For a 700ms slice, the center-line would be acquired ~300ms). I simulated a couple of sequences in
+            # POET and observed that the "smaller" portion is always acquired first (the 1/8 portion is skipped,
+            # then 3/8 is acquired, k-space is crossed then the final 1/2 is acquired. In total, the k-space crossing
+            # was at 3/7 of the slice time).
+
             ratio = (fourier - 0.5) / fourier
         else:
             logger.warning("Manufacturer not supported for partial fourier, assuming no partial fourier.")

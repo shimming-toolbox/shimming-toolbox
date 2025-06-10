@@ -275,8 +275,8 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
             n_offsets = np.round(n_offsets_float)
 
             if 0.3 < (n_offsets_float % 1) < 0.7:
-                logger.warning("The number of 2*pi offsets when calculating the fieldmap is close to "
-                               "ambiguous, verify the output fieldmap.")
+                logger.warning("The number of n*2pi offsets when calculating the fieldmap is close to "
+                               "ambiguous, verify the output fieldmap. ('n' was: {n_offsets_float})")
 
             if n_offsets != 0:
                 logger.info(f"Correcting for n*2pi phase offset, 'n' was: {n_offsets_float}")
