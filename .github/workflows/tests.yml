@@ -136,7 +136,6 @@ jobs:
           echo "Check Bash scripts"
           if [[ -n "$(ls examples/*.sh)" ]]; then shellcheck examples/*.sh; fi
 
-
       - name: Upload Coverage
         run: |
           pip3 install coveralls
