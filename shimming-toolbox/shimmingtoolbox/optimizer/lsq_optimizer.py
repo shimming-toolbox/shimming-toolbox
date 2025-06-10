@@ -25,15 +25,14 @@ class LsqOptimizer(OptimizerUtils):
 
     def __init__(self, coils: ListCoil, unshimmed, affine, opt_criteria='mse', initial_guess_method='zeros',
                  reg_factor=0, w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
-        """
+        f"""
         Initializes coils according to input list of Coil
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (np.ndarray): 3d array of unshimmed volume
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. {allowed_opt_criteria}.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -453,25 +452,23 @@ class PmuLsqOptimizer(LsqOptimizer):
         by the PMU.
     """
 
-    def __init__(self, coils, unshimmed, affine, opt_criteria, pmu: PmuResp, reg_factor=0):
-        """
+    def __init__(self, coils, unshimmed, affine, opt_criteria, pmu: PmuResp, mean_p=0, reg_factor=0):
+        f"""
         Initializes coils according to input list of Coil
 
         Args:
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (np.ndarray): 3d array of unshimmed volume
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. {allowed_opt_criteria}.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
+            mean_p (float): Mean pressure value during the acquisition.
         """
 
         super().__init__(coils, unshimmed, affine, opt_criteria, initial_guess_method='zeros', reg_factor=reg_factor)
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
-        # TODO: Implement mean pressure calculation. This should be taken from the PMU object between different times.
-        # I implemented something in the rt shim PR
-        self.pressure_mean = (self.pressure_max - self.pressure_min) / 2
+        self.pressure_mean = mean_p
         self.rt_bounds = None
 
     def _define_scipy_constraints(self):
