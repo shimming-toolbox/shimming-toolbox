@@ -47,7 +47,7 @@ def test_interp_resp_trace():
 
     acq_pressure = pmu.interp_resp_trace(acq_times)
     data = pmu.get_data()
-    
+
     index_pmu_data = np.linspace(0, len(data) - 1, int(num_points)).astype(int)
     index_pmu_interp = np.linspace(0, num_points - 1, int(num_points)).astype(int)
 
@@ -98,7 +98,7 @@ def test_pmu_fake_data():
     pmu.set_data(fake_data)
     pmu.set_start_and_stop_times(125, 250 * (len(fake_data) - 1) + 125)
 
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000, 'RepetitionTimeExcitation': 0.001, 'AcquisitionTime': "00:00:00.000000"}
 
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)

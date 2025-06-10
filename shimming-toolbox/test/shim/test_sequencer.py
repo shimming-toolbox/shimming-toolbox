@@ -410,7 +410,7 @@ def define_rt_sim_inputs():
     pmu.set_start_and_stop_times(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000, 'RepetitionTimeExcitation': 0.001, 'AcquisitionTime': "00:00:00.000000"}
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
