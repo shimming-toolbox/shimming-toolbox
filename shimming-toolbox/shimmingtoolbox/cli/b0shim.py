@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
-from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge, SPH_HARMONICS_TITLES
 from shimmingtoolbox.load_nifti import get_isocenter
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
@@ -355,15 +355,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             if 'hrd' in o_format_sph:
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
 
-                # Fill in a dictionary with the coefficients for each order
-                coefs_scanner = {}
-                start_channel_scanner = 0
-                for order in scanner_coil_order:
-                    end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
-                    coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
-                    start_channel_scanner = end_channel_scanner_order
-
-                coefs_coil = coefs_scanner
+                coefs_coil = coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer)
 
             else:
                 # If the output format is absolute, add the initial coefs
@@ -508,9 +500,6 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
         # Create column names: "orderX_channelY"
         column_names = ['f0', 'Gx', 'Gy', 'Gz']
         orders = [0, 1]
-        if 2 in coefs.keys():
-            column_names.extend(['Gxx', 'Gxy', 'Gxz', 'Gyx', 'Gyy', 'Gyz', 'Gzx', 'Gzy', 'Gzz'])
-            orders.append(2)
 
         # Transform dict into usable array (nb_slices, n_channels)
         arrays = [coefs.get(order, np.zeros((len(list_slices), 2*order+1))) / 1000 \
@@ -884,21 +873,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
             if 'hrd' in o_format_sph:
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
                 
-                def _coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
-                    # Fill in a dictionary with the coefficients for each order
-                    coefs_scanner = {}
-                    start_channel_scanner = 0
-                    for order in scanner_coil_order:
-                        end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
-                        coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
-                        start_channel_scanner = end_channel_scanner_order
-                    coefs_coil = coefs_scanner
-                    
-                    return coefs_coil
-                
-                coefs_coil_static = _coefs_to_dict(coefs_static, scanner_coil_order_static,
+                coefs_coil_static = coefs_to_dict(coefs_static, scanner_coil_order_static,
                                                    json_anat_data['Manufacturer'])
-                coefs_coil_riro = _coefs_to_dict(coefs_riro, scanner_coil_order_riro,
+                coefs_coil_riro = coefs_to_dict(coefs_riro, scanner_coil_order_riro,
                                                  json_anat_data['Manufacturer'])
                 list_fname_output += _save_to_text_file(coil, coefs_coil_static, list_slices, path_output,
                                                         o_format_sph, options, coil_number=i_coil)
@@ -1750,6 +1727,17 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
                                                 f"{coefs[i_shim][0]:.6f}"))
 
 
+def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
+    # Fill in a dictionary with the coefficients for each order
+    coefs_scanner = {}
+    start_channel_scanner = 0
+    for order in scanner_coil_order:
+        end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+        coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+        start_channel_scanner = end_channel_scanner_order
+    coefs_coil = coefs_scanner
+    
+    return coefs_coil
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
