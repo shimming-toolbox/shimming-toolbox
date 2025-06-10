@@ -36,10 +36,10 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     n_slices = nii_data.shape[2]
 
     if json_data.get('RepetitionTimeExcitation') is None:
-        # EPI data includes RepetitionTimeExcitation and RepetitionTime. If RepetitionTimeExcitation is not defined,
+        # RepetitionTimeExcitation and RepetitionTime are needed. If RepetitionTimeExcitation is not defined,
         # then the RepetitionTime is the time between 2 RF pulses, which is not what we want, we want the time between
         # 2 volumes.
-        raise NotImplementedError("get_acquisition_times is not implemented for non EPI data.")
+        raise NotImplementedError("RepetitionTimeExcitation is not in the JSON sidecar.")
 
     # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
     deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
