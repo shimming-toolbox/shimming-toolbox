@@ -31,6 +31,7 @@ def _define_inputs(fmap_dim, manufacturers_model_name=None, no_shim_settings=Fal
 
     if manufacturers_model_name is not None:
         fm_data['ManufacturersModelName'] = manufacturers_model_name
+        fm_data['ManufacturersModelName'].replace(' ', '_')
 
     if no_shim_settings:
         fm_data['ShimSetting'] = [None]
