@@ -916,7 +916,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
 
 
-                        # If the output format is absolute, add the initial coefs
+                    # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
                         initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
                         for i_channel in range(coefs_coil_static.shape[-1]):
