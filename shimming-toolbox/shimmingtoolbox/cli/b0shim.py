@@ -145,7 +145,7 @@ def b0shim_cli():
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
                                       "all coil channels are encoded across multiple columns in the text file. Use "
-                                      "'-hrd' to output a human readable file with the shim coefficients ")
+                                      "'-hrd' to output a human readable file.")
 @click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
               show_default=True,
               help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
