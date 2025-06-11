@@ -3,16 +3,17 @@
 import pathlib
 import click
 import logging
+import os
 import nibabel as nib
 import numpy as np
-import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
+from shimmingtoolbox.masking.softmasks import save_softmask
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.softmasks import save_softmask, create_softmasks
+from shimmingtoolbox.masking.softmasks import create_softmask as create_softmask_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -449,5 +450,5 @@ def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_soft
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
-    output_softmask = create_softmasks(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
+    output_softmask = create_softmask_api(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
     save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)

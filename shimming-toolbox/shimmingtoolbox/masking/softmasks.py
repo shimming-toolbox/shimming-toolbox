@@ -7,7 +7,7 @@ from scipy.ndimage import binary_dilation, gaussian_filter
 from skimage.morphology import ball
 
 
-def create_softmasks(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, soft_units='mm', soft_value=0.5):
+def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, soft_units='mm', soft_value=0.5):
     """
     Create a soft mask from a binary mask by adding a soft zone around the binary mask.
 
