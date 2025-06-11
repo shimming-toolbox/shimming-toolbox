@@ -73,7 +73,7 @@ def test_mean_axis_out_of_bound():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
         fname_output = os.path.join(tmp, 'mean.nii.gz')
-        with pytest.raises(IndexError, match="axis 3 is out of bounds for array of dimension 3"):
+        with pytest.raises(ValueError, match="Axis 3 is out of bounds for array with 3 dimensions"):
             runner.invoke(maths_cli, ['mean',
                                       '--input', fname_input,
                                       '--axis', '3',

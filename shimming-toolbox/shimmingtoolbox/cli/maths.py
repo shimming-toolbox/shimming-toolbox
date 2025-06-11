@@ -44,7 +44,7 @@ def mean(fname_input, fname_output, axis, verbose):
 
     # Make sure dimensions are appropriate
     if (nii_input.ndim - 1) < axis:
-        raise ValueError(f"Axis: {axis} is out of bounds for array with {nii_input.ndim} dimensions")
+        raise ValueError(f"Axis {axis} is out of bounds for array with {nii_input.ndim} dimensions")
 
     # Calculate the average
     avg = np.mean(nii_input.get_fdata(), axis=axis)
@@ -84,7 +84,7 @@ def std(fname_input, fname_output, axis, verbose):
 
     # Make sure dimensions are appropriate
     if (nii_input.ndim - 1) < axis:
-        raise ValueError(f"Axis: {axis} is out of bounds for array with {nii_input.ndim} dimensions")
+        raise ValueError(f"Axis {axis} is out of bounds for array with {nii_input.ndim} dimensions")
 
     # Compute STD
     std_data = np.std(nii_input.get_fdata(), axis=axis)
