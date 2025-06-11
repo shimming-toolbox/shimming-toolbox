@@ -99,18 +99,17 @@ def std(fname_input, fname_output, axis, verbose):
         _, filename = os.path.split(fname_input)
         fname_output = add_suffix(os.path.join(os.curdir, filename), '_std')
     nib.save(nii_output, fname_output)
-    a=1
 
 
 @maths_cli.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
               help="Input filename, supported extensions: .nii, .nii.gz")
-@click.option('-i2', '--input2', 'fname_input2', type=click.Path(exists=True), required=True,
+@click.option('-d', '--denominator', 'fname_denom', type=click.Path(exists=True), required=True,
               help="Input filename, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
               help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_div.nii.gz]")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def div(fname_input, fname_input2, fname_output, verbose):
+def div(fname_input, fname_denom, fname_output, verbose):
     """Divide NIfTI input by NIfTI input 2."""
 
     # Set logger level
@@ -118,10 +117,14 @@ def div(fname_input, fname_input2, fname_output, verbose):
 
     # Load input
     nii_input = nib.load(fname_input)
-    nii_input2 = nib.load(fname_input2)
+    nii_denom = nib.load(fname_denom)
+
+    if nii_input.ndim < nii_denom.ndim:
+        raise ValueError(f"Input image {fname_input} has fewer dimensions than denominator image {fname_denom}. "
+                         f"Cannot perform division.")
 
     # Compute division
-    div_data = nii_input.get_fdata() / nii_input2.get_fdata()
+    div_data = nii_input.get_fdata() / nii_denom.get_fdata()
 
     # Create nibabel output
     nii_output = nib.Nifti1Image(div_data, nii_input.affine, header=nii_input.header)

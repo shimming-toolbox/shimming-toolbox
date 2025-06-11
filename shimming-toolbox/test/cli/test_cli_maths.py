@@ -51,7 +51,7 @@ def test_div():
         fname_output = os.path.join(tmp, 'div.nii.gz')
         result = runner.invoke(maths_cli, ['div',
                                            '-i', fname_input,
-                                           '-i2', fname_input,
+                                           '-d', fname_input,
                                            '--output', fname_output], catch_exceptions=False)
         assert result.exit_code == 0
         assert os.path.isfile(fname_output)
