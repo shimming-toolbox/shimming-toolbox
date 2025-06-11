@@ -424,23 +424,23 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
                   help="Creates a soft mask by creating a blur zone around the binary mask.")
 @click.option('-i', '--input', 'fname_input_binmask', type=click.Path(), required=True,
               help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
-@click.option('-is', '--input-softmask', 'fname_input_softmask', type=click.Path(), default=None,
+@click.option('-s', '--input-softmask', 'fname_input_softmask', type=click.Path(), default=None,
               help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
 @click.option('-o', '--output', 'fname_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
               show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
               help="""Type of soft mask :\n
-              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-bv)\n
+              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-b)\n
               - linear: Radial linear gradient, from 1 to 0.\n
               - gaussian: Gaussian distribution.\n
-              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-is).\n
+              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-s).\n
               """)
-@click.option('-bw', '--blur-width', 'blur_width', default = '6mm',
+@click.option('-w', '--blur-width', 'blur_width', default = 6,
               help="Width of the blurred zone.")
-@click.option('-bu', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
+@click.option('-u', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
               help="Units of the blur width. Can be in pixels (px) or in millimeters (mm).")
-@click.option('-bv', '--blur-value', 'blur_value', default = 0.5,
-              help="Intensity of the coefficients in the blurred zone. Use only on 2levels-type softmask")
+@click.option('-b', '--blur-value', 'blur_value', default = 0.5,
+              help="Value of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, blur_units, blur_value, verbose) :
 
