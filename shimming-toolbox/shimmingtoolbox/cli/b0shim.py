@@ -916,10 +916,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
 
                     manufacturer = json_anat_data['Manufacturer']
-                    # If outputting in the gradient CS, it must be the 1st order and must be in the delta CS and Siemens
-                    # The check has already been done earlier in the program to avoid processing and throw an error
-                    # afterwards.
-                    # Therefore, we can only check for the o_format_sph.
 
                         # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
