@@ -915,7 +915,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                     else:
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
 
-                    manufacturer = json_anat_data['Manufacturer']
 
                         # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
