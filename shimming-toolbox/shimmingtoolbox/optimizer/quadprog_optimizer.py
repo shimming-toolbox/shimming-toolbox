@@ -108,8 +108,9 @@ class QuadProgOpt(OptimizerUtils):
             float: Residuals for quad_prog optimization
         """
         # Apply weights to the coil matrix and unshimmed vector
-        coil_mat = self.weights[:, np.newaxis] * coil_mat
-        unshimmed_vec = self.weights * unshimmed_vec
+        weights = np.sqrt(self.mask_coefficients)
+        coil_mat = weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = weights * unshimmed_vec
 
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
@@ -178,7 +179,7 @@ class QuadProgOpt(OptimizerUtils):
 
         return cost_matrix, cost_vector
 
-
+# TODO : Realtime softmask B0 shimming need to be implemented
 class PmuQuadProgOpt(QuadProgOpt):
     """ Optimizer for the realtime component (riro) for this optimization:
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)

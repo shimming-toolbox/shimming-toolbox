@@ -152,9 +152,9 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-
         # MAE regularized to minimize currents
-        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        weights = self.mask_coefficients
+        residuals = weights * (unshimmed_vec + coil_mat @ coef)
         return np.mean(np.abs(residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
@@ -173,11 +173,15 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        residuals = unshimmed_vec + coil_mat @ coef
+        # Define delta with the 90th percentile of the absolute residuals
         if self._delta is None:
-            # self._delta = np.max(np.abs(residuals))
             self._delta = np.percentile(np.abs(residuals), 90)
-        return np.mean(pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
+        # Adapt the weights based on the delta value, so that they adjust depending on the linear/quadratic behavior
+        _alpha = 1 / (1 + self._delta)
+        weights = (1 - _alpha) * np.sqrt(self.mask_coefficients) + _alpha * self.mask_coefficients
+        
+        return np.mean(weights * pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
@@ -224,7 +228,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        shimmed_vec = self.weights * (unshimmed_vec + coil_mat @ coef)
+        weights = np.sqrt(self.mask_coefficients)
+        shimmed_vec = weights * (unshimmed_vec + coil_mat @ coef)
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
@@ -241,9 +246,9 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-
         # STD regularized to minimize currents
-        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        weights = self.mask_coefficients
+        residuals = weights * (unshimmed_vec + coil_mat @ coef)
         return np.std(residuals) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
@@ -260,7 +265,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        weights = self.mask_coefficients
+        residuals = weights * (unshimmed_vec + coil_mat @ coef)
         b0_rmse_coef = norm(residuals / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
@@ -282,7 +288,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        residuals = self.weights * (unshimmed_vec + coil_mat @ coef)
+        weights = self.mask_coefficients
+        residuals = weights * (unshimmed_vec + coil_mat @ coef)
         b0_rmse_coef = norm(residuals / factor, 2)
         signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
@@ -422,8 +429,9 @@ class LsqOptimizer(OptimizerUtils):
         w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
 
         # Apply weights to the coil matrix and unshimmed vector
-        coil_mat = self.weights[:, np.newaxis] * coil_mat
-        unshimmed_vec = self.weights * unshimmed_vec
+        weights = np.sqrt(self.mask_coefficients)
+        coil_mat = weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = weights * unshimmed_vec
 
         # MSE term for unshimmed_vec and coil_mat
         a1 = inv_factor * (coil_mat.T @ coil_mat)
@@ -453,7 +461,7 @@ class LsqOptimizer(OptimizerUtils):
 
         return a, b, c, e
 
-
+# TODO : Realtime softmask B0 shimming need to be implemented
 class PmuLsqOptimizer(LsqOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
         field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)

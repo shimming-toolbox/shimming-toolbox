@@ -990,7 +990,7 @@ class ShimSequencer(Sequencer):
         fig.savefig(fname_figure, bbox_inches='tight')
 
 
-# TODO : Adapt for soft masks
+# TODO : Realtime softmask B0 shimming need to be implemented
 class RealTimeSequencer(Sequencer):
     """
     Sequencer object that stores different nibabel object, and parameters. It's also doing real time optimization

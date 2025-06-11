@@ -28,6 +28,8 @@ class Optimizer(object):
                                       concatenated on the 4th dimension. See self.merge_coils() for more details
         merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
                               bound for merged_coils[..., 3]
+        mask_coefficients (np.ndarray): 1d array of coefficients corresponding to the mask used for optimization
+        weights (np.ndarray): 1d array of weights used for optimization.
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine):
@@ -48,7 +50,7 @@ class Optimizer(object):
         self.unshimmed_affine = []
         self.merged_coils = []
         self.merged_bounds = []
-        self.weights = None
+        self.mask_coefficients = None
         self.set_unshimmed(unshimmed, affine)
 
     def set_unshimmed(self, unshimmed, affine):
@@ -102,8 +104,9 @@ class Optimizer(object):
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
         # Apply weights to the coil matrix and unshimmed vector
-        coil_mat = self.weights[:, np.newaxis] * coil_mat
-        unshimmed_vec = self.weights * unshimmed_vec
+        weights = np.sqrt(self.mask_coefficients)
+        coil_mat = weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = weights * unshimmed_vec
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
@@ -134,9 +137,7 @@ class Optimizer(object):
         # Get indices of non-zero mask values
         masked_points_indices = np.where(mask_vec != 0.0)
         # Get the non-zero mask coefficient values
-        mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
-        # Create a vector with the square root of the coefficient values
-        self.weights = np.sqrt(mask_coefficients) # dimensions : (masked_values,)
+        self.mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
 
         # Define number of coil profiles (channels)
         n_channels = self.merged_coils.shape[3] # dimensions : (n_channels,)
