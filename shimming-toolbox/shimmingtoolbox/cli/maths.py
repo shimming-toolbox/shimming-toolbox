@@ -12,7 +12,7 @@ import os
 from shimmingtoolbox.utils import add_suffix, set_all_loggers, splitext, save_nii_json, create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-AXES = ['0', '1', '2', '3', '4']
+AXES = ['-1', '0', '1', '2', '3', '4', '5', '6']
 DEFAULT_PATH = os.path.abspath(os.curdir)
 
 
@@ -27,7 +27,7 @@ def maths_cli():
               help="Input filename, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
               help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_mean.nii.gz]")
-@click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
+@click.option('--axis', type=click.Choice(AXES), default=AXES[0], show_default=True,
               help="Axis of the array to calculate the average")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def mean(fname_input, fname_output, axis, verbose):
@@ -39,14 +39,15 @@ def mean(fname_input, fname_output, axis, verbose):
     # Load input
     nii_input = nib.load(fname_input)
 
-    # Find index
-    dim_list = AXES
-    index = dim_list.index(axis)
-    if len(nii_input.shape) < index:
-        raise IndexError(f"Axis: {axis} is out of bounds for array of length: {len(nii_input.shape)}")
+    # Convert axis to integer
+    axis = int(axis)
+
+    # Make sure dimensions are appropriate
+    if (nii_input.ndim - 1) < axis:
+        raise ValueError(f"Axis: {axis} is out of bounds for array with {nii_input.ndim} dimensions")
 
     # Calculate the average
-    avg = np.mean(nii_input.get_fdata(), axis=index)
+    avg = np.mean(nii_input.get_fdata(), axis=axis)
 
     # Create nibabel output
     nii_output = nib.Nifti1Image(avg, nii_input.affine, header=nii_input.header)
@@ -66,7 +67,7 @@ def mean(fname_input, fname_output, axis, verbose):
               help="Input filename, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
               help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_std.nii.gz]")
-@click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
+@click.option('--axis', type=click.Choice(AXES), default=AXES[0], show_default=True,
               help="Axis of the array to calculate the average")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def std(fname_input, fname_output, axis, verbose):
@@ -78,14 +79,15 @@ def std(fname_input, fname_output, axis, verbose):
     # Load input
     nii_input = nib.load(fname_input)
 
-    # Find index
-    dim_list = AXES
-    index = dim_list.index(axis)
-    if len(nii_input.shape) < index:
-        raise IndexError(f"Axis: {axis} is out of bounds for array of length: {len(nii_input.shape)}")
+    # Convert axis to integer
+    axis = int(axis)
+
+    # Make sure dimensions are appropriate
+    if (nii_input.ndim - 1) < axis:
+        raise ValueError(f"Axis: {axis} is out of bounds for array with {nii_input.ndim} dimensions")
 
     # Compute STD
-    std_data = np.std(nii_input.get_fdata(), axis=index)
+    std_data = np.std(nii_input.get_fdata(), axis=axis)
 
     # Change the output datatype to float64
     header = nii_input.header

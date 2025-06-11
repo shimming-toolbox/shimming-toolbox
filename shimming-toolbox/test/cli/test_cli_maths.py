@@ -31,6 +31,17 @@ def test_mean():
         assert nib.load(fname_output).shape == (128, 20)
 
 
+def test_mean_noaxis():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+        fname_output = os.path.join(tmp, 'mean.nii.gz')
+        result = runner.invoke(maths_cli, ['mean',
+                                           '--input', fname_input,
+                                           '--output', fname_output], catch_exceptions=False)
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        assert nib.load(fname_output).shape == (128, 68)
+
 def test_std():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
