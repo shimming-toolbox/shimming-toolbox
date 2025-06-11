@@ -507,7 +507,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
         coefs_array = np.hstack(arrays)
 
         if "slicewise" in o_format:
-             # reorder according to list_slices
+            # reorder according to list_slices
             # Build a reverse mapping: from list_slices to target positions
             inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
             # Reorder the array
