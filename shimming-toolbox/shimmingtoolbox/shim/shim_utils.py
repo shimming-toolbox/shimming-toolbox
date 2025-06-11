@@ -146,7 +146,6 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
 
     # Prevent division by zero in all metrics using weights by checking np.sum(mask)
     if np.sum(mask) == 0:
-        # mask = np.ones_like(mask)
         return np.nan
 
     if metric == 'mean':

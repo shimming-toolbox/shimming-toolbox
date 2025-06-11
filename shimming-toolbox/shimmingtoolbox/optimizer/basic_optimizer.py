@@ -29,7 +29,6 @@ class Optimizer(object):
         merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
                               bound for merged_coils[..., 3]
         mask_coefficients (np.ndarray): 1d array of coefficients corresponding to the mask used for optimization
-        weights (np.ndarray): 1d array of weights used for optimization.
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine):
