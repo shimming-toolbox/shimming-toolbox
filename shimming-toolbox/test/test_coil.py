@@ -168,20 +168,23 @@ def test_create_scanner_coil_ge():
 def test_get_scanner_constraints():
     orders = [0, 1, 2, 3]
     for manufacturer in SCANNER_CONSTRAINTS.keys():
-        for model in SCANNER_CONSTRAINTS[manufacturer].keys():
-            constraints = get_scanner_constraints(model, orders, manufacturer, shim_settings)
+        for scanner_id in SCANNER_CONSTRAINTS[manufacturer].keys():
+            model = scanner_id.rsplit('_', 1)[0]
+            device_serial_number = scanner_id.rsplit('_', 1)[1]
+            constraints = get_scanner_constraints(model, orders, manufacturer, device_serial_number, shim_settings)
             for order in orders:
-                if SCANNER_CONSTRAINTS[manufacturer][model][str(order)]:
+                scanner_id = f"{model}_{device_serial_number}"
+                if SCANNER_CONSTRAINTS[manufacturer][scanner_id][str(order)]:
                     assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
-                                             SCANNER_CONSTRAINTS[manufacturer][model][str(order)]))
+                                             SCANNER_CONSTRAINTS[manufacturer][scanner_id][str(order)]))
 
 
 def test_get_scanner_constraints_specific_orders():
     orders = [0, 2]
-    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", shim_settings)
+    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", "167006", shim_settings)
     for order in orders:
         assert np.all(np.isclose(constraints['coef_channel_minmax'][str(order)],
-                                 SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit"][str(order)]))
+                                 SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit_167006"][str(order)]))
     assert not constraints['coef_channel_minmax']["1"]
 
 
@@ -189,7 +192,7 @@ def test_get_scanner_constraints_external():
     orders = [0, 1, 2, 3]
     constraints_external = {
         'coefs_used': copy.deepcopy(shim_settings),
-        'coef_channel_minmax': copy.deepcopy(SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit"])
+        'coef_channel_minmax': copy.deepcopy(SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit_167006"])
     }
 
     constraints_external['coef_channel_minmax']['0'] = [[-1000, 1000]]
@@ -201,13 +204,13 @@ def test_get_scanner_constraints_external():
     tmp_shim_settings = copy.deepcopy(shim_settings)
     tmp_shim_settings['3'] = None
 
-    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", tmp_shim_settings, constraints_external)
+    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", "167006", tmp_shim_settings, constraints_external)
 
     # 0 - External constraints are known, internal constraints are known
     assert np.all(np.isclose(constraints['coef_channel_minmax']['0'], constraints_external['coef_channel_minmax']['0']))
     assert constraints['coefs_used']['0'] == constraints_external['coefs_used']['0']
     # 1 - External constraints are not known, internal constraints are known
-    assert np.all(np.isclose(constraints['coef_channel_minmax']['1'], SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit"]['1']))
+    assert np.all(np.isclose(constraints['coef_channel_minmax']['1'], SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit_167006"]['1']))
     assert constraints['coefs_used']['1'] == tmp_shim_settings['1']
     # 3 - External constraints are known, internal constraints are not known
     assert np.all(np.isclose(constraints['coef_channel_minmax']['3'], constraints_external['coef_channel_minmax']['3']))
@@ -217,7 +220,7 @@ def test_get_scanner_constraints_external():
     constraints_external['coef_channel_minmax']['3'] = []
     constraints_external['coefs_used']['3'] = None
     tmp_shim_settings['3'] = None
-    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", tmp_shim_settings, constraints_external)
+    constraints = get_scanner_constraints("Prisma_fit", orders, "Siemens", "167006", tmp_shim_settings, constraints_external)
 
     assert constraints['coef_channel_minmax']['3'] == [[None, None], [None, None], [None, None], [None, None]]
     assert constraints['coefs_used']['3'] == [None, None, None, None]
