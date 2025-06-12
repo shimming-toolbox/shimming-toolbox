@@ -5,7 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
 RUN apt-get update && \
-    apt-get install -y git make curl sudo unzip vim xvfb bzip2 build-essential python3-pip \
+    apt-get install -y git make curl sudo xvfb bzip2 gcc g++ python3-pip \
                     libglib2.0-0 libgl1 libxrender1 libxkbcommon-x11-0 libdbus-1-3 && \
     apt-get clean
 
