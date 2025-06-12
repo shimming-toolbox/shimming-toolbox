@@ -21,8 +21,8 @@ from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
-from shimmingtoolbox.load_nifti import get_isocenter
-from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.load_nifti import get_isocenter, is_fatsat_on
+from shimmingtoolbox.pmu import PmuResp, PmuExt
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
@@ -332,7 +332,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     coefs = sequencer.shim()
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    options['fatsat'] = get_fatsat_option(json_anat_data, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -577,6 +577,8 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
               help="Anatomical image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
+@click.option('--trigs', 'fname_ext', type=click.Path(exists=True), required=False,
+              help="Siemens external trigger file containing pressure data.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
               help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
 @click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
@@ -673,7 +675,7 @@ def _save_to_text_file_static(coil, coefs, list_slices, path_output, o_format, o
 def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
                      opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
                      scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
-                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, verbose):
+                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, fname_ext, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -803,13 +805,18 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
-    if time_offset is 'auto':
+    if time_offset == 'auto':
         is_pmu_time_offset_auto = True
         time_offset = 0
     else:
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
     pmu = PmuResp(fname_resp, time_offset=time_offset)
+    if fname_ext is not None:
+        # Load external trigger file if provided
+        pmu_ext = PmuExt(fname_ext)
+    else:
+        pmu_ext = None
 
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
@@ -821,6 +828,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                                   mask_dilation_kernel_size=dilation_kernel_size,
                                   reg_factor=reg_factor,
                                   path_output=path_output,
+                                  pmu_ext=pmu_ext,
                                   is_pmu_time_offset_auto=is_pmu_time_offset_auto)
     # 2) Launch the sequencer
     out = sequencer.shim()
@@ -828,7 +836,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    options['fatsat'] = get_fatsat_option(json_anat_data, fatsat)
 
     # Get common coils between static and riro // Comparison based on coil name
     coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
@@ -1179,11 +1187,11 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
-        
-        # If 3D, extend to 4D by adding singleton dimension 
+
+        # If 3D, extend to 4D by adding singleton dimension
         if coil_data.ndim == 3:
             coil_data = coil_data[..., np.newaxis]
-        
+
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
         list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
@@ -1226,9 +1234,9 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nib.save(nii, fname_to_save)
 
 
-def _get_fatsat_option(json_anat, fatsat):
-    """ Return if the fat saturation option should be turned on or off. This function mainly exists to resolve the 'auto'
-        case
+def get_fatsat_option(json_anat, fatsat):
+    """ Return if the fat saturation option should be turned on or off.
+        This function mainly exists to resolve the 'auto' case
 
     Args:
         json_anat (dict): BIDS Json sidecar
@@ -1240,12 +1248,13 @@ def _get_fatsat_option(json_anat, fatsat):
     fatsat_option = False
 
     if fatsat == 'auto':
-        if 'ScanOptions' in json_anat:
-            if 'FS' in json_anat['ScanOptions']:
-                logger.debug("Fat Saturation pulse detected")
-                fatsat_option = True
+        fatsat_option = is_fatsat_on(json_anat)
     elif fatsat == 'yes':
         fatsat_option = True
+    elif fatsat == 'no':
+        pass
+    else:
+        raise ValueError(f"Invalid fatsat option: {fatsat}. Must be 'yes', 'no' or 'auto'.")
 
     return fatsat_option
 

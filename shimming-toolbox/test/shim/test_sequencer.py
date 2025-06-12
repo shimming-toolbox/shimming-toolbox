@@ -410,8 +410,7 @@ def define_rt_sim_inputs():
     pmu.set_start_and_stop_times(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
-    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data, when='volume-start')
+    json_data = {'RepetitionTime': 250 / 1000, 'RepetitionTimeExcitation': 0.001, 'AcquisitionTime': "00:00:00.000000"}
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
@@ -481,7 +480,7 @@ class TestShimRTpmuSimData(object):
         shim_trace_riro = []
         unshimmed_trace = []
         data = pmu.get_data()
-        
+
         for i_shim in range(len(slices)):
             # Calculate static correction
             correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
