@@ -1,11 +1,8 @@
 # Steps to run ST and SCT on the MRI console
 
 ## Step 1 (on your personal computer) - Build and export the environment
----
-**NOTE**
-
-Since some of these steps require a long time to be executed, it is best to do them prior to the experiment on the MRI console.
----
+> [!NOTE]
+> Since some of these steps require a long time to be executed, it is best to do them prior to the experiment on the MRI console.
 
 ### 1.1 - Go to the ST directory
 In a terminal window, navigate to the directory where Shimming Toolbox (ST) is located:
@@ -79,11 +76,8 @@ Once you’re inside the chroot, you can run any ST or SCT command as usual, for
 ```
 st_dicom_to_nifti -i /path/to/dicoms --subject <subject_name> -o /path/to/nifti
 ```
----
-**NOTE**
-
-Make sure that the paths you provide (e.g., /path/to/dicoms) exist inside the chroot environment (they may differ from the host system).
----
+> [!WARNING]
+> Make sure that the paths you provide (e.g., /path/to/dicoms) exist inside the chroot environment (they may differ from the host system).
 
 ### 3.3 - Exit
 Once your work is done, to exit the environment, just type:
