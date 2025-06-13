@@ -949,7 +949,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
                                                        path_output, o_format_coil, options, i_coil, 0)
-            
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
