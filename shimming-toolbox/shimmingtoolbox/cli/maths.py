@@ -12,7 +12,7 @@ import os
 from shimmingtoolbox.utils import add_suffix, set_all_loggers, splitext, save_nii_json, create_output_dir
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
-AXES = ['0', '1', '2', '3', '4']
+AXES = ['-1', '0', '1', '2', '3', '4', '5', '6']
 DEFAULT_PATH = os.path.abspath(os.curdir)
 
 
@@ -27,7 +27,7 @@ def maths_cli():
               help="Input filename, supported extensions: .nii, .nii.gz")
 @click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
               help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_mean.nii.gz]")
-@click.option('--axis', type=click.Choice(AXES), default=AXES[3], show_default=True,
+@click.option('--axis', type=click.Choice(AXES), default=AXES[0], show_default=True,
               help="Axis of the array to calculate the average")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def mean(fname_input, fname_output, axis, verbose):
@@ -39,14 +39,15 @@ def mean(fname_input, fname_output, axis, verbose):
     # Load input
     nii_input = nib.load(fname_input)
 
-    # Find index
-    dim_list = AXES
-    index = dim_list.index(axis)
-    if len(nii_input.shape) < index:
-        raise IndexError(f"Axis: {axis} is out of bounds for array of length: {len(nii_input.shape)}")
+    # Convert axis to integer
+    axis = int(axis)
+
+    # Make sure dimensions are appropriate
+    if (nii_input.ndim - 1) < axis:
+        raise ValueError(f"Axis {axis} is out of bounds for array with {nii_input.ndim} dimensions")
 
     # Calculate the average
-    avg = np.mean(nii_input.get_fdata(), axis=index)
+    avg = np.mean(nii_input.get_fdata(), axis=axis)
 
     # Create nibabel output
     nii_output = nib.Nifti1Image(avg, nii_input.affine, header=nii_input.header)
@@ -58,6 +59,82 @@ def mean(fname_input, fname_output, axis, verbose):
 
     create_output_dir(fname_output, is_file=True)
 
+    nib.save(nii_output, fname_output)
+
+
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
+              help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_std.nii.gz]")
+@click.option('--axis', type=click.Choice(AXES), default=AXES[0], show_default=True,
+              help="Axis of the array to calculate the average")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def std(fname_input, fname_output, axis, verbose):
+    """Compute the STD from NIfTI data across an axis."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Load input
+    nii_input = nib.load(fname_input)
+
+    # Convert axis to integer
+    axis = int(axis)
+
+    # Make sure dimensions are appropriate
+    if (nii_input.ndim - 1) < axis:
+        raise ValueError(f"Axis {axis} is out of bounds for array with {nii_input.ndim} dimensions")
+
+    # Compute STD
+    std_data = np.std(nii_input.get_fdata(), axis=axis)
+
+    # Change the output datatype to float64
+    header = nii_input.header
+    header.set_data_dtype(np.float64)
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(std_data, nii_input.affine, header=header)
+
+    # Save image
+    if fname_output is None:
+        _, filename = os.path.split(fname_input)
+        fname_output = add_suffix(os.path.join(os.curdir, filename), '_std')
+    nib.save(nii_output, fname_output)
+
+
+@maths_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-d', '--denominator', 'fname_denom', type=click.Path(exists=True), required=True,
+              help="Input filename, supported extensions: .nii, .nii.gz")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=None,
+              help="Output filename, supported extensions: .nii, .nii.gz. [default: ./input_div.nii.gz]")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def div(fname_input, fname_denom, fname_output, verbose):
+    """Divide NIfTI input by NIfTI input 2."""
+
+    # Set logger level
+    set_all_loggers(verbose)
+
+    # Load input
+    nii_input = nib.load(fname_input)
+    nii_denom = nib.load(fname_denom)
+
+    if nii_input.ndim < nii_denom.ndim:
+        raise ValueError(f"Input image {fname_input} has fewer dimensions than denominator image {fname_denom}. "
+                         f"Cannot perform division.")
+
+    # Compute division
+    div_data = nii_input.get_fdata() / nii_denom.get_fdata()
+
+    # Create nibabel output
+    nii_output = nib.Nifti1Image(div_data, nii_input.affine, header=nii_input.header)
+
+    # Save image
+    if fname_output is None:
+        _, filename = os.path.split(fname_input)
+        fname_output = add_suffix(os.path.join(os.curdir, filename), '_div')
     nib.save(nii_output, fname_output)
 
 
