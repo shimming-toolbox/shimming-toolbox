@@ -1722,7 +1722,16 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
 
 
 def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
-    # Fill in a dictionary with the coefficients for each order
+    """ Convert the shim coefficients to a dictionary format based on the scanner coil order.
+
+    Args:
+        coefs_coil (np.array): Array of shim coefficients (n_shims x n_channels)
+        scanner_coil_order (list): List of scanner coil orders (e.g. [0, 1, 2])
+        manufacturer (str): Manufacturer of the scanner (e.g. 'GE', 'Siemens', 'Philips')
+
+    Returns:
+        dict: Dictionary with keys as scanner coil orders and values as the corresponding shim coefficients.
+    """
     coefs_scanner = {}
     start_channel_scanner = 0
     for order in scanner_coil_order:
