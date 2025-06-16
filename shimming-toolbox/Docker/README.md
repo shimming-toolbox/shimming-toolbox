@@ -22,7 +22,7 @@ This step should last around 8 to 10 minutes.
 ### 1.3 - Create a container
 This container will serve as the base filesystem for transfer:
 ```
-docker run -d --name st-builder st_image sleep infinity
+docker run -d --name st-builder st_image
 ```
 
 ### 1.4 - Export the container filesystem
@@ -32,7 +32,7 @@ docker export st-builder -o st-rootfs.tar
 cp st-rootfs.tar path/to/the/usb/key/
 rm st-rootfs.tar
 ```
-This step should last around 30 minutes.
+This step should last around 30 minutes. The `st-rootfs.tar`file should weight around 8 GB.
 
 ## Step 2 - Prepare the MRI console
 
@@ -44,34 +44,26 @@ ls
 ```
 You should see the file `st-rootfs.tar`.
 
-### 2.2 - Copy the container filesystem from the USB key
-Copy the st-rootfs.tar file from the USB key to the appropriate directory on the MRI console:
+### 2.2 – Extract and prepare the chroot environment
 ```
-cd
-sudo mkdir -p /opt/st/
-sudo cp path/to/the/usb/key/st-rootfs.tar /opt/st/
+mkdir -p st_rootfs
+tar -xvf path/to/the/usb/key/st-rootfs.tar -C st_rootfs
 ```
 Don't forget to replace `path/to/the/usb/key` with the path you copied in step 2.1.
 
-### 2.3 – Extract and prepare the chroot environment
-```
-sudo mkdir -p /opt/st/chroot
-sudo tar xf /opt/st/st-rootfs.tar -C /opt/st/chroot
-```
-
-### 2.4 - Mount essential directories
+### 2.3 - Mount essential directories
 These are needed to allow chroot to interact with the system:
 ```
-sudo mount --bind /dev /opt/st/chroot/dev
-sudo mount -t proc proc /opt/st/chroot/proc
-sudo mount -t sysfs sys /opt/st/chroot/sys
+sudo mount --bind /dev st_rootfs/dev
+sudo mount --bind /proc st_rootfs/proc
+sudo mount --bind /sys st_rootfs/sys
 ```
 
 ## Step 3 - Use ST and SCT on the MRI console
 
 ### 3.1 - Enter the chroot environment
 ```
-sudo chroot /opt/st/chroot /bin/bash
+sudo chroot st_rootfs /bin/bash
 ```
 
 ### 3.2 - Run commands
