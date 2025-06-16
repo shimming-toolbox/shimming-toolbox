@@ -2,7 +2,7 @@
 
 ## Step 1 (on your personal computer) - Build and export the environment
 > [!NOTE]
-> Since some of these steps require a long time to be executed, it is best to do them prior to the experiment on the MRI console.
+> Since most of the commands executed in this step require a long time to be executed, it is best to do them prior to the experiment on the MRI console.
 
 ### 1.1 - Go to the ST directory
 In a terminal window, navigate to the directory where Shimming Toolbox (ST) is located:
@@ -27,6 +27,7 @@ Plug the USB key into your computer. Find the USB key subfolder, then copy the f
 ```
 docker export st-builder -o st-rootfs.tar
 cp st-rootfs.tar path/to/the/usb/key/
+cp Docker/docker_tar_to_chroot.sh path/to/the/usb/key/
 rm st-rootfs.tar
 ```
 This step should last around 30 minutes. The `st-rootfs.tar`file should weight around 8 GB.
@@ -39,28 +40,20 @@ Plug the USB key into the MRI console. Find the USB key subfolder, then copy the
 cd path/to/the/usb/key
 ls
 ```
-You should see the file `st-rootfs.tar`.
+You should see the following files : `st-rootfs.tar`, `docker_tar_to_chroot.sh`.
 
-### 2.2 – Extract and prepare the chroot environment
+### 2.2 – Prepare the chroot image
 ```
 mkdir -p st_rootfs
-tar -xvf path/to/the/usb/key/st-rootfs.tar -C st_rootfs
+path/to/the/usb/key/docker_tar_to_chroot.sh path/to/the/usb/key/st-rootfs.tar st_rootfs/st-chroot.img
 ```
 Don't forget to replace `path/to/the/usb/key` with the path you copied in step 2.1.
 
-### 2.3 - Mount essential directories
-These are needed to allow chroot to interact with the system:
-```
-sudo mount --bind /dev st_rootfs/dev
-sudo mount --bind /proc st_rootfs/proc
-sudo mount --bind /sys st_rootfs/sys
-```
-
 ## Step 3 - Use ST and SCT on the MRI console
 
-### 3.1 - Enter the chroot environment
+### 3.1 - Enter the chroot image
 ```
-sudo chroot st_rootfs /bin/bash
+sudo chroot st_rootfs/st-chroot.img /bin/bash
 ```
 
 ### 3.2 - Run commands
