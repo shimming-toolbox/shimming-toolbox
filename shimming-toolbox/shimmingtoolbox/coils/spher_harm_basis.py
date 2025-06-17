@@ -14,7 +14,10 @@ MANUFACTURERS = ('SIEMENS', 'GE', 'PHILIPS')
 SHIM_CS = {'SIEMENS': 'LAI',
            'GE': 'LPI',
            'PHILIPS': 'RPI'}
-
+SPH_HARMONICS_TITLES = \
+    {'SIEMENS': ['X', 'Y', 'Z', 'Z2', 'ZX', 'ZY', 'X2-Y2', 'XY', 'Z3', 'Z2X', 'Z2Y', 'Z(X2 - Y2)'],
+     'GE':      ['X', 'Y', 'Z', 'XY', 'ZY', 'ZX', 'X2-Y2', 'Z2'],
+     'PHILIPS': ['X', 'Y', 'Z', 'Z2', 'ZX', 'ZY', 'X2-Y2', 'XY']}
 
 def sh_basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
     """

@@ -864,6 +864,8 @@ class ShimSequencer(Sequencer):
                                     shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
                                                          coefs[0, i + j + i_channel])
                                     manufacturers_model_name = self.json_fieldmap.get('ManufacturersModelName')
+                                    if manufacturers_model_name is not None:
+                                        manufacturers_model_name = manufacturers_model_name.replace(' ', '_')
                                     if manufacturer in SCANNER_CONSTRAINTS_DAC.keys() \
                                             and manufacturers_model_name in SCANNER_CONSTRAINTS_DAC[manufacturer].keys() \
                                             and str(order) in SCANNER_CONSTRAINTS_DAC[manufacturer][
