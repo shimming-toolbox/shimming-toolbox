@@ -22,10 +22,9 @@ RUN mkdir -p code/st && \
     make install PLUGIN=false
 
 # Install prelude
-RUN mkdir -p code/prelude && \
-    mkdir prelude && \
+RUN mkdir prelude && \
     curl -o prelude/prelude -JL https://github.com/shimming-toolbox/binaries/raw/master/prelude && \
-    sudo install prelude/prelude /code/prelude
+    sudo install prelude/prelude /usr/local/bin
 
 # Activate ST environment
 SHELL ["/bin/bash", "-c"]
