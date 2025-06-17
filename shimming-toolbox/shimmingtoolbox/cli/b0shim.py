@@ -1140,7 +1140,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     manufacturer = json_fm_data.get('Manufacturer')
     manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
     if manufacturers_model_name is not None:
-        manufacturers_model_name.replace(' ', '_')
+        manufacturers_model_name = manufacturers_model_name.replace(' ', '_')
 
     list_coils = []
 
@@ -1741,6 +1741,7 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
     coefs_coil = coefs_scanner
     
     return coefs_coil
+
 b0shim_cli.add_command(gradient_realtime)
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
