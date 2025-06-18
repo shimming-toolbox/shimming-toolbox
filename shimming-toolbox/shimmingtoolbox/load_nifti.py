@@ -16,7 +16,7 @@ POSSIBLE_TIMINGS = ['slice-middle', 'volume-start', 'volume-middle']
 
 
 def get_acquisition_times(nii_data, json_data, when='slice-middle'):
-    f""" Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+    """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
         nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.

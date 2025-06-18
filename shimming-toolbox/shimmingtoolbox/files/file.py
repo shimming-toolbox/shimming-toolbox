@@ -1,7 +1,8 @@
+from __future__ import annotations
+import logging
 import nibabel as nib
 import os
-import logging
-from __future__ import annotations
+import numpy as np
 from functools import wraps
 
 logging.basicConfig(level=logging.INFO)
@@ -23,14 +24,24 @@ def safe_getter(default_value=None):
         return wrapper
     return decorator
 
+NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
+DEFAULT_SUFFIX = '_saved.nii.gz'
 
 class NiftiFile:
-    def __init__(self, path_nii):
-        self.path_nii = path_nii
-        self.dirname = self.get_dirname()
+    def __init__(self, path_nii: str) -> None:
+        if not isinstance(path_nii, str):
+            raise TypeError("path_nii must be a string")
+        if not any(path_nii.endswith(ext) for ext in NIFTI_EXTENSIONS):
+            raise ValueError(f"File must end with one of {NIFTI_EXTENSIONS}")
+        
+        # Convert relative path to absolute path
+        self.path_nii: str = os.path.abspath(path_nii)
+        self.dirname: str = self.get_dirname()
+        self.nii: nib.Nifti1Image
+        self.data: np.ndarray
         self.nii, self.data = self.load_nii()
-        self.filename = self.get_filename()
-        self.json = self.load_json()
+        self.filename: str = self.get_filename()
+        self.json: dict | None = self.load_json()
         self.header = self.nii.header
         self.affine = self.nii.affine
 
@@ -72,7 +83,7 @@ class NiftiFile:
         else:
             return None
         
-    def save(self, output_path=None):
+    def save(self, output_path: str | None = None) -> None:
         """ Save the NIfTI file to a specified path.
         If no output path is provided, it saves the file in the same directory with a default name.
 
@@ -87,11 +98,15 @@ class NiftiFile:
             None: The function saves the NIfTI file to the specified path.
         """
         if output_path is None:
-            output_path = os.path.join(self.dirname, self.filename + "_saved.nii.gz")
-            # Warning to the user that the file will be saved with a default name
-            logger.info(f"Warning: No output path provided. Saving as {output_path}")
-        if not os.path.isdir(os.path.dirname(output_path)):
+            output_path = os.path.join(self.dirname, f"{self.filename}{DEFAULT_SUFFIX}")
+            logger.warning(f"No output path provided. Saving as {output_path}")
+        
+        output_dir = os.path.dirname(output_path)
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        elif not os.path.isdir(output_dir):
             raise ValueError(f"Output path {output_path} is not a valid directory.")
+            
         nib.save(self.nii, output_path)
     
     @safe_getter(default_value=None)
@@ -112,7 +127,7 @@ class NiftiFile:
         else:
             return None
     
-    @safe_getter(default_value="unknown")
+    @safe_getter(default_value=None)
     def get_filename(self):
         """ Get the filename without the extension from the NIfTI file path.
         Verifies that the file has a valid NIfTI extension (.nii or .nii.gz).
@@ -138,19 +153,17 @@ class NiftiFile:
         
         return file_name  
     
-    @safe_getter(default_value="")
+    @safe_getter(default_value=None)
     def get_dirname(self):
         """Gets the dirname of the Nifti file
 
-        Raises:
-            ValueError: If the dirname doesn't exist
-
         Returns:
-            str: driname of the file
+            str: dirname of the file (absolute path)
         """
         dirname = os.path.dirname(self.path_nii)
         
+        # For files in current directory, return current working directory
         if not dirname:
-            raise ValueError("Dirname is empty for file " + self.path_nii)
+            dirname = os.getcwd()
         
         return dirname
