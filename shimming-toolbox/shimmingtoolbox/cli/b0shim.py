@@ -29,6 +29,7 @@ from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_sli
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
+from shimmingtoolbox.files.file import NiftiFile
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -175,14 +176,14 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Load the fieldmap
-    nii_fmap_orig = nib.load(fname_fmap)
+    nii_fmap = NiftiFile(fname_fmap)
 
     # Make sure the fieldmap has the appropriate dimensions
-    if nii_fmap_orig.get_fdata().ndim != 3:
-        if nii_fmap_orig.get_fdata().ndim == 2:
-            nii_fmap = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
-                                       header=nii_fmap_orig.header)
-            nii_fmap = extend_fmap_to_kernel_size(nii_fmap, dilation_kernel_size, path_output)
+    if nii_fmap.ndim != 3:
+        if nii_fmap.ndim == 2:
+            temp_nii_fmap = nib.Nifti1Image(nii_fmap.data[..., np.newaxis], nii_fmap.affine,
+                                       header=nii_fmap.header)
+            nii_fmap.set_nii(extend_fmap_to_kernel_size(temp_nii_fmap, dilation_kernel_size, path_output))
         else:
             raise ValueError("Fieldmap must be 2d or 3d")
     else:
@@ -193,20 +194,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         # have less slices. To mitigate this, we create a 3d volume by replicating the slices on the edges.
         extending = False
         for i_axis in range(3):
-            if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
+            if nii_fmap.shape[i_axis] < dilation_kernel_size:
                 extending = True
                 break
 
         if extending:
-            nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
-        else:
-            nii_fmap = copy.deepcopy(nii_fmap_orig)
+            nii_fmap.set_nii(extend_fmap_to_kernel_size(nii_fmap, dilation_kernel_size, path_output))
 
     # Prepare the output
     create_output_dir(path_output)
 
     # Load the anat
-    nii_anat = nib.load(fname_anat)
+    nii_anat = NiftiFile(fname_anat)
     dim_info = nii_anat.header.get_dim_info()
     if dim_info[2] is None:
         logger.warning("The slice encoding direction is not specified in the NIfTI header, Shimming Toolbox will "
@@ -236,18 +235,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             # TODO: Reorient nifti so that the slice is the 3rd dim
             raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
 
-    # Load anat json
-    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_anat_json) as json_file:
-        json_anat_data = json.load(json_file)
-
-    # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
+     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
         if opt_criteria not in ['mse', 'rmse']:
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
 
         opt_criteria += '_signal_recovery'
-        epi_te = json_anat_data.get('EchoTime')
+        epi_te = nii_anat.get_json_info('EchoTime')
 
         if w_signal_loss is None:
             w_signal_loss = 0
@@ -258,24 +252,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Load mask
     if fname_mask_anat is not None:
-        nii_mask_anat = nib.load(fname_mask_anat)
+        nii_mask_anat = NiftiFile(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
-        nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
-
+        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
+        # save the mask to the output directory
+        nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
+        nii_mask_anat = NiftiFile(os.path.join(path_output, 'mask_anat.nii.gz'))
+        
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
         list_fname = [fname_fmap, fname_anat, fname_mask_anat]
         _save_nii_to_new_dir(list_fname, path_output)
-
-    # Open json of the fmap
-    fname_json = fname_fmap.rsplit('.nii', 1)[0] + '.json'
-    # Read from json file
-    if os.path.isfile(fname_json):
-        with open(fname_json) as json_file:
-            json_fm_data = json.load(json_file)
-    else:
-        raise OSError("Missing fieldmap json file")
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta. Only Siemens gradient coordinate system has been defined
@@ -286,35 +274,35 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if not set(scanner_coil_order).issubset({0, 1}):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}. Supported orders are: [0, 1], [1], [0]")
-        if json_fm_data.get('Manufacturer') != 'Siemens':
-            raise NotImplementedError(f"Unsupported manufacturer: {json_fm_data.get('Manufacturer')} for output file"
+        if nii_fmap.get_json_info('Manufacturer') != 'Siemens':
+            raise NotImplementedError(f"Unsupported manufacturer: {nii_fmap.get_json_info('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
     # Find the isocenter
-    isocenter_fm = get_isocenter(json_fm_data)
-    isocenter_anat = get_isocenter(json_anat_data)
-    if not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+    if not np.all(np.isclose(nii_fmap.get_isocenter(), nii_anat.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=scanner_coil_order)
+    # TODO: adapt ScannerShimSettings to the new NiftiFile class
+    scanner_shim_settings = ScannerShimSettings(nii_fmap, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'],
-                             json_fm_data)
+    # TODO: adapt load_coils to the new NiftiFile class
+    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'])
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, nii_fmap.get_json_info('SoftwareVersions'))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
-    sequencer = ShimSequencer(nii_fmap_orig, json_fm_data,
-                              nii_anat, json_anat_data,
+    # TODO : adapt the sequencer to the new NiftiFile class
+    sequencer = ShimSequencer(nii_fmap,
+                              nii_anat,
                               nii_mask_anat,
                               list_slices, list_coils,
                               method=method,
@@ -331,7 +319,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     coefs = sequencer.shim()
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    # TODO: adapt the output options to the new NiftiFile class
+    options['fatsat'] = _get_fatsat_option(nii_anat, fatsat)
 
     list_fname_output = []
     end_channel = 0
@@ -347,7 +336,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            manufacturer = json_anat_data['Manufacturer']
+            manufacturer = nii_anat.get_json_info['Manufacturer']
 
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
@@ -1122,7 +1111,7 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings, json_fm_data):
+def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings):
     """ Loads the Coil objects from filenames
 
     Args:
