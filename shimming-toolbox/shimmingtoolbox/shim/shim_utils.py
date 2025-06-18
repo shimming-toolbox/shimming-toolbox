@@ -380,12 +380,12 @@ class ScannerShimSettings:
 
         shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
 
-        manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
-        if manufacturer_model_name is not None:
-            manufacturer_model_name.replace(' ', '_')
+        manufacturers_model_name = bids_json_dict.get('ManufacturersModelName')
+        if manufacturers_model_name is not None:
+           manufacturers_model_name =  manufacturers_model_name.replace(' ', '_')
 
         manufacturer = bids_json_dict.get('Manufacturer')
-        self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
+        self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):
         coefs = []
