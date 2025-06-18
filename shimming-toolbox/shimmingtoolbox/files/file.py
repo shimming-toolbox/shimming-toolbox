@@ -16,7 +16,7 @@ def safe_getter(default_value=None):
             try:
                 return func(self, *args, **kwargs)
             except Exception as e:
-                print(f"Error in {func.__name__}: {e}")
+                logger.error(f"Error in {func.__name__}: {e}")
                 # terminate the program if the error is critical
                 if isinstance(e, (NameError, ValueError)):
                     raise e
