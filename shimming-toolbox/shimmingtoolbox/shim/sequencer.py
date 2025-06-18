@@ -24,7 +24,7 @@ from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, S
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.load_nifti import get_acquisition_times
-from shimmingtoolbox.pmu import PmuResp, PmuExt
+from shimmingtoolbox.pmu import PmuResp, PmuExt, OutOfRangeError
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
@@ -197,7 +197,7 @@ class ShimSequencer(Sequencer):
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
         self.json_fieldmap = json_fieldmap
-        self.nii_anat = self.get_anat(nii_anat)
+        self.nii_anat = convert_to_3d(nii_anat)
         self.json_anat = json_anat
         self.nii_mask_anat = self.load_masks(nii_mask_anat)
         self.coils = coils
@@ -244,29 +244,6 @@ class ShimSequencer(Sequencer):
                                                           self.path_output)
 
         return nii_fieldmap, nii_fmap_orig, extending
-
-    def get_anat(self, nii_anat):
-        """
-        Get the target image and perform error checking.
-
-        Args:
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-
-        Returns:
-            nib.Nifti1Image: Nibabel object containing anatomical data in 3d.
-
-        """
-        anat = nii_anat.get_fdata()
-        if anat.ndim == 3:
-            pass
-        elif anat.ndim == 4:
-            logger.info("Target anatomical is 4d, taking the average and converting to 3d")
-            anat = np.mean(anat, axis=3)
-            nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
-        else:
-            raise ValueError("Target anatomical image must be in 3d or 4d")
-
-        return nii_anat
 
     def load_masks(self, nii_mask_anat):
         """
@@ -1156,12 +1133,7 @@ class RealTimeSequencer(Sequencer):
         self.opt_criteria = opt_criteria
         self.fmap_orig_location = None
         self.nii_fieldmap, self.nii_fieldmap_orig, self.extended_fmap = self.get_fieldmap(nii_fieldmap)
-
-        # Check if anat has the good dimensions
-        if nii_anat.get_fdata().ndim != 3:
-            raise ValueError("Anatomical image must be in 3d")
-
-        self.nii_anat = nii_anat
+        self.nii_anat = convert_to_3d(nii_anat)
         self.nii_static_mask, self.nii_riro_mask = self.load_masks(nii_static_mask, nii_riro_mask)
 
         # Resample the masks to the fmap coordinate system for each shim group
@@ -1225,10 +1197,22 @@ class RealTimeSequencer(Sequencer):
         for time_offset in time_offsets:
             self.pmu.adjust_start_time(round(time_offset))
             r2_total = 0
+
+            try:
+                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
+            except OutOfRangeError:
+                r2_total_list.append(r2_total)
+                if best_r2_total < r2_total:
+                    best_r2_total = r2_total
+                    best_time_offset = time_offset
+                continue
+
+            n_slices_ave = n_slices
             for i_slice in range(n_slices):
                 if i_slice in []:
+                    n_slices_ave -= 1
                     continue
-                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
+
                 y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
                 y = (y - y.mean())
                 reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
@@ -1236,7 +1220,11 @@ class RealTimeSequencer(Sequencer):
                 r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
                 # r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
                 r2_total += r2
-            r2_total /= n_slices
+
+            if n_slices_ave == 0:
+                n_slices_ave = 1
+
+            r2_total /= n_slices_ave
             r2_total_list.append(r2_total)
             if best_r2_total < r2_total:
                 best_r2_total = r2_total
@@ -1248,25 +1236,34 @@ class RealTimeSequencer(Sequencer):
         if self.path_output is not None:
             fig = Figure(figsize=(8, 10))
             ax1 = fig.add_subplot(311)
-            ax1.plot(time_offsets, r2_total_list)
+            ax1.plot(time_offsets, r2_total_list, label='R2 raw')
             ax1.set_xlabel("Time offset [ms]")
             ax1.set_ylabel("Average r2")
             ax1.set_title("R2 score for different time offsets")
             ax1.set_ylim([-0.1, 1.1])
 
-            # 750 ms is chosen as the smoothing length
-            window_length = round(750 / ((max_bound_offset - min_bound_offset) / n_samples))
-            r2_list_smooth = savgol_filter(r2_total_list, window_length, 4, mode='mirror')
-            # The distance parameter is the minimum number of samples between adjacent peaks
-            # 1000 ms is chosen as the minimum time between peaks
-            min_distance = round(500 / ((max_bound_offset - min_bound_offset) / n_samples))
-            peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
+            if np.gradient(r2_total_list).max() > (max(r2_total_list) - min(r2_total_list)) / 10:
+                # Not smooth
+                peak_indices = [np.argmax(r2_total_list)]
+            else:
+                # smooth
+                # 750 ms is chosen as the smoothing length
+                window_length = round(750 / ((max_bound_offset - min_bound_offset) / n_samples))
+                r2_list_smooth = savgol_filter(r2_total_list, window_length, 4, mode='mirror')
+                # The distance parameter is the minimum number of samples between adjacent peaks
+                # 1000 ms is chosen as the minimum time between peaks
+                min_distance = round(500 / ((max_bound_offset - min_bound_offset) / n_samples))
+                peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
+                ax1.plot(time_offsets, r2_list_smooth, label='R2 smooth', color='orange')
+
             for index in peak_indices:
                 ax1.vlines(time_offsets[index], -1, 2, colors='k', linestyles='dashed')
                 ax1.annotate(f"{round(time_offsets[index])}ms",
                              (time_offsets[index] + 50, r2_total_list[index] - 0.2))
 
-            self.pmu.adjust_start_time(best_time_offset)
+            ax1.legend()
+
+            self.pmu.adjust_start_time(round(best_time_offset))
 
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
             pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
@@ -1287,7 +1284,7 @@ class RealTimeSequencer(Sequencer):
             for i_slice in range(n_slices):
                 if i_slice in []:
                     continue
-                pressures = self.pmu.interp_resp_trace(acq_times) - 2048
+                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
                 y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
                 y = (y - y.mean())
                 reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
@@ -2148,7 +2145,7 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
         ax.set_title(f"Before shimming\nmean: {metric_unshimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -2173,6 +2170,30 @@ class RealTimeSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def convert_to_3d(nii_target):
+    """
+    Get the target image and perform error checking.
+
+    Args:
+        nii_target (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
+
+    Returns:
+        nib.Nifti1Image: Nibabel object containing anatomical data in 3d.
+
+    """
+    anat = nii_target.get_fdata()
+    if anat.ndim == 3:
+        pass
+    elif anat.ndim == 4:
+        logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+        anat = np.mean(anat, axis=3)
+        nii_target = nib.Nifti1Image(anat, nii_target.affine, header=nii_target.header)
+    else:
+        raise ValueError("Target anatomical image must be in 3d or 4d")
+
+    return nii_target
 
 
 def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):

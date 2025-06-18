@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 PHASE_SCALING_SIEMENS = 4096
 POSSIBLE_TIMINGS = ['slice-middle', 'volume-start', 'volume-middle']
 SECONDS_IN_A_DAY = 24 * 60 * 60
+ERROR_MARGIN = 0.99
 
 
 def get_acquisition_times(nii_data, json_data, when='slice-middle'):
@@ -35,14 +36,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     n_volumes = nii_data.header['dim'][4]
     n_slices = nii_data.shape[2]
 
-    if json_data.get('RepetitionTimeExcitation') is None:
-        # RepetitionTimeExcitation and RepetitionTime are needed. If RepetitionTimeExcitation is not defined,
-        # then the RepetitionTime is the time between 2 RF pulses, which is not what we want, we want the time between
-        # 2 volumes.
-        raise NotImplementedError("RepetitionTimeExcitation is not in the JSON sidecar.")
-
-    # Time between the beginning of the acquisition of a volume and the beginning of the acquisition of the next volume
-    deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
+    deltat_volume = get_volume_tr(json_data)
 
     # Time the acquisition of data that this image started (ISO format)
     acq_start_time_ms = get_acquisition_start_time(json_data)
@@ -57,119 +51,15 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     if when == 'volume-middle':
         return volume_start_times + (deltat_volume / 2)
 
-    def get_middle_of_slice_timing(data, n_sli):
-        """ Return the best guess of when the middle of k-space was acquired for each slice. Return an array of 0 if no
-            best guess is found
+    try:
+        slice_timing_middle = get_phase_encode_0_crossings(json_data, n_slices)
+    except Exception as e:
+        logger.error(f"Error while getting slice timing: {e}")
+        raise e
+        slice_timing_middle = np.zeros(n_slices)
 
-        Args:
-            data (dict): Json dict corresponding to a nifti sidecar.
-            n_sli (int): Number of slices in the volume.
-
-        Returns:
-            np.ndarray: Slice timing in ms (n_slices).
-        """
-
-        # Can be '2D' or 3D
-        mr_acquisition_type = data.get('MRAcquisitionType')
-        if mr_acquisition_type != '2D':
-            # mr_acquisition_type is None or 3D
-            logger.warning("MR acquisition type is not 2D.")
-            return np.zeros(n_slices)
-
-        # list containing the time at which each slice was acquired
-        slice_timing_start = data.get('SliceTiming')
-        if slice_timing_start is None:
-            if n_sli == 1:
-                # Slice timing information does not seem to be defined if there is only one slice
-                slice_timing_start = [0.0]
-            else:
-                logger.warning("No slice timing information found in JSON file.")
-                return np.zeros(n_slices)
-
-        # Convert to ms
-        slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
-
-        phase_encode_steps = data.get('PhaseEncodingSteps')
-        repetition_slice_excitation = data.get('RepetitionTimeExcitation')
-        if repetition_slice_excitation is None or phase_encode_steps is None:
-            logger.warning("Not enough information to figure out each slice time. "
-                           "Either/Both of RepetitionTimeExcitation and PhaseEncodingSteps is/are undefined")
-            return np.zeros(n_slices)
-
-        # Convert to int and float if it was not None
-        phase_encode_steps = int(phase_encode_steps)
-        repetition_slice_excitation = float(repetition_slice_excitation)
-
-        # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
-        # (more than one slice acquired within a TR excitation)
-        repetition_slice_excitation = repetition_slice_excitation * 1000  # [ms]
-        # Remove slices that are at 0 ms (acquired during the first TR excitation)
-        slice_timing_start_no_zero = slice_timing_start[slice_timing_start > 0]
-        # If there are other slices acquired before the next TR excitation, then this is interleaved
-        # multi-slice
-        if np.any(slice_timing_start_no_zero < repetition_slice_excitation):
-            logger.warning("Interleaved multi-slice acquisition detected.")
-            return np.zeros(n_slices)
-
-        pulse_sequence_details = data.get('PulseSequenceDetails')
-        if pulse_sequence_details is None:
-            logger.warning("No PulseSequenceDetails name found in JSON file.")
-            return np.zeros(n_slices)
-
-        if "gre_field_mapping" in pulse_sequence_details:
-            # This protocol acquires 2 echos with 2 different TRs
-            deltat_slice = repetition_slice_excitation * phase_encode_steps * 2
-            logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
-        elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
-            deltat_slice = repetition_slice_excitation * phase_encode_steps
-        else:
-            logger.warning("Protocol name not recognized.")
-            return np.zeros(n_slices)
-
-        # Error check
-        volume_tr = data.get('RepetitionTime')
-        if volume_tr is None:
-            logger.warning("No volume 'RepetitionTime' found in JSON file.")
-            return np.zeros(n_slices)
-        deltat_vol = float(volume_tr) * 1000  # [ms]
-        if (deltat_slice * n_sli) > deltat_vol:
-            logger.warning("Slice timing of slices is longer than the volume timing.")
-            return np.zeros(n_slices)
-
-        # Get when the middle of k-space was acquired
-        manufacturer = data.get('Manufacturer')
-        if manufacturer == 'Siemens':
-            fourier = data.get('PartialFourier')
-            if fourier is None:
-                logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
-                fourier = 1.0
-            elif fourier < 1/2:
-                raise ValueError("Partial fourier value is less than 1/2. That should not be possible.")
-            else:
-                fourier = float(fourier)
-                if not (0 <= fourier <= 1):
-                    logger.warning("Partial Fourier value format not supported, make sure it is between 0 and 1.")
-                    return np.zeros(n_slices)
-
-            # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
-            # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,
-            # it would acquire the center-line of k-space after 3/7 of the time it takes to acquire a slice.
-            # (For a 700ms slice, the center-line would be acquired ~300ms). I simulated a couple of sequences in
-            # POET and observed that the "smaller" portion is always acquired first (the 1/8 portion is skipped,
-            # then 3/8 is acquired, k-space is crossed then the final 1/2 is acquired. In total, the k-space crossing
-            # was at 3/7 of the slice time).
-
-            ratio = (fourier - 0.5) / fourier
-        else:
-            logger.warning("Manufacturer not supported for partial fourier, assuming no partial fourier.")
-            ratio = 0.5
-
-        slice_timing_mid = slice_timing_start + (deltat_slice * ratio)
-
-        return slice_timing_mid
-
-    slice_timing_middle = get_middle_of_slice_timing(json_data, n_slices)
     timing = np.zeros((n_volumes, n_slices))
+
     if np.all(slice_timing_middle == 0):
         logger.warning("Could not figure out the slice timing. Using one time-point per volume instead.")
         # If the slice timing is set to 0, then we could not figure out the slice timing, then set the best guess to
@@ -182,6 +72,264 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
             timing[i, :] = volume_start_times[i] + slice_timing_middle  # [ms]
 
     return timing  # [ms]
+
+
+def get_slice_tr(json_data):
+    """ Get the slice repetition time in milliseconds from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Slice repetition time in milliseconds.
+    """
+    excitation_tr = get_excitation_tr(json_data)
+
+    pulse_sequence_details = json_data.get('PulseSequenceDetails')
+    if pulse_sequence_details is None:
+        raise ValueError("No PulseSequenceDetails name found in JSON file.")
+
+    n_phase_encode_steps = get_n_acquired_phase_encode_lines(json_data)
+
+    if "gre_field_mapping" in pulse_sequence_details:
+        # This protocol acquires 2 echos with 2 different TRs
+        deltat_slice = excitation_tr * n_phase_encode_steps * 2
+        logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
+    elif ("%SiemensSeq%\\gre" == pulse_sequence_details or
+          "gre_PMUlog" in pulse_sequence_details or
+          pulse_sequence_details == '%CustomerSeq%\\gre_shimming'):
+        deltat_slice = excitation_tr * n_phase_encode_steps
+    else:
+        raise NotImplementedError("Protocol name not recognized.")
+
+    return deltat_slice
+
+
+def get_phase_encode_0_crossings(data, n_sli):
+    """ Return the best guess of when the middle of k-space was acquired for each slice.
+    This is implemented for Siemens, 2D acquisitions and tags found in the JSON sidecar
+
+    Args:
+        data (dict): Json dict corresponding to a nifti sidecar.
+        n_sli (int): Number of slices in the volume.
+
+    Returns:
+        np.ndarray: Slice timing in ms (n_slices).
+    """
+
+    # Can be '2D'
+    mr_acquisition_type = data.get('MRAcquisitionType')
+    if mr_acquisition_type != '2D':
+        # mr_acquisition_type is None or 3D
+        raise NotImplementedError("MR acquisition type is not 2D.")
+
+    # list containing the time at which each slice was acquired
+    slice_timing_start = get_slice_timing(data, n_sli)
+
+    deltat_slice = get_slice_tr(data)
+
+    # Error check
+    volume_tr = get_volume_tr(data)
+
+    if (deltat_slice * n_sli) * ERROR_MARGIN > volume_tr:
+        ValueError("Slice timing of slices is longer than the volume timing.")
+
+    # Get when the middle of k-space was acquired
+    fourier = get_partial_fourier(data)
+
+    # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
+    # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,
+    # it would acquire the center-line of k-space after 3/7 of the time it takes to acquire a slice.
+    # (For a 700ms slice, the center-line would be acquired ~300ms). I simulated a couple of sequences in
+    # POET and observed that the "smaller" portion is always acquired first (the 1/8 portion is skipped,
+    # then 3/8 is acquired, k-space is crossed then the final 1/2 is acquired. In total, the k-space crossing
+    # was at 3/7 of the slice time).
+
+    ratio = (fourier - 0.5) / fourier
+
+    slice_timing_mid = slice_timing_start + (deltat_slice * ratio)
+
+    return slice_timing_mid
+
+
+def get_slice_timing(json_data, n_slices):
+    """ Get the slice timing from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+        n_slices (int): Number of slices in the volume.
+
+    Returns:
+        numpy.ndarray: Slice timing in ms (n_slices).
+    """
+    # list containing the time at which each slice was acquired
+    slice_timing_start = json_data.get('SliceTiming')
+    if slice_timing_start is None:
+        if n_slices == 1:
+            # Slice timing information does not seem to be defined if there is only one slice
+            slice_timing_start = [0.0]
+        else:
+            raise ValueError("No slice timing information found in JSON file.")
+    else:
+        slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
+
+    return np.array(slice_timing_start)  # [ms]
+
+
+def get_n_acquired_phase_encode_lines(json_data):
+    """ Get the number of acquired phase encoding lines from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        int: Number of acquired phase encoding lines.
+    """
+
+    # On a Siemens scanner, I simulated many acquistions to figure out how many phase encoding lines get acquired
+    # depending on sequence parameters. Here is a summary of the results:
+    #   Basematrix  |   IPAT  | Ref lines | Partial Fourier | Phase oversampling | -> Acquired PE lines
+    #   64          | 2       | 24        | 1               | 0                  | 44
+    #   64          | 2       | 24        | 7/8             | 0                  | 40
+    #   64          | 2       | 24        | 6/8             | 0                  | 36
+    #   64          | 1       | 0         | 6/8             | 0                  | 48
+    #   64          | 2       | 32        | 7/8             | 0                  | 44
+    #   64          | 2       | 32        | 7/8             | 0.3                | 53
+
+    if json_data.get('Manufacturer') != 'Siemens':
+        raise ValueError("This function is only implemented for Siemens scanners.")
+
+    # Base resolution
+    phase_encode_steps = json_data.get('PhaseEncodingSteps')
+    if phase_encode_steps is None:
+        raise ValueError("PhaseEncodingSteps not found in JSON sidecar.")
+    # Convert to int if it was not None
+    phase_encode_steps = int(phase_encode_steps)
+
+    # Phase oversampling
+    phase_over = json_data.get('PhaseOversampling')
+    if phase_over is None:
+        # If phase oversampling is not defined, assume it is 1 (no phase oversampling)
+        phase_over = 1.0
+    else:
+        # PhaseOversampling is given as a percentage, we add 1 so it can be multiplied
+        phase_over = float(phase_over) + 1.0
+
+    # Partial Fourier
+    partial_fourier = get_partial_fourier(json_data)
+
+    n_phase_encode_steps = phase_encode_steps * partial_fourier * phase_over
+
+    # Parallel acquisition reduction
+    parallel_technique = json_data.get('ParallelAcquisitionTechnique')
+    if parallel_technique is not None:
+
+        if parallel_technique == 'GRAPPA':
+            parallel_reduction_factor_in_plane = json_data.get('ParallelReductionFactorInPlane')
+            if parallel_reduction_factor_in_plane is None:
+                parallel_reduction_factor_in_plane = 1.0
+            parallel_reduction_factor_in_plane = float(parallel_reduction_factor_in_plane)
+
+            ref_lines_pe = json_data.get('RefLinesPE')
+            if ref_lines_pe is None and parallel_reduction_factor_in_plane != 1.0:
+                raise ValueError("RefLinesPE not found in JSON sidecar.")
+            ref_lines_pe = int(ref_lines_pe)
+
+            n_phase_encode_steps = math.ceil((n_phase_encode_steps + ref_lines_pe) / parallel_reduction_factor_in_plane)
+        else:
+            NotImplementedError(f"{parallel_technique} parallel acquisition technique is not implemented yet.")
+
+    return n_phase_encode_steps
+
+
+def get_partial_fourier(json_data):
+    """ Get the partial fourier value from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Partial Fourier value between 0 and 1. If no partial fourier is defined, returns 1.0.
+    """
+    manufacturer = json_data.get('Manufacturer')
+    if manufacturer == 'Siemens':
+        partial_fourier = json_data.get('PartialFourier')
+        if partial_fourier is None:
+            logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
+            partial_fourier = 1.0
+        elif partial_fourier < 1 / 2:
+            raise ValueError("Partial fourier value is less than 1/2. That should not be possible.")
+        else:
+            partial_fourier = float(partial_fourier)
+            if not (0 <= partial_fourier <= 1):
+                raise ValueError("Partial Fourier value format not supported, make sure it is between 0 and 1.")
+    else:
+        NotImplementedError("Partial Fourier not implemented for this manufacturer. ")
+
+    return partial_fourier
+
+
+def get_excitation_tr(json_data):
+    """ Get the slice excitation repetition time in milliseconds from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Slice excitation repetition time in milliseconds.
+    """
+
+    # If RepetitionTimeExcitation is not defined, then the RepetitionTime is the time between 2 RF pulses of the
+    # same slice
+    if json_data.get('RepetitionTimeExcitation') is None:
+        excitation_tr = json_data.get('RepetitionTime')
+        if excitation_tr is None:
+            raise ValueError("RepetitionTimeExcitation nor RepetitionTime is defined in the JSON sidecar. "
+                             "Can't figure out excitation TR")
+    else:
+        excitation_tr = json_data.get('RepetitionTimeExcitation')
+
+    if excitation_tr is not None:
+        excitation_tr = float(excitation_tr) * 1000  # [ms]
+
+    return excitation_tr
+
+
+def get_volume_tr(json_data):
+    """ Get the volume repetition time in milliseconds from the json sidecar.
+
+    Args:
+        json_data (dict): Json dict corresponding to a nifti sidecar.
+
+    Returns:
+        float: Volume repetition time in milliseconds.
+    """
+
+    # If both RepetitionTimeExcitation and RepetitionTime are defined, then RepetitionTime is the volume TR and
+    # RepetitionTimeExcitation is the time between 2 RF pulses of the same slice.
+    # If RepetitionTimeExcitation is not defined, RepetitionTime is the time between 2 RF pulses of the same slice and
+    # AcquisitionDuration is the time to acquire a single volume (i.e.: volume TR).
+    if json_data.get('RepetitionTimeExcitation') is None:
+        if json_data.get('AcquisitionDuration') is None:
+            # deltat_slice = get_slice_tr(json_data)
+            # n_slices = nii_data.shape[2]
+            # deltat_volume = deltat_slice * n_slices
+
+            raise ValueError("RepetitionTimeExcitation nor AcquisitionDuration is defined in the JSON "
+                             "sidecar. Can't compute volume repetition time")
+        else:
+            # If AcquisitionDuration is defined and RepetitionTimeExcitation is not,
+            # then AcquisitionDuration is the time to acquire a single volume
+            deltat_volume = float(json_data['AcquisitionDuration']) * 1000
+    else:
+        # If RepetitionTimeExcitation is defined, RepetitionTime is the volume TR
+        deltat_volume = float(json_data['RepetitionTime']) * 1000  # [ms]
+
+    if deltat_volume is None:
+        raise ValueError("Can't compute volume repetition time. RepetitionTimeExcitation, AcquisitionDuration and/or "
+                         "RepetitionTime can't be used to determine volume TR.")
+
+    return deltat_volume
 
 
 def get_acquisition_duration(nii_data, json_data):
@@ -201,35 +349,7 @@ def get_acquisition_duration(nii_data, json_data):
         # If the data is not 4D, then there is no time dimension, so there is only a single volume
         n_volumes = 1
 
-    if json_data.get('RepetitionTimeExcitation') is not None and json_data.get('RepetitionTime') is not None:
-        # if both RepetitionTimeExcitation and RepetitionTime are defined, then the RepetitionTime is the time between
-        # 2 volumes and RepetitionTimeExcitation is the time between 2 RF pulses.
-        deltat_volume = float(json_data['RepetitionTime']) * 1000
-    elif json_data.get('RepetitionTimeExcitation') is None and json_data.get('RepetitionTime') is not None:
-        # if only RepetitionTime is defined, then it is the time between 2 RF pulses
-        repetition_time = float(json_data.get('RepetitionTime')) * 1000  # [ms]
-        phase_encode_steps = int(json_data.get('PhaseEncodingSteps'))
-
-        pulse_sequence_details = json_data.get('PulseSequenceDetails')
-        if pulse_sequence_details is None:
-            raise ValueError("PulseSequenceDetails not found in JSON sidecar.")
-
-        if "gre_field_mapping" in pulse_sequence_details:
-            # This protocol acquires 2 echos with 2 different TRs
-            deltat_slice = repetition_time * phase_encode_steps * 2
-            logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
-        elif "%SiemensSeq%\\gre" == pulse_sequence_details or "gre_PMUlog" in pulse_sequence_details:
-            deltat_slice = repetition_time * phase_encode_steps
-        else:
-            deltat_slice = repetition_time * phase_encode_steps
-            logger.warning("Protocol name not recognized. Cannot compute acquisition duration.")
-
-        n_slices = nii_data.shape[2]
-
-        deltat_volume = deltat_slice * n_slices  # [ms]
-
-    else:
-        raise ValueError("RepetitionTime is not defined in the JSON sidecar. Can't compute acquisition duration.")
+    deltat_volume = get_volume_tr(json_data)
 
     return n_volumes * deltat_volume  # [ms]
 
@@ -570,6 +690,7 @@ def is_fatsat_on(json_data):
             logger.debug("No Fat Saturation pulse detected")
             is_fatsat = False
     else:
-        raise ValueError("ScanOptions not found in json sidecar.")
+        logger.warning("No ScanOptions found in JSON sidecar. Cannot determine if fat saturation is on.")
+        is_fatsat = False
 
     return is_fatsat

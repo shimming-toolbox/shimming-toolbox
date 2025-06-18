@@ -9,9 +9,11 @@ import logging
 from matplotlib.figure import Figure
 import numpy as np
 
-from shimmingtoolbox.load_nifti import get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on
+from shimmingtoolbox.load_nifti import (get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on,
+                                        get_excitation_tr, get_slice_timing, get_slice_tr)
 
 logger = logging.getLogger(__name__)
+ERROR_MARGIN = 0.99
 
 
 class Pmu(object):
@@ -252,7 +254,7 @@ class Pmu(object):
 
         logger.debug(f"Trigger times: {trigger_times}")
 
-        return trigger_times
+        return np.array(trigger_times)
 
     def get_mean_trigger_span(self):
         """
@@ -339,12 +341,11 @@ class PmuResp(Pmu):
         """
         start_time, stop_time = self.get_start_and_stop_times()
         if np.any(start_time > acquisition_times) or np.any(stop_time < acquisition_times):
-            logger.warning("acquisition_times don't fit within time limits for resp trace")
             start_offset = np.min(acquisition_times - start_time)
             stop_offset = np.min(stop_time - acquisition_times)
             logger.debug(f"start_offset: {start_offset}")
             logger.debug(f"stop_offset: {stop_offset}")
-            raise RuntimeError("acquisition_times don't fit within time limits for resp trace")
+            raise OutOfRangeError("acquisition_times don't fit within time limits for resp trace")
 
         times = self.get_times()
         interp_data = np.interp(acquisition_times, times, self.get_data())
@@ -395,13 +396,15 @@ class PmuExt(Pmu):
         """
         super().__init__(fname_pmu)
 
-    def get_acquisition_times(self, nii_data, json_data):
+    def get_acquisition_times(self, nii_data, json_data, delay=2):
         """ Calculates when the middle of the echo occurs based on the time a trigger occurs.
             That is: trigger_time + echo_time + delay.
 
         Args:
             nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
             json_data (dict): Json dict corresponding to a nifti sidecar (BIDS format).
+            delay (int): Delay in ms to add to the trigger time. There is a 2ms delay between the trigger and the RF
+                         pulse.
 
         Returns:
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
@@ -412,47 +415,27 @@ class PmuExt(Pmu):
         else:
             n_volumes = 1
 
-        if len(nii_data.shape) == 2:
+        if len(nii_data.shape) != 2:
             n_slices = nii_data.shape[2]
         else:
             n_slices = 1
 
+        # Can be '2D'
+        mr_acquisition_type = json_data.get('MRAcquisitionType')
+        if mr_acquisition_type != '2D':
+            # mr_acquisition_type is None or 3D
+            raise NotImplementedError("MR acquisition type is not 2D.")
+
         # Offset time in ms to add a buffer to the imprecise timing of the DICOMS
         offset = 5000
-        acq_start_time = int(get_acquisition_start_time(nii_data)) - offset
+        acq_start_time = int(get_acquisition_start_time(json_data)) - offset
         acq_stop_time = int(get_acquisition_stop_time(nii_data, json_data)) + offset
 
-        if 'EchoTime' in json_data:
-            echo_time = json_data['EchoTime'] * 1000
-        else:
-            raise ValueError("EchoTime not found in json_data. Please provide a valid json_data with EchoTime.")
-
-        return self._get_acquisition_times(n_volumes, n_slices, echo_time, fat_suppression=is_fatsat_on(json_data),
-                                           delay=2, acq_time_start=acq_start_time, acq_time_stop=acq_stop_time)
-
-    def _get_acquisition_times(self, n_volumes, n_slices, echo_time, fat_suppression=False, delay=2,
-                               acq_time_start=None, acq_time_stop=None):
-        """
-        Calculates when the middle of the echo occurs based on the time a trigger occurs.
-        That is: trigger_time + echo_time + delay.
-
-        Args:
-            n_volumes (int): Number of volumes in the acquisition.
-            n_slices (int): Number of slices in the acquisition.
-            echo_time (float): Echo time in ms.
-            fat_suppression (bool): If True, discard half the trigger as being for indicative of a fat sat trigger.
-            delay (int): Delay in ms to apply to the acquisition timestamps. This delay is implement in the pulse
-                         sequence to let time for the currents to change.
-            acq_time_start (int): Acquisition start time in milliseconds past midnight.
-            acq_time_stop (int): Acquisition stop time in milliseconds past midnight.
-
-        Returns:
-            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
-        """
-
-        trigger_times = self.get_trigger_times(acq_time_start, acq_time_stop)
+        trigger_times = self.get_trigger_times(acq_start_time, acq_stop_time)
         if len(trigger_times) == 0:
             raise ValueError("No trigger times found in the specified range.")
+
+        fat_suppression = is_fatsat_on(json_data)
 
         # If fat suppression, discard half the triggers
         if fat_suppression:
@@ -464,10 +447,36 @@ class PmuExt(Pmu):
         if len(trigger_times) != n_volumes * n_slices:
             raise ValueError("Not enough trigger times for the specified number of volumes and slices.")
 
+        slice_timing_start = get_slice_timing(json_data, n_slices)
+
+        repetition_slice_excitation = get_excitation_tr(json_data)
+
+        # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
+        # (more than one slice acquired within a TR excitation)
+        # Remove slices that are at 0 ms (acquired during the first TR excitation)
+        # If there are other slices acquired before the next TR excitation, then this is interleaved
+        # multi-slice
+        if np.any(slice_timing_start[slice_timing_start > 0] < repetition_slice_excitation):
+            raise NotImplementedError("Interleaved multi-slice acquisition detected, but not implemented.")
+
+        deltat_slice = get_slice_tr(json_data)
+
+        # Order according to slice timing
+        slice_timing_from_triggers = np.zeros(n_volumes * n_slices, dtype=float)
+        slice_timing_order = np.argsort(slice_timing_start)
+        for i_vol in range(n_volumes):
+            slice_timing_from_triggers[i_vol * n_slices:(i_vol + 1) * n_slices] = trigger_times[i_vol * n_slices:(i_vol + 1) * n_slices][slice_timing_order]
+
         # Calculate acquisition timestamps
-        acquisition_timestamps = np.array(trigger_times) + echo_time + delay
+        acquisition_timestamps = slice_timing_from_triggers + (deltat_slice / 2) + delay
 
         # Reshape to (n_volumes, n_slices)
         acquisition_timestamps = acquisition_timestamps.reshape(n_volumes, n_slices)
 
         return acquisition_timestamps
+
+
+class OutOfRangeError(Exception):
+    """
+    Exception raised when the requested time is out of range of the PMU data.
+    """
