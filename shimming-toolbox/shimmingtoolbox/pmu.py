@@ -206,15 +206,6 @@ class Pmu(object):
         # That is we assume they do *not* occupy a raster position.
         data_cleaned = data[data < 4096]
 
-        # start_time_mdh += 1070
-        # stop_time_mdh += 1070
-        # start_time_mpcu -= 8370
-        # stop_time_mpcu -= 8370
-
-        # GRE
-        # start_time_mdh += 1000
-        # stop_time_mdh += 1000
-
         attributes = {
             'fname': fname_pmu,
             'data': data_cleaned,
