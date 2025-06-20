@@ -6,7 +6,8 @@ import numpy as np
 import json
 import copy
 from functools import wraps
-from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size
+from shimmingtoolbox.shim.shim_utils import extend_slice
+import math
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -200,7 +201,7 @@ class NiftiFile:
         Returns:
             str: path_nii of the file (absolute path)
         """
-        path_nii = os.path.path_nii(self.fname_nii)
+        path_nii = os.path.dirname(self.fname_nii)
         
         # For files in current directory, return current working directory
         if not path_nii:
@@ -356,7 +357,7 @@ class NiftiFile:
         Returns:
             str: Manufacturer model name with spaces replaced by underscores, or None if not available.
         """
-        model = self.get_json_info('ManufacturerModelName', required=False)
+        model = self.get_json_info('ManufacturersModelName', required=False)
         return model.replace(" ", "_") if model is not None else None
 
 
@@ -396,7 +397,7 @@ class NiftiFieldMap(NiftiFile):
                 if self.shape[i_axis] < dilation_kernel_size:
                     self.extended = True
             if self.extended:
-                extended_nii = extend_fmap_to_kernel_size(self.nii, dilation_kernel_size)
+                extended_nii = self.extend_fmap_to_kernel_size(dilation_kernel_size)
                 
             if logger.level <= getattr(logging, 'DEBUG') and self.extended:
                 logger.debug(f"Field map shape: {self.shape}, "
@@ -404,6 +405,44 @@ class NiftiFieldMap(NiftiFile):
                 nib.save(extended_nii, os.path.join(self.path_output, f"{self.filename}_extended.nii.gz"))
 
         return extended_nii if extending else self.nii
+    
+    def extend_fmap_to_kernel_size(self, dilation_kernel_size, ret_location=False):
+        """
+        Load the fmap and expand its dimensions to the kernel size
+
+        Args:
+            nii_fmap_orig (nib.Nifti1Image): 3d (dim1, dim2, dim3) or 4d (dim1, dim2, dim3, t) nii to be extended
+            dilation_kernel_size: Size of the kernel
+            path_output (str): Path to save the debug output
+            ret_location (bool): If True, return the location of the original data in the new data
+        Returns:
+            nib.Nifti1Image: Nibabel object of the loaded and extended fieldmap
+        """
+
+        fieldmap_shape = self.shape[:3]
+
+        # Extend the dimensions where the kernel is bigger than the number of voxels
+        tmp_nii = copy.deepcopy(self.nii)
+        location = np.ones(self.shape)
+        for i_axis in range(len(fieldmap_shape)):
+            # If there are less voxels than the kernel size, extend in that axis
+            if fieldmap_shape[i_axis] < dilation_kernel_size:
+                diff = float(dilation_kernel_size - fieldmap_shape[i_axis])
+                n_slices_to_extend = math.ceil(diff / 2)
+                tmp_nii, location = extend_slice(tmp_nii, n_slices=n_slices_to_extend, axis=i_axis, location=location)
+
+        nii_fmap = tmp_nii
+
+        # If DEBUG, save the extended fieldmap
+        if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
+            fname_new_fmap = os.path.join(self.path_output, 'tmp_extended_fmap.nii.gz')
+            nib.save(nii_fmap, fname_new_fmap)
+            logger.debug(f"Extended fmap, saved the new fieldmap here: {fname_new_fmap}")
+
+        if ret_location:
+            return nii_fmap, location.astype(bool)
+
+        return nii_fmap
 
 
 class NiftiAnatomical(NiftiFile):
@@ -484,7 +523,7 @@ class NiftiMask(NiftiFile):
             ValueError: If the mask is not in 3D or 4D.
         """
         if self.ndim == 3:
-            pass
+            nii_mask_anat = self.nii
         elif self.ndim == 4:
             logger.debug("Mask is 4d, converting to 3d")
             tmp_3d = np.zeros(self.shape[:3])

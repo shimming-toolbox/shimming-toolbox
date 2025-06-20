@@ -29,8 +29,7 @@ from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.utils import create_output_dir, montage
-from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
-from shimmingtoolbox.files.file import NiftiFile
+from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask, extend_slice
 
 ListCoil = List[Coil]
 
@@ -144,7 +143,7 @@ class ShimSequencer(Sequencer):
                           Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil profiles
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
-                          :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+                          :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
         method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
@@ -173,7 +172,7 @@ class ShimSequencer(Sequencer):
                               profiles are larger than the extent of the fieldmap. This is especially true for
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
-                              :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+                              :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
             method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
@@ -732,7 +731,7 @@ class ShimSequencer(Sequencer):
         nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
 
     def save_calc_fmap_json(self, coefs):
-        json_shimmed = copy.deepcopy(self.json_fieldmap)
+        json_shimmed = copy.deepcopy(self.nii_fieldmap.json)
         if len(self.slices) == 1:
             # i keeps track of the index of the concatenated shim coefficients
             i = 0
@@ -962,7 +961,7 @@ class RealTimeSequencer(Sequencer):
                               profiles are larger than the extent of the fieldmap. This is especially true for
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
-                              :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+                              :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
             method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
@@ -1014,7 +1013,7 @@ class RealTimeSequencer(Sequencer):
                               profiles are larger than the extent of the fieldmap. This is especially true for
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
-                              :func:`shimmingtoolbox.shim.sequencer.update_affine_for_ap_slices`
+                              :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
             method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
@@ -2471,107 +2470,3 @@ def extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output=
         return nii_fmap, location.astype(bool)
 
     return nii_fmap
-
-
-def extend_slice(nii_array, n_slices=1, axis=2, location=None):
-    """
-    Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
-    Updates the affine of the matrix to keep the input array in the same location.
-
-    Args:
-        nii_array (nib.Nifti1Image): 3d or 4d array to extend the dimensions along an axis.
-        n_slices (int): Number of slices to add on each side of the selected axis.
-        axis (int): Axis along which to insert the slice(s), Allowed axis: 0, 1, 2.
-        location (np.array): Location where the original data is located in the new data.
-    Returns:
-        nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.
-
-    Examples:
-        ::
-            print(nii_array.get_fdata().shape)  # (50, 50, 1, 10)
-            nii_out = extend_slice(nii_array, n_slices=1, axis=2)
-            print(nii_out.get_fdata().shape)  # (50, 50, 3, 10)
-    """
-    # Locate original data in new data
-    orig_data_in_new_data = location
-
-    if nii_array.get_fdata().ndim == 3:
-        extended = nii_array.get_fdata()
-        extended = extended[..., np.newaxis]
-        if location is not None:
-            orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
-    elif nii_array.get_fdata().ndim == 4:
-        extended = nii_array.get_fdata()
-    else:
-        raise ValueError("Unsupported number of dimensions for input array")
-
-    for i_slice in range(n_slices):
-        if axis == 0:
-            if location is not None:
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
-                                                  np.zeros(orig_data_in_new_data.shape[1:]),
-                                                  axis=axis)
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
-                                                  np.zeros(orig_data_in_new_data.shape[1:]),
-                                                  axis=axis)
-            extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
-            extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
-        elif axis == 1:
-            if location is not None:
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
-                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
-                                                  axis=axis)
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
-                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
-                                                  axis=axis)
-            extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
-            extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
-        elif axis == 2:
-            if location is not None:
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
-                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
-                                                  axis=axis)
-                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
-                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
-                                                  axis=axis)
-            extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
-            extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
-        else:
-            raise ValueError("Unsupported value for axis")
-
-    new_affine = update_affine_for_ap_slices(nii_array.affine, n_slices, axis)
-
-    if nii_array.get_fdata().ndim == 3:
-        extended = extended[..., 0]
-
-    nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
-
-    if location is not None:
-        return nii_extended, orig_data_in_new_data
-
-    return nii_extended
-
-
-def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
-    """
-    Updates the input affine to reflect an insertion of n_slices on each side of the selected axis
-
-    Args:
-        affine (np.ndarray): 4x4 qform affine matrix representing the coordinates
-        n_slices (int): Number of pixels to add on each side of the selected axis
-        axis (int): Axis along which to insert the slice(s)
-    Returns:
-        np.ndarray: 4x4 updated affine matrix
-    """
-    # Define indexes
-    index_shifted = [0, 0, 0]
-    index_shifted[axis] = n_slices
-
-    # Difference of voxel in world coordinates
-    spacing = apply_affine(affine, index_shifted) - apply_affine(affine, [0, 0, 0])
-
-    # Calculate new affine
-    new_affine = affine
-    new_affine[:3, 3] = affine[:3, 3] - spacing
-
-    return new_affine

@@ -7,11 +7,11 @@ import nibabel as nib
 import json
 import numpy as np
 import logging
+from nibabel.affines import apply_affine
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
 from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS, channels_per_order
-from shimmingtoolbox.files.file import NiftiFile
 
 logger = logging.getLogger(__name__)
 
@@ -348,11 +348,115 @@ def convert_to_dac_units(shim_settings_coefs_ui, scanner_constraints, scanner_co
     return coefs_dac
 
 
+def extend_slice(nii_array, n_slices=1, axis=2, location=None):
+    """
+    Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
+    Updates the affine of the matrix to keep the input array in the same location.
+
+    Args:
+        nii_array (nib.Nifti1Image): 3d or 4d array to extend the dimensions along an axis.
+        n_slices (int): Number of slices to add on each side of the selected axis.
+        axis (int): Axis along which to insert the slice(s), Allowed axis: 0, 1, 2.
+        location (np.array): Location where the original data is located in the new data.
+    Returns:
+        nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.
+
+    Examples:
+        ::
+            print(nii_array.get_fdata().shape)  # (50, 50, 1, 10)
+            nii_out = extend_slice(nii_array, n_slices=1, axis=2)
+            print(nii_out.get_fdata().shape)  # (50, 50, 3, 10)
+    """
+    # Locate original data in new data
+    orig_data_in_new_data = location
+
+    if nii_array.get_fdata().ndim == 3:
+        extended = nii_array.get_fdata()
+        extended = extended[..., np.newaxis]
+        if location is not None:
+            orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
+    elif nii_array.get_fdata().ndim == 4:
+        extended = nii_array.get_fdata()
+    else:
+        raise ValueError("Unsupported number of dimensions for input array")
+
+    for i_slice in range(n_slices):
+        if axis == 0:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
+        elif axis == 1:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
+        elif axis == 2:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
+        else:
+            raise ValueError("Unsupported value for axis")
+
+    new_affine = update_affine_for_ap_slices(nii_array.affine, n_slices, axis)
+
+    if nii_array.get_fdata().ndim == 3:
+        extended = extended[..., 0]
+
+    nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
+
+    if location is not None:
+        return nii_extended, orig_data_in_new_data
+
+    return nii_extended
+
+
+def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
+    """
+    Updates the input affine to reflect an insertion of n_slices on each side of the selected axis
+
+    Args:
+        affine (np.ndarray): 4x4 qform affine matrix representing the coordinates
+        n_slices (int): Number of pixels to add on each side of the selected axis
+        axis (int): Axis along which to insert the slice(s)
+    Returns:
+        np.ndarray: 4x4 updated affine matrix
+    """
+    # Define indexes
+    index_shifted = [0, 0, 0]
+    index_shifted[axis] = n_slices
+
+    # Difference of voxel in world coordinates
+    spacing = apply_affine(affine, index_shifted) - apply_affine(affine, [0, 0, 0])
+
+    # Calculate new affine
+    new_affine = affine
+    new_affine[:3, 3] = affine[:3, 3] - spacing
+
+    return new_affine
+
+
 class ScannerShimSettings:
     def __init__(self, nii_fmap, orders=None):
 
         shim_settings_dac = nii_fmap.get_scanner_shim_settings(orders=orders)
-        manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
+        manufacturers_model_name = nii_fmap.get_manufacturer_model_name()
         manufacturer = nii_fmap.get_json_info('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
 

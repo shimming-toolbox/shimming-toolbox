@@ -19,17 +19,15 @@ from matplotlib.figure import Figure
 
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.cli.realtime_shim import gradient_realtime
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
-from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge, SPH_HARMONICS_TITLES
-from shimmingtoolbox.load_nifti import get_isocenter
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints
+from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
-from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
+from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
-from shimmingtoolbox.files.file import NiftiFile, NiftiFieldMap, NiftiAnatomical, NiftiMask
+from shimmingtoolbox.files.file import NiftiFieldMap, NiftiAnatomical, NiftiMask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -282,7 +280,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            manufacturer = nii_anat.get_json_info['Manufacturer']
+            manufacturer = nii_anat.get_json_info('Manufacturer')
 
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
@@ -1107,7 +1105,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
                                                          scanner_shim_settings)
 
         isocenter = nii_fmap.get_isocenter()
-        scanner_coil = ScannerCoil(nii_fmap.extend_shape[:3], nii_fmap.extend_affine, scanner_contraints, orders,
+        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.extended_affine, scanner_contraints, orders,
                                    manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 

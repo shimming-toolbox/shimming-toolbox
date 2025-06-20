@@ -19,7 +19,7 @@ from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer, resample_mask
-from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices, update_affine_for_ap_slices
+from shimmingtoolbox.shim.sequencer import define_slices, extend_slice, parse_slices
 from shimmingtoolbox.shim.sequencer import shim_max_intensity
 from shimmingtoolbox.simulate.numerical_model import NumericalModel
 from shimmingtoolbox.utils import set_all_loggers
