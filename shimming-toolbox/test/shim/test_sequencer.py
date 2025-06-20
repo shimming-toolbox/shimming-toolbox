@@ -272,7 +272,7 @@ class TestSequencer(object):
         # Optimize
         slices = [(0, 2), (1,)]
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
-        with pytest.raises(ValueError, match="Target anatomical image must be in 3d or 4d"):
+        with pytest.raises(ValueError, match="Target image must be in 3d or 4d"):
             ShimSequencer(nii_fieldmap, json_fmap, nii_wrong_anat, json_anat, nii_mask, slices, [sph_coil]).shim()
 
     def test_shim_sequencer_wrong_mask_dim(self, nii_fieldmap, nii_anat, nii_mask, sph_coil, sph_coil2):
@@ -410,7 +410,15 @@ def define_rt_sim_inputs():
     pmu.set_start_and_stop_times(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
-    json_data = {'RepetitionTime': 250 / 1000, 'RepetitionTimeExcitation': 0.001, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000,
+                 'RepetitionTimeExcitation': 0.001,
+                 'AcquisitionTime': "00:00:00.000000",
+                 'MRAcquisitionType': "2D",
+                 'SliceTiming': [0.0, 0.001, 0.002],
+                 'PulseSequenceDetails': "%SiemensSeq%\\gre",
+                 'Manufacturer': "Siemens",
+                 'PhaseEncodingSteps': 64,
+                 'AcquisitionMatrixPE': 64}
 
     # Create Coil
     coil_affine = nii_fieldmap.affine
@@ -566,7 +574,7 @@ class TestShimRTpmuSimData(object):
                                               nii_mask_riro, slices, pmu, coil):
         # Optimize
         nii_wrong_anat = nib.Nifti1Image(nii_anat.get_fdata()[..., 0], nii_anat.affine, header=nii_anat.header)
-        with pytest.raises(ValueError, match="Anatomical image must be in 3d"):
+        with pytest.raises(ValueError, match="Target image must be in 3d or 4d"):
             RealTimeSequencer(nii_fieldmap, json_data, nii_wrong_anat, nii_mask_static, nii_mask_riro,
                               slices, pmu, [coil], [coil]).shim()
 

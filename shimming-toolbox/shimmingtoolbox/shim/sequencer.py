@@ -2189,11 +2189,11 @@ def convert_to_3d(nii_target):
     if anat.ndim == 3:
         pass
     elif anat.ndim == 4:
-        logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+        logger.info("Target image is 4d, taking the average and converting to 3d")
         anat = np.mean(anat, axis=3)
         nii_target = nib.Nifti1Image(anat, nii_target.affine, header=nii_target.header)
     else:
-        raise ValueError("Target anatomical image must be in 3d or 4d")
+        raise ValueError("Target image must be in 3d or 4d")
 
     return nii_target
 

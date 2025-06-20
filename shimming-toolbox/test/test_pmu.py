@@ -98,7 +98,14 @@ def test_pmu_fake_data():
     pmu.set_data(fake_data)
     pmu.set_start_and_stop_times(125, 250 * (len(fake_data) - 1) + 125)
 
-    json_data = {'RepetitionTime': 250 / 1000, 'RepetitionTimeExcitation': 0.001, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000,
+                 'RepetitionTimeExcitation': 0.001,
+                 'AcquisitionTime': "00:00:00.000000",
+                 'MRAcquisitionType': '2D',
+                 'PulseSequenceDetails': "%SiemensSeq%\\gre",
+                 'Manufacturer': "Siemens",
+                 'PhaseEncodingSteps': 250,
+                 'AcquisitionMatrixPE': 250}
 
     # Calc pressure
     acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)

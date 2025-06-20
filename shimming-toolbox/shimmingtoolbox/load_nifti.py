@@ -200,9 +200,11 @@ def get_n_acquired_phase_encode_lines(json_data):
         raise ValueError("This function is only implemented for Siemens scanners.")
 
     # Base resolution
-    phase_encode_steps = json_data.get('PhaseEncodingSteps')
+    # PhaseEncodingSteps should include the calculations below, but I have noticed that it sometimes does not
+    # phase_encode_steps = json_data.get('PhaseEncodingSteps')
+    phase_encode_steps = json_data.get('AcquisitionMatrixPE')
     if phase_encode_steps is None:
-        raise ValueError("PhaseEncodingSteps not found in JSON sidecar.")
+        raise ValueError("AcquisitionMatrixPE not found in JSON sidecar.")
     # Convert to int if it was not None
     phase_encode_steps = int(phase_encode_steps)
 
@@ -238,6 +240,14 @@ def get_n_acquired_phase_encode_lines(json_data):
             n_phase_encode_steps = math.ceil((n_phase_encode_steps + ref_lines_pe) / parallel_reduction_factor_in_plane)
         else:
             NotImplementedError(f"{parallel_technique} parallel acquisition technique is not implemented yet.")
+
+    ph_encode_steps_dcm2niix = json_data.get('PhaseEncodingSteps')
+    if ph_encode_steps_dcm2niix is not None:
+        ph_encode_steps_dcm2niix = int(ph_encode_steps_dcm2niix)
+        if ph_encode_steps_dcm2niix != n_phase_encode_steps:
+            logger.warning(f"PhaseEncodingSteps in JSON sidecar ({ph_encode_steps_dcm2niix}) does not match "
+                           f"calculated value ({n_phase_encode_steps}). This is a bug in Shimming Toolbox or in "
+                           f"dcm2niix. Using {n_phase_encode_steps} phase encoding steps (from ST).")
 
     return n_phase_encode_steps
 
