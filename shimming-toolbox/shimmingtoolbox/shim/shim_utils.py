@@ -11,6 +11,7 @@ import logging
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
 from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS, channels_per_order
+from shimmingtoolbox.files.file import NiftiFile
 
 logger = logging.getLogger(__name__)
 
@@ -348,15 +349,11 @@ def convert_to_dac_units(shim_settings_coefs_ui, scanner_constraints, scanner_co
 
 
 class ScannerShimSettings:
-    def __init__(self, bids_json_dict, orders=None):
+    def __init__(self, nii_fmap, orders=None):
 
-        shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
-
-        manufacturers_model_name = bids_json_dict.get('ManufacturersModelName')
-        if manufacturers_model_name is not None:
-           manufacturers_model_name =  manufacturers_model_name.replace(' ', '_')
-
-        manufacturer = bids_json_dict.get('Manufacturer')
+        shim_settings_dac = nii_fmap.get_scanner_shim_settings(orders=orders)
+        manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
+        manufacturer = nii_fmap.get_json_info('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):

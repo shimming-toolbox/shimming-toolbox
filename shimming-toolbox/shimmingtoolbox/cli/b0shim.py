@@ -29,7 +29,7 @@ from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_sli
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, shim_to_phys_cs
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
-from shimmingtoolbox.files.file import NiftiFile
+from shimmingtoolbox.files.file import NiftiFile, NiftiFieldMap, NiftiAnatomical, NiftiMask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -176,64 +176,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Load the fieldmap
-    nii_fmap = NiftiFile(fname_fmap)
-
-    # Make sure the fieldmap has the appropriate dimensions
-    if nii_fmap.ndim != 3:
-        if nii_fmap.ndim == 2:
-            temp_nii_fmap = nib.Nifti1Image(nii_fmap.data[..., np.newaxis], nii_fmap.affine,
-                                       header=nii_fmap.header)
-            nii_fmap.set_nii(extend_fmap_to_kernel_size(temp_nii_fmap, dilation_kernel_size, path_output))
-        else:
-            raise ValueError("Fieldmap must be 2d or 3d")
-    else:
-        # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
-        # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting
-        # (2 voxels in one dimension can differentiate order 1 at most), the parameter allows to have at least the
-        # size of the kernel for each dimension This is usually useful in the through plane direction where we could
-        # have less slices. To mitigate this, we create a 3d volume by replicating the slices on the edges.
-        extending = False
-        for i_axis in range(3):
-            if nii_fmap.shape[i_axis] < dilation_kernel_size:
-                extending = True
-                break
-
-        if extending:
-            nii_fmap.set_nii(extend_fmap_to_kernel_size(nii_fmap, dilation_kernel_size, path_output))
+    nii_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output)
 
     # Prepare the output
     create_output_dir(path_output)
 
     # Load the anat
-    nii_anat = NiftiFile(fname_anat)
-    dim_info = nii_anat.header.get_dim_info()
-    if dim_info[2] is None:
-        logger.warning("The slice encoding direction is not specified in the NIfTI header, Shimming Toolbox will "
-                       "assume it is in the third dimension.")
-    else:
-        if dim_info[2] != 2:
-            # # Reorient nifti so that the slice is the last dim
-            # anat = nii_anat.get_fdata()
-            # # TODO: find index of dim_info
-            # index_in = 0
-            # index_out = 2
-            #
-            # # Swap axis in the array
-            # anat = np.swapaxes(anat, index_in, index_out)
-            #
-            # # Affine must change
-            # affine = copy.deepcopy(nii_anat.affine)
-            # affine[:, index_in] = nii_anat.affine[:, index_out]
-            # affine[:, index_out] = nii_anat.affine[:, index_in]
-            # affine[index_out, 3] = nii_anat.affine[index_in, 3]
-            # affine[index_in, 3] = nii_anat.affine[index_out, 3]
-            #
-            # nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
-            # nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
-
-            # Slice must be the 3rd dimension of the file
-            # TODO: Reorient nifti so that the slice is the 3rd dim
-            raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
+    nii_anat = NiftiAnatomical(fname_anat, path_output)
 
      # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
@@ -252,13 +201,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Load mask
     if fname_mask_anat is not None:
-        nii_mask_anat = NiftiFile(fname_mask_anat)
+        nii_mask_anat = NiftiMask(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
         tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
-        nii_mask_anat = NiftiFile(os.path.join(path_output, 'mask_anat.nii.gz'))
+        nii_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
         
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -283,12 +232,10 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
-    # TODO: adapt ScannerShimSettings to the new NiftiFile class
     scanner_shim_settings = ScannerShimSettings(nii_fmap, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    # TODO: adapt load_coils to the new NiftiFile class
     list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'])
 
     # Get the shim slice ordering
@@ -300,7 +247,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
-    # TODO : adapt the sequencer to the new NiftiFile class
     sequencer = ShimSequencer(nii_fmap,
                               nii_anat,
                               nii_mask_anat,
@@ -1126,15 +1072,13 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
 
-    manufacturer = json_fm_data.get('Manufacturer')
-    manufacturers_model_name = json_fm_data.get('ManufacturersModelName')
-    if manufacturers_model_name is not None:
-        manufacturers_model_name = manufacturers_model_name.replace(' ', '_')
+    manufacturer = nii_fmap.get_json_info('Manufacturer')
+    manufacturers_model_name = nii_fmap.get_manufacturer_model_name()
 
     list_coils = []
 
     # Load custom coils
-    # Load custom coils
+    # TODO: Change coil profiles to NiftiCoilProfile objects
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
@@ -1162,8 +1106,8 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
             scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
                                                          scanner_shim_settings)
 
-        isocenter = get_isocenter(json_fm_data)
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.affine, scanner_contraints, orders,
+        isocenter = nii_fmap.get_isocenter()
+        scanner_coil = ScannerCoil(nii_fmap.extend_shape[:3], nii_fmap.extend_affine, scanner_contraints, orders,
                                    manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
@@ -1185,7 +1129,7 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nib.save(nii, fname_to_save)
 
 
-def _get_fatsat_option(json_anat, fatsat):
+def _get_fatsat_option(nii_anat, fatsat):
     """ Return if the fat saturation option should be turned on or off. This function mainly exists to resolve the 'auto'
         case
 
@@ -1197,10 +1141,10 @@ def _get_fatsat_option(json_anat, fatsat):
         bool: Whether to activate fatsat or not
     """
     fatsat_option = False
-
+    scan_options = nii_anat.get_json_info('ScanOptions', required=False)
     if fatsat == 'auto':
-        if 'ScanOptions' in json_anat:
-            if 'FS' in json_anat['ScanOptions']:
+        if scan_options is not None:
+            if 'FS' in scan_options:
                 logger.debug("Fat Saturation pulse detected")
                 fatsat_option = True
     elif fatsat == 'yes':

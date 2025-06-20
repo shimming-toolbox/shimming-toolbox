@@ -30,6 +30,7 @@ from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.utils import create_output_dir, montage
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask
+from shimmingtoolbox.files.file import NiftiFile
 
 ListCoil = List[Coil]
 
@@ -134,8 +135,8 @@ class ShimSequencer(Sequencer):
     also evaluate the shimming performance.
 
     Attributes:
-        nii_fieldmap (nib.Nifti1Image): Nibabel object containing fieldmap data in 3d.
-        nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
+        nii_fieldmap (NiftiFile): NiftiFile object containing fieldmap data in 3d.
+        nii_anat (NiftiFile): NiftiFile object containing anatomical data in 3d.
         nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
@@ -149,13 +150,11 @@ class ShimSequencer(Sequencer):
                       in: :mod:`shimmingtoolbox.optimizer`
         opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
-        nii_fieldmap_orig (nib.Nifti1Image): Nibabel object containing the copy of the original fieldmap data
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
-        fmap_is_extended (bool) : Tells whether the fieldmap has been extended by the object.
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
-    def __init__(self, nii_fieldmap, json_fieldmap, nii_anat, json_anat, nii_mask_anat, slices, coils,
+    def __init__(self, nii_fieldmap, nii_anat, nii_mask_anat, slices, coils,
                  method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
@@ -163,10 +162,9 @@ class ShimSequencer(Sequencer):
         Initialization for the ShimSequencer class
 
         Args:
-            nii_fieldmap (nib.Nifti1Image): Nibabel object containing fieldmap data in 3d.
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-            nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
-                                             (only consider voxels with non-zero values)
+            nii_fieldmap (NiftiFile): NiftiFile object containing fieldmap data in 3d.
+            nii_anat (NiftiFile): NiftiFile object containing anatomical data in 3d.
+            nii_mask_anat (NiftiFile): 3D anat mask used for the optimizer to shim in the region of interest.
             slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape of
                             anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
@@ -195,11 +193,10 @@ class ShimSequencer(Sequencer):
                                 artefacts.
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
-        self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
-        self.json_fieldmap = json_fieldmap
-        self.nii_anat = self.get_anat(nii_anat)
-        self.json_anat = json_anat
-        self.nii_mask_anat = self.load_masks(nii_mask_anat)
+        self.nii_fieldmap = nii_fieldmap
+        self.nii_anat = nii_anat
+        self.nii_mask_anat = nii_mask_anat
+        self.nii_mask_anat.load_mask(self.nii_anat)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
@@ -209,112 +206,6 @@ class ShimSequencer(Sequencer):
         self.w_signal_loss = w_signal_loss
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
-
-    def get_fieldmap(self, nii_fieldmap):
-        """
-        Get the fieldmap and perform error checking.
-
-        Args:
-              nii_fieldmap (nib.Nifti1Image): Nibabel object containing fieldmap data in 3d.
-
-        Returns:
-            (tuple): tuple containing:
-
-                * nib.Nifti1Image: Nibabel object containing fieldmap data in 3d.
-                * nib.Nifti1Image: Nibabel object containing the copy of the initial fieldmap data in 3d.
-                * bool: Boolean indicating if the initial fieldmap has been changed.
-        """
-        nii_fmap_orig = copy.deepcopy(nii_fieldmap)
-        if nii_fmap_orig.get_fdata().ndim != 3:
-            if nii_fmap_orig.get_fdata().ndim == 2:
-                nii_fmap_orig = nib.Nifti1Image(nii_fmap_orig.get_fdata()[..., np.newaxis], nii_fmap_orig.affine,
-                                                header=nii_fmap_orig.header)
-                nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
-                                                          self.path_output)
-                extending = True
-            else:
-                raise ValueError("Fieldmap must be 2d or 3d")
-        else:
-            extending = False
-            for i_axis in range(3):
-                if nii_fieldmap.get_fdata().shape[i_axis] < self.mask_dilation_kernel_size:
-                    extending = True
-            if extending:
-                nii_fieldmap = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
-                                                          self.path_output)
-
-        return nii_fieldmap, nii_fmap_orig, extending
-
-    def get_anat(self, nii_anat):
-        """
-        Get the target image and perform error checking.
-
-        Args:
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-
-        Returns:
-            nib.Nifti1Image: Nibabel object containing anatomical data in 3d.
-
-        """
-        anat = nii_anat.get_fdata()
-        if anat.ndim == 3:
-            pass
-        elif anat.ndim == 4:
-            logger.info("Target anatomical is 4d, taking the average and converting to 3d")
-            anat = np.mean(anat, axis=3)
-            nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
-        else:
-            raise ValueError("Target anatomical image must be in 3d or 4d")
-
-        return nii_anat
-
-    def load_masks(self, nii_mask_anat):
-        """
-        Get the mask and perform error checking.
-
-        Args:
-            nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region
-                                              of interest.(only consider voxels with non-zero values)
-
-        Returns:
-            nib.Nifti1Image: 3D anat mask used for the optimizer to shim in the region of interest.
-                              (Only consider voxels with non-zero values)
-
-        """
-        anat = self.nii_anat.get_fdata()
-        mask = nii_mask_anat.get_fdata()
-
-        if mask.ndim == 3:
-            pass
-        elif mask.ndim == 4:
-            logger.debug("Mask is 4d, converting to 3d")
-            tmp_3d = np.zeros(mask.shape[:3])
-            n_vol = mask.shape[-1]
-            # Summing over 4th dimension making sure that the max value is 1
-            for i_vol in range(mask.shape[-1]):
-                tmp_3d += (mask[..., i_vol] / mask[..., i_vol].max())
-            # 80% of the volumes must contain the desired pixel to be included, this avoids having dead voxels in the
-            # output mask
-            tmp_3d = threshold(tmp_3d, thr=int(n_vol * 0.8))
-            nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), nii_mask_anat.affine,
-                                            header=nii_mask_anat.header)
-            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_mask_anat, os.path.join(self.path_output, "fig_3d_mask.nii.gz"))
-        else:
-            raise ValueError("Mask must be in 3d or 4d")
-
-        if not np.all(nii_mask_anat.shape == anat.shape) or not np.all(
-                nii_mask_anat.affine == self.nii_anat.affine):
-            logger.debug("Resampling mask on the target anat")
-            nii_mask_anat_soft = resample_from_to(nii_mask_anat, self.nii_anat, order=1, mode='grid-constant')
-            tmp_mask = nii_mask_anat_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
-            nii_mask_anat = nib.Nifti1Image(tmp_mask, nii_mask_anat_soft.affine, header=nii_mask_anat_soft.header)
-            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
-
-        return nii_mask_anat
 
     def get_resampled_masks(self):
         """
@@ -326,7 +217,7 @@ class ShimSequencer(Sequencer):
                 * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
-        nii_mask_anat = self.nii_mask_anat
+        nii_mask_anat = self.nii_mask_anat.nii
         optimizer = self.optimizer
         slices = self.slices
         dilation_kernel = self.mask_dilation_kernel
@@ -334,14 +225,14 @@ class ShimSequencer(Sequencer):
         path_output = self.path_output
         n_shims = len(slices)
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
-        if self.fmap_is_extended:
+        if self.nii_fieldmap.extended:
             # Joblib multiprocessing to resampled the mask
             dilated_mask = Parallel(-1, backend='loky')(
                 delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i], dilation_kernel,
                                        dilation_kernel_size, path_output)
                 for i in range(n_shims))
 
-            nii_unshimmed = self.nii_fieldmap_orig
+            nii_unshimmed = self.nii_fieldmap.nii
             mask = Parallel(-1, backend='loky')(
                 delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i])
                 for i in range(n_shims))
@@ -392,18 +283,18 @@ class ShimSequencer(Sequencer):
         # global supported_optimizers
         if self.method in supported_optimizers:
             if self.method in ['least_squares', 'bfgs']:
-                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
-                                                              self.nii_fieldmap.affine, self.opt_criteria,
+                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.extended_data,
+                                                              self.nii_fieldmap.extended_affine, self.opt_criteria,
                                                               reg_factor=self.reg_factor,
                                                               w_signal_loss=self.w_signal_loss,
                                                               w_signal_loss_xy=self.w_signal_loss_xy,
                                                               epi_te=self.epi_te)
             elif self.method == 'quad_prog':
-                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
-                                                              self.nii_fieldmap.affine, reg_factor=self.reg_factor)
+                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.extended_data,
+                                                              self.nii_fieldmap.extended_affine, reg_factor=self.reg_factor)
             else:
-                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.get_fdata(),
-                                                              self.nii_fieldmap.affine)
+                optimizer = supported_optimizers[self.method](self.coils, self.nii_fieldmap.extended_data,
+                                                              self.nii_fieldmap.extended_affine)
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
 
@@ -419,24 +310,24 @@ class ShimSequencer(Sequencer):
 
         # Save the merged coil profiles if in debug
 
-        unshimmed = self.nii_fieldmap_orig.get_fdata()
+        unshimmed = self.nii_fieldmap.data
 
         # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
-        if self.fmap_is_extended:
-            merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap_orig.affine)
+        if self.nii_fieldmap.extended:
+            merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nii_fieldmap.affine)
         else:
             merged_coils = self.optimizer.merged_coils
 
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-            if self.fmap_is_extended:
+            if self.nii_fieldmap.extended:
                 # Save coils with extended slices
-                nii_merged_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap.affine,
+                nii_merged_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap.extended_affine,
                                                    header=self.nii_fieldmap.header)
                 nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils_opt.nii.gz"))
 
             # Save coil with original dimensions
-            nii_merged_coils = nib.Nifti1Image(merged_coils, self.nii_fieldmap_orig.affine,
-                                               header=self.nii_fieldmap_orig.header)
+            nii_merged_coils = nib.Nifti1Image(merged_coils, self.nii_fieldmap.affine,
+                                               header=self.nii_fieldmap.header)
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
 
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
@@ -445,15 +336,15 @@ class ShimSequencer(Sequencer):
             # fmap space
             if len(self.slices) == 1:
                 # Output the resulting fieldmap since it can be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap_orig.affine,
-                                                   header=self.nii_fieldmap_orig.header)
+                nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nii_fieldmap.affine,
+                                                   header=self.nii_fieldmap.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
             else:
                 # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap_orig.affine,
-                                                   header=self.nii_fieldmap_orig.header)
+                nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nii_fieldmap.affine,
+                                                   header=self.nii_fieldmap.header)
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
@@ -489,12 +380,12 @@ class ShimSequencer(Sequencer):
                     self._plot_G_mask(np.gradient(unshimmed, axis=1), full_Gy, mask_full_binary, name='Gy')
 
                     # Resample the shimmed fieldmap and the corrections (useful for the evaluation of the shim)
-                    shimmed_temp_nii = nib.Nifti1Image(shimmed_temp, affine=self.nii_fieldmap_orig.affine,
-                                                        header=self.nii_fieldmap_orig.header)
-                    corrections_nii = nib.Nifti1Image(corrections, affine=self.nii_fieldmap_orig.affine,
-                                                    header=self.nii_fieldmap_orig.header)
-                    shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat, order=1, mode='grid-constant')
-                    corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat, order=1, mode='grid-constant')
+                    shimmed_temp_nii = nib.Nifti1Image(shimmed_temp, affine=self.nii_fieldmap.affine,
+                                                        header=self.nii_fieldmap.header)
+                    corrections_nii = nib.Nifti1Image(corrections, affine=self.nii_fieldmap.affine,
+                                                    header=self.nii_fieldmap.header)
+                    shimmed_temp_resample_nii = resample_from_to(shimmed_temp_nii, self.nii_anat.nii, order=1, mode='grid-constant')
+                    corrections_resample_nii = resample_from_to(corrections_nii, self.nii_anat.nii, order=1, mode='grid-constant')
                     nib.save(shimmed_temp_resample_nii, os.path.join(self.path_output, 'fieldmap_calculated_shim_resampled.nii.gz'))
                     nib.save(corrections_resample_nii, os.path.join(self.path_output, 'corrections_resampled.nii.gz'))
                     # Todo: Output JSON file, since it is resampled, the JSON from the fmap might not be appropriate
@@ -635,8 +526,8 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
         """
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
-                                                            self.nii_fieldmap_orig,
+        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat.nii,
+                                                            self.nii_fieldmap.nii,
                                                             order=0,
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
@@ -665,8 +556,8 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
         """
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat,
-                                                            self.nii_fieldmap_orig,
+        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nii_mask_anat.nii,
+                                                            self.nii_fieldmap.nii,
                                                             order=0,
                                                             mode='grid-constant',
                                                             cval=0).get_fdata()), 0, 1)
@@ -816,15 +707,15 @@ class ShimSequencer(Sequencer):
             list_shim_slice (list): list of the index where there was a correction
         """
         # TODO: resample shimmed fieldmap using order 1 to the target coord system
-        nii_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap_orig.affine,
-                                    header=self.nii_fieldmap_orig.header)
+        nii_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nii_fieldmap.affine,
+                                    header=self.nii_fieldmap.header)
         coils_anat = resample_from_to(nii_coils,
-                                      self.nii_mask_anat,
+                                      self.nii_mask_anat.nii,
                                       order=1,
                                       mode='grid-constant',
                                       cval=0).get_fdata()
-        fieldmap_anat = resample_from_to(self.nii_fieldmap_orig,
-                                         self.nii_mask_anat,
+        fieldmap_anat = resample_from_to(self.nii_fieldmap.nii,
+                                         self.nii_mask_anat.nii,
                                          order=1,
                                          mode='grid-constant',
                                          cval=0).get_fdata()
@@ -835,7 +726,7 @@ class ShimSequencer(Sequencer):
             shimmed_anat_orient[..., self.slices[i_shim]] += corr
 
         fname_shimmed_anat_orient = os.path.join(self.path_output, 'fig_shimmed_anat_orient.nii.gz')
-        nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * self.nii_mask_anat.get_fdata(),
+        nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * self.nii_mask_anat.data,
                                                   self.nii_mask_anat.affine,
                                                   header=self.nii_mask_anat.header)
         nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
@@ -935,11 +826,11 @@ class ShimSequencer(Sequencer):
         mt_shimmed_masked = montage(shimmed_signal_loss[:, :, nonzero_indices] * mask_erode[:, :, nonzero_indices])
 
         nib.save(
-            nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+            nib.Nifti1Image(unshimmed_signal_loss, affine=self.nii_fieldmap.extended_affine, header=self.nii_fieldmap.header),
             os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nii_fieldmap.extended_affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
-        nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.affine, header=self.nii_fieldmap.header),
+        nib.save(nib.Nifti1Image(mask_erode, affine=self.nii_fieldmap.extended_affine, header=self.nii_fieldmap.header),
                  os.path.join(self.path_output, 'mask_erode.nii.gz'))
 
         temp_unshimmed_signal_loss = unshimmed_signal_loss.copy()
