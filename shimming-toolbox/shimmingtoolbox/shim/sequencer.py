@@ -829,7 +829,7 @@ class ShimSequencer(Sequencer):
                     # If its volume shim (len(slices == 1)) and a scanner coil
                     # Dump the shim coefficients as ShimSettingsCurrent + calculated shimmed coefs
                     if 0 in coil.orders:
-                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'] + coefs[0, i]) / 1e6
+                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'][0] + coefs[0, i]) / 1e6
                         j += 1
                     shim_settings_output = []
                     for order in (1, 2, 3):
