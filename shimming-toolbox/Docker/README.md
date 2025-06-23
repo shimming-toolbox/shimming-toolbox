@@ -1,85 +1,123 @@
-# Steps to run ST on the MARS system hardware
+# Creating a chroot disk image for Shimming Toolbox
+This guide walks you through creating a disk image (.img) containing a complete Linux filesystem intended to be used as the root directory for a changed root (chroot) environment. The resulting image can be deployed on MARS system hardware to run Shimming Toolbox locally on the MRI scanner.
 
-## Step 1 (on your personal computer) - Build and export the chroot image
-> [!NOTE]
-> Since most of the commands in this step are time-consuming, it is recommended to perform them before the experiment.
+## Prerequisites
 
-### 1.1 - Navigate to the ST Docker directory
-In a terminal window, go to the Docker directory where Shimming Toolbox (ST) is located:
-```
+Before starting, ensure you have:
+- **Docker**: Installed and running on your system
+- **Disk space**: At least 10GB free space for the build process
+- **USB drive**: 8GB+ capacity (recommended) for image transfer
+- **Time**: Allow 30-40 minutes for the complete process
+- **Permissions**: Root/sudo access may be required for some operations
+
+## Overview
+
+The process consists of three main steps:
+1. Build a Docker image containing Shimming Toolbox
+2. Export the container filesystem and create a chroot-compatible disk image
+3. Compress and transfer the image to a USB drive for deployment
+
+---
+
+## Step 1 - Navigate to the ST Docker directory
+First, locate your Shimming Toolbox installation and navigate to the Docker directory:
+```bash
 cd <path/to/ST>
 cd Docker
 ```
-This folder contains the Dockerfile and scripts used to generate the chroot image.
-
-### 1.2 - Create the chroot image
-The following command builds the ST Docker image, exports the container’s filesystem to a tarball (.tar file) and creates a chroot image (.img file) representing a bootable Linux root filesystem.
+Verify you're in the correct directory by checking for the required files:
+```bash
+ls -la
 ```
+You should see `Dockerfile` and the build scripts (`docker_to_chroot.sh`, `tar_to_chroot.sh`).
+
+---
+
+## Step 2 - Create the chroot image
+Make the build scripts executable and run the image creation process:
+```bash
 chmod +x ./docker_to_chroot.sh
 chmod +x ./tar_to_chroot.sh
 ./docker_to_chroot.sh st_image st_chroot.img
 ```
-> [!NOTE]
-> This process typically takes between 12 and 14 minutes.
 
-### 1.3 - Export the chroot image to a USB key
-Connect your USB key to the computer. Navigate to its folder and run:
+### What happens during this step:
+1. **Docker build**: Creates a Docker image containing Shimming Toolbox and dependencies
+2. **Container export**: Exports the container's filesystem to a tarball
+3. **Image creation**: Converts the tarball to a Linux root filesystem (.img)
+
+> [!NOTE]
+> **Expected duration:** 12-14 minutes
+> **Output file:** `st_chroot.img` (approximately 9.5GB)
+
+---
+
+## Step 3 - Export the chroot image to your USB key
+
+### 3.1 Prepare and verify
+Connect your USB drive and identify its mount point:
+```bash
+# On macOS
+df -h | grep /Volumes/
+
+# On Linux
+df -h | grep /media/
 ```
-zip -j st_chroot.zip st_chroot.img
-cp st_chroot.zip <path/to/the/usb/key/>
+
+### 3.2 Create compressed archive
+
+Compress the image to reduce transfer time and storage requirements:
+```bash
+zip st_chroot.zip st_chroot.img
+```
+> [!NOTE]
+> **Output file:** `st_chroot.zip` (approximately 3.5GB)
+
+### 3.3 Transfer to your USB drive
+
+Replace `/Volumes/YOUR_USB_NAME/` with your actual USB drive path:
+```bash
+cp st_chroot.zip </Volumes/YOUR_USB_NAME/>
+```
+> [!NOTE]
+> **Expected transfer time:** 2-10 minutes depending on USB drive speed (USB 3.0+ recommended)
+
+### 3.4 Verify and cleanup
+
+Verify the transfer completed successfully:
+```bash
+ls -la /Volumes/YOUR_USB_NAME/st_chroot.zip
+```
+
+Compare file sizes to ensure integrity:
+```bash
+ls -l st_chroot.zip /Volumes/YOUR_USB_NAME/st_chroot.zip
+```
+
+Only after successful verification, clean up local files:
+```bash
 rm st_chroot.zip
 rm st_chroot.img
 ```
-This compresses and transfers the image file to the USB key. The original image is deleted to free up disk space.
-> [!NOTE]
-> This process typically takes around 10 minutes.
 
-## Step 2 (on the MARS system hardware) - Prepare the environment
-
-## 2.1 – Locate the USB key
-Insert the USB key into the MARS system hardware and navigate to its mount point:
-```
-cd <path/to/the/usb/key>
-ls
-```
-Ensure that st_chroot.zip is present before continuing
-
-### 2.2 – Mount the chroot image on the MARS system
-While still in the USB directory, run:
-```
-mkdir -p /mnt/fire_chroot
-unzip st_chroot.zip -d /mnt/fire_chroot
-mount --bind /dev /mnt/fire_chroot/st_chroot.img/dev
-mount --bind /proc /mnt/fire_chroot/st_chroot.img/proc
-mount --bind /sys /mnt/fire_chroot/st_chroot.img/sys
-```
-These commands mount the image and bind essential system folders (/dev, /proc, and /sys) to the corresponding paths inside the chroot. This provides the chrooted environment with access to hardware devices and system information, making it fully functional.
-
-## Step 3 (on the MARS system hardware) - Use ST
-
-### 3.1 - Enter the chroot environment
-```
-chroot /mnt/fire_chroot/st_chroot.img /bin/bash
-```
-This command launches a shell inside the chroot environment, where ST is installed and ready to use.
-
-### 3.2 - Run commands
-Once you have started, you can run any ST command as usual, for example:
-```
-st_dicom_to_nifti -i </path/to/dicoms> --subject <subject_name> -o </path/to/nifti>
-```
 > [!WARNING]
-> Make sure that the paths you provide (e.g., `/path/to/dicoms`) exist inside the chroot. They may differ from the file structure of the host system.
+> Don't delete the local files until you've verified the USB transfer completed successfully.
 
-### 3.3 - Exit the chroot environment
-To leave the chroot environment, simply type:
-```
-exit
-```
-This returns control to the host system’s shell.
+---
 
-## Step 4 (on the MARS system hardware) - Unmount the chroot image
-Before replacing or removing the chroot image, unmount it to safely detach it from the system:
-```
-umount /mnt/fire_chroot/st_chroot.img
-```
+## File Size Reference
+
+| File | Approximate Size |
+|------|------------------|
+| st_chroot.img | 9-10 GB |
+| st_chroot.zip | 3-4 GB |
+| Required USB space | 4+ GB (recommended 8GB+) |
+
+---
+
+## Next Steps
+
+After completing this process:
+1. Safely eject the USB drive
+2. Transport to the MRI scanner system
+3. Follow the deployment instructions for mounting the chroot environment on the MARS hardware
