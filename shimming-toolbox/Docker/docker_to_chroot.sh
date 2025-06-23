@@ -28,6 +28,8 @@ echo Creating Docker image ${DOCKER_NAME} from Dockerfile
 echo ----------------------------------------------------------------------
 
 docker build --platform linux/amd64 -t ${DOCKER_NAME} ${SCRIPT_DIR}
+# The --platform linux/amd64 option ensures the Docker image is built for the x86_64 (amd64) architecture.
+# This matches the architecture required by the MARS system hardware.
 
 # Create a Docker container and export to a .tar file
 echo ----------------------------------------------------------------------
