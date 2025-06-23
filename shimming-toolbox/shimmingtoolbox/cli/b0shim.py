@@ -1105,7 +1105,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
                                                          scanner_shim_settings)
 
         isocenter = nii_fmap.get_isocenter()
-        scanner_coil = ScannerCoil(nii_fmap.shape[:3], nii_fmap.extended_affine, scanner_contraints, orders,
+        scanner_coil = ScannerCoil(nii_fmap.extended_shape[:3], nii_fmap.extended_affine, scanner_contraints, orders,
                                    manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
