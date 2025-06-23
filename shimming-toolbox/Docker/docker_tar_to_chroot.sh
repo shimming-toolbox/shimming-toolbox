@@ -1,4 +1,7 @@
 #!/bin/bash
+# Adapted from Kelvin Chow's python-ismrmrd-server repository
+# Source: https://github.com/kspaceKelvin/python-ismrmrd-server
+
 # This script takes a Docker container export (.tar) and creates a chroot image (.img)
 # Note that root privileges are required to mount the loopback images
 

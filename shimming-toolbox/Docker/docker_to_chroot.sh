@@ -1,5 +1,8 @@
 #!/bin/bash
-# This script creates chroot image (.img) from the Docker file.
+# Adapted from Kelvin Chow's python-ismrmrd-server repository
+# Source: https://github.com/kspaceKelvin/python-ismrmrd-server
+
+#This script creates chroot image (.img) from the Docker file.
 
 if [[ "$#" -ne 2 && "$#" -ne 3 ]]; then
     echo "Wrong number of arguments"
