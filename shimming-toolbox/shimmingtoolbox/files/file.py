@@ -392,7 +392,6 @@ class NiftiFieldMap(NiftiFile):
             else:
                 raise ValueError("Fieldmap must be 2d or 3d")
         else:
-            extending = False
             for i_axis in range(3):
                 if self.shape[i_axis] < dilation_kernel_size:
                     self.extended = True
@@ -404,7 +403,7 @@ class NiftiFieldMap(NiftiFile):
                              f"Extended shape: {extended_nii.shape if self.extended else self.shape}")
                 nib.save(extended_nii, os.path.join(self.path_output, f"{self.filename}_extended.nii.gz"))
 
-        return extended_nii if extending else self.nii
+        return extended_nii if self.extended else self.nii
     
     def extend_fmap_to_kernel_size(self, dilation_kernel_size, ret_location=False):
         """
