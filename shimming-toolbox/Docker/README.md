@@ -7,7 +7,7 @@ Before starting, ensure you have:
 - **Docker**: Installed and running on your system
 - **Disk space**: At least 10GB free space for the build process
 - **USB drive**: 8GB+ capacity (recommended) for image transfer
-- **Time**: Allow 30-40 minutes for the complete process
+- **Time**: Allow 20-30 minutes for the complete process
 - **Permissions**: Root/sudo access may be required for some operations
 
 ## Overview
@@ -86,12 +86,12 @@ cp st_chroot.zip </Volumes/YOUR_USB_NAME/>
 
 Verify the transfer completed successfully:
 ```bash
-ls -la /Volumes/YOUR_USB_NAME/st_chroot.zip
+ls -la </Volumes/YOUR_USB_NAME>/st_chroot.zip
 ```
 
 Compare file sizes to ensure integrity:
 ```bash
-ls -l st_chroot.zip /Volumes/YOUR_USB_NAME/st_chroot.zip
+ls -l st_chroot.zip </Volumes/YOUR_USB_NAME>/st_chroot.zip
 ```
 
 Only after successful verification, clean up local files:
