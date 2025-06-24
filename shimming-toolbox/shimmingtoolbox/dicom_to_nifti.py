@@ -179,7 +179,7 @@ def fix_tfl_b1(nii_b1, json_data):
     Returns:
         nib.Nifti1Image: NIfTI object containing the complex rescaled B1+ maps (x, y, n_slices, n_channels).
     """
-    image = np.array(nii_b1.dataobj)
+    image = np.asanyarray(nii_b1.dataobj)
     # The number of slices corresponds to the 3rd dimension of the shuffled NIfTI volume.
     n_slices = image.shape[2]
     # The number of Tx channels corresponds to the 4th dimension of the shuffled NIfTI of the shuffled NIfTI volume.
