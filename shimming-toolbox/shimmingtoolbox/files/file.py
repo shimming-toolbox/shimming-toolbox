@@ -14,6 +14,7 @@ from shimmingtoolbox.coils.coordinates import resample_from_to
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def safe_getter(default_value=None):
     """Decorator that catches errors in getter functions and returns a default value."""
     def decorator(func):
