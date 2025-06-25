@@ -182,7 +182,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Load the anat
     nii_anat = NiftiAnatomical(fname_anat, path_output)
 
-     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
+    # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
         if opt_criteria not in ['mse', 'rmse']:
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
