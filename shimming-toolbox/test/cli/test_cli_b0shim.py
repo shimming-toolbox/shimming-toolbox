@@ -918,7 +918,7 @@ class TestCliDynamic(object):
 
             runner = CliRunner()
 
-            with pytest.raises(OSError, match="Missing fieldmap json file"):
+            with pytest.raises(OSError, match="JSON file not found*"):
                 runner.invoke(b0shim_cli, ['dynamic',
                                            '--fmap', fname_fmap,
                                            '--anat', fname_anat,

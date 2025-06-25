@@ -24,7 +24,7 @@ def safe_getter(default_value=None):
             except Exception as e:
                 logger.warning(f"{func.__name__}: {e}")
                 # terminate the program if the error is critical
-                if isinstance(e, (KeyError, NameError, ValueError)):
+                if isinstance(e, (KeyError, NameError, ValueError, OSError)):
                     raise e
                 return default_value
         return wrapper
@@ -34,7 +34,7 @@ NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
 DEFAULT_SUFFIX = '_saved.nii.gz'
 
 class NiftiFile:
-    def __init__(self, fname_nii: str, path_output: str = None):
+    def __init__(self, fname_nii: str, path_output: str = None, json_needed: bool = True) -> None:
         if not isinstance(fname_nii, str):
             raise TypeError("fname_nii must be a string")
         if not any(fname_nii.endswith(ext) for ext in NIFTI_EXTENSIONS):
@@ -47,7 +47,7 @@ class NiftiFile:
         self.data: np.ndarray
         self.nii, self.data = self.load_nii()
         self.filename: str = self.get_filename()
-        self.json: dict | None = self.load_json()
+        self.json: dict | None = self.load_json(json_needed)
         self.header = self.nii.header
         self.affine = self.nii.affine
         self.shape = self.data.shape
@@ -88,7 +88,7 @@ class NiftiFile:
         
         return nii, data
     
-    def load_json(self):
+    def load_json(self, json_needed: bool = True) -> dict | None:
         """ Load the JSON file corresponding to the NIfTI file.
         The JSON file is expected to be in the same directory as the NIfTI file
         and have the same base name.
@@ -99,7 +99,7 @@ class NiftiFile:
         Returns:
             dict: The content of the JSON file if found, otherwise None.
         """
-        json_path = self.get_json()
+        json_path = self.get_json(json_needed)
         if json_path is not None:
             with open(json_path, 'r') as f:
                 return json.load(f)
@@ -151,7 +151,7 @@ class NiftiFile:
         self.ndim = self.data.ndim
         
     @safe_getter(default_value=None)
-    def get_json(self):
+    def get_json(self, json_needed: bool = True) -> str | None:
         """ Find the corresponding JSON file for the NIfTI file.
         The JSON file is expected to be in the same directory as the NIfTI file
         and have the same base name.
@@ -165,6 +165,8 @@ class NiftiFile:
         json_path = os.path.join(self.path_nii, self.filename + ".json")
         if os.path.exists(json_path):
             return json_path
+        elif json_needed:
+            raise OSError(f"JSON file not found for {self.fname_nii}. Expected at {json_path}. ")
         else:
             return None
     
@@ -386,8 +388,9 @@ class NiftiFieldMap(NiftiFile):
         self.extended = False
         if self.ndim != 3:
             if self.ndim == 2:
-                extended_nii = nib.Nifti1Image(self.data[..., np.newaxis], self.affine,
-                                                header=self.header)
+                self.set_nii(nib.Nifti1Image(self.data[..., np.newaxis], self.affine,
+                                                header=self.header))
+                extended_nii = self.extend_fmap_to_kernel_size(dilation_kernel_size)
                 self.extended = True
             else:
                 raise ValueError("Fieldmap must be 2d or 3d")
@@ -510,7 +513,7 @@ class NiftiMask(NiftiFile):
     It inherits all methods and properties from NiftiFile and can be used to handle mask files specifically.
     """
     def __init__(self, fname_nii: str, path_output: str = None) -> None:
-        super().__init__(fname_nii, path_output)
+        super().__init__(fname_nii, path_output, json_needed=False)
     
     def load_mask(self, nii_anat: NiftiAnatomical):
         """ Load a mask and resample it on the target anatomical image.

@@ -202,7 +202,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         nii_mask_anat = NiftiMask(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
-        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine, header=nii_anat.header)
+        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.data), nii_anat.affine, header=nii_anat.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
         nii_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
