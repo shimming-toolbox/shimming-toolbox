@@ -174,7 +174,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Load the fieldmap
-    nii_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output)
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output)
 
     # Prepare the output
     create_output_dir(path_output)
@@ -221,31 +221,31 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         if not set(scanner_coil_order).issubset({0, 1}):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}. Supported orders are: [0, 1], [1], [0]")
-        if nii_fmap.get_json_info('Manufacturer') != 'Siemens':
-            raise NotImplementedError(f"Unsupported manufacturer: {nii_fmap.get_json_info('Manufacturer')} for output file"
+        if nif_fmap.get_json_info('Manufacturer') != 'Siemens':
+            raise NotImplementedError(f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
                                       f"format: {o_format_sph}")
 
     # Find the isocenter
-    if not np.all(np.isclose(nii_fmap.get_isocenter(), nii_anat.get_isocenter())):
+    if not np.all(np.isclose(nif_fmap.get_isocenter(), nii_anat.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(nii_fmap, orders=scanner_coil_order)
+    scanner_shim_settings = ScannerShimSettings(nif_fmap, orders=scanner_coil_order)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nii_fmap, options['scanner_shim'])
+    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nif_fmap, options['scanner_shim'])
 
     # Get the shim slice ordering
     n_slices = nii_anat.shape[2]
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, nii_fmap.get_json_info('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions'))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
-    sequencer = ShimSequencer(nii_fmap,
+    sequencer = ShimSequencer(nif_fmap,
                               nii_anat,
                               nii_mask_anat,
                               list_slices, list_coils,
