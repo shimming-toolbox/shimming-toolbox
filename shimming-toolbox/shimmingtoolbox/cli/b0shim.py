@@ -180,7 +180,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     create_output_dir(path_output)
 
     # Load the anat
-    nii_anat = NiftiAnatomical(fname_anat, path_output)
+    nif_anat = NiftiAnatomical(fname_anat, path_output)
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
@@ -188,7 +188,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
 
         opt_criteria += '_signal_recovery'
-        epi_te = nii_anat.get_json_info('EchoTime')
+        epi_te = nif_anat.get_json_info('EchoTime')
 
         if w_signal_loss is None:
             w_signal_loss = 0
@@ -199,13 +199,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
     # Load mask
     if fname_mask_anat is not None:
-        nii_mask_anat = NiftiMask(fname_mask_anat)
+        nif_mask_anat = NiftiMask(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
-        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nii_anat.data), nii_anat.affine, header=nii_anat.header)
+        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nif_anat.data), nif_anat.affine, header=nif_anat.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
-        nii_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
+        nif_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
         
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -226,7 +226,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                       f"format: {o_format_sph}")
 
     # Find the isocenter
-    if not np.all(np.isclose(nif_fmap.get_isocenter(), nii_anat.get_isocenter())):
+    if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_anat.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
@@ -237,7 +237,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nif_fmap, options['scanner_shim'])
 
     # Get the shim slice ordering
-    n_slices = nii_anat.shape[2]
+    n_slices = nif_anat.shape[2]
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
@@ -246,8 +246,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
     sequencer = ShimSequencer(nif_fmap,
-                              nii_anat,
-                              nii_mask_anat,
+                              nif_anat,
+                              nif_mask_anat,
                               list_slices, list_coils,
                               method=method,
                               opt_criteria=opt_criteria,
@@ -263,8 +263,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     coefs = sequencer.shim()
     # Output
     # Load output options
-    # TODO: adapt the output options to the new NiftiFile class
-    options['fatsat'] = _get_fatsat_option(nii_anat, fatsat)
+    options['fatsat'] = nif_anat.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
 
     list_fname_output = []
     end_channel = 0
@@ -280,7 +279,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            manufacturer = nii_anat.get_json_info('Manufacturer')
+            manufacturer = nif_anat.get_json_info('Manufacturer')
 
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
@@ -1125,30 +1124,6 @@ def _save_nii_to_new_dir(list_fname, path_output):
         nii = nib.load(fname)
         fname_to_save = os.path.join(path_output, os.path.basename(fname))
         nib.save(nii, fname_to_save)
-
-
-def _get_fatsat_option(nii_anat, fatsat):
-    """ Return if the fat saturation option should be turned on or off. This function mainly exists to resolve the 'auto'
-        case
-
-    Args:
-        json_anat (dict): BIDS Json sidecar
-        fatsat (str): String containing either : 'yes', 'no' or 'auto'
-
-    Returns:
-        bool: Whether to activate fatsat or not
-    """
-    fatsat_option = False
-    scan_options = nii_anat.get_json_info('ScanOptions', required=False)
-    if fatsat == 'auto':
-        if scan_options is not None:
-            if 'FS' in scan_options:
-                logger.debug("Fat Saturation pulse detected")
-                fatsat_option = True
-    elif fatsat == 'yes':
-        fatsat_option = True
-
-    return fatsat_option
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
