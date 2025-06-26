@@ -53,7 +53,7 @@ class NiftiFile:
         self.affine = self.nii.affine
         self.shape = self.data.shape
         self.ndim = self.data.ndim
-        self.path_output = path_output if path_output else os.getcwd()
+        self.path_output = path_output if path_output else self.path_nii
         
     def __eq__(self, other: nib.Nifti1Image) -> None:
         """Override the = operator to set NiftiFile data from a nibabel image.
@@ -121,12 +121,8 @@ class NiftiFile:
         Returns:
             None: The function saves the NIfTI file to the specified path.
         """
-        if self.path_output is None:
-            output_path = os.path.join(self.path_nii, f"{self.filename}{DEFAULT_SUFFIX}")
-            logger.warning(f"No output path provided. Saving as {output_path}")
-        else:
-            output_path = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
-            logger.info(f"Saving NIfTI file to {output_path}")
+        output_path = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
+        logger.info(f"Saving NIfTI file to {output_path}")
             
         if not os.path.exists(self.path_output):
             os.makedirs(self.path_output)

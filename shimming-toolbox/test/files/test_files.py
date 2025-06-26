@@ -52,7 +52,7 @@ def test_niftifile_relative_path(temp_nifti_file):
     try:
         nifti = NiftiFile(os.path.basename(temp_nifti_file))
         assert os.path.isabs(nifti.path_nii)
-        assert nifti.dirname == os.getcwd()
+        assert nifti.path_nii == os.getcwd()
     finally:
         os.chdir(current_dir)
 
@@ -64,17 +64,17 @@ def test_niftifile_load_json(temp_nifti_file):
 
 def test_niftifile_save(temp_nifti_file):
     """Test saving NiftiFile."""
-    nifti = NiftiFile(temp_nifti_file)
-    
     with tempfile.TemporaryDirectory() as tmpdir:
         # Test explicit save path
         save_path = os.path.join(tmpdir, "saved.nii.gz")
-        nifti.save(save_path)
+        nifti = NiftiFile(temp_nifti_file, path_output=save_path)
+        nifti.save()
         assert os.path.exists(save_path)
         
         # Test default save path
-        nifti.save()
-        expected_path = os.path.join(nifti.dirname, f"{nifti.filename}_saved.nii.gz")
+        nifti_default = NiftiFile(temp_nifti_file)
+        nifti_default.save()
+        expected_path = os.path.join(nifti_default.path_nii, f"{nifti_default.filename}_saved.nii.gz")
         assert os.path.exists(expected_path)
 
 def test_niftifile_get_filename(temp_nifti_file):
@@ -85,8 +85,8 @@ def test_niftifile_get_filename(temp_nifti_file):
 def test_niftifile_get_dirname(temp_nifti_file):
     """Test dirname extraction."""
     nifti = NiftiFile(temp_nifti_file)
-    assert os.path.isabs(nifti.dirname)
-    assert os.path.exists(nifti.dirname)
+    assert os.path.isabs(nifti.path_nii)
+    assert os.path.exists(nifti.path_nii)
 
 @pytest.mark.parametrize("ext", NIFTI_EXTENSIONS)
 def test_niftifile_extensions(temp_nifti_file, ext):
