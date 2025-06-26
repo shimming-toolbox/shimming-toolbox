@@ -569,3 +569,4 @@ class NiftiCoilProfile(NiftiFile):
     """
     def __init__(self, fname_nii: str) -> None:
         super().__init__(fname_nii)
+        
