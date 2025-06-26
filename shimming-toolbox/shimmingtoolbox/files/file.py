@@ -510,14 +510,6 @@ class NiftiAnatomical(NiftiFile):
             logger.debug("No ScanOptions found in the JSON metadata, assuming no Fat Saturation pulse")
         
         return False
-            
-    class NiftiMask(NiftiFile):
-        """NiftiMask is a subclass of NiftiFile that represents a NIfTI mask file.
-        
-        It inherits all methods and properties from NiftiFile and can be used to handle mask files specifically.
-        """
-        def __init__(self, fname_nii: str, path_output: str = None) -> None:
-            super().__init__(fname_nii, path_output)
 
 
 class NiftiMask(NiftiFile):
