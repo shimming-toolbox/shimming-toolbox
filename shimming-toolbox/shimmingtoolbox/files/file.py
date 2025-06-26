@@ -350,7 +350,7 @@ class NiftiFile:
         return scanner_shim
 
     @safe_getter(default_value=None)
-    def get_manufacturer_model_name(self) -> str:
+    def get_manufacturers_model_name(self) -> str:
         """ Get the manufacturer model from the JSON metadata.
 
         Returns:

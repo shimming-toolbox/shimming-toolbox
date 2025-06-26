@@ -753,7 +753,7 @@ class ShimSequencer(Sequencer):
                                 if coil.coefs_used[str(order)] is not None and coil.coefs_used[str(order)][i_channel] is not None:
                                     shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
                                                          coefs[0, i + j + i_channel])
-                                    manufacturers_model_name = self.nii_fieldmap.get_manufacturer_model_name()
+                                    manufacturers_model_name = self.nii_fieldmap.get_manufacturers_model_name()
                                     if manufacturers_model_name is not None:
                                         manufacturers_model_name = manufacturers_model_name.replace(' ', '_')
                                     if manufacturer in SCANNER_CONSTRAINTS_DAC.keys() \

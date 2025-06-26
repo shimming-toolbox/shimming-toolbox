@@ -1070,7 +1070,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     """
 
     manufacturer = nii_fmap.get_json_info('Manufacturer')
-    manufacturers_model_name = nii_fmap.get_manufacturer_model_name()
+    manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
 
     list_coils = []
 

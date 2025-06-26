@@ -456,7 +456,7 @@ class ScannerShimSettings:
     def __init__(self, nii_fmap, orders=None):
 
         shim_settings_dac = nii_fmap.get_scanner_shim_settings(orders=orders)
-        manufacturers_model_name = nii_fmap.get_manufacturer_model_name()
+        manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
         manufacturer = nii_fmap.get_json_info('Manufacturer')
         self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
 
