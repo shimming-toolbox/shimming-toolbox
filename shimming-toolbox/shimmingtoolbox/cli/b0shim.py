@@ -27,7 +27,9 @@ from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
-from shimmingtoolbox.files.file import NiftiFieldMap, NiftiAnatomical, NiftiMask
+from shimmingtoolbox.files.NiftiAnatomical import NiftiAnatomical
+from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
+from shimmingtoolbox.files.NiftiMask import NiftiMask
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)

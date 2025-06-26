@@ -5,7 +5,10 @@ import nibabel as nib
 import tempfile
 from pathlib import Path
 
-from shimmingtoolbox.files.file import NiftiFile, NIFTI_EXTENSIONS
+from shimmingtoolbox.files.NiftiFile import NiftiFile, NIFTI_EXTENSIONS
+from shimmingtoolbox.files.NiftiAnatomical import NiftiAnatomical
+from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
+from shimmingtoolbox.files.NiftiMask import NiftiMask
 
 @pytest.fixture
 def temp_nifti_file():
