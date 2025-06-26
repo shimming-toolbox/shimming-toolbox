@@ -452,9 +452,9 @@ class NiftiAnatomical(NiftiFile):
     def __init__(self, fname_nii: str, path_output: str = None) -> None:
         super().__init__(fname_nii)
         self.check_dimensions()
-        self.average_field_map()
+        self.temporal_average()
         
-    def average_field_map(self):
+    def temporal_average(self):
         if self.ndim == 3:
             pass
         elif self.ndim == 4:
