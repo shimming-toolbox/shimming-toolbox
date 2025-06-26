@@ -85,7 +85,7 @@ class NiftiFile:
         if not os.path.exists(self.fname_nii):
             raise ValueError("Not an existing NIFTI path")
         nii = nib.load(self.fname_nii)
-        data = nii.get_fdata()
+        data = np.asanyarray(nii.dataobj)
         
         return nii, data
     
@@ -143,7 +143,7 @@ class NiftiFile:
         if not isinstance(nii, nib.Nifti1Image):
             raise TypeError("nii must be a nib.Nifti1Image object")
         self.nii = nii
-        self.data = nii.get_fdata()
+        self.data = np.asanyarray(nii.dataobj)
         self.shape = self.data.shape
         self.ndim = self.data.ndim
         
