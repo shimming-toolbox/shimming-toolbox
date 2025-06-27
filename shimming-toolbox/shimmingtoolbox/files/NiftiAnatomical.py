@@ -13,9 +13,9 @@ class NiftiAnatomical(NiftiFile):
     def __init__(self, fname_nii: str, path_output: str = None) -> None:
         super().__init__(fname_nii)
         self.check_dimensions()
-        self.temporal_average()
+        self.make_3d()
         
-    def temporal_average(self):
+    def make_3d(self):
         if self.ndim == 3:
             pass
         elif self.ndim == 4:
