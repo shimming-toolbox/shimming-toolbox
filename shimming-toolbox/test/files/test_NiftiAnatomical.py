@@ -4,13 +4,13 @@ import numpy as np
 import nibabel as nib
 import tempfile
 
-from shimmingtoolbox.files.NiftiAnatomical import NiftiAnatomical
+from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 
 @pytest.fixture
 def temp_nifti_file():
     """Create a temporary NIfTI file for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Create a simple 3D array
+        # Create a simple 4D array
         data = np.zeros((10, 10, 10, 10))
         nii = nib.Nifti1Image(data, affine=np.eye(4))
         
@@ -25,9 +25,9 @@ def temp_nifti_file():
             
         yield nii_path
 
-def test_niftianatomical_init(temp_nifti_file):
-    """Test NiftiAnatomical initialization with valid file."""
-    nifti = NiftiAnatomical(temp_nifti_file)
+def test_niftitarget_init(temp_nifti_file):
+    """Test NiftiTarget initialization with valid file."""
+    nifti = NiftiTarget(temp_nifti_file)
     assert isinstance(nifti.nii, nib.Nifti1Image)
     assert isinstance(nifti.data, np.ndarray)
     assert nifti.data.shape == (10, 10, 10)

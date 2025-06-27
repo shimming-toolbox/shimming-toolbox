@@ -52,7 +52,7 @@ def create_fieldmap(n_slices=3):
         unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
 
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
-
+    
     return nii_fmap
 
 

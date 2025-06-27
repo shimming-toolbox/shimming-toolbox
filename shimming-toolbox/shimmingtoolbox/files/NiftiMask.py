@@ -2,7 +2,7 @@ import logging
 import nibabel as nib
 import numpy as np
 from .NiftiFile import NiftiFile
-from .NiftiAnatomical import NiftiAnatomical
+from .NiftiTarget import NiftiTarget
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -13,14 +13,14 @@ class NiftiMask(NiftiFile):
     
     It inherits all methods and properties from NiftiFile and can be used to handle mask files specifically.
     """
-    def __init__(self, fname_nii: str, path_output: str = None) -> None:
-        super().__init__(fname_nii, path_output, json_needed=False)
+    def __init__(self, fname_nii: str, json:dict = None, path_output: str = None) -> None:
+        super().__init__(fname_nii, json=json, path_output=path_output, json_needed=False)
     
-    def load_mask(self, nii_anat: NiftiAnatomical):
+    def load_mask(self, nii_anat: NiftiTarget):
         """ Load a mask and resample it on the target anatomical image.
 
         Args:
-            nii_anat (NiftiAnatomical): The target anatomical image to resample the mask on.
+            nii_anat (NiftiTarget): The target anatomical image to resample the mask on.
 
         Raises:
             ValueError: If the mask is not in 3D or 4D.

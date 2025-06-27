@@ -30,7 +30,7 @@ NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
 DEFAULT_SUFFIX = '_saved.nii.gz'
 
 class NiftiFile:
-    def __init__(self, fname_nii: str, path_output: str = None, json_needed: bool = True) -> None:
+    def __init__(self, fname_nii: str, json:dict = None, path_output: str = None, json_needed: bool = True) -> None:
         if not isinstance(fname_nii, str):
             raise TypeError("fname_nii must be a string")
         if not any(fname_nii.endswith(ext) for ext in NIFTI_EXTENSIONS):
@@ -43,7 +43,7 @@ class NiftiFile:
         self.data: np.ndarray
         self.nii, self.data = self.load_nii()
         self.filename: str = self.get_filename()
-        self.json: dict | None = self.load_json(json_needed)
+        self.json: dict = json if json is not None else self.load_json(json_needed)
         self.header = self.nii.header
         self.affine = self.nii.affine
         self.shape = self.data.shape

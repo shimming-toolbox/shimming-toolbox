@@ -14,8 +14,8 @@ class NiftiFieldMap(NiftiFile):
     
     It inherits all methods and properties from NiftiFile and can be used to handle field map files specifically.
     """
-    def __init__(self, fname_nii: str, dilation_kernel_size, path_output: str = None) -> None:
-        super().__init__(fname_nii, path_output)
+    def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None) -> None:
+        super().__init__(fname_nii, json=json, path_output=path_output)
         self.extended_nii = self.extend_field_map(dilation_kernel_size)
         self.extended_data = self.extended_nii.get_fdata()
         self.extended_affine = self.extended_nii.affine

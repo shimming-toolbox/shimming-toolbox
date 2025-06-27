@@ -27,7 +27,7 @@ from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
 from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
-from shimmingtoolbox.files.NiftiAnatomical import NiftiAnatomical
+from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 from shimmingtoolbox.files.NiftiMask import NiftiMask
 
@@ -182,7 +182,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     create_output_dir(path_output)
 
     # Load the anat
-    nif_anat = NiftiAnatomical(fname_anat, path_output)
+    nif_target = NiftiTarget(fname_anat, path_output)
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
@@ -190,7 +190,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             raise ValueError("Signal loss weighting is only available with the mse optimization criteria")
 
         opt_criteria += '_signal_recovery'
-        epi_te = nif_anat.get_json_info('EchoTime')
+        epi_te = nif_target.get_json_info('EchoTime')
 
         if w_signal_loss is None:
             w_signal_loss = 0
@@ -204,7 +204,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         nif_mask_anat = NiftiMask(fname_mask_anat)
     else:
         # If no mask is provided, shim the whole anat volume
-        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nif_anat.data), nif_anat.affine, header=nif_anat.header)
+        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
         nif_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
@@ -228,7 +228,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
                                       f"format: {o_format_sph}")
 
     # Find the isocenter
-    if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_anat.get_isocenter())):
+    if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
@@ -239,7 +239,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nif_fmap, options['scanner_shim'])
 
     # Get the shim slice ordering
-    n_slices = nif_anat.shape[2]
+    n_slices = nif_target.shape[2]
     if slices == 'auto':
         list_slices = parse_slices(fname_anat)
     else:
@@ -248,7 +248,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
     sequencer = ShimSequencer(nif_fmap,
-                              nif_anat,
+                              nif_target,
                               nif_mask_anat,
                               list_slices, list_coils,
                               method=method,
@@ -265,7 +265,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     coefs = sequencer.shim()
     # Output
     # Load output options
-    options['fatsat'] = nif_anat.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
+    options['fatsat'] = nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
 
     list_fname_output = []
     end_channel = 0
@@ -281,7 +281,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
 
         # If it's a scanner
         if type(coil) == ScannerCoil:
-            manufacturer = nif_anat.get_json_info('Manufacturer')
+            manufacturer = nif_target.get_json_info('Manufacturer')
 
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.

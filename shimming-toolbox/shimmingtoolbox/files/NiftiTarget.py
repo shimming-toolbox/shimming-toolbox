@@ -5,13 +5,13 @@ from .NiftiFile import NiftiFile, safe_getter
 
 logger = logging.getLogger(__name__)
 
-class NiftiAnatomical(NiftiFile):
-    """NiftiAnatomical is a subclass of NiftiFile that represents a NIfTI anatomical file.
+class NiftiTarget(NiftiFile):
+    """NiftiTarget is a subclass of NiftiFile that represents a NIfTI anatomical file.
     
     It inherits all methods and properties from NiftiFile and can be used to handle anatomical files specifically.
     """
-    def __init__(self, fname_nii: str, path_output: str = None) -> None:
-        super().__init__(fname_nii)
+    def __init__(self, fname_nii: str, json:dict = None, path_output: str = None) -> None:
+        super().__init__(fname_nii, json=json, path_output=path_output)
         self.check_dimensions()
         self.make_3d()
         
