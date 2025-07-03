@@ -10,7 +10,7 @@ from matplotlib.figure import Figure
 import numpy as np
 
 from shimmingtoolbox.load_nifti import (get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on,
-                                        get_excitation_tr, get_slice_timing, get_slice_tr)
+                                        get_excitation_tr, get_slice_timing, get_slice_tr, get_partial_fourier)
 
 logger = logging.getLogger(__name__)
 ERROR_MARGIN = 0.99
@@ -32,8 +32,8 @@ class Pmu(object):
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
         self.data_triggers = attributes['data_triggers']
-        self.max = attributes['max']
-        self.min = attributes['min']
+        self.min = None
+        self.max = None
         self.time_offset = 0
         self.timepoints = self.get_all_times()
 
@@ -187,7 +187,7 @@ class Pmu(object):
                 if field == '6002':
                     include = True
 
-        # Drop the '6003\r\n' at the end
+        # Drop the '5003\r\n' or '6003\r\n' at the end
         clean_fields = clean_fields[:-1]
 
         # Returned values will be a numpy array of ints
@@ -214,8 +214,6 @@ class Pmu(object):
             'stop_time_mdh': stop_time_mdh,
             'start_time_mpcu': start_time_mpcu,
             'stop_time_mpcu': stop_time_mpcu,
-            'max': 4095,
-            'min': 0
         }
 
         return attributes
@@ -278,6 +276,7 @@ class Pmu(object):
 
         fig.savefig(fname_output, bbox_inches='tight')
 
+
 class PmuResp(Pmu):
     """
     PMU object containing the pressure values of a Siemens .resp file
@@ -300,7 +299,8 @@ class PmuResp(Pmu):
             time_offset (int): Time offset in ms to what is read in the .resp file
         """
         super().__init__(fname_pmu)
-
+        self.min = 0
+        self.max = 4095
         self.adjust_start_time(time_offset)
         self.timepoints = self.get_all_times()
 
@@ -338,8 +338,7 @@ class PmuResp(Pmu):
             logger.debug(f"stop_offset: {stop_offset}")
             raise OutOfRangeError("acquisition_times don't fit within time limits for resp trace")
 
-        times = self.get_times()
-        interp_data = np.interp(acquisition_times, times, self.get_data())
+        interp_data = np.interp(acquisition_times, self.get_times(), self.get_data())
 
         return interp_data
 
@@ -386,10 +385,12 @@ class PmuExt(Pmu):
             fname_pmu (str): Filename of the Siemens .trig file
         """
         super().__init__(fname_pmu)
+        self.min = 0
+        self.max = 1
 
     def get_acquisition_times(self, nii_data, json_data, delay=2):
-        """ Calculates when the middle of the echo occurs based on the time a trigger occurs.
-            That is: trigger_time + echo_time + delay.
+        """ Returns the time at which the middle of the slice was acquired based on getting a trigger at the start of
+            a slice. That is: slice_middle = trigger_time + rf_to_middle_of_slice + delay.
 
         Args:
             nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
@@ -458,8 +459,20 @@ class PmuExt(Pmu):
         for i_vol in range(n_volumes):
             slice_timing_from_triggers[i_vol * n_slices:(i_vol + 1) * n_slices] = trigger_times[i_vol * n_slices:(i_vol + 1) * n_slices][slice_timing_order]
 
+        # Get when the middle of k-space was acquired
+        fourier = get_partial_fourier(json_data)
+
+        # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
+        # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,
+        # it would acquire the center-line of k-space after 3/7 of the time it takes to acquire a slice.
+        # (For a 700ms slice, the center-line would be acquired ~300ms). I simulated a couple of sequences in
+        # POET and observed that the "smaller" portion is always acquired first (the 1/8 portion is skipped,
+        # then 3/8 is acquired, k-space is crossed then the final 1/2 is acquired. In total, the k-space crossing
+        # was at 3/7 of the slice time).
+        ratio = (fourier - 0.5) / fourier
+
         # Calculate acquisition timestamps
-        acquisition_timestamps = slice_timing_from_triggers + (deltat_slice / 2) + delay
+        acquisition_timestamps = slice_timing_from_triggers + (deltat_slice * ratio) + delay
 
         # Reshape to (n_volumes, n_slices)
         acquisition_timestamps = acquisition_timestamps.reshape(n_volumes, n_slices)
