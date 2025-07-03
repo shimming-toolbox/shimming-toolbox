@@ -42,9 +42,7 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
     acq_start_time_ms = get_acquisition_start_time(json_data)
 
     # Start time for each volume [ms]
-    volume_start_times = np.linspace(acq_start_time_ms,
-                                     ((n_volumes - 1) * deltat_volume) + acq_start_time_ms,
-                                     n_volumes)
+    volume_start_times = np.arange(acq_start_time_ms, (n_volumes * deltat_volume) + acq_start_time_ms, deltat_volume)
 
     if when == 'volume-start':
         return volume_start_times
