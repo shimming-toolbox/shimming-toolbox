@@ -174,6 +174,9 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Parse scanner_coil_order
     scanner_coil_order = parse_orders(scanner_coil_order)
 
+    # Prepare the output
+    create_output_dir(path_output)
+
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
 
@@ -201,9 +204,6 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
             nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
         else:
             nii_fmap = copy.deepcopy(nii_fmap_orig)
-
-    # Prepare the output
-    create_output_dir(path_output)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
@@ -698,6 +698,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
+    # Prepare the output
+    create_output_dir(path_output)
+
     # Load the fieldmap
     nii_fmap_orig = nib.load(fname_fmap)
 
@@ -720,9 +723,6 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
     else:
         nii_fmap = copy.deepcopy(nii_fmap_orig)
-
-    # Prepare the output
-    create_output_dir(path_output)
 
     # Load the anat
     nii_anat = nib.load(fname_anat)
