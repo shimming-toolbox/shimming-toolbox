@@ -1191,6 +1191,9 @@ class RealTimeSequencer(Sequencer):
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
+        fmap = self.nii_fieldmap_orig.get_fdata()
+
+        n_volumes = self.nii_fieldmap_orig.shape[-1]
 
         # Find best time offset
         best_r2_total = 0
@@ -1201,7 +1204,9 @@ class RealTimeSequencer(Sequencer):
             r2_total = 0
 
             try:
-                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
+                mean_p = self.pmu.mean(acq_times.min(), acq_times.max())
+                pressures = self.pmu.interp_resp_trace(acq_times) - mean_p
+
             except OutOfRangeError:
                 r2_total_list.append(r2_total)
                 if best_r2_total < r2_total:
@@ -1215,11 +1220,15 @@ class RealTimeSequencer(Sequencer):
                     n_slices_ave -= 1
                     continue
 
-                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
-                y = (y - y.mean())
-                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+                x = pressures[:, i_slice].reshape(-1, 1) - mean_p
+                fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
+                mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+                non_zero_indexes = np.where(mask_vec != 0)
+                y = fmap_vec[non_zero_indexes[0], :].T
+
+                reg = LinearRegression().fit(x, y)
                 # Adjusted r2 score
-                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
+                r2 = reg.score(x, y)
                 # r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
                 r2_total += r2
 
@@ -1708,17 +1717,16 @@ class RealTimeSequencer(Sequencer):
 
     def eval(self, coef_static, coef_riro, mean_p, pressure_rms):
         """
-        Evaluate the real time shimming by plotting and saving results
+        Evaluate real time shimming. This function will plot and save results.
 
         Args:
-            coef_static (np.ndarray): coefficients got during the static optimization
-            coef_riro (np.ndarray): coefficients got during the real time optimization
-            mean_p (float): mean of the acquisitions pressures
-            pressure_rms (float): rms of the acquisitions pressures
+            coef_static (np.ndarray): Coefficients of the static
+            coef_riro (np.ndarray): Coefficients of the real-time optimization
+            mean_p (float): Mean of the acquisitions pressure
+            pressure_rms (float): rms of the acquisitions pressure
         """
         logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
         # Calculate theoretical shimmed map
-        # shim
         unshimmed = self.nii_fieldmap_orig.get_fdata()
         shape = unshimmed.shape + (len(self.slices),)
         shimmed_static_riro = np.zeros(shape)
