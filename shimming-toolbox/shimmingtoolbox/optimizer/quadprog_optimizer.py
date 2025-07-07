@@ -207,8 +207,8 @@ class PmuQuadProgOpt(QuadProgOpt):
     def _get_linear_inequality_matrices(self):
 
         """
-        This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR 458
+        This functions returns the linear inequality matrix and vector that will be used in the optimization, such as
+        g @ x < h. To see all details please see the PR 458
         Redefined from QuadProg to match the new bounds and constraints
 
         Returns:

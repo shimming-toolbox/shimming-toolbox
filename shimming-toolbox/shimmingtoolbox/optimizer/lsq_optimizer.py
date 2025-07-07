@@ -180,7 +180,7 @@ class LsqOptimizer(OptimizerUtils):
         # Adapt the weights based on the delta value, so that they adjust depending on the linear/quadratic behavior
         _alpha = 1 / (1 + self._delta)
         weights = (1 - _alpha) * np.sqrt(self.mask_coefficients) + _alpha * self.mask_coefficients
-        
+
         return np.mean(weights * pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
@@ -461,7 +461,6 @@ class LsqOptimizer(OptimizerUtils):
 
         return a, b, c, e
 
-# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuLsqOptimizer(LsqOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
         field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
