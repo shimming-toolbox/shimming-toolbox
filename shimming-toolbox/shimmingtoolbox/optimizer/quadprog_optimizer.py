@@ -179,7 +179,6 @@ class QuadProgOpt(OptimizerUtils):
 
         return cost_matrix, cost_vector
 
-# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuQuadProgOpt(QuadProgOpt):
     """ Optimizer for the realtime component (riro) for this optimization:
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
