@@ -14,6 +14,16 @@ class NiftiTarget(NiftiFile):
         super().__init__(fname_nii, json=json, path_output=path_output)
         self.check_dimensions()
         self.make_3d()
+    
+    def set_nii(self, nii: nib.Nifti1Image) -> None:
+        """ Set the NIfTI image and update the data, affine, and shape attributes.
+        
+        Args:
+            nii (nib.Nifti1Image): The NIfTI image to set.
+        """
+        super().set_nii(nii)
+        self.check_dimensions()
+        self.make_3d()
         
     def make_3d(self):
         if self.ndim == 3:

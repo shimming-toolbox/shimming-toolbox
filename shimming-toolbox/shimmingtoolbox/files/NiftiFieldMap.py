@@ -17,9 +17,19 @@ class NiftiFieldMap(NiftiFile):
     def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output)
         self.extended_nii = self.extend_field_map(dilation_kernel_size)
+        self.dilation_kernel_size = dilation_kernel_size
         self.extended_data = self.extended_nii.get_fdata()
         self.extended_affine = self.extended_nii.affine
         self.extended_shape = self.extended_data.shape
+    
+    def set_nii(self, nii: nib.Nifti1Image) -> None:
+        """ Set the NIfTI image and update the data, affine, and shape attributes.
+        
+        Args:
+            nii (nib.Nifti1Image): The NIfTI image to set.
+        """
+        super().set_nii(nii)
+        self.extend_field_map(self.dilation_kernel_size)
         
     def extend_field_map(self, dilation_kernel_size: int) -> None:
         """ Extend the field map to match the dilation kernel size.

@@ -17,11 +17,21 @@ class NiftiMask(NiftiFile):
     def __init__(self, fname_nii: str, json:dict = None, path_output: str = None) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output, json_needed=False)
     
-    def load_mask(self, nii_anat: NiftiTarget):
+    def set_nii(self, nii: nib.Nifti1Image, nif_target: NiftiTarget) -> None:
+        """ Set the NIfTI image and load the mask on the target anatomical image.
+
+        Args:
+            nii (nib.Nifti1Image): The NIfTI image to set, which should be a mask.
+            nif_target (NiftiTarget): The target anatomical image to resample the mask on.
+        """
+        super().set_nii(nii)
+        self.load_mask(nif_target)
+    
+    def load_mask(self, nif_target: NiftiTarget):
         """ Load a mask and resample it on the target anatomical image.
 
         Args:
-            nii_anat (NiftiTarget): The target anatomical image to resample the mask on.
+            nif_target (NiftiTarget): The target anatomical image to resample the mask on.
 
         Raises:
             ValueError: If the mask is not in 3D or 4D.
@@ -38,17 +48,17 @@ class NiftiMask(NiftiFile):
             # 80% of the volumes must contain the desired pixel to be included, this avoids having dead voxels in the
             # output mask
             tmp_3d = threshold(tmp_3d, thr=int(n_vol * 0.8))
-            nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), nii_mask_anat.affine,
-                                            header=nii_mask_anat.header)
+            nii_mask_anat = nib.Nifti1Image(tmp_3d.astype(int), self.affine,
+                                            header=self.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "fig_3d_mask.nii.gz"))
         else:
             raise ValueError("Mask must be in 3d or 4d")
 
-        if not np.all(nii_mask_anat.shape == nii_anat.shape) or not np.all(
-                nii_mask_anat.affine == nii_anat.affine):
+        if not np.all(nii_mask_anat.shape == nif_target.shape) or not np.all(
+                nii_mask_anat.affine == nif_target.affine):
             logger.debug("Resampling mask on the target anat")
-            nii_mask_anat_soft = resample_from_to(nii_mask_anat, nii_anat.nii, order=1, mode='grid-constant')
+            nii_mask_anat_soft = resample_from_to(nii_mask_anat, nif_target.nii, order=1, mode='grid-constant')
             tmp_mask = nii_mask_anat_soft.get_fdata()
             # Change soft mask into binary mask
             tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
@@ -56,4 +66,4 @@ class NiftiMask(NiftiFile):
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_anat, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
         
-        self.set_nii(nii_mask_anat)
+        super().set_nii(nii_mask_anat)
