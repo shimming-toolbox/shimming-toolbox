@@ -1,6 +1,7 @@
 import logging
 import nibabel as nib
 import numpy as np
+import os
 from .NiftiFile import NiftiFile
 from .NiftiTarget import NiftiTarget
 from shimmingtoolbox.masking.threshold import threshold

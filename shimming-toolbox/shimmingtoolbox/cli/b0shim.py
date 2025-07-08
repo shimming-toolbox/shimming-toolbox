@@ -176,13 +176,13 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     scanner_coil_order = parse_orders(scanner_coil_order)
 
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output)
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
 
     # Prepare the output
     create_output_dir(path_output)
 
     # Load the anat
-    nif_target = NiftiTarget(fname_anat, path_output)
+    nif_target = NiftiTarget(fname_anat, path_output=path_output)
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
