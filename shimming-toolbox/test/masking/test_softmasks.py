@@ -29,22 +29,22 @@ class TestSoftmaskCreation:
 
     def test_create_two_levels_softmask(self):
         """Test for the creation of a 2 levels soft mask"""
-        softmask = create_softmask(self.path_binmask, type='2levels', soft_width=6, soft_units='mm', soft_value=0.5)
+        softmask = create_softmask(self.path_binmask, type='2levels', soft_width=6, width_unit='mm', soft_value=0.5)
         self.check_softmask(softmask)
 
     def test_create_linear_softmask(self):
         """Test for the creation of a linear soft mask"""
-        softmask = create_softmask(self.path_binmask, type='linear', soft_width=6, soft_units='mm')
+        softmask = create_softmask(self.path_binmask, type='linear', soft_width=6, width_unit='mm')
         self.check_softmask(softmask)
 
     def test_create_gaussian_softmask(self):
         """Test for the creation of a gaussian soft mask"""
-        softmask = create_softmask(self.path_binmask, type='gaussian', soft_width=6, soft_units='mm')
+        softmask = create_softmask(self.path_binmask, type='gaussian', soft_width=6, width_unit='mm')
         self.check_softmask(softmask)
 
     def test_create_sum_softmask(self):
         """Test for the creation of a summed soft mask"""
-        gaussmask = create_softmask(self.path_binmask, type='gaussian', soft_width=6, soft_units='mm')
+        gaussmask = create_softmask(self.path_binmask, type='gaussian', soft_width=6, width_unit='mm')
         # Save gaussmask as NIfTI
         nii_gaussmask = nib.Nifti1Image(gaussmask.astype(np.float32), affine=np.eye(4))
         self.path_gaussmask = os.path.join(self.tmpdir.name, 'gaussmask.nii.gz')
