@@ -438,17 +438,17 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
               """)
 @click.option('-w', '--blur-width', 'blur_width', default = 6,
               help="Width of the blurred zone.")
-@click.option('-u', '--blur-units', 'blur_units', type=click.Choice(['mm', 'px']), default='mm',
-              help="Units of the blur width. Can be in pixels (px) or in millimeters (mm).")
+@click.option('-u', '--width-unit', 'width_unit', type=click.Choice(['mm', 'px']), default='mm',
+              help="Unit of the blur width. Can be in pixels (px) or in millimeters (mm).")
 @click.option('-b', '--blur-value', 'blur_value', default = 0.5,
               help="Value of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, blur_units, blur_value, verbose) :
+def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, width_unit, blur_value, verbose) :
 
     set_all_loggers(verbose)
 
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
-    output_softmask = create_softmask_api(fname_input_binmask, fname_input_softmask, type, blur_width, blur_units, blur_value)
+    output_softmask = create_softmask_api(fname_input_binmask, fname_input_softmask, type, blur_width, width_unit, blur_value)
     save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)

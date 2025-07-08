@@ -7,7 +7,7 @@ from scipy.ndimage import binary_dilation, gaussian_filter
 from skimage.morphology import ball
 
 
-def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, soft_units='mm', soft_value=0.5):
+def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, width_unit='mm', soft_value=0.5):
     """
     Create a soft mask from a binary mask by adding a soft zone around the binary mask.
 
@@ -29,8 +29,8 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
         nifti_softmask = nib.load(fname_softmask)
         softmask = nifti_softmask.get_fdata()
 
-    soft_width_px = convert_to_pixels(soft_width, soft_units, nifti_binmask.header)
-        
+    soft_width_px = convert_to_pixels(soft_width, width_unit, nifti_binmask.header)
+
     if type == '2levels':
         return create_two_levels_softmask(binmask, soft_width_px, soft_value)
     elif type == 'linear':
@@ -43,21 +43,21 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
         raise ValueError("Invalid soft mask type. Must be one of: '2levels', 'linear', 'gaussian', 'sum'")
 
 
-def convert_to_pixels(lenght, units, header):
+def convert_to_pixels(lenght, unit, header):
     """
     Convert a lenght from mm to pixels based on voxel size.
 
     Args:
         lenght (float): Lenght in mm or pixels.
-        units (str): Units of the lenght ('mm' or 'px').
+        unit (str): Unit of the lenght ('mm' or 'px').
         header (nib.Nifti1Header): NIFTI header containing voxel size information.
 
     Returns:
         int: Blur lenght in pixels."""
-    if units == 'mm':
+    if unit == 'mm':
         voxel_sizes = header.get_zooms()
         return int(round(float(lenght) / min(voxel_sizes)))
-    elif units == 'px':
+    elif unit == 'px':
         return int(lenght)
     else:
         raise ValueError("Lenght must be 'mm' or 'px'")
@@ -186,4 +186,3 @@ def save_softmask(soft_mask, fname_soft_mask, fname_binary_mask):
     nii_softmask.to_filename(fname_soft_mask)
 
     return nii_softmask
-
