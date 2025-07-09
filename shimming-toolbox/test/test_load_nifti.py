@@ -11,7 +11,7 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_acquisition_times, get_isocenter
+from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_acquisition_times
 from shimmingtoolbox import __dir_testing__
 
 
@@ -399,12 +399,3 @@ def test_get_acquisition_times_field_mapping():
     slice_timing = get_acquisition_times(nii_dummy, json_dummy)
     assert slice_timing.shape == (8, 10)
     assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
-
-
-class TestGetIsocenter():
-    _json_data = {"TablePosition": [3, 5, 7]}
-
-    def test_get_isocenter_hfs(self):
-        self._json_data["PatientPosition"] = "HFS"
-        isocenter = get_isocenter(self._json_data)
-        assert np.all(isocenter == np.array([-3, -5, -7]))
