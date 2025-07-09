@@ -57,12 +57,12 @@ def create_fieldmap(n_slices=3):
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
     
     # Save in tmp directory
-    nib.save(nii_fmap, os.path.join(tempfile.TemporaryDirectory(), 'fieldmap.nii.gz'))
+    nib.save(nii_fmap, os.path.join(__dir_testing__, 'fieldmap.nii.gz'))
     # save a fake json file
     json_fmap = {'SliceThickness': 3}
         
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(os.path.join(tempfile.TemporaryDirectory(), 'fieldmap.nii.gz'), dilation_kernel_size=3, json=json_fmap)
+    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'), dilation_kernel_size=3, json=json_fmap)
         
     return nif_fmap
 
@@ -117,21 +117,21 @@ target = np.ones((50, 50, 3))
 nii_target = nib.Nifti1Image(target, affine=affine)
 json_target = {'SliceThickness': 3}
 # Save in tmp directory
-with tempfile.TemporaryDirectory() as tmpdir:
-    nib.save(nii_target, os.path.join(tmpdir, 'target.nii.gz'))
-    # Load the targetomical image
-    nif_target = NiftiTarget(os.path.join(tmpdir, 'target.nii.gz'), json=json_target)
+
+nib.save(nii_target, os.path.join(__dir_testing__, 'target.nii.gz'))
+# Load the targetomical image
+nif_target = NiftiTarget(os.path.join(__dir_testing__, 'target.nii.gz'), json=json_target)
 
 # Create mask
 static_mask = shapes(target, 'cube', len_dim1=10, len_dim2=10, len_dim3=nz)
 nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=nii_target.header)
 # Save in tmp directory
-nib.save(nii_mask, os.path.join(tempfile.TemporaryDirectory(), 'mask.nii.gz'))
+nib.save(nii_mask, os.path.join(__dir_testing__, 'mask.nii.gz'))
 # Load the mask
-nif_mask = NiftiMask(os.path.join(tempfile.TemporaryDirectory(), 'mask.nii.gz'))
+nif_mask = NiftiMask(os.path.join(__dir_testing__, 'mask.nii.gz'))
 
 @pytest.mark.parametrize(
-    "nif_fieldmap,nif_target,nii_mask,sph_coil,sph_coil2", [(
+    "nif_fieldmap,nif_target,nif_mask,sph_coil,sph_coil2", [(
             nif_to_shim,
             nif_target,
             nif_mask,
@@ -142,7 +142,7 @@ nif_mask = NiftiMask(os.path.join(tempfile.TemporaryDirectory(), 'mask.nii.gz'))
 class TestSequencer(object):
     """Tests for shim_sequencer"""
 
-    def test_shim_sequencer_lsq(self, nif_fieldmap, nif_target, nii_mask, sph_coil, sph_coil2):
+    def test_shim_sequencer_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
@@ -374,7 +374,7 @@ def assert_results(nif_fieldmap, nif_target, nif_mask, coil, currents, slices):
 
 def define_rt_sim_inputs():
     # target image
-    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_target = nib.load(fname_target)
 
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
@@ -609,7 +609,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     nii_fieldmap = nib.load(fname_fieldmap)
 
     # target image
-    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
     nii_target = nib.load(fname_target)
 
     # Set up mask
@@ -841,7 +841,7 @@ class TestDefineSlices(object):
 
 class TestParseSlices(object):
     def setup_method(self):
-        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
 
         # Open json
         fname_json = fname.split('.nii')[0] + '.json'
@@ -865,7 +865,7 @@ class TestParseSlices(object):
             assert slices == [(2,), (0, 1), (3, 4)]
 
     def test_parse_slices_real_data(self):
-        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+        fname = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         slices = parse_slices(fname)
 
         assert slices == [(1,), (3,), (5,), (7,), (9,), (11,), (13,), (15,), (17,), (19,),
