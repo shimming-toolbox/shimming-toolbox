@@ -57,12 +57,12 @@ def create_fieldmap(n_slices=3):
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
     
     # Save in tmp directory
-    nib.save(nii_fmap, os.path.join(__dir_testing__, 'fieldmap.nii.gz'))
+    nib.save(nii_fmap, os.path.join(tempfile.TemporaryDirectory(), 'fieldmap.nii.gz'))
     # save a fake json file
     json_fmap = {'SliceThickness': 3}
         
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'), dilation_kernel_size=3, json=json_fmap)
+    nif_fmap = NiftiFieldMap(os.path.join(tempfile.TemporaryDirectory(), 'fieldmap.nii.gz'), dilation_kernel_size=3, json=json_fmap)
         
     return nif_fmap
 
@@ -126,9 +126,9 @@ with tempfile.TemporaryDirectory() as tmpdir:
 static_mask = shapes(target, 'cube', len_dim1=10, len_dim2=10, len_dim3=nz)
 nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=nii_target.header)
 # Save in tmp directory
-nib.save(nii_mask, os.path.join(__dir_testing__, 'mask.nii.gz'))
+nib.save(nii_mask, os.path.join(tempfile.TemporaryDirectory(), 'mask.nii.gz'))
 # Load the mask
-nif_mask = NiftiMask(os.path.join(__dir_testing__, 'mask.nii.gz'))
+nif_mask = NiftiMask(os.path.join(tempfile.TemporaryDirectory(), 'mask.nii.gz'))
 
 @pytest.mark.parametrize(
     "nif_fieldmap,nif_target,nii_mask,sph_coil,sph_coil2", [(
