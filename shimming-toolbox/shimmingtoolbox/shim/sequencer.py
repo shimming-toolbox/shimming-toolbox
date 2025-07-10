@@ -1153,8 +1153,8 @@ class RealTimeSequencer(Sequencer):
         max_bound_offset = min(mean_respiratory_cycle_time / 2, stop_time_mdh - acq_times.max())
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
-        mask_static_orig_fmcs_bin = (self.mask_static_orig_fmcs !=0).astype(int)
-        mask_fmap = np.logical_or(mask_static_orig_fmcs_bin, self.mask_riro_orig_fmcs)
+        mask_fmap = np.zeros_like(self.mask_static_orig_fmcs)
+        mask_fmap[self.mask_riro_orig_fmcs != 0] = self.mask_static_orig_fmcs[self.mask_riro_orig_fmcs != 0]
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
 
@@ -1324,12 +1324,8 @@ class RealTimeSequencer(Sequencer):
         if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(nii_riro_mask.affine == self.nii_anat.affine):
             # Resample the riro mask on the target anatomical image
             logger.debug("Resampling riro mask on the target anat")
-            nii_riro_mask_soft = resample_from_to(nii_riro_mask, self.nii_anat, order=1, mode='grid-constant')
-            tmp_mask = nii_riro_mask_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask[tmp_mask != 0] = 1
+            nii_riro_mask = resample_from_to(nii_riro_mask, self.nii_anat, order=1, mode='grid-constant')
             # Save the resampled mask
-            nii_riro_mask = nib.Nifti1Image(tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_riro_mask, os.path.join(self.path_output, "mask_riro_resampled_on_anat.nii.gz"))
 
@@ -1384,8 +1380,8 @@ class RealTimeSequencer(Sequencer):
         pressure_rms = self.pmu.get_pressure_rms(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
 
         # Mask the voxels not being shimmed for riro
-        mask_static_fmcs_dil_bin = (self.mask_static_fmcs_dil != 0).astype(int)
-        mask_fmap = np.logical_or(mask_static_fmcs_dil_bin, self.mask_riro_fmcs_dil)
+        mask_fmap = np.zeros_like(self.mask_static_fmcs_dil)
+        mask_fmap[self.mask_riro_fmcs_dil != 0] = self.mask_static_fmcs_dil[self.mask_riro_fmcs_dil != 0]
         masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
         static = np.zeros(fieldmap.shape[:-1])
