@@ -1659,8 +1659,8 @@ class RealTimeSequencer(Sequencer):
         unshimmed_trace = []
 
         # Combine static and riro masks
-        mask_fmcs_per_shim = np.clip(self.mask_static_orig_fmcs_per_shim + self.mask_riro_orig_fmcs_per_shim, 0, 1)
-        mask_fmcs = np.clip(self.mask_static_orig_fmcs + self.mask_riro_orig_fmcs, 0, 1)
+        mask_fmcs_per_shim = np.maximum(self.mask_static_orig_fmcs_per_shim, self.mask_riro_orig_fmcs_per_shim)
+        mask_fmcs = np.maximum(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
 
         if self.extended_fmap:
             # Remove extended slices if the field map was smaller than the kernel size
