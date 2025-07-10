@@ -3,11 +3,9 @@
 
 import nibabel as nib
 import numpy as np
-from scipy.ndimage import binary_dilation, gaussian_filter
-from skimage.morphology import ball
+from scipy.ndimage import distance_transform_edt
 
-
-def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, soft_units='mm', soft_value=0.5):
+def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_width=6, width_unit='mm', soft_value=0.5):
     """
     Create a soft mask from a binary mask by adding a soft zone around the binary mask.
 
@@ -29,8 +27,8 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
         nifti_softmask = nib.load(fname_softmask)
         softmask = nifti_softmask.get_fdata()
 
-    soft_width_px = convert_to_pixels(soft_width, soft_units, nifti_binmask.header)
-        
+    soft_width_px = convert_to_pixels(soft_width, width_unit, nifti_binmask.header)
+
     if type == '2levels':
         return create_two_levels_softmask(binmask, soft_width_px, soft_value)
     elif type == 'linear':
@@ -43,21 +41,21 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
         raise ValueError("Invalid soft mask type. Must be one of: '2levels', 'linear', 'gaussian', 'sum'")
 
 
-def convert_to_pixels(lenght, units, header):
+def convert_to_pixels(lenght, unit, header):
     """
     Convert a lenght from mm to pixels based on voxel size.
 
     Args:
         lenght (float): Lenght in mm or pixels.
-        units (str): Units of the lenght ('mm' or 'px').
+        unit (str): Unit of the lenght ('mm' or 'px').
         header (nib.Nifti1Header): NIFTI header containing voxel size information.
 
     Returns:
         int: Blur lenght in pixels."""
-    if units == 'mm':
+    if unit == 'mm':
         voxel_sizes = header.get_zooms()
         return int(round(float(lenght) / min(voxel_sizes)))
-    elif units == 'px':
+    elif unit == 'px':
         return int(lenght)
     else:
         raise ValueError("Lenght must be 'mm' or 'px'")
@@ -77,20 +75,18 @@ def create_two_levels_softmask(binary_mask, soft_width, soft_value):
         numpy.ndarray: Soft mask created from the binary mask.
     """
     soft_mask = np.array(binary_mask, dtype=float)
-    previous_mask = np.array(binary_mask, dtype=float)
 
-    for _ in range(soft_width // 3):
-        dilated_mask = binary_dilation(previous_mask, ball(3))
-        new_layer = dilated_mask & ~previous_mask.astype(bool)
-        soft_mask[new_layer] = soft_value
-        previous_mask = dilated_mask
+    # Invert mask: inside object is 0, outside is 1
+    outside_mask = ~binary_mask.astype(bool)
 
-    remainder = soft_width % 3
-    if remainder > 0:
-        dilated_mask = binary_dilation(previous_mask, ball(remainder))
-        new_layer = dilated_mask & ~previous_mask.astype(bool)
-        soft_mask[new_layer] = soft_value
+    # Compute distance for outside voxels to nearest inside
+    dist = distance_transform_edt(outside_mask)
 
+    # Create soft region: voxels within soft_width from the edge
+    soft_region = (dist > 0) & (dist <= soft_width)
+
+    # Apply soft values to soft_mask
+    soft_mask[soft_region] = soft_value
     soft_mask = np.clip(soft_mask, 0, 1)
 
     return soft_mask
@@ -109,14 +105,22 @@ def create_linear_softmask(binary_mask, soft_width):
         numpy.ndarray: Soft mask created from the binary mask.
     """
     soft_mask = np.array(binary_mask, dtype=float)
-    previous_mask = np.array(binary_mask, dtype=float)
 
-    for i in range(1, soft_width + 1):
-        dilated_mask = binary_dilation(previous_mask, structure=ball(1))
-        new_layer = dilated_mask & ~previous_mask.astype(bool)
-        soft_mask[new_layer] = 1 - (i / (soft_width + 1))
-        previous_mask = dilated_mask
+    # Invert mask: inside object is 0, outside is 1
+    outside_mask = ~binary_mask.astype(bool)
 
+    # Compute distance for outside voxels to nearest inside
+    dist = distance_transform_edt(outside_mask)
+
+    # Create soft region: voxels within soft_width from the edge
+    soft_region = (dist > 0) & (dist <= soft_width)
+
+    # Compute linear weights in soft region: value = 1 - dist / (soft_width + 1)
+    # Ensures value = 1 - 1 / (soft_width + 1) at dist=0, and value = 0 at dist=soft_width + 1
+    soft_values = 1 - dist[soft_region] / (soft_width + 1)
+
+    # Apply soft values to soft_mask
+    soft_mask[soft_region] = soft_values
     soft_mask = np.clip(soft_mask, 0, 1)
 
     return soft_mask
@@ -135,18 +139,23 @@ def create_gaussian_softmask(binary_mask, soft_width):
         numpy.ndarray: Soft mask created from the binary mask.
     """
     soft_mask = np.array(binary_mask, dtype=float)
-    previous_mask = np.array(binary_mask, dtype=float)
 
-    for _ in range(soft_width // 3):
-        previous_mask = binary_dilation(previous_mask, ball(3))
+    # Invert mask: inside object is 0, outside is 1
+    outside_mask = ~binary_mask.astype(bool)
 
-    remainder = soft_width % 3
-    if remainder > 0:
-        previous_mask = binary_dilation(previous_mask, ball(remainder))
+    # Compute distance for outside voxels to nearest inside
+    dist = distance_transform_edt(outside_mask)
 
-    blurred_mask = gaussian_filter(previous_mask.astype(float), soft_width)
-    soft_mask = np.clip(blurred_mask + binary_mask, 0, 1)
-    soft_mask[previous_mask == 0] = 0
+    # Create soft region: voxels within soft_width from the edge
+    soft_region = (dist > 0) & (dist <= soft_width)
+
+    # Gaussian decay: value = exp(-dist^2 / (2 * sigma^2))
+    sigma = soft_width / 3  # ~99.7% of Gaussian within 3σ
+    soft_values = np.exp(-(dist[soft_region]**2) / (2 * sigma**2))
+
+    # Apply soft values to soft_mask
+    soft_mask[soft_region] = soft_values
+    soft_mask = np.clip(soft_mask, 0, 1)
 
     return soft_mask
 
@@ -186,4 +195,3 @@ def save_softmask(soft_mask, fname_soft_mask, fname_binary_mask):
     nii_softmask.to_filename(fname_soft_mask)
 
     return nii_softmask
-
