@@ -11,10 +11,11 @@ from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.load_nifti import get_acquisition_times
+from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
 fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime', 'sub-realtime_PMUresp_signal.resp')
-nii_fieldmap = nib.load(fname_fieldmap)
+nif_fieldmap = NiftiFieldMap(fname_fieldmap, dilation_kernel_size=3, isRealtime=True)
 # Get the pressure values
 pmu = PmuResp(fname_resp)
 
@@ -56,16 +57,13 @@ def test_interp_resp_trace():
 
 def test_timing_images():
     """Check the matching of timing between MR images and PMU timestamps"""
-
-    # Get fieldmap
-    fieldmap = nii_fieldmap.get_fdata()
-
     # Get acquisition timestamps
     fname_phase_diff_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap',
                                          'sub-realtime_phasediff.json')
     with open(fname_phase_diff_json) as json_file:
         json_data = json.load(json_file)
-    fieldmap_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    nif_fieldmap.json = json_data
+    fieldmap_timestamps = get_acquisition_times(nif_fieldmap)
 
     # Interpolate PMU values onto MRI acquisition timestamp
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
@@ -73,18 +71,18 @@ def test_timing_images():
     # Set up mask
     mask_len1 = 15
     mask_len2 = 5
-    mask_len3 = fieldmap.shape[2]
-    mask = shapes(fieldmap[:, :, :, 0], shape='cube',
-                  center_dim1=int(fieldmap.shape[0] / 2 - 8),
-                  center_dim2=int(fieldmap.shape[1] / 2 - 20),
+    mask_len3 = nif_fieldmap.shape[2]
+    mask = shapes(nif_fieldmap.data[:, :, :, 0], shape='cube',
+                  center_dim1=int(nif_fieldmap.shape[0] / 2 - 8),
+                  center_dim2=int(nif_fieldmap.shape[1] / 2 - 20),
                   len_dim1=mask_len1, len_dim2=mask_len2, len_dim3=mask_len3)
 
     # Apply mask and compute the average for each timepoint
-    fieldmap_masked = np.zeros_like(fieldmap)
-    fieldmap_avg = np.zeros([fieldmap.shape[3]])
-    for i_time in range(fieldmap.shape[3]):
-        fieldmap_masked[:, :, :, i_time] = fieldmap[:, :, :, i_time] * mask
-        masked_array = np.ma.array(fieldmap[:, :, :, i_time], mask=mask == False)
+    fieldmap_masked = np.zeros_like(nif_fieldmap.data)
+    fieldmap_avg = np.zeros([nif_fieldmap.shape[3]])
+    for i_time in range(nif_fieldmap.shape[3]):
+        fieldmap_masked[:, :, :, i_time] = nif_fieldmap.data[:, :, :, i_time] * mask
+        masked_array = np.ma.array(nif_fieldmap.data[:, :, :, i_time], mask=mask == False)
         fieldmap_avg[i_time] = np.ma.average(masked_array)
 
     # Compute correlation
@@ -99,9 +97,9 @@ def test_pmu_fake_data():
     pmu.set_start_and_stop_times(125, 250 * (len(fake_data) - 1) + 125)
 
     json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
-
+    nif_fieldmap.json = json_data
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nii_fieldmap, json_data)
+    acq_timestamps = get_acquisition_times(nif_fieldmap)
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # 10 volumes, 1 slice

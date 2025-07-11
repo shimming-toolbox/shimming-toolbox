@@ -477,7 +477,7 @@ class TestShimRTpmuSimData(object):
         # Calculate theoretical shimmed map
         # shim
         unshimmed = nif_fieldmap.data
-        nii_target = nib.Nifti1Image(nif_fieldmap.data, nif_fieldmap.affine, header=nif_fieldmap.header)
+        nii_target = nib.Nifti1Image(nif_fieldmap.data[..., 0], nif_fieldmap.affine, header=nif_fieldmap.header)
         opt = Optimizer([coil], unshimmed[..., 0], nif_fieldmap.affine)
         shape = unshimmed.shape + (len(slices),)
         shimmed_static_riro = np.zeros(shape)
@@ -566,29 +566,14 @@ class TestShimRTpmuSimData(object):
 
         assert output[0].shape == (20, 3)
 
-    def test_shim_sequencer_rt_wrong_fmap_dim(self, nif_fieldmap, nif_target, nif_mask_static,
-                                              nif_mask_riro, slices, pmu, coil):
-        # Optimize
-        nii_wrong_fmap = nib.Nifti1Image(nif_fieldmap.data[..., 0], nif_fieldmap.affine,
-                                         header=nif_fieldmap.header)
-        with pytest.raises(ValueError, match="Fieldmap must be 4d"):
-            RealTimeSequencer(nii_wrong_fmap, nif_target, nif_mask_static, nif_mask_riro,
-                              slices, pmu, [coil], [coil]).shim()
-
-    def test_shim_sequencer_rt_wrong_target_dim(self, nif_fieldmap, nif_target, nif_mask_static,
-                                              nif_mask_riro, slices, pmu, coil):
-        # Optimize
-        nii_wrong_target = nib.Nifti1Image(nif_target.data[..., 0], nif_target.affine, header=nif_target.header)
-        with pytest.raises(ValueError, match="targetomical image must be in 3d"):
-            RealTimeSequencer(nif_fieldmap, nii_wrong_target, nif_mask_static, nif_mask_riro,
-                              slices, pmu, [coil], [coil]).shim()
-
     def test_shim_sequencer_rt_diff_mask_shape_static(self, nif_fieldmap, nif_target, nif_mask_static,
                                                       nif_mask_riro, slices, pmu, coil):
         # Optimize
         nii_diff_mask = nib.Nifti1Image(nif_mask_static.data[5:, ...], nif_mask_static.affine,
                                         header=nif_mask_static.header)
-        output = RealTimeSequencer(nif_fieldmap, nif_target, nii_diff_mask, nif_mask_riro,
+        nif_diff_mask = nif_mask_static
+        nif_diff_mask.set_nii(nii_diff_mask, nif_target)
+        output = RealTimeSequencer(nif_fieldmap, nif_target, nif_diff_mask, nif_mask_riro,
                                    slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
@@ -597,18 +582,22 @@ class TestShimRTpmuSimData(object):
         # Optimize
         nii_diff_mask = nib.Nifti1Image(nif_mask_riro.data[5:, ...], nif_mask_riro.affine,
                                         header=nif_mask_riro.header)
+        nif_diff_mask = nif_mask_riro
+        nif_diff_mask.set_nii(nii_diff_mask, nif_target)
 
-        output = RealTimeSequencer(nif_fieldmap, nif_target, nif_mask_static, nii_diff_mask,
+        output = RealTimeSequencer(nif_fieldmap, nif_target, nif_mask_static, nif_diff_mask,
                                    slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
     def test_shim_sequencer_rt_diff_mask_affine(self, nif_fieldmap, nif_target, nif_mask_static,
                                                 nif_mask_riro, slices, pmu, coil):
         # Optimize
-        diff_affine = nii_mask.affine
+        diff_affine = nif_mask_static.affine
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nif_mask_static.data, diff_affine, header=nif_mask_static.header)
-        output = RealTimeSequencer(nif_fieldmap, nif_target, nii_diff_mask, nif_mask_riro,
+        nif_diff_mask = nif_mask_static
+        nif_diff_mask.set_nii(nii_diff_mask, nif_target)
+        output = RealTimeSequencer(nif_fieldmap, nif_target, nif_diff_mask, nif_mask_riro,
                                    slices, pmu, [coil], [coil]).shim()
         assert output[0].shape == (20, 3)
 
