@@ -59,7 +59,7 @@ Create a Mask
 
 - Load the target image.
 
-  - data_dynamic_shimming/sub-spine/target/sub-spine_unshimmed_e1.nii.gz
+  - data_dynamic_shimming/sub-spine/anat/sub-spine_unshimmed_e1.nii.gz
 
 - Select The *Mask* Tab.
 - Select *Box* from the dropdown.

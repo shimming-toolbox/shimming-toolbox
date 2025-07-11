@@ -260,7 +260,7 @@
  - Add Siemens compatibility warning to B1+ tutorial. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/372)
  - Update names of subcommand in the documentation. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/417)
  - Add information about citation to the documentation. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/421)
- - Removed unecessary expltargetions. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/422)
+ - Removed unecessary explanations. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/422)
  - Update b1_shimming.rst. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/456)
  - Updated documentation to encourage people to post on the forum. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/516)
 

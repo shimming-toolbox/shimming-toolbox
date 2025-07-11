@@ -3,7 +3,7 @@
     "case_sensitive": false,
     "descriptions": [
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -13,7 +13,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -23,7 +23,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -33,7 +33,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -43,7 +43,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -53,7 +53,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -63,7 +63,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "inv-1_MP2RAGE",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -74,7 +74,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -84,7 +84,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "inv-2_MP2RAGE",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -95,7 +95,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "UNIT1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -105,7 +105,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "inv-1_MP2RAGE",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -116,7 +116,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "inv-2_MP2RAGE",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -127,7 +127,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "UNIT1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -137,7 +137,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-1",
             "criteria": {
@@ -149,7 +149,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-2",
             "criteria": {
@@ -161,7 +161,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-3",
             "criteria": {
@@ -173,7 +173,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-4",
             "criteria": {
@@ -185,7 +185,7 @@
             }
         },
                 {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-1",
             "criteria": {
@@ -197,7 +197,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-2",
             "criteria": {
@@ -209,7 +209,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-3",
             "criteria": {
@@ -221,7 +221,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage_echo-4",
             "criteria": {
@@ -233,7 +233,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "custom_entities": "acq-mprage",
             "criteria": {
@@ -244,7 +244,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -254,7 +254,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -264,7 +264,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -746,7 +746,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -758,7 +758,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -770,7 +770,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -782,7 +782,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude4",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -794,7 +794,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude5",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -806,7 +806,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude6",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -818,7 +818,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -830,7 +830,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -842,7 +842,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -854,7 +854,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase4",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -866,7 +866,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase5",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -878,7 +878,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase6",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -890,7 +890,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -902,7 +902,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -914,7 +914,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -926,7 +926,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude4",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -938,7 +938,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude5",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -950,7 +950,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "magnitude6",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -962,7 +962,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase1",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -974,7 +974,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase2",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -986,7 +986,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase3",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -998,7 +998,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase4",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -1010,7 +1010,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase5",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -1022,7 +1022,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "phase6",
             "criteria": {
                 "Manufacturer": "Siemens",
@@ -1145,7 +1145,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1wTFE",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1155,7 +1155,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "survey",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1165,7 +1165,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1wTFE",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1174,7 +1174,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T2wTSE",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1183,7 +1183,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1194,7 +1194,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-1",
             "criteria": {
@@ -1206,7 +1206,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-2",
             "criteria": {
@@ -1218,7 +1218,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-1",
             "criteria": {
@@ -1230,7 +1230,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-2",
             "criteria": {
@@ -1242,7 +1242,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-3",
             "criteria": {
@@ -1254,7 +1254,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-1_part-phase",
             "criteria": {
@@ -1266,7 +1266,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-2_part-phase",
             "criteria": {
@@ -1278,7 +1278,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-3_part-phase",
             "criteria": {
@@ -1290,7 +1290,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-1_part-imag",
             "criteria": {
@@ -1302,7 +1302,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-2_part-imag",
             "criteria": {
@@ -1314,7 +1314,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-3_part-imag",
             "criteria": {
@@ -1326,7 +1326,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-1_part-real",
             "criteria": {
@@ -1338,7 +1338,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-2_part-real",
             "criteria": {
@@ -1350,7 +1350,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "FFE",
             "custom_entities": "echo-3_part-real",
             "criteria": {
@@ -1394,7 +1394,7 @@
             }
         },
         {
-            "datatype": "target",
+            "datatype": "anat",
             "suffix": "T1w",
             "criteria": {
                 "Manufacturer": "GE",
