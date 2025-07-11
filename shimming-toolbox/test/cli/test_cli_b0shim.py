@@ -1659,8 +1659,8 @@ class TestCLIRealtime(object):
                                       'sub-realtime_PMUresp_signal.resp')
 
             runner = CliRunner()
-
-            with pytest.raises(OSError, match="Missing fieldmap json file"):
+            json_fmap = os.path.join(tmp, 'fmap.json')
+            with pytest.raises(OSError, match=f"JSON file not found for {fname_fmap}. Expected at {json_fmap}"):
                 runner.invoke(b0shim_cli, ['realtime-dynamic',
                                            '--fmap', fname_fmap,
                                            '--anat', fname_anat,
