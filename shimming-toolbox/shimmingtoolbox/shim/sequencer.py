@@ -986,7 +986,7 @@ class RealTimeSequencer(Sequencer):
             extended_fmap (bool): True if the fieldmap was extended to be able to shim only 1 slice
     """
 
-    def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
+    def __init__(self, nif_fieldmap, nif_target, nif_static_mask, nif_riro_mask, slices, pmu: PmuResp,
                  coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
                  mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
         """
@@ -1030,7 +1030,6 @@ class RealTimeSequencer(Sequencer):
 
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
-        self.json_fmap = json_fmap
         self.pmu = pmu
         self.coils_static = coils_static
         self.coils_riro = coils_riro
@@ -1041,35 +1040,32 @@ class RealTimeSequencer(Sequencer):
             raise ValueError("Criteria for optimization not supported")
 
         self.opt_criteria = opt_criteria
-        self.fmap_orig_location = None
-        self.nif_fieldmap, self.nif_fieldmap_orig, self.extended_fmap = self.get_fieldmap(nii_fieldmap)
-
-        # Check if anat has the good dimensions
-        if nii_anat.get_fdata().ndim != 3:
-            raise ValueError("Anatomical image must be in 3d")
-
-        self.nif_target = nii_anat
-        self.nii_static_mask, self.nii_riro_mask = self.load_masks(nii_static_mask, nii_riro_mask)
+        self.nif_fieldmap = nif_fieldmap
+        self.nif_target = nif_target
+        self.nif_static_mask = nif_static_mask
+        self.nif_static_mask.load_mask(nif_target)
+        self.nif_riro_mask = nif_riro_mask
+        self.nif_riro_mask.load_mask(nif_target)
 
         # Resample the masks to the fmap coordinate system for each shim group
         (_,
          _,
          self.mask_static_fmcs_per_shim_dil,
-         self.mask_riro_fmcs_per_shim_dil) = self.resample_masks_to_target_per_shim(self.nif_fieldmap)
+         self.mask_riro_fmcs_per_shim_dil) = self.resample_masks_to_target_per_shim(self.nif_fieldmap.extended_nii)
         (self.mask_static_orig_fmcs_per_shim,
          self.mask_riro_orig_fmcs_per_shim,
          _,
-         _) = self.resample_masks_to_target_per_shim(self.nif_fieldmap_orig)
+         _) = self.resample_masks_to_target_per_shim(self.nif_fieldmap.nii)
 
         # Resample the whole masks to the fmap coordinate system
         (self.mask_static_fmcs,
          self.mask_riro_fmcs,
          self.mask_static_fmcs_dil,
-         self.mask_riro_fmcs_dil) = self.resample_mask_to_target(self.nif_fieldmap)
+         self.mask_riro_fmcs_dil) = self.resample_mask_to_target(self.nif_fieldmap.extended_nii)
         (self.mask_static_orig_fmcs,
          self.mask_riro_orig_fmcs,
          self.mask_static_orig_fmcs_dil,
-         self.mask_riro_orig_fmcs_dil) = self.resample_mask_to_target(self.nif_fieldmap_orig)
+         self.mask_riro_orig_fmcs_dil) = self.resample_mask_to_target(self.nif_fieldmap.nii)
 
         self.acq_timestamps = None
         self.acq_timestamps_orig = None
@@ -1084,12 +1080,12 @@ class RealTimeSequencer(Sequencer):
     def calculate_best_pmu_time_offset(self):
         logger.info(f"Calculating best time offset")
         # Probably sweep at all times but centered on the frequency added
-        n_slices = self.nif_fieldmap_orig.shape[2]
+        n_slices = self.nif_fieldmap.shape[2]
 
         previous_time_offset = self.pmu.time_offset
         self.pmu.adjust_start_time(0)
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
-        acq_times = get_acquisition_times(self.nif_fieldmap_orig, self.json_fmap, when='slice-middle')
+        acq_times = get_acquisition_times(self.nif_fieldmap, when='slice-middle')
         n_samples = 1000
         start_time_mdh, stop_time_mdh = self.pmu.get_start_and_stop_times()
         min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
@@ -1097,8 +1093,8 @@ class RealTimeSequencer(Sequencer):
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
-        mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nif_fieldmap_orig.shape[-1], axis=-1)
-        fmap_ma = np.ma.array(self.nif_fieldmap_orig.get_fdata(), mask=mask_4d == False)
+        mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nif_fieldmap.shape[-1], axis=-1)
+        fmap_ma = np.ma.array(self.nif_fieldmap.data, mask=mask_4d == False)
 
         # Find best time offset
         best_r2_total = 0
@@ -1150,7 +1146,7 @@ class RealTimeSequencer(Sequencer):
 
             self.pmu.adjust_start_time(best_time_offset)
 
-            acq_times = get_acquisition_times(self.nif_fieldmap_orig, self.json_fmap)
+            acq_times = get_acquisition_times(self.nif_fieldmap)
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
             pmu_plot_pressures = (self.pmu.get_resp_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
 
@@ -1194,94 +1190,6 @@ class RealTimeSequencer(Sequencer):
 
         return round(best_time_offset)
 
-    def get_fieldmap(self, nii_fieldmap):
-        """
-        Get the fieldmap for the RealTimeSequencer class
-
-        Args:
-           nii_fieldmap (nib.Nifti1Image): Nibabel object containing fieldmap data in 4d where the 4th dimension
-                                           is the timeseries.
-
-        Returns:
-            nib.Nifti1Image: Nibabel object containing fieldmap data in 4d where the 4th dimension
-                             is the timeseries.
-
-        """
-        # Make sure the fieldmap has the appropriate dimensions
-        if nii_fieldmap.get_fdata().ndim != 4:
-            raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
-
-        nii_fmap_orig = copy.deepcopy(nii_fieldmap)
-        # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
-        # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2
-        # voxels in one dimension can differentiate order 1 at most), the parameter allows to have at least the size
-        # of the kernel for each dimension This is usually useful in the through plane direction where we could have
-        # less slices. To mitigate this, we create a 3d volume by replicating the slices on the edges.
-        extended_fmap = False
-        for i_axis in range(3):
-            if nii_fmap_orig.shape[i_axis] < self.mask_dilation_kernel_size:
-                nii_fieldmap, location = extend_fmap_to_kernel_size(nii_fmap_orig, self.mask_dilation_kernel_size,
-                                                                    self.path_output, ret_location=True)
-                extended_fmap = True
-                self.fmap_orig_location = location
-                break
-
-        return nii_fieldmap, nii_fmap_orig, extended_fmap
-
-    def load_masks(self, nii_static_mask, nii_riro_mask):
-        """
-            Get both masks for the RealTimeSequencer Class
-
-            Args:
-                nii_static_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region
-                                                   for the static component.
-                nii_riro_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
-                                                 component.
-
-            Returns:
-                (tuple) : tuple containing:
-                    * nib.Nifti1Image: 3D anat mask used for the optimizer to shim the region for the static component.
-                    * nib.Nifti1Image: 3D anat mask used for the optimizer to shim the region for the riro component.
-
-            """
-        # Note: We technically don't need the anat if we use the nii_mask. However, this is a nice safety check to
-        # make sure the mask is indeed in the dimension of the anat and not the fieldmap.
-
-        anat = self.nif_target.get_fdata()
-        # Make sure masks have the appropriate dimensions
-        if nii_static_mask.get_fdata().ndim != 3:
-            raise ValueError("static_mask image must be in 3d")
-        if nii_riro_mask.get_fdata().ndim != 3:
-            raise ValueError("riro_mask image must be in 3d")
-
-        # Resample the input masks on the target anatomical image if they are different
-        if not np.all(nii_static_mask.shape == anat.shape) or not np.all(
-                nii_static_mask.affine == self.nif_target.affine):
-            logger.debug("Resampling static mask on the target anat")
-            nii_static_mask_soft = resample_from_to(nii_static_mask, self.nif_target, order=1, mode='grid-constant')
-            tmp_mask = nii_static_mask_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001)
-            nii_static_mask = nib.Nifti1Image(tmp_mask, nii_static_mask_soft.affine,
-                                              header=nii_static_mask_soft.header)
-
-            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_static_mask, os.path.join(self.path_output, "mask_static_resampled_on_anat.nii.gz"))
-
-        if not np.all(nii_riro_mask.shape == anat.shape) or not np.all(
-                nii_riro_mask.affine == self.nif_target.affine):
-            logger.debug("Resampling riro mask on the target anat")
-            nii_riro_mask_soft = resample_from_to(nii_riro_mask, self.nif_target, order=1, mode='grid-constant')
-            tmp_mask = nii_riro_mask_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001)
-            nii_riro_mask = nib.Nifti1Image(tmp_mask, nii_riro_mask_soft.affine, header=nii_riro_mask_soft.header)
-
-            if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                nib.save(nii_riro_mask, os.path.join(self.path_output, "mask_riro_resampled_on_anat.nii.gz"))
-
-        return nii_static_mask, nii_riro_mask
-
     def get_acq_pressures(self):
         """
         Get the acquisition pressures at the times when the field map volumes and slices were acquired.
@@ -1290,11 +1198,11 @@ class RealTimeSequencer(Sequencer):
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
         # Fetch PMU timing
-        self.acq_timestamps_orig = get_acquisition_times(self.nif_fieldmap_orig, self.json_fmap)
-        if self.extended_fmap:
+        self.acq_timestamps_orig = get_acquisition_times(self.nif_fieldmap)
+        if self.nif_fieldmap.extended:
             # If the field map was extended, we need to add extra slices to the acq_timestamps
-            n_slices_to_extend = int((self.nif_fieldmap.shape[2] - self.acq_timestamps_orig.shape[1]) / 2)
-            self.acq_timestamps = np.zeros((self.acq_timestamps_orig.shape[0], self.nif_fieldmap.shape[2]))
+            n_slices_to_extend = int((self.nif_fieldmap.extended_shape[2] - self.acq_timestamps_orig.shape[1]) / 2)
+            self.acq_timestamps = np.zeros((self.acq_timestamps_orig.shape[0], self.nif_fieldmap.extended_shape[2]))
             for i_slice_to_extend in range(n_slices_to_extend):
                 self.acq_timestamps[:, i_slice_to_extend] = self.acq_timestamps_orig[:, 0]
                 self.acq_timestamps[:, -i_slice_to_extend - 1] = self.acq_timestamps_orig[:, -1]
@@ -1320,7 +1228,7 @@ class RealTimeSequencer(Sequencer):
                          multiply the riro coefficients by rms of the pressure to do so.
 
         """
-        fieldmap = self.nif_fieldmap.get_fdata()
+        fieldmap = self.nif_fieldmap.extended_data
 
         n_slices = fieldmap.shape[2]
         n_volumes = fieldmap.shape[-1]
@@ -1373,11 +1281,11 @@ class RealTimeSequencer(Sequencer):
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
             # Save static
-            nii_static = nib.Nifti1Image(static, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            nii_static = nib.Nifti1Image(static, self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header)
             nib.save(nii_static, os.path.join(self.path_output, 'fig_static_fmap_component.nii.gz'))
 
             # Save riro
-            nii_riro = nib.Nifti1Image(riro, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            nii_riro = nib.Nifti1Image(riro, self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header)
             nib.save(nii_riro, os.path.join(self.path_output, 'fig_riro_fmap_component.nii.gz'))
 
         return static, riro, mean_p, pressure_rms
@@ -1397,7 +1305,7 @@ class RealTimeSequencer(Sequencer):
                          by rms of the pressure to do so.
         """
 
-        affine_fieldmap = self.nif_fieldmap.affine
+        affine_fieldmap = self.nif_fieldmap.extended_affine
         static, riro, mean_p, pressure_rms = self.get_real_time_parameters()
 
         # Create both optimizer object
@@ -1500,13 +1408,13 @@ class RealTimeSequencer(Sequencer):
         nii_fmap_cs = nib.Nifti1Image(nii_fmap.get_fdata()[..., 0], nii_fmap.affine)
 
         r = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(self.nii_static_mask, nii_fmap_cs, self.slices[i],
+            delayed(resample_mask)(self.nif_static_mask.nii, nii_fmap_cs, self.slices[i],
                                    self.mask_dilation_kernel, self.mask_dilation_kernel_size,
                                    self.path_output, return_non_dil_mask=True)
             for i in range(n_shims))
         static_mask, static_mask_dil = zip(*r)
         r = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(self.nii_riro_mask, nii_fmap_cs, self.slices[i],
+            delayed(resample_mask)(self.nif_riro_mask.nii, nii_fmap_cs, self.slices[i],
                                    self.mask_dilation_kernel,
                                    self.mask_dilation_kernel_size, self.path_output, return_non_dil_mask=True)
             for i in range(n_shims))
@@ -1542,12 +1450,12 @@ class RealTimeSequencer(Sequencer):
         """
         nii_3dfmap = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine,
                                      header=nii_target.header)
-        fmap_mask_static, fmap_mask_static_dil = resample_mask(self.nii_static_mask, nii_3dfmap,
+        fmap_mask_static, fmap_mask_static_dil = resample_mask(self.nif_static_mask.nii, nii_3dfmap,
                                                                tuple(range(self.nif_target.shape[2])),
                                                                dilation_kernel=self.mask_dilation_kernel,
                                                                dilation_size=self.mask_dilation_kernel_size,
                                                                return_non_dil_mask=True)
-        fmap_mask_riro, fmap_mask_riro_dil = resample_mask(self.nii_riro_mask, nii_3dfmap,
+        fmap_mask_riro, fmap_mask_riro_dil = resample_mask(self.nif_riro_mask.nii, nii_3dfmap,
                                                            tuple(range(self.nif_target.shape[2])),
                                                            dilation_kernel=self.mask_dilation_kernel,
                                                            dilation_size=self.mask_dilation_kernel_size,
@@ -1596,7 +1504,7 @@ class RealTimeSequencer(Sequencer):
         logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
         # Calculate theoretical shimmed map
         # shim
-        unshimmed = self.nif_fieldmap_orig.get_fdata()
+        unshimmed = self.nif_fieldmap.data
         shape = unshimmed.shape + (len(self.slices),)
         shimmed_static_riro = np.zeros(shape)
         shimmed_static = np.zeros(shape)
@@ -1613,14 +1521,14 @@ class RealTimeSequencer(Sequencer):
         mask_fmcs_per_shim = np.logical_or(self.mask_static_orig_fmcs_per_shim, self.mask_riro_orig_fmcs_per_shim)
         mask_fmcs = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
 
-        if self.extended_fmap:
+        if self.nif_fieldmap.extended:
             # Remove extended slices if the field map was smaller than the kernel size
             n_channels = self.optimizer.merged_coils.shape[-1]
             # static coil
-            merged_coils = self.optimizer.merged_coils[self.fmap_orig_location[..., 0], :]
+            merged_coils = self.optimizer.merged_coils[self.nif_fieldmap.location[..., 0], :]
             merged_coils = merged_coils.reshape(unshimmed.shape[:-1] + (n_channels,))
             # riro coil
-            merged_coils_riro = self.optimizer_riro.merged_coils[self.fmap_orig_location[..., 0], :]
+            merged_coils_riro = self.optimizer_riro.merged_coils[self.nif_fieldmap.location[..., 0], :]
             merged_coils_riro = merged_coils_riro.reshape(unshimmed.shape[:-1] + (n_channels,))
         else:
             merged_coils = self.optimizer.merged_coils
@@ -1633,7 +1541,7 @@ class RealTimeSequencer(Sequencer):
             # Calculate the riro coil profiles
             riro_profile = merged_coils_riro @ coef_riro[i_shim]
 
-            for i_t in range(self.nif_fieldmap.shape[3]):
+            for i_t in range(self.nif_fieldmap.extended_shape[3]):
                 # Apply the static and riro correction
                 correction_riro = riro_profile * (self.acq_pressures_orig[i_t] - mean_p)
                 shimmed_static[..., i_t, i_shim] = unshimmed[..., i_t] + correction_static
@@ -1709,13 +1617,13 @@ class RealTimeSequencer(Sequencer):
             self.plot_pressure_vs_field(masked_unshimmed, mask_fmcs_per_shim)
             self.print_rt_metrics(unshimmed, shimmed_static, shimmed_static_riro, shimmed_riro, mask_fmcs_per_shim)
             # Save shimmed result
-            nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nif_fieldmap.affine,
+            nii_shimmed_static_riro = nib.Nifti1Image(shimmed_static_riro, self.nif_fieldmap.extended_affine,
                                                       header=self.nif_fieldmap.header)
             nib.save(nii_shimmed_static_riro, os.path.join(self.path_output,
                                                            'shimmed_static_riro_4thdim_it_5thdim_ishim.nii.gz'))
 
             # Save coils
-            nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nif_fieldmap.affine,
+            nii_merged_coils = nib.Nifti1Image(self.optimizer_riro.merged_coils, self.nif_fieldmap.extended_affine,
                                                header=self.nif_fieldmap.header)
             nib.save(nii_merged_coils, os.path.join(self.path_output, "merged_coils.nii.gz"))
 

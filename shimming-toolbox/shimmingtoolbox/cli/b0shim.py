@@ -211,8 +211,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_fname = [fname_fmap, fname_anat, fname_mask_anat]
-        _save_nii_to_new_dir(list_fname, path_output)
+        list_save = [nif_fmap, nif_target, nif_mask_anat]
+        _save_nii_to_new_dir(list_save)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta. Only Siemens gradient coordinate system has been defined
@@ -506,15 +506,15 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    f"see: {__config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
-@click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
+@click.option('--anat', 'fname_target', type=click.Path(exists=True), required=True,
               help="Anatomical image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
               help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
-@click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
+@click.option('--mask-static', 'fname_mask_target_static', type=click.Path(exists=True), required=False,
               help="Mask defining the static spatial region to shim.")
-@click.option('--mask-riro', 'fname_mask_anat_riro', type=click.Path(exists=True), required=False,
+@click.option('--mask-riro', 'fname_mask_target_riro', type=click.Path(exists=True), required=False,
               help="Mask defining the time varying (i.e. RIRO, Respiration-Induced Resonance Offset) "
                    "region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1',
@@ -606,7 +606,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    "used in that case.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 @timeit
-def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro, fname_resp, method,
+def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_mask_target_riro, fname_resp, method,
                      opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
                      scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
                      o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, verbose):
@@ -623,6 +623,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     # Set logger level
     set_all_loggers(verbose)
     
+    # Prepare the output
+    create_output_dir(path_output)
+    
     # Set coils and scanner order for riro if none were indicated
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
@@ -631,67 +634,27 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
     # Load the fieldmap
-    nii_fmap_orig = nib.load(fname_fmap)
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, isRealtime=True)
 
-    # Make sure the fieldmap has the appropriate dimensions
-    if nii_fmap_orig.get_fdata().ndim != 4:
-        raise ValueError("Fieldmap must be 4d (dim1, dim2, dim3, t)")
-
-    # Extend the fieldmap if there are axes that have less voxels than the kernel size. This is done since we are
-    # fitting a fieldmap to coil profiles and having a small number of voxels can lead to errors in fitting (2 voxels
-    # in one dimension can differentiate order 1 at most), the parameter allows to have at least the size of the kernel
-    # for each dimension This is usually useful in the through plane direction where we could have less slices.
-    # To mitigate this, we create a 3d volume by replicating the slices on the edges.
-    extending = False
-    for i_axis in range(3):
-        if nii_fmap_orig.shape[i_axis] < dilation_kernel_size:
-            extending = True
-            break
-
-    if extending:
-        nii_fmap = extend_fmap_to_kernel_size(nii_fmap_orig, dilation_kernel_size, path_output)
-    else:
-        nii_fmap = copy.deepcopy(nii_fmap_orig)
-
-    # Prepare the output
-    create_output_dir(path_output)
-    
     # Load the anat
-    nii_anat = nib.load(fname_anat)
-    dim_info = nii_anat.header.get_dim_info()
-    if dim_info[2] != 2:
-        # Slice must be the 3rd dimension of the file
-        # TODO: Reorient nifti so that the slice is the 3rd dim
-        raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
-
-    # Load anat json
-    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_anat_json) as json_file:
-        json_anat_data = json.load(json_file)
+    nif_target = NiftiTarget(fname_target, path_output=path_output)
 
     # Load static mask
-    if fname_mask_anat_static is not None:
-        nii_mask_anat_static = nib.load(fname_mask_anat_static)
+    if fname_mask_target_static is not None:
+        nif_mask_target_static = NiftiMask(fname_mask_target_static)
     else:
-        # If no mask is provided, shim the whole anat volume
-        nii_mask_anat_static = nib.Nifti1Image(np.ones_like(nii_anat.get_fdata()), nii_anat.affine,
-                                               header=nii_anat.header)
+         # If no mask is provided, shim the whole anat volume
+        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
+        # save the mask to the output directory
+        nib.save(tmp_nii_mask_target, os.path.join(path_output, 'mask_target.nii.gz'))
+        nif_mask_target_static = NiftiMask(os.path.join(path_output, 'mask_target.nii.gz'))
 
     # Load riro mask
-    if fname_mask_anat_riro is not None:
-        nii_mask_anat_riro = nib.load(fname_mask_anat_riro)
+    if fname_mask_target_riro is not None:
+        nif_mask_target_riro = NiftiMask(fname_mask_target_riro)
     else:
         # If no mask is provided, shim the whole anat volume
-        nii_mask_anat_riro = copy.deepcopy(nii_mask_anat_static)
-
-    # Open json of the fmap
-    fname_json = fname_fmap.split('.nii')[0] + '.json'
-    # Read from json file
-    if os.path.isfile(fname_json):
-        with open(fname_json) as json_file:
-            json_fm_data = json.load(json_file)
-    else:
-        raise OSError("Missing fieldmap json file")
+        nif_mask_target_riro = copy.deepcopy(nif_mask_target_static)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
     # delta.
@@ -705,38 +668,36 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
         if not set(scanner_coil_order_riro).issubset({0, 1}):
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_riro} for output file format: "
                              f"{o_format_sph}")
-        if json_fm_data['Manufacturer'] != 'Siemens':
-            raise ValueError(f"Unsupported manufacturer: {json_fm_data['manufacturer']} for output file format: "
-                             f"{o_format_sph}")
+        if nif_fmap.get_json_info('Manufacturer') != 'Siemens':
+            raise NotImplementedError(f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
+                                      f"format: {o_format_sph}")
 
     # Find the isocenter
-    isocenter_fm = get_isocenter(json_fm_data)
-    isocenter_anat = get_isocenter(json_anat_data)
-    if isocenter_fm is None or isocenter_anat is None or not np.all(np.isclose(isocenter_fm, isocenter_anat)):
+    if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
     # Read the current shim settings from the scanner
     all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
-    scanner_shim_settings = ScannerShimSettings(json_fm_data, orders=all_scanner_orders)
+    scanner_shim_settings = ScannerShimSettings(nif_fmap, orders=all_scanner_orders)
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nii_fmap,
-                                    options['scanner_shim'], json_fm_data)
-    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nii_fmap,
-                                  options['scanner_shim'], json_fm_data)
+    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nif_fmap,
+                                    options['scanner_shim'])
+    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nif_fmap,
+                                  options['scanner_shim'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_fname = [fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_anat_riro]
-        _save_nii_to_new_dir(list_fname, path_output)
+        list_save = [nif_fmap, nif_target, nif_mask_target_static, nif_mask_target_riro]
+        _save_nii_to_new_dir(list_save)
 
     # Get the shim slice ordering
-    n_slices = nii_anat.shape[2]
+    n_slices = nif_target.shape[2]
     if slices == 'auto':
-        list_slices = parse_slices(fname_anat)
+        list_slices = parse_slices(fname_target)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, json_fm_data.get('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions'))
 
     logger.info(f"The slices to shim are: {list_slices}")
 
@@ -750,8 +711,8 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     pmu = PmuResp(fname_resp, time_offset=time_offset)
 
     # 1 ) Create the real time pmu sequencer object
-    sequencer = RealTimeSequencer(nii_fmap_orig, json_fm_data, nii_anat, nii_mask_anat_static,
-                                  nii_mask_anat_riro,
+    sequencer = RealTimeSequencer(nif_fmap, nif_target, nif_mask_target_static,
+                                  nif_mask_target_riro,
                                   list_slices, pmu, list_coils_static, list_coils_riro,
                                   method=method,
                                   opt_criteria=opt_criteria,
@@ -765,7 +726,7 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
 
     # Output
     # Load output options
-    options['fatsat'] = _get_fatsat_option(json_anat_data, fatsat)
+    options['fatsat'] = nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
 
     # Get common coils between static and riro // Comparison based on coil name
     coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
@@ -808,9 +769,9 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
                 
                 coefs_coil_static = coefs_to_dict(coefs_static, scanner_coil_order_static,
-                                                   json_anat_data['Manufacturer'])
+                                                   nif_target.get_json_info('Manufacturer'))
                 coefs_coil_riro = coefs_to_dict(coefs_riro, scanner_coil_order_riro,
-                                                 json_anat_data['Manufacturer'])
+                                                 nif_target.get_json_info('Manufacturer'))
                 list_fname_output += _save_to_text_file(coil, coefs_coil_static, list_slices, path_output,
                                                         o_format_sph, options, coil_number=i_coil)
                 list_fname_output += _save_to_text_file(coil, coefs_coil_riro, list_slices, path_output,
@@ -1117,15 +1078,12 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     return list_coils
 
 
-def _save_nii_to_new_dir(list_fname, path_output):
+def _save_nii_to_new_dir(list_save):
     """List of nii to save to a new output folder"""
-    logger.debug(f"Saving CLI inputs to: {path_output}")
-    for fname in list_fname:
-        if fname is None:
+    for nif_object in list_save:
+        if nif_object is None:
             continue
-        nii = nib.load(fname)
-        fname_to_save = os.path.join(path_output, os.path.basename(fname))
-        nib.save(nii, fname_to_save)
+        nif_object.save()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
