@@ -54,9 +54,9 @@ def b0shim_cli():
                    f"see: {__config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
-@click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
-              help="Anatomical image to apply the correction onto.")
-@click.option('--mask', 'fname_mask_anat', type=click.Path(exists=True), required=False,
+@click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
+              help="target image to apply the correction onto.")
+@click.option('--mask', 'fname_mask_target', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1',
               show_default=True,
@@ -140,7 +140,7 @@ def b0shim_cli():
                                       "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
                                       "captured by the controller of the shim amplifier. If there is a fat saturation "
-                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
+                                      "pulse in the target sequence, shim weights of 0s are included in the output "
                                       "text file before each slice coefficients. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
@@ -156,14 +156,14 @@ def b0shim_cli():
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
 @timeit
-def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slices, slice_factor, coils,
+def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
             o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
     Example of use: st_b0shim dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
-    --fmap fmap.nii --anat anat.nii --mask mask.nii --optimizer-method least_squares
+    --fmap fmap.nii --target target.nii --mask mask.nii --optimizer-method least_squares
     """
 
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
@@ -180,8 +180,8 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Prepare the output
     create_output_dir(path_output)
 
-    # Load the anat
-    nif_target = NiftiTarget(fname_anat, path_output=path_output)
+    # Load the target
+    nif_target = NiftiTarget(fname_target, path_output=path_output)
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
@@ -199,18 +199,18 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
         epi_te = None
 
     # Load mask
-    if fname_mask_anat is not None:
-        nif_mask_anat = NiftiMask(fname_mask_anat)
+    if fname_mask_target is not None:
+        nif_mask_target = NiftiMask(fname_mask_target)
     else:
-        # If no mask is provided, shim the whole anat volume
-        tmp_nii_mask_anat = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
+        # If no mask is provided, shim the whole target volume
+        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
         # save the mask to the output directory
-        nib.save(tmp_nii_mask_anat, os.path.join(path_output, 'mask_anat.nii.gz'))
-        nif_mask_anat = NiftiMask(os.path.join(path_output, 'mask_anat.nii.gz'))
+        nib.save(tmp_nii_mask_target, os.path.join(path_output, 'mask_target.nii.gz'))
+        nif_mask_target = NiftiMask(os.path.join(path_output, 'mask_target.nii.gz'))
         
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
-        list_save = [nif_fmap, nif_target, nif_mask_anat]
+        list_save = [nif_fmap, nif_target, nif_mask_target]
         _save_nii_to_new_dir(list_save)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
@@ -240,7 +240,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # Get the shim slice ordering
     n_slices = nif_target.shape[2]
     if slices == 'auto':
-        list_slices = parse_slices(fname_anat)
+        list_slices = parse_slices(fname_target)
     else:
         list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions'))
     logger.info(f"The slices to shim are:\n{list_slices}")
@@ -248,7 +248,7 @@ def dynamic(fname_fmap, fname_anat, fname_mask_anat, method, opt_criteria, slice
     # 1 ) Create the Shimming sequencer object
     sequencer = ShimSequencer(nif_fmap,
                               nif_target,
-                              nif_mask_anat,
+                              nif_mask_target,
                               list_slices, list_coils,
                               method=method,
                               opt_criteria=opt_criteria,
@@ -505,8 +505,8 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    f"see: {__config_custom_coil_constraints__}")
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
-@click.option('--anat', 'fname_target', type=click.Path(exists=True), required=True,
-              help="Anatomical image to apply the correction onto.")
+@click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
+              help="target image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
@@ -590,7 +590,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                                       "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                                       "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
                                       "captured by the controller of the shim amplifier. If there is a fat saturation "
-                                      "pulse in the anat sequence, shim weights of 0s are included in the output "
+                                      "pulse in the target sequence, shim weights of 0s are included in the output "
                                       "text file before each slice coefficients. Use 'ch' to output one "
                                       "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
                                       "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
@@ -614,7 +614,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     order/size of the slices.
 
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
-    --fmap fmap.nii --anat anat.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
+    --fmap fmap.nii --target target.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
     
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
@@ -635,14 +635,14 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, isRealtime=True)
 
-    # Load the anat
+    # Load the target
     nif_target = NiftiTarget(fname_target, path_output=path_output)
 
     # Load static mask
     if fname_mask_target_static is not None:
         nif_mask_target_static = NiftiMask(fname_mask_target_static)
     else:
-         # If no mask is provided, shim the whole anat volume
+         # If no mask is provided, shim the whole target volume
         tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_target, os.path.join(path_output, 'mask_target.nii.gz'))
@@ -652,7 +652,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     if fname_mask_target_riro is not None:
         nif_mask_target_riro = NiftiMask(fname_mask_target_riro)
     else:
-        # If no mask is provided, shim the whole anat volume
+        # If no mask is provided, shim the whole target volume
         nif_mask_target_riro = copy.deepcopy(nif_mask_target_static)
 
     # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
@@ -1087,7 +1087,7 @@ def _save_nii_to_new_dir(list_save):
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--slices', required=True,
-              help="Enter the total number of slices. Also accepts a path to an anatomical file to determine the "
+              help="Enter the total number of slices. Also accepts a path to an target image file to determine the "
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")
@@ -1102,8 +1102,8 @@ def define_slices_cli(slices, factor, method, fname_output):
     # Get the number of slices
     click.echo(type(slices))
     if os.path.isfile(slices):
-        nii_anat = nib.load(slices)
-        n_slices = nii_anat.shape[2]
+        nii_target = nib.load(slices)
+        n_slices = nii_target.shape[2]
     else:
         try:
             n_slices = int(slices)

@@ -6,9 +6,9 @@ from .NiftiFile import NiftiFile, safe_getter
 logger = logging.getLogger(__name__)
 
 class NiftiTarget(NiftiFile):
-    """NiftiTarget is a subclass of NiftiFile that represents a NIfTI anatomical file.
+    """NiftiTarget is a subclass of NiftiFile that represents a NIfTI target image file.
     
-    It inherits all methods and properties from NiftiFile and can be used to handle anatomical files specifically.
+    It inherits all methods and properties from NiftiFile and can be used to handle target image files specifically.
     """
     def __init__(self, fname_nii: str, json:dict = None, path_output: str = None) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output)
@@ -29,10 +29,10 @@ class NiftiTarget(NiftiFile):
         if self.ndim == 3:
             pass
         elif self.ndim == 4:
-            logger.info("Target anatomical is 4d, taking the average and converting to 3d")
+            logger.info("Target image is 4d, taking the average and converting to 3d")
             self.set_nii(nib.Nifti1Image(np.mean(self.data, axis=3), self.affine, header=self.header))
         else:
-            raise ValueError("Target anatomical image must be in 3d or 4d") 
+            raise ValueError("Target image must be in 3d or 4d") 
         
     def check_dimensions(self):
         dim_info = self.header.get_dim_info()
@@ -43,23 +43,23 @@ class NiftiTarget(NiftiFile):
         else:
             if dim_info[2] != 2:
                 # # Reorient nifti so that the slice is the last dim
-                # anat = nii_anat.get_fdata()
+                # target = nii_target.get_fdata()
                 # # TODO: find index of dim_info
                 # index_in = 0
                 # index_out = 2
                 #
                 # # Swap axis in the array
-                # anat = np.swapaxes(anat, index_in, index_out)
+                # target = np.swapaxes(target, index_in, index_out)
                 #
                 # # Affine must change
-                # affine = copy.deepcopy(nii_anat.affine)
-                # affine[:, index_in] = nii_anat.affine[:, index_out]
-                # affine[:, index_out] = nii_anat.affine[:, index_in]
-                # affine[index_out, 3] = nii_anat.affine[index_in, 3]
-                # affine[index_in, 3] = nii_anat.affine[index_out, 3]
+                # affine = copy.deepcopy(nii_target.affine)
+                # affine[:, index_in] = nii_target.affine[:, index_out]
+                # affine[:, index_out] = nii_target.affine[:, index_in]
+                # affine[index_out, 3] = nii_target.affine[index_in, 3]
+                # affine[index_in, 3] = nii_target.affine[index_out, 3]
                 #
-                # nii_reorient = nib.Nifti1Image(anat, affine, header=nii_anat.header)
-                # nib.save(nii_reorient, os.path.join(path_output, 'anat_reorient.nii.gz'))
+                # nii_reorient = nib.Nifti1Image(target, affine, header=nii_target.header)
+                # nib.save(nii_reorient, os.path.join(path_output, 'target_reorient.nii.gz'))
 
                 # Slice must be the 3rd dimension of the file
                 # TODO: Reorient nifti so that the slice is the 3rd dim

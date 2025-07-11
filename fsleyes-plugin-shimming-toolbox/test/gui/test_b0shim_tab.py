@@ -121,7 +121,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
     assert b0shim_tab is not None
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, _ = _define_inputs(fmap_dim=3)
+        nii_fmap, nii_target, nii_mask, nii_coil, fm_data, target_data, coil_data, _ = _define_inputs(fmap_dim=3)
 
         # Duplicate nii_fmap's last dimension
         if 'weighting-signal-loss' in options.keys():
@@ -132,17 +132,17 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-        fname_anat = os.path.join(tmp, 'anat.nii.gz')
-        fname_anat_json = os.path.join(tmp, 'anat.json')
+        fname_target = os.path.join(tmp, 'target.nii.gz')
+        fname_target_json = os.path.join(tmp, 'target.json')
         fname_coil = os.path.join(tmp, 'coil.nii.gz')
         fname_coil_json = os.path.join(tmp, 'coil.json')
 
         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-                     nii_anat=nii_anat, fname_anat=fname_anat,
+                     nii_target=nii_target, fname_target=fname_target,
                      nii_mask=nii_mask, fname_mask=fname_mask,
                      nii_coil=nii_coil, fname_coil=fname_coil,
                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-                     anat_data=anat_data, fname_anat_json=fname_anat_json,
+                     target_data=target_data, fname_target_json=fname_target_json,
                      coil_data=coil_data, fname_coil_json=fname_coil_json)
         fname_output = os.path.join(tmp, 'shim')
 
@@ -217,8 +217,8 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
                 if widget.GetName() == 'fmap':
                     widget.SetValue(fname_fmap)
                     realYield()
-                if widget.GetName() == 'anat':
-                    widget.SetValue(fname_anat)
+                if widget.GetName() == 'target':
+                    widget.SetValue(fname_target)
                     realYield()
                 if widget.GetName() == 'mask':
                     widget.SetValue(fname_mask)
@@ -277,22 +277,22 @@ def __test_st_plugin_b0shim_rt(view, overlayList, displayCtx, options):
     assert b0shim_tab is not None
 
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, fname_resp = _define_inputs(fmap_dim=4)
+        nii_fmap, nii_target, nii_mask, nii_coil, fm_data, target_data, coil_data, fname_resp = _define_inputs(fmap_dim=4)
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
-        fname_anat = os.path.join(tmp, 'anat.nii.gz')
-        fname_anat_json = os.path.join(tmp, 'anat.json')
+        fname_target = os.path.join(tmp, 'target.nii.gz')
+        fname_target_json = os.path.join(tmp, 'target.json')
         fname_coil = os.path.join(tmp, 'coil.nii.gz')
         fname_coil_json = os.path.join(tmp, 'coil.json')
         fname_new_resp = os.path.join(tmp, 'respiration_data.resp')
 
         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
-                     nii_anat=nii_anat, fname_anat=fname_anat,
+                     nii_target=nii_target, fname_target=fname_target,
                      nii_mask=nii_mask, fname_mask=fname_mask,
                      nii_coil=nii_coil, fname_coil=fname_coil,
                      fm_data=fm_data, fname_fm_json=fname_fm_json,
-                     anat_data=anat_data, fname_anat_json=fname_anat_json,
+                     target_data=target_data, fname_target_json=fname_target_json,
                      coil_data=coil_data, fname_coil_json=fname_coil_json,
                      fname_resp=fname_resp, fname_new_resp=fname_new_resp)
         path_output = os.path.join(tmp, 'shim')
@@ -368,8 +368,8 @@ def __test_st_plugin_b0shim_rt(view, overlayList, displayCtx, options):
                 if widget.GetName() == 'fmap':
                     widget.SetValue(fname_fmap)
                     realYield()
-                if widget.GetName() == 'anat':
-                    widget.SetValue(fname_anat)
+                if widget.GetName() == 'target':
+                    widget.SetValue(fname_target)
                     realYield()
                 if widget.GetName() == 'resp':
                     widget.SetValue(fname_new_resp)
@@ -433,41 +433,41 @@ def _define_inputs(fmap_dim):
     else:
         raise ValueError("Supported Dimensions are 2, 3 or 4")
 
-    # fname for anat
-    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+    # fname for target
+    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
 
-    nii_anat = nib.load(fname_anat)
+    nii_target = nib.load(fname_target)
 
-    fname_anat_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
-    anat_data = json.load(open(fname_anat_json))
-    anat_data['ScanOptions'] = ['FS']
+    fname_target_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
+    target_data = json.load(open(fname_target_json))
+    target_data['ScanOptions'] = ['FS']
 
-    anat = nii_anat.get_fdata()
+    target = nii_target.get_fdata()
 
     # Set up mask: Cube
     # static
-    nx, ny, nz = anat.shape
-    mask = shapes(anat, 'cube',
+    nx, ny, nz = target.shape
+    mask = shapes(target, 'cube',
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
                   len_dim1=10, len_dim2=10, len_dim3=nz - 10)
 
-    nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_anat.affine)
+    nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_target.affine)
 
     fname_coil_nii = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_coil_profiles.nii.gz')
     nii_coil = nib.load(fname_coil_nii)
     fname_coil_json = os.path.join(__dir_testing__, 'ds_coil', 'NP15ch_constraints.json')
     coil_data = json.load(open(fname_coil_json))
 
-    return nii_fmap, nii_anat, nii_mask, nii_coil, fm_data, anat_data, coil_data, resp
+    return nii_fmap, nii_target, nii_mask, nii_coil, fm_data, target_data, coil_data, resp
 
 
 def _save_inputs(nii_fmap=None, fname_fmap=None,
-                 nii_anat=None, fname_anat=None,
+                 nii_target=None, fname_target=None,
                  nii_mask=None, fname_mask=None,
                  nii_coil=None, fname_coil=None,
                  fm_data=None, fname_fm_json=None,
-                 anat_data=None, fname_anat_json=None,
+                 target_data=None, fname_target_json=None,
                  coil_data=None, fname_coil_json=None,
                  fname_resp=None, fname_new_resp=None):
 
@@ -481,14 +481,14 @@ def _save_inputs(nii_fmap=None, fname_fmap=None,
         with open(fname_fm_json, 'w', encoding='utf-8') as f:
             json.dump(fm_data, f, indent=4)
 
-    if nii_anat is not None:
-        # Save the anat
-        nib.save(nii_anat, fname_anat)
+    if nii_target is not None:
+        # Save the target
+        nib.save(nii_target, fname_target)
 
-    if anat_data is not None:
+    if target_data is not None:
         # Save json
-        with open(fname_anat_json, 'w', encoding='utf-8') as f:
-            json.dump(anat_data, f, indent=4)
+        with open(fname_target_json, 'w', encoding='utf-8') as f:
+            json.dump(target_data, f, indent=4)
 
     if nii_mask is not None:
         # Save the mask

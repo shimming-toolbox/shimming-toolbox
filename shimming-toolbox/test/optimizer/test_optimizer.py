@@ -7,14 +7,14 @@ import pytest
 from shimmingtoolbox.optimizer.lsq_optimizer import PmuLsqOptimizer
 from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil
 
-nif_rt_fieldmap, nif_rt_anat, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
+nif_rt_fieldmap, nif_rt_target, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
     define_rt_sim_inputs()
 
 
 @pytest.mark.parametrize(
-    "nif_fieldmap,nif_anat,nif_mask_static,nif_mask_riro,slices,pmu,coil", [(
+    "nif_fieldmap,nif_target,nif_mask_static,nif_mask_riro,slices,pmu,coil", [(
             nif_rt_fieldmap,
-            nif_rt_anat,
+            nif_rt_target,
             nif_mask_rt_static,
             nif_mask_rt_riro,
             slices_rt,
@@ -23,7 +23,7 @@ nif_rt_fieldmap, nif_rt_anat, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, p
     )]
 )
 class TestPmuLsqOptimizer:
-    def test_define_rt_bounds(self, nif_fieldmap, nif_anat, nif_mask_static, nif_mask_riro, slices, pmu,
+    def test_define_rt_bounds(self, nif_fieldmap, nif_target, nif_mask_static, nif_mask_riro, slices, pmu,
                               coil):
 
         constraints = create_constraints(300, -700, 2000, 3)

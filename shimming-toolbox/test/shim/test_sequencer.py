@@ -125,7 +125,7 @@ json_target = {'SliceThickness': 3}
 # Save in tmp directory
 
 nib.save(nii_target, os.path.join(__dir_testing__, 'target.nii.gz'))
-# Load the targetomical image
+# Load the target image
 nif_target = NiftiTarget(os.path.join(__dir_testing__, 'target.nii.gz'), json=json_target)
 
 # Create mask

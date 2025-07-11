@@ -53,8 +53,8 @@ class Sequencer(object):
     General class for the sequencer
 
     Attributes:
-        slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape
-                       of anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+        slices (list): 1D array containing tuples of dim3 slices to shim according to the target, where the shape
+                       of target is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
         mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                     'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for more
                                     details.
@@ -75,8 +75,8 @@ class Sequencer(object):
         Constructor of the sequencer class
 
         Args:
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape
-                           of anat is: (dim1, dim2, dim3). Refer to
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the target, where the shape
+                           of target is: (dim1, dim2, dim3). Refer to
                            :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
@@ -135,8 +135,8 @@ class ShimSequencer(Sequencer):
 
     Attributes:
         nii_fieldmap (NiftiFile): NiftiFile object containing fieldmap data in 3d.
-        nii_anat (NiftiFile): NiftiFile object containing anatomical data in 3d.
-        nii_mask_anat (nib.Nifti1Image): 3D anat mask used for the optimizer to shim in the region of interest.
+        nii_target (NiftiFile): NiftiFile object containing target image data in 3d.
+        nii_mask_target (nib.Nifti1Image): 3D target mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
@@ -153,7 +153,7 @@ class ShimSequencer(Sequencer):
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
-    def __init__(self, nif_fieldmap, nif_target, nif_mask_anat, slices, coils,
+    def __init__(self, nif_fieldmap, nif_target, nif_mask_target, slices, coils,
                  method='least_squares', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
@@ -162,10 +162,10 @@ class ShimSequencer(Sequencer):
 
         Args:
             nif_fieldmap (NiftiFieldMap): NiftiFieldMap object containing fieldmap data.
-            nif_target (NiftiTarget): NiftiFile object containing anatomical data.
-            nif_mask_anat (NiftiMask): 3D anat mask used for the optimizer to shim in the region of interest.
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat, where the shape of
-                            anat is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            nif_target (NiftiTarget): NiftiFile object containing target image data.
+            nif_mask_target (NiftiMask): 3D target mask used for the optimizer to shim in the region of interest.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the target, where the shape of
+                            target is: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                               matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
                               Refer to :class:`shimmingtoolbox.coils.coil.Coil`. Make sure the extent of the coil
@@ -194,8 +194,8 @@ class ShimSequencer(Sequencer):
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.nif_fieldmap = nif_fieldmap
         self.nif_target = nif_target
-        self.nif_mask_anat = nif_mask_anat
-        self.nif_mask_anat.load_mask(self.nif_target)
+        self.nif_mask_target = nif_mask_target
+        self.nif_mask_target.load_mask(self.nif_target)
         self.coils = coils
         if opt_criteria not in allowed_opt_criteria:
             raise ValueError("Criteria for optimization not supported")
@@ -216,7 +216,7 @@ class ShimSequencer(Sequencer):
                 * nib.Nifti1Image: Mask resampled on the original fieldmap.
         """
 
-        nii_mask_anat = self.nif_mask_anat.nii
+        nii_mask_target = self.nif_mask_target.nii
         optimizer = self.optimizer
         slices = self.slices
         dilation_kernel = self.mask_dilation_kernel
@@ -227,13 +227,13 @@ class ShimSequencer(Sequencer):
         if self.nif_fieldmap.extended:
             # Joblib multiprocessing to resampled the mask
             dilated_mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i], dilation_kernel,
+                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i], dilation_kernel,
                                        dilation_kernel_size, path_output)
                 for i in range(n_shims))
 
             nii_unshimmed = self.nif_fieldmap.nii
             mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i])
+                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i])
                 for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
@@ -243,7 +243,7 @@ class ShimSequencer(Sequencer):
         else:
             # Joblib multiprocessing to resampled the mask
             results_mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_anat, nii_unshimmed, slices[i], dilation_kernel,
+                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i], dilation_kernel,
                                        dilation_kernel_size, path_output, return_non_dil_mask=True)
                 for i in range(n_shims))
 
@@ -351,7 +351,7 @@ class ShimSequencer(Sequencer):
             self.save_calc_fmap_json(coefs)
 
             # TODO: Add units if possible
-            # TODO: Add in anat space?
+            # TODO: Add in target space?
             if 'signal_recovery' in self.opt_criteria:
 
                 full_Gz = np.zeros(corrections.shape)
@@ -398,7 +398,7 @@ class ShimSequencer(Sequencer):
 
             self.plot_currents(coefs)
 
-            self.calc_shimmed_anat_orient(coefs, list_shim_slice)
+            self.calc_shimmed_target_orient(coefs, list_shim_slice)
             if logger.level <= getattr(logging, 'DEBUG'):
                 # Save to a NIfTI
                 fname_correction = os.path.join(self.path_output, 'fig_correction_i_shim.nii.gz')
@@ -525,7 +525,7 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
         """
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nif_mask_anat.nii,
+        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nif_mask_target.nii,
                                                             self.nif_fieldmap.nii,
                                                             order=0,
                                                             mode='grid-constant',
@@ -555,7 +555,7 @@ class ShimSequencer(Sequencer):
                 * np.ndarray: Masked shimmed fieldmap
                 * np.ndarray: Binary mask in the fieldmap space
         """
-        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nif_mask_anat.nii,
+        mask_full_binary = np.clip(np.ceil(resample_from_to(self.nif_mask_target.nii,
                                                             self.nif_fieldmap.nii,
                                                             order=0,
                                                             mode='grid-constant',
@@ -697,9 +697,9 @@ class ShimSequencer(Sequencer):
         fig.savefig(fname_figure)
         logger.debug(f"Saved figure: {fname_figure}")
 
-    def calc_shimmed_anat_orient(self, coefs, list_shim_slice):
+    def calc_shimmed_target_orient(self, coefs, list_shim_slice):
         """
-        Calculate and save the shimmed anat orient
+        Calculate and save the shimmed target orient
 
         Args:
             coefs (np.ndarray): Coefficients of the coil profiles to shim (len(slices) x n_channels)
@@ -708,27 +708,27 @@ class ShimSequencer(Sequencer):
         # TODO: resample shimmed fieldmap using order 1 to the target coord system
         nii_coils = nib.Nifti1Image(self.optimizer.merged_coils, self.nif_fieldmap.affine,
                                     header=self.nif_fieldmap.header)
-        coils_anat = resample_from_to(nii_coils,
-                                      self.nif_mask_anat.nii,
+        coils_target = resample_from_to(nii_coils,
+                                      self.nif_mask_target.nii,
                                       order=1,
                                       mode='grid-constant',
                                       cval=0).get_fdata()
-        fieldmap_anat = resample_from_to(self.nif_fieldmap.nii,
-                                         self.nif_mask_anat.nii,
+        fieldmap_target = resample_from_to(self.nif_fieldmap.nii,
+                                         self.nif_mask_target.nii,
                                          order=1,
                                          mode='grid-constant',
                                          cval=0).get_fdata()
 
-        shimmed_anat_orient = copy.deepcopy(fieldmap_anat)
+        shimmed_target_orient = copy.deepcopy(fieldmap_target)
         for i_shim in list_shim_slice:
-            corr = np.sum(coefs[i_shim] * coils_anat[:, :, self.slices[i_shim], :], axis=3, keepdims=False)
-            shimmed_anat_orient[..., self.slices[i_shim]] += corr
+            corr = np.sum(coefs[i_shim] * coils_target[:, :, self.slices[i_shim], :], axis=3, keepdims=False)
+            shimmed_target_orient[..., self.slices[i_shim]] += corr
 
-        fname_shimmed_anat_orient = os.path.join(self.path_output, 'fig_shimmed_anat_orient.nii.gz')
-        nii_shimmed_anat_orient = nib.Nifti1Image(shimmed_anat_orient * self.nif_mask_anat.data,
-                                                  self.nif_mask_anat.affine,
-                                                  header=self.nif_mask_anat.header)
-        nib.save(nii_shimmed_anat_orient, fname_shimmed_anat_orient)
+        fname_shimmed_target_orient = os.path.join(self.path_output, 'fig_shimmed_target_orient.nii.gz')
+        nii_shimmed_target_orient = nib.Nifti1Image(shimmed_target_orient * self.nif_mask_target.data,
+                                                  self.nif_mask_target.affine,
+                                                  header=self.nif_mask_target.header)
+        nib.save(nii_shimmed_target_orient, fname_shimmed_target_orient)
 
     def save_calc_fmap_json(self, coefs):
         json_shimmed = copy.deepcopy(self.nif_fieldmap.json)
@@ -945,13 +945,13 @@ class RealTimeSequencer(Sequencer):
                                             is the timeseries. Also contains an affine transformation.
             json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                               timestamps).
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-            nii_static_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the static
+            nii_target (nib.Nifti1Image): Nibabel object containing target image data in 3d.
+            nii_static_mask (nib.Nifti1Image): 3D target mask used for the optimizer to shim the region for the static
                                               component.
-            nii_riro_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
+            nii_riro_mask (nib.Nifti1Image): 3D target mask used for the optimizer to shim the region for the riro
                                               component.
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of
-                            anat: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the target where the shape of
+                            target: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
             coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must
                               have matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
@@ -997,13 +997,13 @@ class RealTimeSequencer(Sequencer):
                                             is the timeseries. Also contains an affine transformation.
             json_fmap (dict): Dict of the json sidecar corresponding to the fieldmap data (Used to find the acquisition
                               timestamps).
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-            nii_static_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the static
+            nii_target (nib.Nifti1Image): Nibabel object containing target image data in 3d.
+            nii_static_mask (nib.Nifti1Image): 3D target mask used for the optimizer to shim the region for the static
                                                component.
-            nii_riro_mask (nib.Nifti1Image): 3D anat mask used for the optimizer to shim the region for the riro
+            nii_riro_mask (nib.Nifti1Image): 3D target mask used for the optimizer to shim the region for the riro
                                              component.
-            slices (list): 1D array containing tuples of dim3 slices to shim according to the anat where the shape of
-                            anat: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
+            slices (list): 1D array containing tuples of dim3 slices to shim according to the target where the shape of
+                            target: (dim1, dim2, dim3). Refer to :func:`shimmingtoolbox.shim.sequencer.define_slices`.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
             coils (ListCoil): List of `Coils` containing the coil profiles. The coil profiles and the fieldmaps must
                               have matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
@@ -1466,10 +1466,10 @@ class RealTimeSequencer(Sequencer):
                 fmap_mask_static_dil.get_fdata(),
                 fmap_mask_riro_dil.get_fdata())
 
-    def optimize_riro(self, mask_anat):
+    def optimize_riro(self, mask_target):
         """
         Args:
-            mask_anat (np.ndarray): anat mask on which the optimization will be made
+            mask_target (np.ndarray): target mask on which the optimization will be made
         Returns:
             Riro coefficients of the coil profiles to shim (len(slices) x channels) [Hz/unit_pressure]
         """
@@ -1483,11 +1483,11 @@ class RealTimeSequencer(Sequencer):
             if shimwise_bounds is not None:
                 optimizer.set_merged_bounds(shimwise_bounds[i])
             # Return 0s if there is no optimization to perform
-            if np.all(mask_anat[..., i] == 0):
+            if np.all(mask_target[..., i] == 0):
                 coefs_riro.append(np.zeros(optimizer.merged_coils.shape[-1]))
             # Optimize
             else:
-                coefs_riro.append(optimizer.optimize(mask_anat[..., i]))
+                coefs_riro.append(optimizer.optimize(mask_target[..., i]))
 
         return np.array(coefs_riro)
 

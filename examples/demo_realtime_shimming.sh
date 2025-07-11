@@ -22,11 +22,11 @@ cd ../../sub-gradientrealtime/fmap || exit
 # Create fieldmap
 st_prepare_fieldmap "sub-gradientrealtime_phasediff.nii.gz" --mag "sub-gradientrealtime_magnitude1.nii.gz" --unwrapper "prelude" --output "sub-gradientrealtime_fieldmap.nii.gz" --gaussian-filter True --sigma 1 || exit
 
-# Mask anatomical image
-st_mask box --input "../anat/sub-gradientrealtime_magnitude1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" || exit
+# Mask target image
+st_mask box --input "../target/sub-gradientrealtime_magnitude1.nii.gz" --size 15 15 20 --output "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_target_mask.nii.gz" || exit
 
 # Shim
-st_b0shim gradient-realtime --fmap "sub-gradientrealtime_fieldmap.nii.gz" --anat "../anat/sub-gradientrealtime_magnitude1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" --mask-riro "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_anat_mask.nii.gz" --output "../../derivatives/sub-gradientrealtime/gradient_realtime" || exit
+st_b0shim gradient-realtime --fmap "sub-gradientrealtime_fieldmap.nii.gz" --target "../target/sub-gradientrealtime_magnitude1.nii.gz" --resp "../../derivatives/sub-realtime/sub-realtime_PMUresp_signal.resp" --mask-static "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_target_mask.nii.gz" --mask-riro "../../derivatives/sub-gradientrealtime/sub-gradientrealtime_target_mask.nii.gz" --output "../../derivatives/sub-gradientrealtime/gradient_realtime" || exit
 
 echo -e "\n\033[0;32mOutput is located here: ${TESTING_DATA_PATH}/ds_b0/derivatives/sub-gradientrealtime/gradient_realtime"
 

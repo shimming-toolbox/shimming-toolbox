@@ -38,6 +38,6 @@ def test_set_nii(temp_nifti_file):
     new_data = np.ones((10, 10, 10, 10, 10))
     new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
     
-    with pytest.raises(ValueError, match="Target anatomical image must be in 3d or 4d"):
+    with pytest.raises(ValueError, match="Target image must be in 3d or 4d"):
         nifti.set_nii(new_nii)
     

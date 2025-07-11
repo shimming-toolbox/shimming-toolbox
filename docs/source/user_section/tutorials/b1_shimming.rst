@@ -47,7 +47,7 @@ In FSLeyes, click on the ``dicom_to_nifti`` tab.
 Create a Mask
 ~~~~~~~~~~~~~
 
-In an actual experiment, a mask would probably be created from an anatomical image using a segmentation tool.
+In an actual experiment, a mask would probably be created from an target image using a segmentation tool.
 However, in this tutorial, we will create a simple box mask from the B1+ acquisition.
 Since the B1+ acquisition has complex 4D B1+ data, we first convert it to a magnitude image and compute the average
 over the last dimension so that it can be used by the masking pipeline.
@@ -71,7 +71,7 @@ In your terminal where you downloaded the b1 dataset, run:
 
 Static B1+ shimming: CV reduction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-*(Optional)* The SarDataUser.mat is a hard requirement for the "SAR efficiency" shim option, and an optional requirement for CV reduction. To ensure that the SarDataUser.mat on the scanner contains the VOPs of the coil currently being used, create a copy of the anatomical scan used to create the mask, and start the scan. The scan can be stopped once data acquisition starts. In the Exam Card, under System/pTx Volumes, set the B1 shim mode to "Patient Specific". See the figure below for the location of the switch
+*(Optional)* The SarDataUser.mat is a hard requirement for the "SAR efficiency" shim option, and an optional requirement for CV reduction. To ensure that the SarDataUser.mat on the scanner contains the VOPs of the coil currently being used, create a copy of the target scan used to create the mask, and start the scan. The scan can be stopped once data acquisition starts. In the Exam Card, under System/pTx Volumes, set the B1 shim mode to "Patient Specific". See the figure below for the location of the switch
 
 .. figure:: https://raw.githubusercontent.com/shimming-toolbox/doc-figures/master/B1shim_button.jpg
   :width: 400
