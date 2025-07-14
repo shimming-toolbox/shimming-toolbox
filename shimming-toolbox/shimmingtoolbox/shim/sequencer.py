@@ -1153,8 +1153,7 @@ class RealTimeSequencer(Sequencer):
         max_bound_offset = min(mean_respiratory_cycle_time / 2, stop_time_mdh - acq_times.max())
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
-        mask_fmap = np.zeros_like(self.mask_static_orig_fmcs)
-        mask_fmap[self.mask_riro_orig_fmcs != 0] = self.mask_static_orig_fmcs[self.mask_riro_orig_fmcs != 0]
+        mask_fmap = np.maximum(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
 
@@ -1380,8 +1379,7 @@ class RealTimeSequencer(Sequencer):
         pressure_rms = self.pmu.get_pressure_rms(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
 
         # Mask the voxels not being shimmed for riro
-        mask_fmap = np.zeros_like(self.mask_static_fmcs_dil)
-        mask_fmap[self.mask_riro_fmcs_dil != 0] = self.mask_static_fmcs_dil[self.mask_riro_fmcs_dil != 0]
+        mask_fmap = np.maximum(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
         masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
         static = np.zeros(fieldmap.shape[:-1])
@@ -1690,9 +1688,8 @@ class RealTimeSequencer(Sequencer):
                 shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
                 # Calculate masked shim
-                mask_fmcs_per_shim_bin = (mask_fmcs_per_shim != 0).astype(int)
-                masked_shim_static_riro[..., i_t, i_shim] = (mask_fmcs_per_shim_bin[..., i_shim] * shimmed_static_riro[..., i_t, i_shim])
-                masked_unshimmed[..., i_t, i_shim] = mask_fmcs_per_shim_bin[..., i_shim] * unshimmed[..., i_t]
+                masked_shim_static_riro[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] * shimmed_static_riro[..., i_t, i_shim])
+                masked_unshimmed[..., i_t, i_shim] = mask_fmcs_per_shim[..., i_shim] * unshimmed[..., i_t]
 
                 # Calculate weighted RMSE
                 # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If the roi is bigger due to
@@ -2111,13 +2108,9 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
         mask (np.ndarray): Mask in the fieldmap space
         path_output (str): Path to the output folder
     """
-
-    # Get the binary mask from the soft mask
-    bin_mask = (mask != 0).astype(int)
-
     # Plot
-    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(bin_mask==0), fill_value=np.nan)
-    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(bin_mask==0), fill_value=np.nan)
+    nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask==0), fill_value=np.nan)
+    nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
     mt_unshimmed = montage(unshimmed)
     mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
