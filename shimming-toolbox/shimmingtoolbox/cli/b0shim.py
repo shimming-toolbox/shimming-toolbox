@@ -55,7 +55,7 @@ def b0shim_cli():
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
-              help="target image to apply the correction onto.")
+              help="Target image to apply the correction onto.")
 @click.option('--mask', 'fname_mask_target', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1',
