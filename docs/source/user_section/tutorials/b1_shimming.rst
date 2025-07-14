@@ -47,7 +47,7 @@ In FSLeyes, click on the ``dicom_to_nifti`` tab.
 Create a Mask
 ~~~~~~~~~~~~~
 
-In an actual experiment, a mask would probably be created from an target image using a segmentation tool.
+In an actual experiment, a mask would probably be created from an anatomical image using a segmentation tool.
 However, in this tutorial, we will create a simple box mask from the B1+ acquisition.
 Since the B1+ acquisition has complex 4D B1+ data, we first convert it to a magnitude image and compute the average
 over the last dimension so that it can be used by the masking pipeline.
