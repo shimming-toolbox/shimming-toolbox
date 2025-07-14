@@ -506,7 +506,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
-              help="target image to apply the correction onto.")
+              help="Target image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
