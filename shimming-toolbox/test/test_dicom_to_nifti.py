@@ -34,7 +34,7 @@ def test_dicom_to_nifti():
             for modality in ['phase', 'magnitude']:
                 for ext in ['nii.gz', 'json']:
                     assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}",
-                                                       'target', f"sub-{subject_id}_{modality}{i}.{ext}"))
+                                                       'anat', f"sub-{subject_id}_{modality}{i}.{ext}"))
 
 
 @pytest.mark.dcm2niix
@@ -62,7 +62,7 @@ def test_dicom_to_nifti_realtime_zshim(test_dcm2niix_installation):
                         assert os.path.exists(os.path.join(path_nifti, f"sub-{subject_id}", sequence_type,
                                                            f"sub-{subject_id}_{modality}{i+1}.{ext}"))
 
-        sequence_type = 'target'
+        sequence_type = 'anat'
         for i in range(3):
             for ext in ['nii.gz', 'json']:
                 assert os.path.exists(
