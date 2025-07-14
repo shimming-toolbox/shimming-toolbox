@@ -2074,7 +2074,7 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
         ax.set_title(f"Before shimming\nmean: {metric_unshimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
