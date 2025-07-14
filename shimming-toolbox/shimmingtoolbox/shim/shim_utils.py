@@ -206,52 +206,6 @@ def shim_to_phys_cs(coefs, manufacturer, orders):
     return coefs
 
 
-def get_scanner_shim_settings(bids_json_dict, orders):
-    """ Get the scanner's shim settings using the BIDS tag ShimSetting and ImagingFrequency and returns it in a
-        dictionary. 'orders' is used to check if the different orders are available in the metadata.
-
-    Args:
-        bids_json_dict (dict): Bids sidecar as a dictionary
-        orders (tuple): Tuple containing the spherical harmonic orders
-
-    Returns:
-        dict: Dictionary containing the following keys: '0', '1' '2', '3'. The different orders are
-              lists unless the different values could not be populated.
-    """
-
-    scanner_shim = {
-        '0': None,
-        '1': None,
-        '2': None,
-        '3': None
-    }
-    # get_imaging_frequency
-    if bids_json_dict.get('ImagingFrequency'):
-        scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
-
-    # get_shim_orders
-    if bids_json_dict.get('ShimSetting'):
-        n_shim_values = len(bids_json_dict.get('ShimSetting'))
-        if n_shim_values == 3:
-            scanner_shim['1'] = bids_json_dict.get('ShimSetting')
-        elif n_shim_values == 8:
-            pass
-            scanner_shim['2'] = bids_json_dict.get('ShimSetting')[3:]
-            scanner_shim['1'] = bids_json_dict.get('ShimSetting')[:3]
-        else:
-            logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
-    else:
-        logger.debug("ShimSetting tag is not available")
-
-    # Check if the orders to shim are available in the metadata
-    for order in orders:
-        if scanner_shim.get(str(order)) is None:
-            logger.debug(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
-                         f"respected.")
-
-    return scanner_shim
-
-
 def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
     """ Converts the ShimSettings tag from the json BIDS sidecar to the ui units.
         (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
