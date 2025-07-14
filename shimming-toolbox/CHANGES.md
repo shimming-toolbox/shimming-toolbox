@@ -57,7 +57,7 @@
 
 **ENHANCEMENT**
  - **st_b0shim**: Add gradient shimming output file format to the b0 static CLI. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/339)
- - **st_b0shim**: Resample input masks on the target target when B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/376)
+ - **st_b0shim**: Resample input masks on the target acquisition when B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/376)
  - **st_b0shim**: Parse slice ordering from BIDS json sidecar. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/378)
  - **st_b0shim**: Reduce memory usage and speed things up when shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/383)
  - **st_b0shim**: Add fatsat option in dynamic and realtime dynamic b0shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/384)
