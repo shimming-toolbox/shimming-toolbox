@@ -1296,14 +1296,20 @@ class RealTimeSequencer(Sequencer):
                 if i_slice in []:
                     continue
                 pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
-                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
-                y = (y - y.mean())
-                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+
+                x = pressures[:, i_slice].reshape(-1, 1) - mean_p
+                fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
+                mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+                non_zero_indexes = np.where(mask_vec != 0)
+                y = fmap_vec[non_zero_indexes[0], :].T
+
+                # y = (y - y.mean())
+                reg = LinearRegression().fit(x, y)
                 # Adjusted r2 score
-                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
-                r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
-                ax3.scatter(pressures[:, i_slice], y, label=f"slice: {i_slice}, score: {r2:.2}")
-                ax3.plot(pressures[:, i_slice], reg.predict(pressures[:, i_slice].reshape(-1, 1)))
+                r2 = reg.score(x, y)
+                r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - x.shape[1] - 1))
+                ax3.scatter(pressures[:, i_slice], y.mean(axis=1), label=f"slice: {i_slice}, score: {r2:.2}")
+                ax3.plot(pressures[:, i_slice], reg.predict(x).mean(axis=1))
 
             ax3.set_xlabel("Pressure [-2048,2048]")
             ax3.set_ylabel("Field [Hz]")
@@ -1464,23 +1470,23 @@ class RealTimeSequencer(Sequencer):
 
         # Mask the voxels not being shimmed for riro
         mask_fmap = np.logical_or(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
-        masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
         static = np.zeros(fieldmap.shape[:-1])
         riro = np.zeros(fieldmap.shape[:-1])
 
         for i_slice in range(n_slices):
-            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
-
             # Safety check for linear regression if the pressure and field map fit well
-            y = masked_fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
+            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
+            fmap_vec = fieldmap[..., i_slice, :].reshape((-1, n_volumes))
+            mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+            non_zero_indexes = np.where(mask_vec != 0)
+            y = fmap_vec[non_zero_indexes[0], :].T
 
             reg_riro = LinearRegression().fit(x, y)
-            # TODO: There are a lot of 0s in there (it is masked) so the score is biased
             # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
             score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
             logger.debug(
-                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure"
+                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure "
                 f"got a R2 score of: {score_riro}")
 
             # Warn if lower than a threshold
