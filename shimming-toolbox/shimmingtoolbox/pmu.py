@@ -5,9 +5,12 @@
 # Adapted from https://gist.github.com/rtrhd/6172344
 #
 
+from pydicom import dcmread
+import gzip
 import logging
 from matplotlib.figure import Figure
 import numpy as np
+import os
 
 from shimmingtoolbox.load_nifti import (get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on,
                                         get_excitation_tr, get_slice_timing, get_slice_tr, get_partial_fourier)
@@ -17,18 +20,18 @@ ERROR_MARGIN = 0.99
 
 
 class Pmu(object):
-    # __stop_time_mdh = None
-    # __start_time_mdh = None
-    # __data = None
+    # _stop_time_mdh = None
+    # _start_time_mdh = None
+    # _data = None
     # timepoints = None
     # data_triggers = None
 
     def __init__(self, fname_pmu: str):
         attributes = self.read_pmu(fname_pmu)
         self.fname = attributes['fname']
-        self.__data = attributes['data']
-        self.__start_time_mdh = attributes['start_time_mdh']
-        self.__stop_time_mdh = attributes['stop_time_mdh']
+        self._data = attributes['data']
+        self._start_time_mdh = attributes['start_time_mdh']
+        self._stop_time_mdh = attributes['stop_time_mdh']
         self.start_time_mpcu = attributes['start_time_mpcu']
         self.stop_time_mpcu = attributes['stop_time_mpcu']
         self.data_triggers = attributes['data_triggers']
@@ -44,14 +47,14 @@ class Pmu(object):
         Args:
             data (numpy.ndarray): Pressure values ranging from 0 to 4095
         """
-        self.__data = data
+        self._data = data
         self.timepoints = self.get_all_times()
 
     def get_data(self):
         """
         Retrieves the data of the PMU object
         """
-        return self.__data
+        return self._data
 
     def set_start_and_stop_times(self, start_time_mdh, stop_time_mdh):
         """
@@ -63,15 +66,15 @@ class Pmu(object):
             stop_time_mdh (int): Stop time in milliseconds past midnight (mdh clock is expected to be the closest to
                                  the image header)
         """
-        self.__start_time_mdh = start_time_mdh
-        self.__stop_time_mdh = stop_time_mdh
+        self._start_time_mdh = start_time_mdh
+        self._stop_time_mdh = stop_time_mdh
         self.timepoints = self.get_all_times()
 
     def get_start_and_stop_times(self):
         """
         Retrieves the start and stop time of the PMU object
         """
-        return self.__start_time_mdh, self.__stop_time_mdh
+        return self._start_time_mdh, self._stop_time_mdh
 
     def get_all_times(self):
         """
@@ -80,8 +83,8 @@ class Pmu(object):
         Returns:
             np.ndarray: Array containing the timepoints in ms of each data
         """
-        raster = float(self.__stop_time_mdh - self.__start_time_mdh) / (len(self.__data) - 1)
-        times = (self.__start_time_mdh + raster * np.arange(len(self.__data)))  # ms
+        raster = float(self._stop_time_mdh - self._start_time_mdh) / (len(self._data) - 1)
+        times = (self._start_time_mdh + raster * np.arange(len(self._data)))  # ms
         return times
 
     def get_times(self, start_time=None, stop_time=None):
@@ -133,7 +136,7 @@ class Pmu(object):
 
         start_idx, stop_idx = self._get_time_indexes(start_time, stop_time)
         # +1 is needed to include the stop_idx
-        return self.__data[start_idx:stop_idx + 1]
+        return self._data[start_idx:stop_idx + 1]
 
     def read_pmu(self, fname_pmu):
         """
@@ -256,6 +259,19 @@ class Pmu(object):
         trigger_span = np.diff(trigger_times)
         return np.mean(trigger_span)
 
+    def plot_data(self, fname_output, start_time=None, stop_time=None):
+        times = self.get_times(start_time, stop_time)
+
+        fig = Figure(figsize=(8, 4), tight_layout=True)
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(times, self.get_data())
+
+        ax.set_title("PMU data over time")
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel("a.u.")
+
+        fig.savefig(fname_output, bbox_inches='tight')
+
     def plot_triggers(self, fname_output, start_time=None, stop_time=None):
         trigger_times = self.get_trigger_times(start_time=start_time, stop_time=stop_time)
         times = self.get_times(start_time=start_time, stop_time=stop_time)
@@ -314,8 +330,10 @@ class PmuResp(Pmu):
         old_offset = self.time_offset
         start_time, stop_time = self.get_start_and_stop_times()
         self.set_start_and_stop_times(start_time + time_offset - old_offset, stop_time + time_offset - old_offset)
-        self.start_time_mpcu += time_offset - old_offset
-        self.stop_time_mpcu += time_offset - old_offset
+        if self.start_time_mpcu is not None:
+            self.start_time_mpcu += time_offset - old_offset
+        if self.stop_time_mpcu is not None:
+            self.stop_time_mpcu += time_offset - old_offset
         self.time_offset = time_offset
 
     def interp_resp_trace(self, acquisition_times):
@@ -325,7 +343,7 @@ class PmuResp(Pmu):
         Args:
             acquisition_times (numpy.ndarray): Array of the times in milliseconds past midnight of the desired
                                                times to interpolate the resp_trace. Times must be within
-                                               ``self.__start_time_mdh`` and ``self.__stop_time_mdh``
+                                               ``self._start_time_mdh`` and ``self._stop_time_mdh``
 
         Returns:
             numpy.ndarray: Array with interpolated times with the same shape as ``acquisition_times``
@@ -478,6 +496,159 @@ class PmuExt(Pmu):
         acquisition_timestamps = acquisition_timestamps.reshape(n_volumes, n_slices)
 
         return acquisition_timestamps
+
+
+class PmuRespLog(PmuResp):
+    """ Read Siemens PMU log file (.log extension) located in %simmeasdata%\\Physio_Logfiles """
+
+    def __init__(self, fname_log: str, fname_triggers=None, time_offset=0):
+        data = self.read_pmu(fname_log)
+
+        self.fname = fname_log
+        if data.get('Time_tics') is None:
+            raise ValueError("The log file does not contain the required 'Time_tics' field.")
+        if data.get('RESP') is None:
+            raise ValueError("The log file does not contain the required 'RESP' field.")
+
+        self._data = data.get('RESP')
+        # A time tic corresponds to 2.5ms, convert to ms
+        self._start_time_mdh = min(data.get('Time_tics')) * 2.5
+        self._stop_time_mdh = max(data.get('Time_tics')) * 2.5
+        self.start_time_mpcu = None
+        self.stop_time_mpcu = None
+
+        if fname_triggers is not None:
+            raise NotImplementedError("Triggers are not supported for PMU log files yet.")
+            # data = self.read_pmu(fname_triggers)
+            # if data.get('Time_tics') is None:
+            #     raise ValueError("The log file does not contain the required 'Time_tics' field.")
+            # if data.get('Signal') is None:
+            #     raise ValueError("The log file does not contain the required 'Time_tics' field.")
+            # self.data_triggers = attributes['data_triggers']
+
+        self.time_offset = 0
+        self.min = 0
+        self.max = 1
+        self.adjust_start_time(time_offset)
+        self.timepoints = self.get_all_times()
+
+    def read_pmu(self, fname_log: str):
+        return read_pmu_log_file(fname_log)
+
+
+class PmuExtLog(PmuExt):
+    """ Read Siemens PMU ext1 log file (.log extension) located in %simmeasdata%\\Physio_Logfiles """
+
+    def __init__(self, fname_log: str, time_offset=0):
+        data = self.read_pmu(fname_log)
+
+        self.fname = fname_log
+        if data.get('Time_tics') is None:
+            raise ValueError("The log file does not contain the required 'Time_tics' field.")
+        if data.get('EXT1') is None:
+            raise ValueError("The log file does not contain the required 'EXT1' field.")
+
+        self._data = data.get('EXT1')
+        # A time tic corresponds to 2.5ms, convert to ms
+        self._start_time_mdh = min(data.get('Time_tics')) * 2.5
+        self._stop_time_mdh = max(data.get('Time_tics')) * 2.5
+        self.start_time_mpcu = None
+        self.stop_time_mpcu = None
+
+        self.data_triggers = self._add_triggers_in_data()
+
+        self.time_offset = 0
+        self.min = 0
+        self.max = 4095
+        self.timepoints = self.get_all_times()
+
+    def read_pmu(self, fname_log: str):
+        return read_pmu_log_file(fname_log)
+
+    def _add_triggers_in_data(self):
+        data_with_triggers = []
+        is_trig = False
+        trig_cnt = 0
+
+        # Add triggers (5000) between the "1s" of the original data so that it looks like a PMU file
+        # 0 0 0 0 1 1 1 1 0 0 1 1 1     ->     0 0 0 0 1 1 5000 1 1 0 0 1 5000 1 1
+        for i_data, a_data in enumerate(self.get_data()):
+
+            if is_trig:
+                if a_data > 0:
+                    trig_cnt += 1
+                else:
+                    is_trig = False
+                    if trig_cnt <= 1:
+                        data_with_triggers.append(5000)
+                    else:
+                        data_with_triggers.insert(-1 - int((trig_cnt - 1) / 2), 5000)
+            else:
+                if a_data > 0:
+                    trig_cnt = 1
+                    is_trig = True
+                else:
+                    pass
+
+            data_with_triggers.append(a_data)
+
+        # If the last data point was a trigger, add a final trigger since it was not added in the for loop
+        if is_trig:
+            data_with_triggers.append(5000)
+
+        return np.array(data_with_triggers)
+
+
+def read_pmu_log_file(fname_log: str):
+    """
+    Reads a Siemens log file and returns the data as a numpy array.
+
+    Args:
+        fname_log (str): Filename of the Siemens log file
+
+    Returns:
+        numpy.ndarray: Data read from the log file
+    """
+
+    if os.path.splitext(fname_log)[1] != '.log':
+        raise ValueError("The file must have a .log extension.")
+
+    with open(fname_log, 'r') as f:
+        lines = f.readlines()
+
+    data = {}
+    header = None
+    for i_line, line in enumerate(lines):
+        # Skip header
+        if i_line == 0:
+            header = line.strip('\n').split(' ')
+            continue
+        for i_value, value in enumerate(line.strip('\n').split(' ')):
+            if header[i_value] not in data:
+                data[header[i_value]] = []
+            data[header[i_value]].append(int(value))
+
+    return data
+
+
+def read_pmu_dicom(fname_dicom):
+    # raise NotImplementedError("Reading PMU data from DICOM files is not implemented yet.")
+    ds = dcmread(fname_dicom)
+
+    if 'PMUDATA' not in ds['ImageType'].value:
+        raise ValueError("The DICOM file does not contain PMU data.")
+
+    # Data is compressed with gzip and stored in the '(7FE1,1010)' tag
+    # It can be padded with '\xb7' that needs to be removed if present
+    pmu_compressed = ds['0x7FE11010'].value
+    if pmu_compressed[-1] == 0xb7:
+        # Remove the padding byte
+        pmu_compressed = pmu_compressed[:-1]
+
+    # decompressed is a string of a html file
+    decompressed = gzip.decompress(pmu_compressed).decode()
+    # I verified a dataset, it contains exactly the same data as the resp log file.
+    # There is also information about slice timing
 
 
 class OutOfRangeError(Exception):
