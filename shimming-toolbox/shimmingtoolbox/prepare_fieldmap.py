@@ -162,29 +162,21 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
+        # Used as input for argument in gaussian filtering. I None, the gaussian filter will be applied to the whole
+        # volume. If an axis is provided, filter along that axis
+        slice_axis = 2 if process_in_2d else None
+
         # If its 4d data, gaussian blur each volume individually
         if len(fieldmap_hz.shape) == 4:
             for it in range(fieldmap_hz.shape[-1]):
                 # Fill values
                 filled = fill(fieldmap_hz[..., it], mask[..., it] == False)
+                fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest', channel_axis=slice_axis) * mask[..., it]
 
-                if process_in_2d:
-                    for i_slice in range(fieldmap_hz.shape[2]):
-                        # Apply gaussian filter slice by slice
-                        fieldmap_hz[..., i_slice, it] = gaussian(filled[..., i_slice], sigma, mode='nearest') * \
-                                                        mask[..., i_slice, it]
-                else:
-                    fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest') * mask[..., it]
         # 3d data
         else:
             filled = fill(fieldmap_hz, mask == False)
-            if process_in_2d:
-                for i_slice in range(fieldmap_hz.shape[2]):
-                    # Apply gaussian filter slice by slice
-                    fieldmap_hz[..., i_slice] = gaussian(filled[..., i_slice], sigma, mode='nearest') * \
-                                                mask[..., i_slice]
-            else:
-                fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
+            fieldmap_hz = gaussian(filled, sigma, mode='nearest', channel_axis=slice_axis) * mask
 
     return fieldmap_hz, mask
 
