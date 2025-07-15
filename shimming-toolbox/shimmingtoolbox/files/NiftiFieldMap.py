@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*
+
 import logging
 import nibabel as nib
 import numpy as np
@@ -8,12 +11,12 @@ import math
 from .NiftiFile import NiftiFile
 from shimmingtoolbox.shim.shim_utils import extend_slice
 
-
 logger = logging.getLogger(__name__)
+
 
 class NiftiFieldMap(NiftiFile):
     """NiftiFieldMap is a subclass of NiftiFile that represents a NIfTI field map file.
-    
+
     It inherits all methods and properties from NiftiFile and can be used to handle field map files specifically.
     """
     def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None, is_realtime: bool = False) -> None:
@@ -25,16 +28,16 @@ class NiftiFieldMap(NiftiFile):
         self.extended_data = self.extended_nii.get_fdata()
         self.extended_affine = self.extended_nii.affine
         self.extended_shape = self.extended_data.shape
-    
+
     def set_nii(self, nii: nib.Nifti1Image) -> None:
         """ Set the NIfTI image and update the data, affine, and shape attributes.
-        
+
         Args:
             nii (nib.Nifti1Image): The NIfTI image to set.
         """
         super().set_nii(nii)
         self.extend_field_map(self.dilation_kernel_size)
-        
+
     def extend_field_map(self, dilation_kernel_size: int) -> None:
         """ Extend the field map to match the dilation kernel size.
         This method checks the dimensions of the field map and extends it if necessary.
@@ -57,28 +60,28 @@ class NiftiFieldMap(NiftiFile):
         else:
             if self.is_realtime and self.ndim != 4:
                 raise ValueError("Fieldmap must be 4d for realtime processing")
-            
+
             for i_axis in range(3):
                 if self.shape[i_axis] < dilation_kernel_size:
                     self.extended = True
                     break
-                
+
             if self.extended:
                 if self.is_realtime:
                     extended_nii, location = self.extend_fmap_to_kernel_size(dilation_kernel_size, ret_location=True)
                     self.location = location
                 else:
                     extended_nii = self.extend_fmap_to_kernel_size(dilation_kernel_size)
-                    
+
                 self.extended = True
-                
+
             if logger.level <= getattr(logging, 'DEBUG') and self.extended:
                 logger.debug(f"Field map shape: {self.shape}, "
                              f"Extended shape: {extended_nii.shape if self.extended else self.shape}")
                 nib.save(extended_nii, os.path.join(self.path_output, f"{self.filename}_extended.nii.gz"))
 
         return extended_nii if self.extended else self.nii
-    
+
     def extend_fmap_to_kernel_size(self, dilation_kernel_size, ret_location=False):
         """
         Load the fmap and expand its dimensions to the kernel size
@@ -113,4 +116,3 @@ class NiftiFieldMap(NiftiFile):
             return nii_fmap, location.astype(bool)
 
         return nii_fmap
-    

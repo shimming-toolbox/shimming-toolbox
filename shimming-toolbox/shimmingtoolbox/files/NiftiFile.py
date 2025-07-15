@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*
+
 from __future__ import annotations
 import logging
 import nibabel as nib
@@ -9,9 +12,13 @@ from functools import wraps
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
+DEFAULT_SUFFIX = '_saved.nii.gz'
+
 
 def safe_getter(default_value=None):
     """Decorator that catches errors in getter functions and returns a default value."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -23,19 +30,19 @@ def safe_getter(default_value=None):
                 if isinstance(e, (KeyError, NameError, ValueError, OSError)):
                     raise e
                 return default_value
+
         return wrapper
+
     return decorator
 
-NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
-DEFAULT_SUFFIX = '_saved.nii.gz'
 
 class NiftiFile:
-    def __init__(self, fname_nii: str, json:dict = None, path_output: str = None, json_needed: bool = True) -> None:
+    def __init__(self, fname_nii: str, json: dict = None, path_output: str = None, json_needed: bool = True) -> None:
         if not isinstance(fname_nii, str):
             raise TypeError("fname_nii must be a string")
         if not any(fname_nii.endswith(ext) for ext in NIFTI_EXTENSIONS):
             raise ValueError(f"File must end with one of {NIFTI_EXTENSIONS}")
-        
+
         # Convert relative path to absolute path
         self.fname_nii: str = os.path.abspath(fname_nii)
         self.path_nii: str = self.get_path_nii()
@@ -49,22 +56,22 @@ class NiftiFile:
         self.shape = self.data.shape
         self.ndim = self.data.ndim
         self.path_output = path_output if path_output else self.path_nii
-        
-    def __eq__(self, other: nib.Nifti1Image) -> None:
+
+    def __eq__(self, other: nib.Nifti1Image) -> NiftiFile:
         """Override the = operator to set NiftiFile data from a nibabel image.
-        
+
         Args:
             other (nib.Nifti1Image): The NiBabel image to set
-            
+
         Raises:
             TypeError: If other is not a nibabel.Nifti1Image
-            
+
         Returns:
             NiftiFile: Self for method chaining
         """
         self.set_nii(other)
         return self  # Return self for method chaining
-    
+
     def load_nii(self):
         """ Load a NIfTI file and return the NIfTI object and its data.
         Args:
@@ -72,7 +79,7 @@ class NiftiFile:
 
         Raises:
             ValueError: If the provided path does not exist or is not a valid NIfTI file.
-            
+
         Returns:
             nib.Nifti1Image: The loaded NIfTI image object.
             numpy.ndarray: The data contained in the NIfTI file.
@@ -81,9 +88,9 @@ class NiftiFile:
             raise ValueError("Not an existing NIFTI path")
         nii = nib.load(self.fname_nii)
         data = np.asanyarray(nii.dataobj)
-        
+
         return nii, data
-    
+
     def load_json(self, json_needed: bool = True) -> dict | None:
         """ Load the JSON file corresponding to the NIfTI file.
         The JSON file is expected to be in the same directory as the NIfTI file
@@ -101,18 +108,18 @@ class NiftiFile:
                 return json.load(f)
         else:
             return None
-        
-    def save(self, fname:str = None) -> None:
+
+    def save(self, fname: str = None) -> None:
         """ Save the NIfTI file to a specified path.
         If no output path is provided, it saves the file in the same directory with a default name.
 
         Args:
-            output_path (str, optional): The path where the NIfTI file should be saved.
-                If None, it saves the file in the same directory with a default name.
-                
+            fname (str, optional): The path where the NIfTI file should be saved.
+                                   If None, it saves the file in the same directory with a default name.
+
         Raises:
             ValueError: If the output path is not a valid directory.
-            
+
         Returns:
             None: The function saves the NIfTI file to the specified path.
         """
@@ -125,16 +132,16 @@ class NiftiFile:
             fname_output = os.path.join(self.path_output, fname)
         else:
             fname_output = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
-        
+
         logger.info(f"Saving NIfTI file to {fname_output}")
-            
+
         if not os.path.exists(self.path_output):
             os.makedirs(self.path_output)
         elif not os.path.isdir(self.path_output):
             raise ValueError(f"Output path {fname_output} is not a valid directory.")
-            
+
         nib.save(self.nii, fname_output)
-    
+
     def set_nii(self, nii: nib.Nifti1Image) -> None:
         """ Set the NIfTI image object and its data.
 
@@ -150,7 +157,7 @@ class NiftiFile:
         self.data = np.asanyarray(nii.dataobj)
         self.shape = self.data.shape
         self.ndim = self.data.ndim
-        
+
     @safe_getter(default_value=None)
     def get_json(self, json_needed: bool = True) -> str | None:
         """ Find the corresponding JSON file for the NIfTI file.
@@ -158,7 +165,7 @@ class NiftiFile:
         and have the same base name.
 
         Args:
-            None
+            json_needed (bool): Specifies whether the JSON file is required.
 
         Returns:
             str: The path to the JSON file if found, otherwise None.
@@ -170,15 +177,12 @@ class NiftiFile:
             raise OSError(f"JSON file not found for {self.fname_nii}. Expected at {fname_json}. ")
         else:
             return None
-    
+
     @safe_getter(default_value=None)
     def get_filename(self):
         """ Get the filename without the extension from the NIfTI file path.
         Verifies that the file has a valid NIfTI extension (.nii or .nii.gz).
         If the file does not have a valid extension, raises a ValueError.
-        
-        Args:
-            None
 
         Raises:
             ValueError: If the file does not have a valid NIfTI extension.
@@ -186,7 +190,7 @@ class NiftiFile:
         Returns:
             str: The filename without the extension.
         """
-        
+
         basename = os.path.basename(self.fname_nii)
         if basename.endswith('.nii.gz'):
             file_name = basename[:-7]  # Remove .nii.gz
@@ -194,9 +198,9 @@ class NiftiFile:
             file_name = basename[:-4]
         else:
             raise ValueError("File does not have a valid NIfTI extension (.nii or .nii.gz)")
-        
-        return file_name  
-    
+
+        return file_name
+
     @safe_getter(default_value=None)
     def get_path_nii(self):
         """Gets the path_nii of the Nifti file
@@ -205,14 +209,14 @@ class NiftiFile:
             str: path_nii of the file (absolute path)
         """
         path_nii = os.path.dirname(self.fname_nii)
-        
+
         # For files in current directory, return current working directory
         if not path_nii:
             path_nii = os.getcwd()
-        
+
         return path_nii
-        
-    @safe_getter(default_value=None)   
+
+    @safe_getter(default_value=None)
     def get_json_info(self, key: str, required: bool = False) -> any:
         """ Get a specific key from the JSON file.
 
@@ -232,13 +236,13 @@ class NiftiFile:
             raise KeyError(f"Key '{key}' not found in JSON file.")
         else:
             raise Warning(f"Key '{key}' not found in JSON file. Returning None.")
-    
-    @safe_getter(default_value=None)    
+
+    @safe_getter(default_value=None)
     def get_isocenter(self):
         """ Get the isocenter location in RAS coordinates from the json file.
-        
-        The patient position is used to infer the table position in the patient coordinate system. 
-        When the table is at (0,0,0), the origin is at the isocenter. We can therefore infer 
+
+        The patient position is used to infer the table position in the patient coordinate system.
+        When the table is at (0,0,0), the origin is at the isocenter. We can therefore infer
         the isocenter as -table_position when the table_position is in RAS coordinates.
 
         Args:
@@ -291,14 +295,14 @@ class NiftiFile:
         # Transform table position to RAS coordinates
         indices = position_transforms[patient_position]
         signs = position_signs[patient_position]
-        
+
         table_position_ras = np.zeros(3)
         for i in range(3):
             table_position_ras[i] = signs[i] * table_position[indices[i]]
 
         # The isocenter is located at -table_position
         return -table_position_ras
-    
+
     @safe_getter(default_value=None)
     def get_frequency(self):
         """ Get the imaging frequency from the JSON metadata.
@@ -307,9 +311,9 @@ class NiftiFile:
             float: Imaging frequency in Hz, or None if not available.
         """
         frequency = self.get_json_info('ImagingFrequency', required=False)
-        
+
         return int(frequency * 1e6) if frequency is not None else None
-        
+
     def get_scanner_shim_settings(self, orders: list[int] = [0, 1, 2, 3]) -> dict:
         """ Get the scanner's shim settings using the BIDS tag ShimSetting and ImagingFrequency and returns it in a
             dictionary. 'orders' is used to check if the different orders are available in the metadata.
@@ -348,8 +352,9 @@ class NiftiFile:
         # Check if the orders to shim are available in the metadata
         for order in orders:
             if scanner_shim.get(str(order)) is None:
-                logger.debug(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
-                            f"respected.")
+                logger.debug(
+                    f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
+                    f"respected.")
 
         return scanner_shim
 
@@ -363,12 +368,13 @@ class NiftiFile:
         model = self.get_json_info('ManufacturersModelName', required=False)
         return model.replace(" ", "_") if model is not None else None
 
-    
+
 # TODO: Implement NiftiCoilProfile class
 class NiftiCoilProfile(NiftiFile):
     """NiftiCoilProfile is a subclass of NiftiFile that represents a NIfTI coil profile file.
-    
+
     It inherits all methods and properties from NiftiFile and can be used to handle coil profile files specifically.
     """
+
     def __init__(self, fname_nii: str) -> None:
         super().__init__(fname_nii)

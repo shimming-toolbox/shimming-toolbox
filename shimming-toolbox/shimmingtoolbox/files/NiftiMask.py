@@ -1,3 +1,6 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*
+
 import logging
 import nibabel as nib
 import numpy as np
@@ -13,12 +16,12 @@ logger = logging.getLogger(__name__)
 
 class NiftiMask(NiftiFile):
     """NiftiMask is a subclass of NiftiFile that represents a NIfTI mask file.
-    
+
     It inherits all methods and properties from NiftiFile and can be used to handle mask files specifically.
     """
     def __init__(self, fname_nii: str, json:dict = None, path_output: str = None) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output, json_needed=False)
-    
+
     def set_nii(self, nii: nib.Nifti1Image, nif_target: NiftiTarget) -> None:
         """ Set the NIfTI image and load the mask on the target image.
 
@@ -28,7 +31,7 @@ class NiftiMask(NiftiFile):
         """
         super().set_nii(nii)
         self.load_mask(nif_target)
-    
+
     def load_mask(self, nif_target: NiftiTarget):
         """ Load a mask and resample it on the target image.
 
@@ -67,5 +70,5 @@ class NiftiMask(NiftiFile):
             nii_mask_target = nib.Nifti1Image(tmp_mask, nii_mask_target_soft.affine, header=nii_mask_target_soft.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_target, os.path.join(self.path_output, "mask_static_resampled_on_target.nii.gz"))
-        
+
         super().set_nii(nii_mask_target)

@@ -9,7 +9,6 @@ from typing import List
 from sklearn.linear_model import LinearRegression
 import nibabel as nib
 import logging
-from nibabel.affines import apply_affine
 import os
 from matplotlib.figure import Figure
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -26,7 +25,6 @@ from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
-from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 from shimmingtoolbox.utils import create_output_dir, montage
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask, extend_slice
