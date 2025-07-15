@@ -15,7 +15,7 @@ from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
 fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime', 'sub-realtime_PMUresp_signal.resp')
-nif_fieldmap = NiftiFieldMap(fname_fieldmap, dilation_kernel_size=3, isRealtime=True)
+nif_fieldmap = NiftiFieldMap(fname_fieldmap, dilation_kernel_size=3, is_realtime=True)
 # Get the pressure values
 pmu = PmuResp(fname_resp)
 

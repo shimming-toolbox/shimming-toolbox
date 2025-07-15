@@ -134,9 +134,9 @@ class ShimSequencer(Sequencer):
     also evaluate the shimming performance.
 
     Attributes:
-        nii_fieldmap (NiftiFile): NiftiFile object containing fieldmap data in 3d.
-        nii_target (NiftiFile): NiftiFile object containing target image data in 3d.
-        nii_mask_target (nib.Nifti1Image): 3D target mask used for the optimizer to shim in the region of interest.
+        nif_fieldmap (NiftiFieldMap): NiftiFieldMap object containing fieldmap data.
+        nif_target (NiftiTarget): NiftiFile object containing target image data.
+        nif_mask_target (NiftiMask): 3D target mask used for the optimizer to shim in the region of interest.
                                              (only consider voxels with non-zero values)
         coils (ListCoil): List of Coils containing the coil profiles. The coil profiles and the fieldmaps must have
                           matching units (if fmap is in Hz, the coil profiles must be in hz/unit_shim).
@@ -803,7 +803,7 @@ class ShimSequencer(Sequencer):
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
         def calculate_signal_loss(gradient):
-            slice_thickness = self.nif_fieldmap.get_json_info('SliceThickness')
+            slice_thickness = self.nif_target.get_json_info('SliceThickness')
             B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
             phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
             # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)

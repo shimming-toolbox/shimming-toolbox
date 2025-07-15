@@ -44,7 +44,7 @@ def test_set_nii_wrong_dim(temp_nifti_file):
 def test_set_nii_wrong_dim_rt_init(temp_nifti_file):
     """Test initialization with wrong dimensions for realtime processing."""
     with pytest.raises(ValueError, match="Fieldmap must be 4d for realtime processing"):
-        nifti = NiftiFieldMap(temp_nifti_file, 3, isRealtime=True)
+        nifti = NiftiFieldMap(temp_nifti_file, 3, is_realtime=True)
 
 def test_set_nii_wrong_dim_rt_set(temp_nifti_file):
     """Test setting a new NIfTI image with wrong dimensions for realtime processing."""
@@ -53,7 +53,7 @@ def test_set_nii_wrong_dim_rt_set(temp_nifti_file):
     nii_4d = nib.Nifti1Image(data_4d, affine=np.eye(4))
     nib.save(nii_4d, temp_nifti_file)
     
-    nifti = NiftiFieldMap(temp_nifti_file, 3, isRealtime=True)
+    nifti = NiftiFieldMap(temp_nifti_file, 3, is_realtime=True)
     new_data = np.ones((10, 10, 10))  # 3D data
     new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
     

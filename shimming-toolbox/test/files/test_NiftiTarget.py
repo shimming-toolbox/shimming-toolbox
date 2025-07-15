@@ -6,6 +6,7 @@ import tempfile
 
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 
+
 @pytest.fixture
 def temp_nifti_file():
     """Create a temporary NIfTI file for testing."""
@@ -40,4 +41,3 @@ def test_set_nii(temp_nifti_file):
     
     with pytest.raises(ValueError, match="Target image must be in 3d or 4d"):
         nifti.set_nii(new_nii)
-    

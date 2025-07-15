@@ -633,7 +633,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
 
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, isRealtime=True)
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, is_realtime=True)
 
     # Load the target
     nif_target = NiftiTarget(fname_target, path_output=path_output)
@@ -1078,7 +1078,7 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
 
 
 def _save_nii_to_new_dir(list_save):
-    """List of nii to save to a new output folder"""
+    """List of nif to save to a new output folder"""
     for nif_object in list_save:
         if nif_object is None:
             continue
@@ -1087,7 +1087,7 @@ def _save_nii_to_new_dir(list_save):
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--slices', required=True,
-              help="Enter the total number of slices. Also accepts a path to an target image file to determine the "
+              help="Enter the total number of slices. Also accepts a path to a target image file to determine the "
                    "number of slices automatically. (Looks at 3rd dim)")
 @click.option('--factor', required=True, type=click.INT,
               help="Number of slices per shim")

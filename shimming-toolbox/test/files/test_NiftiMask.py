@@ -6,6 +6,7 @@ import tempfile
 
 from shimmingtoolbox.files.NiftiMask import NiftiMask
 
+
 @pytest.fixture
 def temp_nifti_file():
     """Create a temporary NIfTI file for testing."""

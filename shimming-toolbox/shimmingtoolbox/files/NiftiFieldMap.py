@@ -4,8 +4,10 @@ import numpy as np
 import os
 import copy
 import math
+
 from .NiftiFile import NiftiFile
 from shimmingtoolbox.shim.shim_utils import extend_slice
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,10 +16,10 @@ class NiftiFieldMap(NiftiFile):
     
     It inherits all methods and properties from NiftiFile and can be used to handle field map files specifically.
     """
-    def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None, isRealtime: bool = False) -> None:
+    def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None, is_realtime: bool = False) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output)
         self.dilation_kernel_size = dilation_kernel_size
-        self.isRealtime = isRealtime
+        self.is_realtime = is_realtime
         self.location = None
         self.extended_nii = self.extend_field_map(dilation_kernel_size)
         self.extended_data = self.extended_nii.get_fdata()
@@ -44,7 +46,7 @@ class NiftiFieldMap(NiftiFile):
             numpy.array : The extended NIfTI image if the field map was extended, otherwise the original NIfTI image.
         """
         self.extended = False
-        if self.ndim != 3 and not self.isRealtime:
+        if self.ndim != 3 and not self.is_realtime:
             if self.ndim == 2:
                 super().set_nii(nib.Nifti1Image(self.data[..., np.newaxis], self.affine,
                                                 header=self.header))
@@ -53,7 +55,7 @@ class NiftiFieldMap(NiftiFile):
             else:
                 raise ValueError("Fieldmap must be 2d or 3d")
         else:
-            if self.isRealtime and self.ndim != 4:
+            if self.is_realtime and self.ndim != 4:
                 raise ValueError("Fieldmap must be 4d for realtime processing")
             
             for i_axis in range(3):
@@ -62,7 +64,7 @@ class NiftiFieldMap(NiftiFile):
                     break
                 
             if self.extended:
-                if self.isRealtime:
+                if self.is_realtime:
                     extended_nii, location = self.extend_fmap_to_kernel_size(dilation_kernel_size, ret_location=True)
                     self.location = location
                 else:
@@ -111,3 +113,4 @@ class NiftiFieldMap(NiftiFile):
             return nii_fmap, location.astype(bool)
 
         return nii_fmap
+    

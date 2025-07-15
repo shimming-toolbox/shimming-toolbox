@@ -2,12 +2,14 @@ import logging
 import nibabel as nib
 import numpy as np
 import os
+
 from .NiftiFile import NiftiFile
 from .NiftiTarget import NiftiTarget
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
 logger = logging.getLogger(__name__)
+
 
 class NiftiMask(NiftiFile):
     """NiftiMask is a subclass of NiftiFile that represents a NIfTI mask file.

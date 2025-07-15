@@ -1,9 +1,11 @@
 import logging
 import nibabel as nib
 import numpy as np
+
 from .NiftiFile import NiftiFile, safe_getter
 
 logger = logging.getLogger(__name__)
+
 
 class NiftiTarget(NiftiFile):
     """NiftiTarget is a subclass of NiftiFile that represents a NIfTI target image file.

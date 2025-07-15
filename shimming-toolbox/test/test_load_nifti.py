@@ -392,7 +392,7 @@ def test_get_acquisition_times_gre():
     # save nii dummy
     nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
     nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
-                               dilation_kernel_size=3, json=json_dummy, isRealtime=True)
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
     slice_timing = get_acquisition_times(nif_object)
     assert slice_timing.shape == (8, 10)
     assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
@@ -403,7 +403,7 @@ def test_get_acquisition_times_field_mapping():
     json_dummy["RepetitionTimeExcitation"] = 0.1
     nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
     nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
-                               dilation_kernel_size=3, json=json_dummy, isRealtime=True)
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
     slice_timing = get_acquisition_times(nif_object)
     assert slice_timing.shape == (8, 10)
     assert np.all(slice_timing[0, :3] == [500, 1500, 2500])

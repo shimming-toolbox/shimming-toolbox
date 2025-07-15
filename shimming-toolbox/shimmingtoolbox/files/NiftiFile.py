@@ -102,7 +102,7 @@ class NiftiFile:
         else:
             return None
         
-    def save(self) -> None:
+    def save(self, fname:str = None) -> None:
         """ Save the NIfTI file to a specified path.
         If no output path is provided, it saves the file in the same directory with a default name.
 
@@ -116,15 +116,24 @@ class NiftiFile:
         Returns:
             None: The function saves the NIfTI file to the specified path.
         """
-        output_path = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
-        logger.info(f"Saving NIfTI file to {output_path}")
+        if fname is not None:
+            if fname[-4:] != '.nii' and fname[-7:] != '.nii.gz':
+                if len(fname.split('.')) == 0:
+                    raise ValueError("File name must end with .nii or .nii.gz")
+                else:
+                    fname += DEFAULT_SUFFIX
+            fname_output = os.path.join(self.path_output, fname)
+        else:
+            fname_output = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
+        
+        logger.info(f"Saving NIfTI file to {fname_output}")
             
         if not os.path.exists(self.path_output):
             os.makedirs(self.path_output)
         elif not os.path.isdir(self.path_output):
-            raise ValueError(f"Output path {output_path} is not a valid directory.")
+            raise ValueError(f"Output path {fname_output} is not a valid directory.")
             
-        nib.save(self.nii, output_path)
+        nib.save(self.nii, fname_output)
     
     def set_nii(self, nii: nib.Nifti1Image) -> None:
         """ Set the NIfTI image object and its data.
@@ -154,11 +163,11 @@ class NiftiFile:
         Returns:
             str: The path to the JSON file if found, otherwise None.
         """
-        json_path = os.path.join(self.path_nii, self.filename + ".json")
-        if os.path.exists(json_path):
-            return json_path
+        fname_json = os.path.join(self.path_nii, self.filename + ".json")
+        if os.path.exists(fname_json):
+            return fname_json
         elif json_needed:
-            raise OSError(f"JSON file not found for {self.fname_nii}. Expected at {json_path}. ")
+            raise OSError(f"JSON file not found for {self.fname_nii}. Expected at {fname_json}. ")
         else:
             return None
     
@@ -363,4 +372,3 @@ class NiftiCoilProfile(NiftiFile):
     """
     def __init__(self, fname_nii: str) -> None:
         super().__init__(fname_nii)
-        

@@ -33,7 +33,7 @@ set_all_loggers('info')
 DEBUG = False
 
 
-def create_fieldmap(n_slices=3, isRealtime=False):
+def create_fieldmap(n_slices=3, is_realtime=False):
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
     model_obj = NumericalModel('shepp-logan', num_vox=num_vox)
@@ -55,7 +55,7 @@ def create_fieldmap(n_slices=3, isRealtime=False):
         unshimmed[:, :, (3 * i_n) + 1] = (np.rot90(unshimmed[:, :, 0]) + unshimmed[:, :, 0]) / 2
         unshimmed[:, :, (3 * i_n) + 2] = unshimmed[:, :, 0] ** 2
 
-    if isRealtime:
+    if is_realtime:
         # For realtime, we need a 4D fieldmap
         unshimmed = np.repeat(unshimmed[:, :, :, np.newaxis], 4, axis=3)
 
@@ -68,7 +68,7 @@ def create_fieldmap(n_slices=3, isRealtime=False):
         
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'), 
-                             dilation_kernel_size=3, json=json_fmap, isRealtime=isRealtime)
+                             dilation_kernel_size=3, json=json_fmap, is_realtime=is_realtime)
         
     return nif_fmap
 
@@ -386,7 +386,7 @@ def define_rt_sim_inputs():
     # fake[..., 0] contains the original linear fieldmap. This repeats the linear fieldmap over the 3rd dim and scale
     # down
     nz = 3
-    nif_fieldmap = create_fieldmap(n_slices=nz, isRealtime=True)
+    nif_fieldmap = create_fieldmap(n_slices=nz, is_realtime=True)
     fake_temp = np.zeros([100, 100, nz, 4])
     lin = nif_fieldmap.data[..., 0] / 10
     fake_temp[..., 0] = nif_fieldmap.data[..., 0] + lin
@@ -606,7 +606,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     """Tests for realtime Sequencer with real data"""
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
-    nif_fieldmap = NiftiFieldMap(fname_fieldmap, dilation_kernel_size=3, isRealtime=True)
+    nif_fieldmap = NiftiFieldMap(fname_fieldmap, dilation_kernel_size=3, is_realtime=True)
 
     # target image
     fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
