@@ -320,6 +320,7 @@ class NiftiFile:
 
         Args:
             self (NiftiFile): The NiftiFile object containing the BIDS metadata.
+            orders (list[int]): List of orders to check for shim settings. Default is [0, 1, 2, 3].
 
         Returns:
             dict: Dictionary containing the following keys: '0', '1' '2', '3'. The different orders are
@@ -327,13 +328,11 @@ class NiftiFile:
         """
 
         scanner_shim = {
-            '0': None,
+            '0': [self.get_frequency()] if self.get_frequency() is not None else None,
             '1': None,
             '2': None,
             '3': None
         }
-        # get_imaging_frequency
-        scanner_shim['0'] = [self.get_frequency()] if self.get_frequency() is not None else None
 
         # get_shim_orders
         shim_settings_list = self.get_json_info('ShimSetting')
