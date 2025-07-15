@@ -1,9 +1,13 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*
+
 import os
 import pytest
 import numpy as np
 import nibabel as nib
 import tempfile
 
+from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 
 
@@ -12,8 +16,10 @@ def temp_nifti_file_4d():
     """Create a temporary 4D NIfTI file for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a simple 4D array
+        fname_tmp = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+        nii_tmp = nib.load(fname_tmp)
         data = np.zeros((10, 10, 10, 10))
-        nii = nib.Nifti1Image(data, affine=np.eye(4))
+        nii = nib.Nifti1Image(data, affine=np.eye(4), header=nii_tmp.header)
 
         # Save both .nii and .nii.gz files
         nii_path = os.path.join(tmpdir, "test.nii")
@@ -32,8 +38,10 @@ def temp_nifti_file_3d():
     """Create a temporary 3D NIfTI file for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create a simple 3D array
+        fname_tmp = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+        nii_tmp = nib.load(fname_tmp)
         data = np.zeros((10, 10, 10))
-        nii = nib.Nifti1Image(data, affine=np.eye(4))
+        nii = nib.Nifti1Image(data, affine=np.eye(4), header=nii_tmp.header)
 
         # Save both .nii and .nii.gz files
         nii_path = os.path.join(tmpdir, "test.nii")
