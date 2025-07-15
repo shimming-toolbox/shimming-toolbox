@@ -22,7 +22,7 @@ from shimmingtoolbox.cli.realtime_shim import gradient_realtime
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, restrict_to_orders
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge, SPH_HARMONICS_TITLES
 from shimmingtoolbox.load_nifti import get_isocenter, is_fatsat_on
-from shimmingtoolbox.pmu import PmuResp, PmuExt
+from shimmingtoolbox.pmu import PmuResp, PmuExt, PmuRespLog, PmuExtLog
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices, new_bounds_from_currents
@@ -575,9 +575,9 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--anat', 'fname_anat', type=click.Path(exists=True), required=True,
               help="Anatomical image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
-              help="Siemens respiratory file containing pressure data.")
+              help="Siemens respiratory file containing pressure data. Supported extensions: '.resp', '.log'.")
 @click.option('--trigs', 'fname_ext', type=click.Path(exists=True), required=False,
-              help="Siemens external trigger file containing pressure data.")
+              help="Siemens external trigger file containing pressure data. Supported extensions: '.ext', '.log'.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
               help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
 @click.option('--mask-static', 'fname_mask_anat_static', type=click.Path(exists=True), required=False,
@@ -815,10 +815,17 @@ def realtime_dynamic(fname_fmap, fname_anat, fname_mask_anat_static, fname_mask_
     else:
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
-    pmu = PmuResp(fname_resp, time_offset=time_offset)
+
+    if os.path.splitext(fname_resp)[1] == '.log':
+        pmu = PmuRespLog(fname_resp, time_offset=time_offset)
+    else:
+        pmu = PmuResp(fname_resp, time_offset=time_offset)
     if fname_ext is not None:
         # Load external trigger file if provided
-        pmu_ext = PmuExt(fname_ext)
+        if os.path.splitext(fname_resp)[1] == '.log':
+            pmu_ext = PmuExtLog(fname_ext)
+        else:
+            pmu_ext = PmuExt(fname_ext)
     else:
         pmu_ext = None
 
