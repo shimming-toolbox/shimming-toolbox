@@ -67,8 +67,8 @@ def test_niftifile_save(temp_nifti_file):
     with tempfile.TemporaryDirectory() as tmpdir:
         # Test explicit save path
         save_path = os.path.join(tmpdir, "saved.nii.gz")
-        nifti = NiftiFile(temp_nifti_file, path_output=save_path)
-        nifti.save()
+        nifti = NiftiFile(temp_nifti_file, path_output=tmpdir)
+        nifti.save("saved.nii.gz")
         assert os.path.exists(save_path)
         
         # Test default save path
@@ -76,6 +76,13 @@ def test_niftifile_save(temp_nifti_file):
         nifti_default.save()
         expected_path = os.path.join(nifti_default.path_nii, f"{nifti_default.filename}_saved.nii.gz")
         assert os.path.exists(expected_path)
+
+def test_niftifile_save_invalid_path(temp_nifti_file):
+    """Test saving with an invalid path."""
+    with tempfile.NamedTemporaryFile() as tmpfile:
+        with pytest.raises(ValueError):
+            nifti = NiftiFile(temp_nifti_file, path_output=tmpfile.name)
+            nifti.save()
 
 def test_niftifile_get_filename(temp_nifti_file):
     """Test filename extraction."""
@@ -103,3 +110,73 @@ def test_niftifile_extensions(temp_nifti_file, ext):
     nifti = NiftiFile(new_path)
     assert nifti.filename == "test"
     assert isinstance(nifti.nii, nib.Nifti1Image)
+
+
+def test_niftifile_set_nii(temp_nifti_file):
+    """Test setting a new NIfTI image."""
+    nifti = NiftiFile(temp_nifti_file)
+    new_data = np.ones((5, 5, 5))
+    new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
+    nifti.set_nii(new_nii)
+    assert nifti.data.shape == (5, 5, 5)
+    np.testing.assert_array_equal(nifti.data, new_data)
+
+def test_niftifile_get_json_info(temp_nifti_file, caplog):
+    """Test getting info from the JSON file."""
+    nifti = NiftiFile(temp_nifti_file)
+    assert nifti.get_json_info("test") == "data"
+    with pytest.raises(KeyError):
+        nifti.get_json_info("nonexistent", required=True)
+    assert nifti.get_json_info("nonexistent") is None
+    assert "Key 'nonexistent' not found in JSON file" in caplog.text
+
+@pytest.mark.parametrize("patient_position, expected_isocenter", [
+    ("HFS", [-10, -20, -30]),
+    ("HFP", [10, 20, -30]),
+    ("FFS", [10, -20, 30]),
+    ("FFP", [-10, 20, 30]),
+])
+def test_niftifile_get_isocenter(temp_nifti_file, patient_position, expected_isocenter):
+    """Test getting the isocenter with different patient positions."""
+    json_data = {
+        "TablePosition": [10, 20, 30],
+        "PatientPosition": patient_position
+    }
+    nifti = NiftiFile(temp_nifti_file, json=json_data)
+    isocenter = nifti.get_isocenter()
+    np.testing.assert_array_equal(isocenter, expected_isocenter)
+
+def test_niftifile_get_frequency(temp_nifti_file):
+    """Test getting the imaging frequency."""
+    json_data = {"ImagingFrequency": 123.45}
+    nifti = NiftiFile(temp_nifti_file, json=json_data)
+    assert nifti.get_frequency() == 123450000
+
+@pytest.mark.parametrize("shim_settings, expected_shim_settings", [
+    ([1, 2, 3], {'0': [123450000], '1': [1, 2, 3], '2': None, '3': None}),
+    ([1, 2, 3, 4, 5, 6, 7, 8], {'0': [123450000], '1': [1, 2, 3], '2': [4, 5, 6, 7, 8], '3': None}),
+    ([1, 2], {'0': [123450000], '1': None, '2': None, '3': None}),
+])
+def test_niftifile_get_scanner_shim_settings(temp_nifti_file, shim_settings, expected_shim_settings):
+    """Test getting scanner shim settings with different ShimSetting lengths."""
+    json_data = {
+        "ImagingFrequency": 123.45,
+        "ShimSetting": shim_settings
+    }
+    nifti = NiftiFile(temp_nifti_file, json=json_data)
+    retrieved_settings = nifti.get_scanner_shim_settings()
+    assert retrieved_settings == expected_shim_settings
+
+def test_niftifile_get_manufacturers_model_name(temp_nifti_file):
+    """Test getting the manufacturer's model name."""
+    json_data = {"ManufacturersModelName": "Test Model S"}
+    nifti = NiftiFile(temp_nifti_file, json=json_data)
+    assert nifti.get_manufacturers_model_name() == "Test_Model_S"
+
+def test_niftifile_no_json(temp_nifti_file):
+    """Test NiftiFile without a JSON file."""
+    os.remove(os.path.join(os.path.dirname(temp_nifti_file), "test.json"))
+    with pytest.raises(OSError):
+        NiftiFile(temp_nifti_file)
+    nifti = NiftiFile(temp_nifti_file, json_needed=False)
+    assert nifti.json is None

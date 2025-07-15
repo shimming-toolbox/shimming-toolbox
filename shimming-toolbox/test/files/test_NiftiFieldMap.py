@@ -59,3 +59,24 @@ def test_set_nii_wrong_dim_rt_set(temp_nifti_file):
     
     with pytest.raises(ValueError, match="Fieldmap must be 4d for realtime processing"):
         nifti.set_nii(new_nii)
+
+def test_set_nii_2d(temp_nifti_file):
+    """Test setting a 2D NIfTI image."""
+    nifti = NiftiFieldMap(temp_nifti_file, 3)
+    new_data = np.ones((10, 10))
+    new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
+    nifti.set_nii(new_nii)
+    assert nifti.data.shape == (10, 10, 1)
+
+def test_extend_field_map(temp_nifti_file):
+    """Test extending the field map."""
+    nifti = NiftiFieldMap(temp_nifti_file, 12)
+    assert nifti.extended_data.shape == (12, 12, 12)
+
+def test_extend_field_map_realtime(temp_nifti_file):
+    """Test extending the field map in real-time mode."""
+    data_4d = np.zeros((10, 10, 10, 5))
+    nii_4d = nib.Nifti1Image(data_4d, affine=np.eye(4))
+    nib.save(nii_4d, temp_nifti_file)
+    nifti = NiftiFieldMap(temp_nifti_file, 12, is_realtime=True)
+    assert nifti.extended_data.shape == (12, 12, 12, 5)
