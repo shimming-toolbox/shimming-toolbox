@@ -162,8 +162,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
-        # Used as input for argument in gaussian filtering. I None, the gaussian filter will be applied to the whole
-        # volume. If an axis is provided, filter along that axis
+        # Used as an input for the option "channel_axis" in the gaussian function below. If None, the gaussian filter
+        # will be applied to the whole volume. If an axis is provided, filter along that axis.
         slice_axis = 2 if process_in_2d else None
 
         # If its 4d data, gaussian blur each volume individually
