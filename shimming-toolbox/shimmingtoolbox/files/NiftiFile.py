@@ -9,7 +9,6 @@ import numpy as np
 import json
 
 from functools import wraps
-from shimmingtoolbox.utils import save_nii_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
