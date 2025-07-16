@@ -80,8 +80,8 @@ def b0shim_cli():
 @click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
               type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
               help="Method used by the optimizer. LS and QP will respect the constraints, "
-              "BFGS method only accepts constraints for each channel (not constraints on the total current), "
-              "PS will not respect any constraints")
+                   "BFGS method only accepts constraints for each channel (not constraints on the total current), "
+                   "PS will not respect any constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
               show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
@@ -203,11 +203,13 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
         nif_mask_target = NiftiMask(fname_mask_target)
     else:
         # If no mask is provided, shim the whole target volume
-        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
+        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data),
+                                              nif_target.affine,
+                                              header=nif_target.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_target, os.path.join(path_output, 'mask_target.nii.gz'))
         nif_mask_target = NiftiMask(os.path.join(path_output, 'mask_target.nii.gz'))
-        
+
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
         list_save = [nif_fmap, nif_target, nif_mask_target]
@@ -223,8 +225,9 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order} for output file format: "
                              f"{o_format_sph}. Supported orders are: [0, 1], [1], [0]")
         if nif_fmap.get_json_info('Manufacturer') != 'Siemens':
-            raise NotImplementedError(f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
-                                      f"format: {o_format_sph}")
+            raise NotImplementedError(
+                f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
+                f"format: {o_format_sph}")
 
     # Find the isocenter
     if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
@@ -299,16 +302,16 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                         coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
                     list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output,
-                                                                   o_format_sph, options, coil_number=i_coil,
-                                                                   default_coefs=initial_coefs)
+                                                            o_format_sph, options, coil_number=i_coil,
+                                                            default_coefs=initial_coefs)
                     continue
 
             list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output, o_format_sph,
-                                                           options, coil_number=i_coil)
+                                                    options, coil_number=i_coil)
 
         else:
             list_fname_output += _save_to_text_file(coil, coefs_coil, list_slices, path_output, o_format_coil,
-                                                           options, coil_number=i_coil)
+                                                    options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
     logger.info(f"Plotting figure(s)")
@@ -335,7 +338,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
 
 
 def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options, coil_number,
-                              default_coefs=None, mean_pressure=None):
+                       default_coefs=None, mean_pressure=None):
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     logger.info(f"Saving to text file with format: {o_format}")
@@ -423,20 +426,21 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                         f.write(f"{coefs[i_shim, i_channel]:.6f}\n")
 
             list_fname_output.append(os.path.abspath(fname_output))
-    
+
     else:  # o_format == 'human readable':
         if mean_pressure is None:
             fname_output = os.path.join(path_output, f"scanner_shim.txt")
         else:
             fname_output = os.path.join(path_output, f"scanner_shim_riro.txt")
-        
+
         # Create column names: "orderX_channelY"
         column_names = ['f0', 'Gx', 'Gy', 'Gz']
         orders = [0, 1]
 
         # Transform dict into usable array (nb_slices, n_channels)
-        arrays = [coefs.get(order, np.zeros((len(list_slices), 2*order+1))) / 1000 \
-            if order == 1 else coefs.get(order, np.zeros((len(list_slices), 2*order+1))) for order in orders]
+        arrays = [coefs.get(order, np.zeros((len(list_slices), 2 * order + 1))) / 1000 \
+                      if order == 1 else coefs.get(order, np.zeros((len(list_slices), 2 * order + 1))) for order in
+                  orders]
         coefs_array = np.hstack(arrays)
 
         if "slicewise" in o_format:
@@ -445,7 +449,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
             inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
             # Reorder the array
             coefs_array = coefs_array[inverse_slice_order, :]
-        
+
         # Compute column widths
         # 1. Get max formatted value length in each column
         formatted_values = []
@@ -468,7 +472,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
             header_cells = [column_names[i].center(col_widths[i]) for i in range(len(column_names))]
             header = ' | '.join(header_cells)
             f.write(header + '\n')
-            
+
             # Write each row of shim values (right-aligned)
             nb_rows = coefs_array.shape[0]
             for row_idx in range(nb_rows):
@@ -479,7 +483,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                 row_str = ' | '.join(row_cells)
                 f.write(row_str + '\n')
 
-        list_fname_output.append(os.path.abspath(fname_output))        
+        list_fname_output.append(os.path.abspath(fname_output))
 
     return list_fname_output
 
@@ -544,8 +548,8 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
               type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
               help="Method used by the optimizer. LS and QP will respect the constraints, "
-              "BFGS method only accepts constraints for each channel (not constraints on the total current), "
-              "PS will not respect any constraints")
+                   "BFGS method only accepts constraints for each channel (not constraints on the total current), "
+                   "PS will not respect any constraints")
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
@@ -616,15 +620,15 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
     --fmap fmap.nii --target target.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
     """
-    
+
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
 
     # Set logger level
     set_all_loggers(verbose)
-    
+
     # Prepare the output
     create_output_dir(path_output)
-    
+
     # Set coils and scanner order for riro if none were indicated
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
@@ -642,8 +646,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     if fname_mask_target_static is not None:
         nif_mask_target_static = NiftiMask(fname_mask_target_static)
     else:
-         # If no mask is provided, shim the whole target volume
-        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine, header=nif_target.header)
+        # If no mask is provided, shim the whole target volume
+        tmp_nii_mask_target = nib.Nifti1Image(np.ones_like(nif_target.data), nif_target.affine,
+                                              header=nif_target.header)
         # save the mask to the output directory
         nib.save(tmp_nii_mask_target, os.path.join(path_output, 'mask_target.nii.gz'))
         nif_mask_target_static = NiftiMask(os.path.join(path_output, 'mask_target.nii.gz'))
@@ -668,8 +673,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
             raise ValueError(f"Unsupported scanner coil order: {scanner_coil_order_riro} for output file format: "
                              f"{o_format_sph}")
         if nif_fmap.get_json_info('Manufacturer') != 'Siemens':
-            raise NotImplementedError(f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
-                                      f"format: {o_format_sph}")
+            raise NotImplementedError(
+                f"Unsupported manufacturer: {nif_fmap.get_json_info('Manufacturer')} for output file"
+                f"format: {o_format_sph}")
 
     # Find the isocenter
     if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
@@ -682,9 +688,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     # Load the coils
     list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nif_fmap,
-                                    options['scanner_shim'])
+                                   options['scanner_shim'])
     list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nif_fmap,
-                                  options['scanner_shim'])
+                                 options['scanner_shim'])
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -766,11 +772,11 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
         if type(coil) == ScannerCoil:
             if 'hrd' in o_format_sph:
                 logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
-                
+
                 coefs_coil_static = coefs_to_dict(coefs_static, scanner_coil_order_static,
-                                                   nif_target.get_json_info('Manufacturer'))
+                                                  nif_target.get_json_info('Manufacturer'))
                 coefs_coil_riro = coefs_to_dict(coefs_riro, scanner_coil_order_riro,
-                                                 nif_target.get_json_info('Manufacturer'))
+                                                nif_target.get_json_info('Manufacturer'))
                 list_fname_output += _save_to_text_file(coil, coefs_coil_static, list_slices, path_output,
                                                         o_format_sph, options, coil_number=i_coil)
                 list_fname_output += _save_to_text_file(coil, coefs_coil_riro, list_slices, path_output,
@@ -780,35 +786,36 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
                 if coil in list_coils_common:
                     keys = [str(order) for order in AVAILABLE_ORDERS
                             if (order != -1 and (str(order) in coil_indexes_riro[coil.name]
-                                                or str(order) in coil_indexes_static[coil.name]))]
+                                                 or str(order) in coil_indexes_static[coil.name]))]
                 elif coil in coil_static_only:
                     keys = [str(order) for order in AVAILABLE_ORDERS
                             if (order != -1 and str(order) in coil_indexes_static[coil.name])]
                 elif coil in coil_riro_only:
                     keys = [str(order) for order in AVAILABLE_ORDERS
                             if (order != -1 and str(order) in coil_indexes_riro[coil.name])]
-                
+
                 for key in keys:
                     if coil in list_coils_riro:
                         if key in coil_indexes_riro[coil.name]:
                             coefs_coil_riro = copy.deepcopy(
-                                coefs_riro[:, coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
+                                coefs_riro[:,
+                                coil_indexes_riro[coil.name][key][0]:coil_indexes_riro[coil.name][key][1]])
                         else:
                             coefs_coil_riro = np.zeros_like(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                        coil_indexes_static[coil.name][key][1]])
+                                                                            coil_indexes_static[coil.name][key][1]])
                     else:
                         coefs_coil_riro = np.zeros_like(
-                            coefs_static[:, coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
+                            coefs_static[:,
+                            coil_indexes_static[coil.name][key][0]:coil_indexes_static[coil.name][key][1]])
 
                     if coil in list_coils_static:
                         if key in coil_indexes_static[coil.name]:
                             coefs_coil_static = copy.deepcopy(coefs_static[:, coil_indexes_static[coil.name][key][0]:
-                                                                        coil_indexes_static[coil.name][key][1]])
+                                                                              coil_indexes_static[coil.name][key][1]])
                         else:
                             coefs_coil_static = np.zeros_like(coefs_coil_riro)
                     else:
                         coefs_coil_static = np.zeros_like(coefs_coil_riro)
-
 
                     # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
@@ -819,14 +826,15 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
                             # riro does not change
 
                             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                                    list_slices, path_output, o_format_sph, options,
-                                                                    i_coil, int(key) ** 2,
-                                                                    default_st_coefs=initial_coefs)
+                                                                       list_slices, path_output, o_format_sph, options,
+                                                                       i_coil, int(key) ** 2,
+                                                                       default_st_coefs=initial_coefs)
                         continue
 
                     list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p,
-                                                            list_slices,
-                                                            path_output, o_format_sph, options, i_coil, int(key) ** 2)
+                                                               list_slices,
+                                                               path_output, o_format_sph, options, i_coil,
+                                                               int(key) ** 2)
 
         else:  # Custom coil
             if coil in list_coils_riro:
@@ -1016,14 +1024,14 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings):
+def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings):
     """ Loads the Coil objects from filenames
 
     Args:
         coils (list): List of tuples(fname_nii, fname_json) of coil profiles and constraints
         orders (list): Orders of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
-        nii_fmap (nib.Nifti1Image): Nibabel object of the fieldmap
+        nif_fmap (NiftiFieldMap): Field map
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
         json_fm_data (dict): BIDS JSON sidecar as a dictionary
 
@@ -1031,8 +1039,8 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
 
-    manufacturer = nii_fmap.get_json_info('Manufacturer')
-    manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
+    manufacturer = nif_fmap.get_json_info('Manufacturer')
+    manufacturers_model_name = nif_fmap.get_manufacturers_model_name()
 
     list_coils = []
 
@@ -1041,11 +1049,11 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
-        
-        # If 3D, extend to 4D by adding singleton dimension 
+
+        # If 3D, extend to 4D by adding singleton dimension
         if coil_data.ndim == 3:
             coil_data = coil_data[..., np.newaxis]
-        
+
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
         list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
@@ -1065,8 +1073,8 @@ def load_coils(coils, orders, fname_constraints, nii_fmap, scanner_shim_settings
             scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
                                                          scanner_shim_settings)
 
-        isocenter = nii_fmap.get_isocenter()
-        scanner_coil = ScannerCoil(nii_fmap.extended_shape[:3], nii_fmap.extended_affine, scanner_contraints, orders,
+        isocenter = nif_fmap.get_isocenter()
+        scanner_coil = ScannerCoil(nif_fmap.extended_shape[:3], nif_fmap.extended_affine, scanner_contraints, orders,
                                    manufacturer=manufacturer, isocenter=isocenter)
         list_coils.append(scanner_coil)
 
@@ -1604,8 +1612,9 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
         coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
         start_channel_scanner = end_channel_scanner_order
     coefs_coil = coefs_scanner
-    
+
     return coefs_coil
+
 
 b0shim_cli.add_command(dynamic)
 b0shim_cli.add_command(realtime_dynamic)
