@@ -118,13 +118,20 @@ class NiftiFile:
         """
         if fname is not None:
             if fname[-4:] != '.nii' and fname[-7:] != '.nii.gz':
-                if len(fname.split('.')) == 0:
+                if len(fname.split('.')) > 1:
                     raise ValueError("File name must end with .nii or .nii.gz")
                 else:
-                    fname += DEFAULT_SUFFIX
+                    fname += ".nii.gz"
             fname_output = os.path.join(self.path_output, fname)
         else:
             fname_output = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
+            
+        if self.json is not None:
+            # Save the JSON file in the same directory as the NIfTI file
+            json_path = os.path.join(fname_output.split(".")[0] + ".json")
+            with open(json_path, 'w') as f:
+                json.dump(self.json, f, indent=4)
+            logger.info(f"Saving JSON file to {json_path}")
         
         logger.info(f"Saving NIfTI file to {fname_output}")
             
