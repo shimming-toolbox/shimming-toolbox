@@ -24,7 +24,7 @@ from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, S
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
 from shimmingtoolbox.load_nifti import get_acquisition_times
-from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.pmu import PmuResp, PmuExt, OutOfRangeError
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.masking.threshold import threshold
 from shimmingtoolbox.coils.coordinates import resample_from_to
@@ -197,7 +197,7 @@ class ShimSequencer(Sequencer):
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.nii_fieldmap, self.nii_fieldmap_orig, self.fmap_is_extended = self.get_fieldmap(nii_fieldmap)
         self.json_fieldmap = json_fieldmap
-        self.nii_anat = self.get_anat(nii_anat)
+        self.nii_anat = convert_to_3d(nii_anat)
         self.json_anat = json_anat
         self.nii_mask_anat = self.load_masks(nii_mask_anat)
         self.coils = coils
@@ -244,29 +244,6 @@ class ShimSequencer(Sequencer):
                                                           self.path_output)
 
         return nii_fieldmap, nii_fmap_orig, extending
-
-    def get_anat(self, nii_anat):
-        """
-        Get the target image and perform error checking.
-
-        Args:
-            nii_anat (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
-
-        Returns:
-            nib.Nifti1Image: Nibabel object containing anatomical data in 3d.
-
-        """
-        anat = nii_anat.get_fdata()
-        if anat.ndim == 3:
-            pass
-        elif anat.ndim == 4:
-            logger.info("Target anatomical is 4d, taking the average and converting to 3d")
-            anat = np.mean(anat, axis=3)
-            nii_anat = nib.Nifti1Image(anat, nii_anat.affine, header=nii_anat.header)
-        else:
-            raise ValueError("Target anatomical image must be in 3d or 4d")
-
-        return nii_anat
 
     def load_masks(self, nii_mask_anat):
         """
@@ -852,7 +829,7 @@ class ShimSequencer(Sequencer):
                     # If its volume shim (len(slices == 1)) and a scanner coil
                     # Dump the shim coefficients as ShimSettingsCurrent + calculated shimmed coefs
                     if 0 in coil.orders:
-                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'] + coefs[0, i]) / 1e6
+                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'][0] + coefs[0, i]) / 1e6
                         j += 1
                     shim_settings_output = []
                     for order in (1, 2, 3):
@@ -1100,7 +1077,8 @@ class RealTimeSequencer(Sequencer):
 
     def __init__(self, nii_fieldmap, json_fmap, nii_anat, nii_static_mask, nii_riro_mask, slices, pmu: PmuResp,
                  coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
-                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
+                 mask_dilation_kernel_size=3, reg_factor=0, path_output=None, pmu_ext=None,
+                 is_pmu_time_offset_auto=False):
         """
         Initialization of the RealTimeSequencer class
 
@@ -1138,12 +1116,14 @@ class RealTimeSequencer(Sequencer):
                                         more details.
             mask_dilation_kernel_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd.
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
+            pmu_ext (PmuExt): PmuExt object containing trigger information.
             is_pmu_time_offset_auto (bool): If True, the PMU time offset will be automatically calculated.
 
         """
         super().__init__(slices, mask_dilation_kernel, mask_dilation_kernel_size, reg_factor, path_output=path_output)
         self.json_fmap = json_fmap
         self.pmu = pmu
+        self.pmu_ext = pmu_ext
         self.coils_static = coils_static
         self.coils_riro = coils_riro
         self.method = method
@@ -1155,12 +1135,7 @@ class RealTimeSequencer(Sequencer):
         self.opt_criteria = opt_criteria
         self.fmap_orig_location = None
         self.nii_fieldmap, self.nii_fieldmap_orig, self.extended_fmap = self.get_fieldmap(nii_fieldmap)
-
-        # Check if anat has the good dimensions
-        if nii_anat.get_fdata().ndim != 3:
-            raise ValueError("Anatomical image must be in 3d")
-
-        self.nii_anat = nii_anat
+        self.nii_anat = convert_to_3d(nii_anat)
         self.nii_static_mask, self.nii_riro_mask = self.load_masks(nii_static_mask, nii_riro_mask)
 
         # Resample the masks to the fmap coordinate system for each shim group
@@ -1195,13 +1170,18 @@ class RealTimeSequencer(Sequencer):
 
     def calculate_best_pmu_time_offset(self):
         logger.info(f"Calculating best time offset")
-        # Probably sweep at all times but centered on the frequency added
         n_slices = self.nii_fieldmap_orig.shape[2]
 
         previous_time_offset = self.pmu.time_offset
         self.pmu.adjust_start_time(0)
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
-        acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
+        if self.pmu_ext is not None:
+            # Use the external triggers
+            acq_times = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+        else:
+            # Infer everything from the BIDS sidecar
+            acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap, when='slice-middle')
+
         n_samples = 1000
         start_time_mdh, stop_time_mdh = self.pmu.get_start_and_stop_times()
         min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
@@ -1211,6 +1191,9 @@ class RealTimeSequencer(Sequencer):
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nii_fieldmap_orig.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nii_fieldmap_orig.get_fdata(), mask=mask_4d == False)
+        fmap = self.nii_fieldmap_orig.get_fdata()
+
+        n_volumes = self.nii_fieldmap_orig.shape[-1]
 
         # Find best time offset
         best_r2_total = 0
@@ -1219,18 +1202,40 @@ class RealTimeSequencer(Sequencer):
         for time_offset in time_offsets:
             self.pmu.adjust_start_time(round(time_offset))
             r2_total = 0
+
+            try:
+                mean_p = self.pmu.mean(acq_times.min(), acq_times.max())
+                pressures = self.pmu.interp_resp_trace(acq_times) - mean_p
+
+            except OutOfRangeError:
+                r2_total_list.append(r2_total)
+                if best_r2_total < r2_total:
+                    best_r2_total = r2_total
+                    best_time_offset = time_offset
+                continue
+
+            n_slices_ave = n_slices
             for i_slice in range(n_slices):
                 if i_slice in []:
+                    n_slices_ave -= 1
                     continue
-                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
-                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
-                y = (y - y.mean())
-                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+
+                x = pressures[:, i_slice].reshape(-1, 1) - mean_p
+                fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
+                mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+                non_zero_indexes = np.where(mask_vec != 0)
+                y = fmap_vec[non_zero_indexes[0], :].T
+
+                reg = LinearRegression().fit(x, y)
                 # Adjusted r2 score
-                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
+                r2 = reg.score(x, y)
                 # r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
                 r2_total += r2
-            r2_total /= n_slices
+
+            if n_slices_ave == 0:
+                n_slices_ave = 1
+
+            r2_total /= n_slices_ave
             r2_total_list.append(r2_total)
             if best_r2_total < r2_total:
                 best_r2_total = r2_total
@@ -1242,29 +1247,37 @@ class RealTimeSequencer(Sequencer):
         if self.path_output is not None:
             fig = Figure(figsize=(8, 10))
             ax1 = fig.add_subplot(311)
-            ax1.plot(time_offsets, r2_total_list)
+            ax1.plot(time_offsets, r2_total_list, label='R2 raw')
             ax1.set_xlabel("Time offset [ms]")
             ax1.set_ylabel("Average r2")
             ax1.set_title("R2 score for different time offsets")
             ax1.set_ylim([-0.1, 1.1])
 
-            # 750 ms is chosen as the smoothing length
-            window_length = round(750 / ((max_bound_offset - min_bound_offset) / n_samples))
-            r2_list_smooth = savgol_filter(r2_total_list, window_length, 4, mode='mirror')
-            # The distance parameter is the minimum number of samples between adjacent peaks
-            # 1000 ms is chosen as the minimum time between peaks
-            min_distance = round(500 / ((max_bound_offset - min_bound_offset) / n_samples))
-            peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
+            if np.gradient(r2_total_list).max() > (max(r2_total_list) - min(r2_total_list)) / 10:
+                # Not smooth
+                peak_indices = [np.argmax(r2_total_list)]
+            else:
+                # smooth
+                # 750 ms is chosen as the smoothing length
+                window_length = round(750 / ((max_bound_offset - min_bound_offset) / n_samples))
+                r2_list_smooth = savgol_filter(r2_total_list, window_length, 4, mode='mirror')
+                # The distance parameter is the minimum number of samples between adjacent peaks
+                # 1000 ms is chosen as the minimum time between peaks
+                min_distance = round(500 / ((max_bound_offset - min_bound_offset) / n_samples))
+                peak_indices = find_peaks(r2_list_smooth, distance=min_distance, height=0.4)[0]
+                ax1.plot(time_offsets, r2_list_smooth, label='R2 smooth', color='orange')
+
             for index in peak_indices:
                 ax1.vlines(time_offsets[index], -1, 2, colors='k', linestyles='dashed')
                 ax1.annotate(f"{round(time_offsets[index])}ms",
                              (time_offsets[index] + 50, r2_total_list[index] - 0.2))
 
-            self.pmu.adjust_start_time(best_time_offset)
+            ax1.legend()
 
-            acq_times = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+            self.pmu.adjust_start_time(round(best_time_offset))
+
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
-            pmu_plot_pressures = (self.pmu.get_resp_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
+            pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
 
             ax2 = fig.add_subplot(312)
             ax2.plot((pmu_plot_times - pmu_plot_times.min()) / 1000, pmu_plot_pressures, label='pmu')
@@ -1282,15 +1295,21 @@ class RealTimeSequencer(Sequencer):
             for i_slice in range(n_slices):
                 if i_slice in []:
                     continue
-                pressures = self.pmu.interp_resp_trace(acq_times) - 2048
-                y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
-                y = (y - y.mean())
-                reg = LinearRegression().fit(pressures[:, i_slice].reshape(-1, 1), y)
+                pressures = self.pmu.interp_resp_trace(acq_times) - self.pmu.mean(acq_times.min(), acq_times.max())
+
+                x = pressures[:, i_slice].reshape(-1, 1) - mean_p
+                fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
+                mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+                non_zero_indexes = np.where(mask_vec != 0)
+                y = fmap_vec[non_zero_indexes[0], :].T
+
+                # y = (y - y.mean())
+                reg = LinearRegression().fit(x, y)
                 # Adjusted r2 score
-                r2 = reg.score(pressures[:, i_slice].reshape(-1, 1), y)
-                r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - pressures[:, i_slice].reshape(-1, 1).shape[1] - 1))
-                ax3.scatter(pressures[:, i_slice], y, label=f"slice: {i_slice}, score: {r2:.2}")
-                ax3.plot(pressures[:, i_slice], reg.predict(pressures[:, i_slice].reshape(-1, 1)))
+                r2 = reg.score(x, y)
+                r2_corr = (1 - (1 - r2) * (len(y) - 1) / (len(y) - x.shape[1] - 1))
+                ax3.scatter(pressures[:, i_slice], y.mean(axis=1), label=f"slice: {i_slice}, score: {r2:.2}")
+                ax3.plot(pressures[:, i_slice], reg.predict(x).mean(axis=1))
 
             ax3.set_xlabel("Pressure [-2048,2048]")
             ax3.set_ylabel("Field [Hz]")
@@ -1401,8 +1420,15 @@ class RealTimeSequencer(Sequencer):
         Returns:
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
-        # Fetch PMU timing
-        self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+        # Fetch the acquisition time of each volume and slice
+        if self.pmu_ext is not None:
+            # Use the external triggers
+            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+        else:
+            # Infer everything from the BIDS sidecar
+            self.acq_timestamps_orig = get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+
+        # Fix the timestamps if the fmap was extended
         if self.extended_fmap:
             # If the field map was extended, we need to add extra slices to the acq_timestamps
             n_slices_to_extend = int((self.nii_fieldmap.shape[2] - self.acq_timestamps_orig.shape[1]) / 2)
@@ -1415,7 +1441,7 @@ class RealTimeSequencer(Sequencer):
             self.acq_timestamps = self.acq_timestamps_orig
 
         # TODO: deal with saturation
-        # fit PMU and fieldmap values
+        # Fetch the pressure values at the acquisition timestamps
         self.acq_pressures_orig = self.pmu.interp_resp_trace(self.acq_timestamps_orig)
         self.acq_pressures = self.pmu.interp_resp_trace(self.acq_timestamps)
 
@@ -1444,23 +1470,23 @@ class RealTimeSequencer(Sequencer):
 
         # Mask the voxels not being shimmed for riro
         mask_fmap = np.logical_or(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
-        masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
         static = np.zeros(fieldmap.shape[:-1])
         riro = np.zeros(fieldmap.shape[:-1])
 
         for i_slice in range(n_slices):
-            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
-
             # Safety check for linear regression if the pressure and field map fit well
-            y = masked_fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
+            x = self.acq_pressures[:, i_slice].reshape(-1, 1) - mean_p
+            fmap_vec = fieldmap[..., i_slice, :].reshape((-1, n_volumes))
+            mask_vec = mask_fmap[..., i_slice].reshape((-1,))
+            non_zero_indexes = np.where(mask_vec != 0)
+            y = fmap_vec[non_zero_indexes[0], :].T
 
             reg_riro = LinearRegression().fit(x, y)
-            # TODO: There are a lot of 0s in there (it is masked) so the score is biased
             # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
             score_riro = 1 - (1 - reg_riro.score(x, y)) * (len(y) - 1) / (len(y) - x.shape[1] - 1)
             logger.debug(
-                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure"
+                f"Linear fit of the RIRO masked for slice: {i_slice} fieldmap and pressure "
                 f"got a R2 score of: {score_riro}")
 
             # Warn if lower than a threshold
@@ -1697,17 +1723,16 @@ class RealTimeSequencer(Sequencer):
 
     def eval(self, coef_static, coef_riro, mean_p, pressure_rms):
         """
-        Evaluate the real time shimming by plotting and saving results
+        Evaluate real time shimming. This function will plot and save results.
 
         Args:
-            coef_static (np.ndarray): coefficients got during the static optimization
-            coef_riro (np.ndarray): coefficients got during the real time optimization
-            mean_p (float): mean of the acquisitions pressures
-            pressure_rms (float): rms of the acquisitions pressures
+            coef_static (np.ndarray): Coefficients of the static
+            coef_riro (np.ndarray): Coefficients of the real-time optimization
+            mean_p (float): Mean of the acquisitions pressure
+            pressure_rms (float): rms of the acquisitions pressure
         """
         logger.debug("Calculating the sum of the shimmed vs unshimmed in the static ROI.")
         # Calculate theoretical shimmed map
-        # shim
         unshimmed = self.nii_fieldmap_orig.get_fdata()
         shape = unshimmed.shape + (len(self.slices),)
         shimmed_static_riro = np.zeros(shape)
@@ -1937,8 +1962,8 @@ class RealTimeSequencer(Sequencer):
         """
         # Get the pmu data values in the range of the acquisition
         pmu_timestamps = self.pmu.get_times(self.acq_timestamps[0].min() - 1000, self.acq_timestamps[-1].max() + 1000)
-        pmu_pressures = self.pmu.get_resp_trace(self.acq_timestamps[0].min() - 1000,
-                                                self.acq_timestamps[-1].max() + 1000)
+        pmu_pressures = self.pmu.get_trace(self.acq_timestamps[0].min() - 1000,
+                                           self.acq_timestamps[-1].max() + 1000)
 
         # Select slices shimmed
         curated_unshimmed_trace = unshimmed_trace[self.index_shimmed]
@@ -2136,7 +2161,7 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
         ax.set_title(f"Before shimming\nmean: {metric_unshimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
@@ -2161,6 +2186,30 @@ class RealTimeSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def convert_to_3d(nii_target):
+    """
+    Get the target image and perform error checking.
+
+    Args:
+        nii_target (nib.Nifti1Image): Nibabel object containing anatomical data in 3d.
+
+    Returns:
+        nib.Nifti1Image: Nibabel object containing anatomical data in 3d.
+
+    """
+    anat = nii_target.get_fdata()
+    if anat.ndim == 3:
+        pass
+    elif anat.ndim == 4:
+        logger.info("Target image is 4d, taking the average and converting to 3d")
+        anat = np.mean(anat, axis=3)
+        nii_target = nib.Nifti1Image(anat, nii_target.affine, header=nii_target.header)
+    else:
+        raise ValueError("Target image must be in 3d or 4d")
+
+    return nii_target
 
 
 def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):

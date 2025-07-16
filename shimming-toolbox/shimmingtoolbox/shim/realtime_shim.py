@@ -292,7 +292,7 @@ def realtime_shim(nii_fieldmap, nii_anat, pmu, json_fmap, nii_mask_anat_riro=Non
 
         # Reshape pmu datapoints to fit those of the acquisition
         pmu_times_within_range = pmu.get_times(acq_timestamps[0].min(), acq_timestamps[-1].max())
-        pmu_data_within_range = pmu.get_resp_trace(acq_timestamps[0].min(), acq_timestamps[-1].max())
+        pmu_data_within_range = pmu.get_trace(acq_timestamps[0].min(), acq_timestamps[-1].max())
 
         # Calc fieldmap average within static mask
         fieldmap_avg = np.zeros([fieldmap.shape[3]])

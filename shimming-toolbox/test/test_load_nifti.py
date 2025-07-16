@@ -376,13 +376,18 @@ class TestCore(object):
         assert (phasediff.max() <= math.pi) and (phasediff.min() >= -math.pi)
 
 
-json_dummy = {"RepetitionTime": "10",
-              "AcquisitionTime": "00:00:00.000000",
-              "MRAcquisitionType": "2D",
-              "SliceTiming": list(range(10)),
-              "PhaseEncodingSteps": 5,
-              "RepetitionTimeExcitation": 0.2,
-              "PulseSequenceDetails": "dummy"}
+json_dummy = {
+    "Manufacturer": "Siemens",
+    "RepetitionTime": "10",
+    "AcquisitionTime": "00:00:00.000000",
+    "MRAcquisitionType": "2D",
+    "SliceTiming": list(range(10)),
+    "PhaseEncodingSteps": 5,
+    "RepetitionTimeExcitation": 0.2,
+    "PulseSequenceDetails": "dummy",
+    "AcquisitionMatrixPE": 5,
+}
+
 nii_dummy = nib.Nifti1Image(np.zeros((2, 5, 10, 8)), np.eye(4))
 
 

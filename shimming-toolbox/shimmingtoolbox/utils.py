@@ -111,6 +111,28 @@ def iso_times_to_ms(iso_times):
     return np.array(ms_times)
 
 
+def ms_past_midnight_to_iso_time(ms_past_midnight):
+    """
+    Convert milliseconds past midnight to a formatted string.
+
+    Args:
+        ms_past_midnight (int): Time past midnight in milliseconds.
+
+    Returns:
+        str: Time formatted as "HHMMSS.mmmmmm"
+    """
+    hours = int(ms_past_midnight / 1000 / 3600)
+    minutes = int((ms_past_midnight - (hours * 1000 * 3600)) / 1000 / 60)
+    secs = int((ms_past_midnight - (hours * 1000 * 3600) - (minutes * 1000 * 60)) / 1000)
+    us = int(1000 * (ms_past_midnight - (hours * 1000 * 3600) - (minutes * 1000 * 60) - (secs * 1000)))
+
+    # Error check
+    if 0 > hours >= 24 or 0 > minutes >= 60 or 0 > secs >= 60 or 0 > us >= 1000000:
+        raise ValueError("Input ms_past_midnight is not a valid time past midnight in milliseconds")
+
+    return f"{hours:02}{minutes:02}{secs:02}.{us:06}"
+
+
 def st_progress_bar(*args, **kwargs):
     """Thin wrapper around `tqdm.tqdm` which checks `SCT_PROGRESS_BAR` muffling the progress
        bar if the user sets it to `no`, `off`, or `false` (case insensitive)."""
