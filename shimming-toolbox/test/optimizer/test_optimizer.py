@@ -7,30 +7,29 @@ import pytest
 from shimmingtoolbox.optimizer.lsq_optimizer import PmuLsqOptimizer
 from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil
 
-nii_rt_fieldmap, json_rt_data, nii_rt_anat, nii_mask_rt_static, nii_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
+nif_rt_fieldmap, nif_rt_target, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
     define_rt_sim_inputs()
 
 
 @pytest.mark.parametrize(
-    "nii_fieldmap,json_data,nii_anat,nii_mask_static,nii_mask_riro,slices,pmu,coil", [(
-            nii_rt_fieldmap,
-            json_rt_data,
-            nii_rt_anat,
-            nii_mask_rt_static,
-            nii_mask_rt_riro,
+    "nif_fieldmap,nif_target,nif_mask_static,nif_mask_riro,slices,pmu,coil", [(
+            nif_rt_fieldmap,
+            nif_rt_target,
+            nif_mask_rt_static,
+            nif_mask_rt_riro,
             slices_rt,
             pmu_rt,
             coil_rt
     )]
 )
 class TestPmuLsqOptimizer:
-    def test_define_rt_bounds(self, nii_fieldmap, json_data, nii_anat, nii_mask_static, nii_mask_riro, slices, pmu,
+    def test_define_rt_bounds(self, nif_fieldmap, nif_target, nif_mask_static, nif_mask_riro, slices, pmu,
                               coil):
 
         constraints = create_constraints(300, -700, 2000, 3)
-        new_coil = create_coil(nii_fieldmap.shape[0], nii_fieldmap.shape[1], 3, constraints, nii_fieldmap.affine, 3)
+        new_coil = create_coil(nif_fieldmap.shape[0], nif_fieldmap.shape[1], 3, constraints, nif_fieldmap.affine, 3)
 
-        pmu_lsq_opt = PmuLsqOptimizer([new_coil], nii_fieldmap.get_fdata().mean(axis=3), nii_fieldmap.affine, 'ps_huber', pmu)
+        pmu_lsq_opt = PmuLsqOptimizer([new_coil], nif_fieldmap.data.mean(axis=3), nif_fieldmap.affine, 'ps_huber', pmu)
         pmu_lsq_opt.pressure_min = 0
         pmu_lsq_opt.pressure_max = 4095
         pmu_lsq_opt.pressure_mean = 3000

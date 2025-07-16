@@ -113,9 +113,9 @@ def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
     assert mask_tab is not None
     
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # fname for anat
-        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
-        nii_anat = nib.load(fname_anat)
+        # fname for target
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        nii_target = nib.load(fname_target)
         
         # Fill the widgets with the Mask tab options
         list_widgets = []
@@ -130,7 +130,7 @@ def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
         get_all_children(mask_tab.sizer_run, list_widgets)
         for widget in list_widgets:
             if widget.GetName() == 'input':
-                widget.SetValue(fname_anat)
+                widget.SetValue(fname_target)
             elif widget.GetName() == 'thr':
                 widget.SetValue(options['threshold'])
             elif widget.GetName() == 'output':
@@ -166,9 +166,9 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
     assert mask_tab is not None
     
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # fname for anat
-        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
-        nii_anat = nib.load(fname_anat)
+        # fname for target
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        nii_target = nib.load(fname_target)
         
         # Fill the widgets with the Mask tab options
         list_widgets = []
@@ -183,7 +183,7 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
         get_all_children(mask_tab.sizer_run, list_widgets)
         for widget in list_widgets:
             if widget.GetName() == 'input':
-                widget.SetValue(fname_anat)
+                widget.SetValue(fname_target)
             elif widget.GetName() == 'size' and shape != 'Sphere':
                 widget.SetValue(options['size'])
             elif widget.GetName() == 'center':
@@ -223,9 +223,9 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
     assert mask_tab is not None
     
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # fname for anat
-        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
-        nii_anat = nib.load(fname_anat)
+        # fname for target
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        nii_target = nib.load(fname_target)
         
         # Fill the widgets with the Mask tab options
         list_widgets = []
@@ -244,7 +244,7 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
             elif widget.GetName() == 'g_param':
                 widget.SetValue(options['g_param'])
             elif widget.GetName() == 'input':
-                widget.SetValue(fname_anat)
+                widget.SetValue(fname_target)
             elif widget.GetName() == 'output':
                 widget.SetValue(os.path.join(tmp, 'bet'))
                 
@@ -278,12 +278,12 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
     assert mask_tab is not None
     
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        # fname for anat
-        fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
-        nii_anat = nib.load(fname_anat)
+        # fname for target
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+        nii_target = nib.load(fname_target)
         
-        nx, ny, nz = nii_anat.shape
-        mask = shapes(nii_anat, 'cube',
+        nx, ny, nz = nii_target.shape
+        mask = shapes(nii_target, 'cube',
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
                   len_dim1=10, len_dim2=10, len_dim3=nz - 10)
@@ -303,7 +303,7 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
         get_all_children(mask_tab.sizer_run, list_widgets)
         for widget in list_widgets:
             if widget.GetName() == 'input':
-                widget.SetValue(fname_anat)
+                widget.SetValue(fname_target)
             elif widget.GetName() == 'operation':
                 assert set_dropdown_selection(widget, options['operation'])
             elif widget.GetName() == 'shape':

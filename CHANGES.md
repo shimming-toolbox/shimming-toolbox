@@ -84,11 +84,11 @@
 
 **ENHANCEMENT**
  - **st_b0shim**: Add gradient shimming output file format to the b0 static CLI. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/339)
- - **st_b0shim**: Resample input masks on the target anat when B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/376)
+ - **st_b0shim**: Resample input masks on the target acquisition when B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/376)
  - **st_b0shim**: Parse slice ordering from BIDS json sidecar. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/378)
  - **st_b0shim**: Reduce memory usage and speed things up when shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/383)
  - **st_b0shim**: Add fatsat option in dynamic and realtime dynamic b0shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/384)
- - **st_b0shim**: Allow 4d masks and target anatomical when using dynamic shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/389)
+ - **st_b0shim**: Allow 4d masks and target image when using dynamic shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/389)
  - **st_b0shim**: Use multiprocessing's fork method to speed up optimizing. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/390)
  - **st_b0shim**: Create output directory automatically for st_b0shim max-intensity. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/418)
  - **st_b0shim**: Log the indexes when using st_b0shim max-intensity. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/420)
@@ -111,7 +111,7 @@
  - **st_b1shim**: Add output B1 shim weights as a machine friendly text file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/457)
  - **st_b1shim, st_dicom_to_nifti**: Fix B1+ maps right after their conversion into NIfTI. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/344)
  - **st_create_coil_profiles**: Add ability to input a mask when creating coil profiles. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/546)
- - **st_dicom_to_nifti**: Add output of phase for anat images in dcm2bids. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/309)
+ - **st_dicom_to_nifti**: Add output of phase for target images in dcm2bids. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/309)
  - **st_dicom_to_nifti**: Improve dcm2bids config file and fieldmap conversion. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/386)
  - **st_dicom_to_nifti**: Add verbose to the st_dicom_to_nifti. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/416)
  - **st_dicom_to_nifti**: Add mp2rage, and more field maps to dcm2bids config file and update to version >= 2.1.7. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/466)

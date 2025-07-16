@@ -57,7 +57,7 @@ Create a Fieldmap
 Create a Mask
 ~~~~~~~~~~~~~
 
-- Load the target anatomical image.
+- Load the target image.
 
   - data_dynamic_shimming/sub-spine/anat/sub-spine_unshimmed_e1.nii.gz
 
@@ -76,7 +76,7 @@ Dynamic shimming
 - Navigate to the *B0 Shim* Tab.
 - Select *Dynamic* in the dropdown menu (it should already be selected by default).
 - Select the fieldmap from the overlay, click the button *Input Fieldmap*.
-- Select the target anatomical image, click the button *Input Anat*.
+- Select the target image, click the button *Input target*.
 - Select the mask, click the button *Input Mask*.
 - Select a *Slice Ordering* of Ascending.
 - Select a *Slice Factor* of 1 (should be the default).
