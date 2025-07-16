@@ -7,7 +7,9 @@ import nibabel as nib
 import os
 import numpy as np
 import json
+
 from functools import wraps
+from shimmingtoolbox.utils import save_nii_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -139,14 +141,12 @@ class NiftiFile:
             raise ValueError(f"Output path {fname_output} is not a valid directory.")
         
         if self.json is not None:
-            # Save the JSON file in the same directory as the NIfTI file
-            json_path = os.path.join(fname_output.split(".")[0] + ".json")
-            with open(json_path, 'w') as f:
-                json.dump(self.json, f, indent=4)
-            logger.info(f"Saving JSON file to {json_path}")
-        
-        logger.info(f"Saving NIfTI file to {fname_output}")
+            # Save json
+            fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
+            with open(fname_json, 'w') as outfile:
+                json.dump(self.json, outfile, indent=2)
 
+        logger.info(f"Saving NIfTI file to {fname_output}")
         nib.save(self.nii, fname_output)
 
     def set_nii(self, nii: nib.Nifti1Image) -> None:
