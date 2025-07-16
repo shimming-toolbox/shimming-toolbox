@@ -132,7 +132,12 @@ class NiftiFile:
             fname_output = os.path.join(self.path_output, fname)
         else:
             fname_output = os.path.join(self.path_output, f"{self.filename}{DEFAULT_SUFFIX}")
-            
+
+        if not os.path.exists(self.path_output):
+            os.makedirs(self.path_output)
+        elif not os.path.isdir(self.path_output):
+            raise ValueError(f"Output path {fname_output} is not a valid directory.")
+        
         if self.json is not None:
             # Save the JSON file in the same directory as the NIfTI file
             json_path = os.path.join(fname_output.split(".")[0] + ".json")
@@ -141,11 +146,6 @@ class NiftiFile:
             logger.info(f"Saving JSON file to {json_path}")
         
         logger.info(f"Saving NIfTI file to {fname_output}")
-
-        if not os.path.exists(self.path_output):
-            os.makedirs(self.path_output)
-        elif not os.path.isdir(self.path_output):
-            raise ValueError(f"Output path {fname_output} is not a valid directory.")
 
         nib.save(self.nii, fname_output)
 
