@@ -54,7 +54,7 @@ def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, p
         json_b1 = json.load(json_b1_file)
     b1_map = np.array(nii_b1.dataobj)
 
-    # Load static anatomical mask
+    # Load static mask
     if fname_mask is not None:
         nii_mask = nib.load(fname_mask)
         # Recombine the Tx B1+ maps to get same dimensions as the mask for resampling

@@ -41,9 +41,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help="Filename of the mask calculated by the unwrapper")
 @click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
+@click.option('--2d', 'process_in_2d', type=bool, show_default=True, default=0,
+              help="Unwrap and filter slice by slice. Defaults to False, which unwraps the whole 3D volume at once.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, fname_save_mask,
-                         gaussian_filter, sigma, verbose):
+                         gaussian_filter, sigma, process_in_2d, verbose):
     """Creates fieldmap (in Hz) from phase images.
 
     This function accommodates multiple echoes (2 or more) and phase difference. It also
@@ -63,12 +65,13 @@ def prepare_fieldmap_cli(phase, fname_mag, unwrapper, fname_output, autoscale, f
     set_all_loggers(verbose)
 
     prepare_fieldmap_uncli(phase, fname_mag, unwrapper, fname_output, autoscale, fname_mask, threshold, fname_save_mask,
-                           gaussian_filter, sigma)
+                           gaussian_filter, sigma, process_in_2d)
 
 
 def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
                            fname_output=os.path.join(os.curdir, FILE_OUTPUT_DEFAULT), autoscale=True,
-                           fname_mask=None, threshold=0.05, fname_save_mask=None, gaussian_filter=False, sigma=1):
+                           fname_mask=None, threshold=0.05, fname_save_mask=None, gaussian_filter=False, sigma=1,
+                           process_in_2d=False):
     """ Prepare fieldmap cli without the click decorators. This allows this function to be imported and called from
     other python modules.
 
@@ -85,10 +88,13 @@ def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
         fname_save_mask (str): Filename of the mask calculated by the unwrapper
         gaussian_filter (bool): Gaussian filter for B0 map
         sigma (float): Standard deviation of gaussian filter. Used for: gaussian_filter
+        process_in_2d (bool): Unwrap and filter slice by slice. Default is False, which unwraps the whole 3D volume at
+                              once.
     """
     # Return fieldmap and json file
     nii_fieldmap, json_fieldmap = prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask,
-                                                              threshold, fname_save_mask, gaussian_filter, sigma)
+                                                              threshold, fname_save_mask, gaussian_filter, sigma,
+                                                              process_in_2d)
 
     # Create filename for the output if it's a path
     fname_output_v2 = create_fname_from_path(fname_output, FILE_OUTPUT_DEFAULT)
@@ -101,7 +107,7 @@ def prepare_fieldmap_uncli(phase, fname_mag, unwrapper='prelude',
 
 
 def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_mask, threshold, fname_save_mask,
-                                gaussian_filter, sigma):
+                                gaussian_filter, sigma, process_in_2d):
     """Prepare fieldmap using click inputs
 
     Args:
@@ -115,6 +121,8 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
         threshold (float): Threshold for masking. Used for: PRELUDE
         gaussian_filter (bool): Gaussian filter for B0 map
         sigma (float): Standard deviation of gaussian filter. Used for: gaussian_filter
+        process_in_2d (bool): Unwrap and filter slice by slice. Default is False, which unwraps the whole 3D volume at
+                              once.
 
     Returns:
         (tuple): tuple containing:
@@ -167,7 +175,7 @@ def prepare_fieldmap_cli_inputs(phase, fname_mag, unwrapper, autoscale, fname_ma
 
     fieldmap_hz, save_mask = prepare_fieldmap(list_nii_phase, echo_times, mag=mag, unwrapper=unwrapper,
                                               nii_mask=nii_mask, threshold=threshold, gaussian_filter=gaussian_filter,
-                                              sigma=sigma, fname_save_mask=fname_save_mask)
+                                              sigma=sigma, fname_save_mask=fname_save_mask, process_in_2d=process_in_2d)
 
     # Create nii fieldmap
     nii_fieldmap = nib.Nifti1Image(fieldmap_hz, affine, header=nii_phase.header)

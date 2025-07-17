@@ -15,7 +15,8 @@ unwrapper_dict = {'prelude': prelude,
                   'skimage': skimage_unwrap}
 
 
-def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, threshold=None, fname_save_mask=None):
+def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, threshold=None, is_unwrapping_in_2d=False,
+                 fname_save_mask=None):
     """ Calls different unwrapping algorithms according to the specified `unwrapper` parameter. The function also
     allows to call the different unwrappers with more flexibility regarding input shape.
 
@@ -27,6 +28,8 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
                      ``phase``.
         mask (numpy.ndarray): numpy array of booleans with shape of ``phase`` to mask during phase unwrapping.
         threshold (float): Prelude parameter, see prelude for more detail.
+        is_unwrapping_in_2d (bool): Unwrap and filter slice by slice. Default is False, which unwraps the whole 3D volume at
+                              once.
         fname_save_mask (str): Filename of the mask calculated by the unwrapper
 
     Returns:
@@ -50,14 +53,22 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
             nii_2d = nib.Nifti1Image(phase2d, nii_phase_wrapped.affine, header=nii_phase_wrapped.header)
 
             logger.info(f"Unwrapping 1 volume")
-            phase3d_unwrapped = unwrapper_dict[unwrapper](nii_2d, mag=mag, mask=mask, threshold=threshold,
+            phase3d_unwrapped = unwrapper_dict[unwrapper](nii_2d,
+                                                          mag=mag,
+                                                          mask=mask,
+                                                          threshold=threshold,
+                                                          is_unwrapping_in_2d=is_unwrapping_in_2d,
                                                           fname_save_mask=fname_save_mask)
 
             phase_unwrapped = phase3d_unwrapped[..., 0]
 
         elif phase.ndim == 3:
             logger.info("Unwrapping 1 volume")
-            phase_unwrapped = unwrapper_dict[unwrapper](nii_phase_wrapped, mag=mag, mask=mask, threshold=threshold,
+            phase_unwrapped = unwrapper_dict[unwrapper](nii_phase_wrapped,
+                                                        mag=mag,
+                                                        mask=mask,
+                                                        threshold=threshold,
+                                                        is_unwrapping_in_2d=is_unwrapping_in_2d,
                                                         fname_save_mask=fname_save_mask)
 
         elif phase.ndim == 4:
@@ -82,11 +93,17 @@ def unwrap_phase(nii_phase_wrapped, unwrapper='prelude', mag=None, mask=None, th
 
                 # If it's the first volume, call it using save mask to save the mask only once
                 if i_t == 0:
-                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d, mag=mag_input, mask=mask_input,
+                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d,
+                                                                          mag=mag_input,
+                                                                          mask=mask_input,
                                                                           threshold=threshold,
+                                                                          is_unwrapping_in_2d=is_unwrapping_in_2d,
                                                                           fname_save_mask=fname_save_mask)
                 else:
-                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d, mag=mag_input, mask=mask_input,
+                    phase_unwrapped[..., i_t] = unwrapper_dict[unwrapper](nii_4d,
+                                                                          mag=mag_input,
+                                                                          mask=mask_input,
+                                                                          is_unwrapping_in_2d=is_unwrapping_in_2d,
                                                                           threshold=threshold)
 
         else:
