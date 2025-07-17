@@ -14,10 +14,10 @@ from shimmingtoolbox import __dir_testing__
 
 class TestImageConcat(object):
     def setup_method(self):
-        path_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat')
-        self.list_fname = [os.path.join(path_anat, 'sub-realtime_unshimmed_e1.nii.gz'),
-                           os.path.join(path_anat, 'sub-realtime_unshimmed_e2.nii.gz'),
-                           os.path.join(path_anat, 'sub-realtime_unshimmed_e3.nii.gz')]
+        path_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat')
+        self.list_fname = [os.path.join(path_target, 'sub-realtime_unshimmed_e1.nii.gz'),
+                           os.path.join(path_target, 'sub-realtime_unshimmed_e2.nii.gz'),
+                           os.path.join(path_target, 'sub-realtime_unshimmed_e3.nii.gz')]
 
     def test_cli_concat(self):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

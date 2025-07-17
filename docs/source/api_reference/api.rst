@@ -55,9 +55,6 @@ Coils
 Shim
 ----
 
-.. automodule:: shimmingtoolbox.shim.realtime_shim
-    :members:
-
 .. automodule:: shimmingtoolbox.shim.sequencer
    :members:
 
