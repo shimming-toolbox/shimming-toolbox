@@ -2018,7 +2018,7 @@ def test_cli_define_slices_target():
     """Test using an target image file"""
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
-        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         fname_output = os.path.join(tmp, 'slices.json')
         res = runner.invoke(define_slices_cli, ['--slices', fname_target,
                                                 '--factor', '5',
