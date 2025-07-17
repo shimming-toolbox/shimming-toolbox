@@ -34,8 +34,8 @@ class QuadProgOpt(OptimizerUtils):
             initial_guess_method (str): method to find the initial guess
         """
         if reg_factor < 0:
-            raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
-                            f" If you want to keep this reg_factor please use lsq_optimizer")
+            raise TypeError("reg_factor is negative, and would cause optimization to crash. "
+                            "If you want to keep this reg_factor please use lsq_optimizer")
         self.opt_criteria = None
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
@@ -107,6 +107,11 @@ class QuadProgOpt(OptimizerUtils):
         Returns:
             float: Residuals for quad_prog optimization
         """
+        # Apply weights to the coil matrix and unshimmed vector
+        weights = np.sqrt(self.mask_coefficients)
+        coil_mat = weights[:, np.newaxis] * coil_mat
+        unshimmed_vec = weights * unshimmed_vec
+
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
@@ -174,7 +179,6 @@ class QuadProgOpt(OptimizerUtils):
 
         return cost_matrix, cost_vector
 
-
 class PmuQuadProgOpt(QuadProgOpt):
     """ Optimizer for the realtime component (riro) for this optimization:
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
@@ -202,8 +206,8 @@ class PmuQuadProgOpt(QuadProgOpt):
     def _get_linear_inequality_matrices(self):
 
         """
-        This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR 458
+        This functions returns the linear inequality matrix and vector that will be used in the optimization, such as
+        g @ x < h. To see all details please see the PR 458
         Redefined from QuadProg to match the new bounds and constraints
 
         Returns:
