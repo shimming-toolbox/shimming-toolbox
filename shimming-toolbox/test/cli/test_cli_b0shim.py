@@ -47,11 +47,11 @@ def _define_inputs(fmap_dim, manufacturers_model_name=None, no_shim_settings=Fal
         raise ValueError("Supported Dimensions are 2, 3 or 4")
 
     # fname for target
-    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.nii.gz')
+    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
 
     nii_target = nib.load(fname_target)
 
-    fname_target_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'target', 'sub-realtime_unshimmed_e1.json')
+    fname_target_json = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.json')
     with open(fname_target_json) as f:
         target_data = json.load(f)
 
