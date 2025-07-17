@@ -75,7 +75,7 @@ def _define_inputs(fmap_dim, manufacturers_model_name=None, no_shim_settings=Fal
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_target,nii_mask,fm_data,target_data", [(
+    "nii_fmap,nii_target,nii_mask,nii_softmask,fm_data,target_data", [(
             _define_inputs(fmap_dim=3)
     )]
 )
