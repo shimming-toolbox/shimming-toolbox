@@ -1047,6 +1047,7 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     manufacturer = nif_fmap.get_json_info('Manufacturer')
     manufacturers_model_name = nif_fmap.get_manufacturers_model_name()
+    device_serial_number = nif_fmap.get_json_info('DeviceSerialNumber')
 
     list_coils = []
 
@@ -1073,10 +1074,17 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 external_contraints = json.load(json_file)
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
-                                                         scanner_shim_settings, external_contraints)
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+                                                         orders,
+                                                         manufacturer,
+                                                         device_serial_number,
+                                                         scanner_shim_settings,
+                                                         external_contraints)
         else:
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name, orders, manufacturer,
+            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+                                                         orders,
+                                                         manufacturer,
+                                                         device_serial_number,
                                                          scanner_shim_settings)
 
         isocenter = nif_fmap.get_isocenter()
