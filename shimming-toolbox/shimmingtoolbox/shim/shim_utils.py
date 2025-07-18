@@ -7,6 +7,7 @@ import nibabel as nib
 import json
 import numpy as np
 import logging
+from nibabel.affines import apply_affine
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
@@ -54,14 +55,14 @@ def get_phase_encode_direction_sign(fname_nii):
     return en_is_positive
 
 
-def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
+def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
     """ Converts physical coefficients (x, y, z from RAS Coordinate System) to Siemens Gradient Coordinate System
 
     Args:
         coefs_x (numpy.ndarray): Array containing x coefficients in the physical coordinate system RAS
         coefs_y (numpy.ndarray): Array containing y coefficients in the physical coordinate system RAS
         coefs_z (numpy.ndarray): Array containing z coefficients in the physical coordinate system RAS
-        fname_anat (str): Filename of the NIfTI file to convert the data to that Gradient CS
+        fname_target (str): Filename of the NIfTI file to convert the data to that Gradient CS
 
     Returns:
         (tuple): tuple containing:
@@ -70,35 +71,35 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
             * numpy.ndarray: Array containing the data in the gradient CS (slice)
 
     """
-    # Load anat
-    nii_anat = nib.load(fname_anat)
+    # Load target
+    nii_target = nib.load(fname_target)
 
     # Convert from patient coordinates to image coordinates
-    scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_anat.affine)
+    scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_target.affine)
     # scanner_coil_coef_vox[0]  # NIfTI dim1, etc
 
     # Convert from image to freq, phase, slice encoding direction
-    dim_info = nii_anat.header.get_dim_info()
+    dim_info = nii_target.header.get_dim_info()
     coefs_freq, coefs_phase, coefs_slice = [scanner_coil_coef_vox[dim] for dim in dim_info]
 
     # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
     # defined by the frequency, phase and slice encode directions.
     # TODO: More tests, validated for TRA, SAG, COR, no-flip/flipped PE, no rotation
 
-    # Load anat json
-    fname_anat_json = fname_anat.rsplit('.nii', 1)[0] + '.json'
-    with open(fname_anat_json) as json_file:
-        json_anat_data = json.load(json_file)
+    # Load target json
+    fname_target_json = fname_target.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_target_json) as json_file:
+        json_target_data = json.load(json_file)
 
-    if 'ImageOrientationText' in json_anat_data:
+    if 'ImageOrientationText' in json_target_data:
         # Tag in private dicom header (0051,100E) indicates the slice orientation, if it exists, it will appear
         # in the json under 'ImageOrientationText' tag
-        orientation_text = json_anat_data['ImageOrientationText']
+        orientation_text = json_target_data['ImageOrientationText']
         orientation = orientation_text[:3].upper()
     else:
         # Find orientation with the ImageOrientationPatientDICOM tag, this is less reliable since it can fail
         # if there are 2 highest cosines. It will raise an exception if there is a problem
-        orientation = get_main_orientation(json_anat_data['ImageOrientationPatientDICOM'])
+        orientation = get_main_orientation(json_target_data['ImageOrientationPatientDICOM'])
 
     if orientation == 'SAG':
         coefs_slice = -coefs_slice
@@ -108,7 +109,7 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_anat):
         # TRA
         pass
 
-    phase_encode_is_positive = get_phase_encode_direction_sign(fname_anat)
+    phase_encode_is_positive = get_phase_encode_direction_sign(fname_target)
     if not phase_encode_is_positive:
         coefs_freq = -coefs_freq
         coefs_phase = -coefs_phase
@@ -203,52 +204,6 @@ def shim_to_phys_cs(coefs, manufacturer, orders):
     coefs = phys_to_shim_cs(coefs, manufacturer, orders)
 
     return coefs
-
-
-def get_scanner_shim_settings(bids_json_dict, orders):
-    """ Get the scanner's shim settings using the BIDS tag ShimSetting and ImagingFrequency and returns it in a
-        dictionary. 'orders' is used to check if the different orders are available in the metadata.
-
-    Args:
-        bids_json_dict (dict): Bids sidecar as a dictionary
-        orders (tuple): Tuple containing the spherical harmonic orders
-
-    Returns:
-        dict: Dictionary containing the following keys: '0', '1' '2', '3'. The different orders are
-              lists unless the different values could not be populated.
-    """
-
-    scanner_shim = {
-        '0': None,
-        '1': None,
-        '2': None,
-        '3': None
-    }
-    # get_imaging_frequency
-    if bids_json_dict.get('ImagingFrequency'):
-        scanner_shim['0'] = [int(bids_json_dict.get('ImagingFrequency') * 1e6)]
-
-    # get_shim_orders
-    if bids_json_dict.get('ShimSetting'):
-        n_shim_values = len(bids_json_dict.get('ShimSetting'))
-        if n_shim_values == 3:
-            scanner_shim['1'] = bids_json_dict.get('ShimSetting')
-        elif n_shim_values == 8:
-            pass
-            scanner_shim['2'] = bids_json_dict.get('ShimSetting')[3:]
-            scanner_shim['1'] = bids_json_dict.get('ShimSetting')[:3]
-        else:
-            logger.warning(f"ShimSetting tag has an unsupported number of values: {n_shim_values}")
-    else:
-        logger.debug("ShimSetting tag is not available")
-
-    # Check if the orders to shim are available in the metadata
-    for order in orders:
-        if scanner_shim.get(str(order)) is None:
-            logger.debug(f"Order {order} shim settings not available in the JSON metadata, constraints might not be "
-                         f"respected.")
-
-    return scanner_shim
 
 
 def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
@@ -347,17 +302,117 @@ def convert_to_dac_units(shim_settings_coefs_ui, scanner_constraints, scanner_co
     return coefs_dac
 
 
+def extend_slice(nii_array, n_slices=1, axis=2, location=None):
+    """
+    Adds n_slices on each side of the selected axis. It uses the nearest slice and copies it to fill the values.
+    Updates the affine of the matrix to keep the input array in the same location.
+
+    Args:
+        nii_array (nib.Nifti1Image): 3d or 4d array to extend the dimensions along an axis.
+        n_slices (int): Number of slices to add on each side of the selected axis.
+        axis (int): Axis along which to insert the slice(s), Allowed axis: 0, 1, 2.
+        location (np.array): Location where the original data is located in the new data.
+    Returns:
+        nib.Nifti1Image: Array extended with the appropriate affine to conserve where the original pixels were located.
+
+    Examples:
+        ::
+            print(nii_array.get_fdata().shape)  # (50, 50, 1, 10)
+            nii_out = extend_slice(nii_array, n_slices=1, axis=2)
+            print(nii_out.get_fdata().shape)  # (50, 50, 3, 10)
+    """
+    # Locate original data in new data
+    orig_data_in_new_data = location
+
+    if nii_array.get_fdata().ndim == 3:
+        extended = nii_array.get_fdata()
+        extended = extended[..., np.newaxis]
+        if location is not None:
+            orig_data_in_new_data = orig_data_in_new_data[..., np.newaxis]
+    elif nii_array.get_fdata().ndim == 4:
+        extended = nii_array.get_fdata()
+    else:
+        raise ValueError("Unsupported number of dimensions for input array")
+
+    for i_slice in range(n_slices):
+        if axis == 0:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros(orig_data_in_new_data.shape[1:]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[-1, :, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[0, :, :, :], axis=axis)
+        elif axis == 1:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, 0, :, :]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[:, -1, :, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, 0, :, :], axis=axis)
+        elif axis == 2:
+            if location is not None:
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, -1,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+                orig_data_in_new_data = np.insert(orig_data_in_new_data, 0,
+                                                  np.zeros_like(orig_data_in_new_data[:, :, 0, :]),
+                                                  axis=axis)
+            extended = np.insert(extended, -1, extended[:, :, -1, :], axis=axis)
+            extended = np.insert(extended, 0, extended[:, :, 0, :], axis=axis)
+        else:
+            raise ValueError("Unsupported value for axis")
+
+    new_affine = update_affine_for_ap_slices(nii_array.affine, n_slices, axis)
+
+    if nii_array.get_fdata().ndim == 3:
+        extended = extended[..., 0]
+
+    nii_extended = nib.Nifti1Image(extended, new_affine, header=nii_array.header)
+
+    if location is not None:
+        return nii_extended, orig_data_in_new_data
+
+    return nii_extended
+
+
+def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
+    """
+    Updates the input affine to reflect an insertion of n_slices on each side of the selected axis
+
+    Args:
+        affine (np.ndarray): 4x4 qform affine matrix representing the coordinates
+        n_slices (int): Number of pixels to add on each side of the selected axis
+        axis (int): Axis along which to insert the slice(s)
+    Returns:
+        np.ndarray: 4x4 updated affine matrix
+    """
+    # Define indexes
+    index_shifted = [0, 0, 0]
+    index_shifted[axis] = n_slices
+
+    # Difference of voxel in world coordinates
+    spacing = apply_affine(affine, index_shifted) - apply_affine(affine, [0, 0, 0])
+
+    # Calculate new affine
+    new_affine = affine
+    new_affine[:3, 3] = affine[:3, 3] - spacing
+
+    return new_affine
+
+
 class ScannerShimSettings:
-    def __init__(self, bids_json_dict, orders=None):
+    def __init__(self, nii_fmap, orders=None):
 
-        shim_settings_dac = get_scanner_shim_settings(bids_json_dict, orders)
-
-        manufacturer_model_name = bids_json_dict.get('ManufacturersModelName')
-        if manufacturer_model_name is not None:
-            manufacturer_model_name.replace(' ', '_')
-
-        manufacturer = bids_json_dict.get('Manufacturer')
-        self.shim_settings = dac_to_shim_units(manufacturer, manufacturer_model_name, shim_settings_dac)
+        shim_settings_dac = nii_fmap.get_scanner_shim_settings(orders=orders)
+        manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
+        manufacturer = nii_fmap.get_json_info('Manufacturer')
+        self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):
         coefs = []
