@@ -223,7 +223,7 @@ class Pmu(object):
 
     def get_trigger_times(self, start_time=None, stop_time=None):
         """
-        Returns the trigger times in ms of the resp trace. These triggers estimate the beginning of a new respiratory
+        Returns the trigger times in ms of the resp trace.
         cycle
 
         Args:
@@ -317,8 +317,8 @@ class PmuResp(Pmu):
         super().__init__(fname_pmu)
         self.min = 0
         self.max = 4095
+        self.time_offset = 0
         self.adjust_start_time(time_offset)
-        self.timepoints = self.get_all_times()
 
     def adjust_start_time(self, time_offset: int):
         """
@@ -335,6 +335,8 @@ class PmuResp(Pmu):
         if self.stop_time_mpcu is not None:
             self.stop_time_mpcu += time_offset - old_offset
         self.time_offset = time_offset
+
+        self.timepoints = self.get_all_times()
 
     def interp_resp_trace(self, acquisition_times):
         """
@@ -510,36 +512,56 @@ class PmuRespLog(PmuResp):
         if data.get('RESP') is None:
             raise ValueError("The log file does not contain the required 'RESP' field.")
 
-        self._data = data.get('RESP')
+        self._data = np.array(data.get('RESP'))
         # A time tic corresponds to 2.5ms, convert to ms
         self._start_time_mdh = min(data.get('Time_tics')) * 2.5
         self._stop_time_mdh = max(data.get('Time_tics')) * 2.5
         self.start_time_mpcu = None
         self.stop_time_mpcu = None
 
-        if fname_triggers is not None:
-            raise NotImplementedError("Triggers are not supported for PMU log files yet.")
-            # data = self.read_pmu(fname_triggers)
-            # if data.get('Time_tics') is None:
-            #     raise ValueError("The log file does not contain the required 'Time_tics' field.")
-            # if data.get('Signal') is None:
-            #     raise ValueError("The log file does not contain the required 'Time_tics' field.")
-            # self.data_triggers = attributes['data_triggers']
-
         self.time_offset = 0
-        self.min = 0
-        self.max = 1
         self.adjust_start_time(time_offset)
-        self.timepoints = self.get_all_times()
+
+        self.data_triggers = None
+        if fname_triggers is not None:
+            if fname_triggers is not None:
+                raise NotImplementedError("Triggers using external file are not supported for PMU log files yet.")
+        else:
+            self.data_triggers = self._add_triggers_in_data()
+
+        self.min = 0
+        self.max = 4095
 
     def read_pmu(self, fname_log: str):
         return read_pmu_log_file(fname_log)
+
+    def _add_triggers_in_data(self):
+        data_with_triggers = []
+        time_since_last_trig = 0
+        data = self.get_data()
+        data_mean = np.mean(data)
+        time_between_datapoints = (self.timepoints[-1] - self.timepoints[0]) / len(self.timepoints)
+
+        # Add triggers (5000) in the data when a new resp cycle starts
+        # 0 1000 2000 3000 4000 3000 2000 1000 0  ->     0 1000 2000 5000 3000 4000 3000 2000 1000 0
+        prev_data = data[0]
+        for i_data, a_data in enumerate(data):
+
+            if time_since_last_trig > 500 and prev_data <= data_mean < a_data:
+                data_with_triggers.append(5000)
+                time_since_last_trig = 0
+
+            data_with_triggers.append(a_data)
+            prev_data = a_data
+            time_since_last_trig += time_between_datapoints
+
+        return np.array(data_with_triggers)
 
 
 class PmuExtLog(PmuExt):
     """ Read Siemens PMU ext1 log file (.log extension) located in %simmeasdata%\\Physio_Logfiles """
 
-    def __init__(self, fname_log: str, time_offset=0):
+    def __init__(self, fname_log: str):
         data = self.read_pmu(fname_log)
 
         self.fname = fname_log
@@ -548,7 +570,7 @@ class PmuExtLog(PmuExt):
         if data.get('EXT1') is None:
             raise ValueError("The log file does not contain the required 'EXT1' field.")
 
-        self._data = data.get('EXT1')
+        self._data = np.array(data.get('EXT1'))
         # A time tic corresponds to 2.5ms, convert to ms
         self._start_time_mdh = min(data.get('Time_tics')) * 2.5
         self._stop_time_mdh = max(data.get('Time_tics')) * 2.5
@@ -559,7 +581,7 @@ class PmuExtLog(PmuExt):
 
         self.time_offset = 0
         self.min = 0
-        self.max = 4095
+        self.max = 1
         self.timepoints = self.get_all_times()
 
     def read_pmu(self, fname_log: str):

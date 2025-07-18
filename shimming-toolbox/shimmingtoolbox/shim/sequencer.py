@@ -1480,7 +1480,11 @@ class RealTimeSequencer(Sequencer):
             fmap_vec = fieldmap[..., i_slice, :].reshape((-1, n_volumes))
             mask_vec = mask_fmap[..., i_slice].reshape((-1,))
             non_zero_indexes = np.where(mask_vec != 0)
-            y = fmap_vec[non_zero_indexes[0], :].T
+            # If no voxels are excluded, we use the whole fmap_vec
+            if len(non_zero_indexes[0]) == 0:
+                y = fmap_vec.T
+            else:
+                y = fmap_vec[non_zero_indexes[0], :].T
 
             reg_riro = LinearRegression().fit(x, y)
             # Calculate adjusted r2 score (Takes into account the number of observations and predictor variables)
@@ -1495,8 +1499,8 @@ class RealTimeSequencer(Sequencer):
             threshold_score = 0.7
             if score_riro < threshold_score:
                 logger.warning(
-                    f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2"
-                    f"score: {score_riro} (less than {threshold_score}). This indicates a bad fit between the pressure"
+                    f"Linear fit of the RIRO masked fieldmap for slice {i_slice} and pressure got a low R2 "
+                    f"score: {score_riro} (less than {threshold_score}). This indicates a bad fit between the pressure "
                     f"data and the fieldmap values")
 
             # Fit to the linear model (no mask)
