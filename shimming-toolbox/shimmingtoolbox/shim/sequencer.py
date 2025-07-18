@@ -752,7 +752,7 @@ class ShimSequencer(Sequencer):
                                     shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
                                                          coefs[0, i + j + i_channel])
                                     manufacturers_model_name = self.nif_fieldmap.get_manufacturers_model_name()
-                                    device_serial_number = self.json_fieldmap.get('DeviceSerialNumber')
+                                    device_serial_number = self.nif_fieldmap.get_json_info('DeviceSerialNumber')
                                     scanner_id = f"{manufacturers_model_name}_{device_serial_number}"
                                     if manufacturer in SCANNER_CONSTRAINTS_DAC.keys() \
                                             and scanner_id in SCANNER_CONSTRAINTS_DAC[manufacturer].keys() \
