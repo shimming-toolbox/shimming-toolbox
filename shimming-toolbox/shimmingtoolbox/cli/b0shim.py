@@ -1041,7 +1041,7 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     manufacturer = nif_fmap.get_json_info('Manufacturer')
     manufacturers_model_name = nif_fmap.get_manufacturers_model_name()
-    device_serial_number = json_fm_data.get('DeviceSerialNumber')
+    device_serial_number = nif_fmap.get_json_info('DeviceSerialNumber')
 
     list_coils = []
 

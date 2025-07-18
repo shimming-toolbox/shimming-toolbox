@@ -27,7 +27,7 @@ class TestDacToShimUnits:
     def test_dac_to_shim_units_terra(self):
         dac_units = {'1': [17729, 18009, 17872], '2': [12500.0] * 5,
                      'order1_is_valid': True, 'order2_is_valid': True}
-        ui_units = dac_to_shim_units('Siemens', 'Terra', '00000', dac_units)
+        ui_units = dac_to_shim_units('Siemens', 'Terra', '79121', dac_units)
         assert np.all(np.isclose(ui_units['1'], [3000] * 3))
         assert np.all(np.isclose(ui_units['2'], [9360.0, 4680.0, 4620.0, 4620.0, 4560.0]))
 
