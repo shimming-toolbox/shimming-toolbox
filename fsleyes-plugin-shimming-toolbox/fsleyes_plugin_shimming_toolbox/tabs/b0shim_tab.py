@@ -146,8 +146,8 @@ class B0ShimTab(Tab):
                 "required": True
             },
             {
-                "button_label": "Input Anat",
-                "name": "anat",
+                "button_label": "Input target",
+                "name": "target",
                 "button_function": "select_from_overlay",
                 "required": True
             },
@@ -213,9 +213,13 @@ class B0ShimTab(Tab):
                 "option_value": "chronological-coil"
             },
             {
-                "label": "Gradient per Channel",
-                "option_value": "gradient"
+                "label": "Chronological - Human readable",
+                "option_value": "chronological-hrd"
             },
+            {
+                "label": "Slicewise - Human readable",
+                "option_value": "slicewise-hrd"
+            }
         ]
 
         dropdown_scanner_format = DropdownComponent(
@@ -501,8 +505,8 @@ class B0ShimTab(Tab):
                 "required": True
             },
             {
-                "button_label": "Input Anat",
-                "name": "anat",
+                "button_label": "Input target",
+                "name": "target",
                 "button_function": "select_from_overlay",
                 "required": True
             },
@@ -561,9 +565,13 @@ class B0ShimTab(Tab):
                 "option_value": "chronological-ch"
             },
             {
-                "label": "Gradient per Channel",
-                "option_value": "gradient"
+                "label": "Chronological - Human readable",
+                "option_value": "chronological-hrd"
             },
+            {
+                "label": "Slicewise - Human readable",
+                "option_value": "slicewise-hrd"
+            }
         ]
 
         dropdown_scanner_format = DropdownComponent(

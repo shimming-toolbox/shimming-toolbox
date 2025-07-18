@@ -13,10 +13,10 @@ from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
-fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
 
 nii_fieldmap = nib.load(fname_fieldmap)
-nii_anat = nib.load(fname_anat)
+nii_target = nib.load(fname_target)
 
 
 def test_generate_meshgrid():
@@ -191,25 +191,25 @@ def test_resample_from_to_2d():
     """Test resample_from_to with 2d input."""
     nii_fieldmap_2d = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0, 0], nii_fieldmap.affine)
 
-    nii_resampled = resample_from_to(nii_fieldmap_2d, nii_anat, mode='nearest')
+    nii_resampled = resample_from_to(nii_fieldmap_2d, nii_target, mode='nearest')
 
-    assert nii_resampled.shape == nii_anat.shape
+    assert nii_resampled.shape == nii_target.shape
 
 
 def test_resample_from_to_3d():
     """Test resample_from_to with 3d input."""
     nii_fieldmap_3d = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine)
 
-    nii_resampled = resample_from_to(nii_fieldmap_3d, nii_anat, mode='nearest')
+    nii_resampled = resample_from_to(nii_fieldmap_3d, nii_target, mode='nearest')
 
-    assert nii_resampled.shape == nii_anat.shape
+    assert nii_resampled.shape == nii_target.shape
 
 
 def test_resample_from_to_4d():
     """Test resample_from_to with 4d input."""
-    nii_resampled = resample_from_to(nii_fieldmap, nii_anat, mode='nearest')
+    nii_resampled = resample_from_to(nii_fieldmap, nii_target, mode='nearest')
 
-    assert nii_resampled.shape == (nii_anat.shape + (nii_fieldmap.shape[3],))
+    assert nii_resampled.shape == (nii_target.shape + (nii_fieldmap.shape[3],))
 
 
 def test_resample_from_to_5d():
@@ -217,7 +217,7 @@ def test_resample_from_to_5d():
     nii_fieldmap_5d = nib.Nifti1Image(np.expand_dims(nii_fieldmap.get_fdata(), -1), nii_fieldmap.affine)
 
     with pytest.raises(NotImplementedError, match="Dimensions of input can only be 2D, 3D or 4D"):
-        resample_from_to(nii_fieldmap_5d, nii_anat, mode='nearest')
+        resample_from_to(nii_fieldmap_5d, nii_target, mode='nearest')
 
 
 def test_get_main_orientation_tra():

@@ -20,7 +20,7 @@ VALIDITY_THRESHOLD = 0.2
 
 
 def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_mask=None, threshold=0.05,
-                     gaussian_filter=False, sigma=1, fname_save_mask=None):
+                     gaussian_filter=False, sigma=1, process_in_2d=False, fname_save_mask=None):
     """ Creates fieldmap (in Hz) from phase images. This function accommodates multiple echoes (2 or more) and phase
     difference. This function also accommodates 4D phase inputs, where the 4th dimension represents the time, in case
     multiple field maps are acquired across time for the purpose of real-time shimming experiments.
@@ -37,6 +37,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
                    than the threshold are set to 0.
         gaussian_filter (bool): Option of using a Gaussian filter to smooth the fieldmaps (boolean)
         sigma (float): Standard deviation of gaussian filter.
+        process_in_2d (bool): Unwrap and filter slice by slice. Default is False, which unwraps the whole 3D volume at
+                      once.
         fname_save_mask (str): Filename of the mask calculated by the unwrapper
 
     Returns
@@ -81,7 +83,11 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         nii_phasediff = list_nii_phase[0]
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
         # Run the unwrapper
-        phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
+        phasediff_unwrapped = unwrap_phase(nii_phasediff,
+                                           unwrapper=unwrapper,
+                                           mag=mag,
+                                           mask=mask,
+                                           is_unwrapping_in_2d=process_in_2d,
                                            fname_save_mask=fname_save_mask)
 
         # If 4d, correct 2pi offset between timepoints, if it's 3d, bring offset closest to the mean
@@ -101,7 +107,11 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
         # Calculate the echo time difference
         echo_time_diff = echo_times[1] - echo_times[0]  # [s]
         # Run the unwrapper
-        phasediff_unwrapped = unwrap_phase(nii_phasediff, unwrapper=unwrapper, mag=mag, mask=mask,
+        phasediff_unwrapped = unwrap_phase(nii_phasediff,
+                                           unwrapper=unwrapper,
+                                           mag=mag,
+                                           mask=mask,
+                                           is_unwrapping_in_2d=process_in_2d,
                                            fname_save_mask=fname_save_mask)
 
         # If it's 4d (i.e. there are timepoints)
@@ -114,7 +124,11 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
     else:
         # Calculates field map based on multi echo phases by running the unwrapper for each echo individually.
         n_echoes = len(list_nii_phase)  # Number of Echoes
-        unwrapped = [unwrap_phase(list_nii_phase[echo_number], unwrapper=unwrapper, mag=mag, mask=mask,
+        unwrapped = [unwrap_phase(list_nii_phase[echo_number],
+                                  unwrapper=unwrapper,
+                                  mag=mag,
+                                  mask=mask,
+                                  is_unwrapping_in_2d=process_in_2d,
                                   fname_save_mask=fname_save_mask) for echo_number in range(n_echoes)]
         unwrapped_data = np.moveaxis(np.stack(unwrapped, axis=0), 0, -1)  # Merges all phase echoes on the last dim
         # The mag must be the same size as the unwrapped_data to yield an equal mask for the
@@ -148,16 +162,21 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
 
     # Gaussian blur the fieldmap
     if gaussian_filter:
+        # Used as an input for the option "channel_axis" in the gaussian function below. If None, the gaussian filter
+        # will be applied to the whole volume. If an axis is provided, filter along that axis.
+        slice_axis = 2 if process_in_2d else None
+
         # If its 4d data, gaussian blur each volume individually
         if len(fieldmap_hz.shape) == 4:
             for it in range(fieldmap_hz.shape[-1]):
                 # Fill values
                 filled = fill(fieldmap_hz[..., it], mask[..., it] == False)
-                fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest') * mask[..., it]
+                fieldmap_hz[..., it] = gaussian(filled, sigma, mode='nearest', channel_axis=slice_axis) * mask[..., it]
+
         # 3d data
         else:
             filled = fill(fieldmap_hz, mask == False)
-            fieldmap_hz = gaussian(filled, sigma, mode='nearest') * mask
+            fieldmap_hz = gaussian(filled, sigma, mode='nearest', channel_axis=slice_axis) * mask
 
     return fieldmap_hz, mask
 
@@ -183,7 +202,7 @@ def get_mask(nii_target, mag, nii_mask=None, threshold=None):
         # Check that the mask is the right shape
         if not np.all(nii_mask.shape == nii_target.shape) or not np.all(
                 nii_mask.affine == nii_target.affine):
-            logger.debug("Resampling mask on the target anat")
+            logger.debug("Resampling mask on the target target")
             if nii_target.ndim == 4:
                 nii_tmp_target = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine,
                                                  header=nii_target.header)
@@ -245,7 +264,6 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     """
     unwrapped_cp = copy.deepcopy(unwrapped)
     # Create a mask that excludes the noise
-    # TODO: What if the validity region is bigger than the mask
     validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
 
     # Logical and with the mask used for calculating the fieldmap

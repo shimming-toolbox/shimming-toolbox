@@ -98,25 +98,25 @@ def test_resample_mask():
     # Fieldmap
     fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
     nii_fieldmap = nib.load(fname_fieldmap)
-    nii_target = nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
+    nii_target_fm= nib.Nifti1Image(nii_fieldmap.get_fdata()[..., 0], nii_fieldmap.affine, header=nii_fieldmap.header)
 
-    # anat image
-    fname_anat = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
-    nii_anat = nib.load(fname_anat)
+    # target image
+    fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
+    nii_target = nib.load(fname_target)
 
     # Set up mask
     # static
-    nx, ny, nz = nii_anat.shape
-    static_mask = shapes(nii_anat.get_fdata(), 'cube',
+    nx, ny, nz = nii_target.shape
+    static_mask = shapes(nii_target.get_fdata(), 'cube',
                          center_dim1=int(nx / 2),
                          center_dim2=int(ny / 2),
                          len_dim1=5, len_dim2=5, len_dim3=nz)
 
-    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_anat.affine, header=nii_anat.header)
+    nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=nii_target.header)
 
-    nii_mask_res = resample_mask(nii_mask_static, nii_target, (0,), dilation_kernel='line')
+    nii_mask_res = resample_mask(nii_mask_static, nii_target_fm, (0,), dilation_kernel='line')
 
-    expected = np.full_like(nii_target.get_fdata(), fill_value=False)
+    expected = np.full_like(nii_target_fm.get_fdata(), fill_value=False)
     expected[24:28, 27:29, 0] = 1
 
     assert np.all(nii_mask_res.get_fdata() == expected)

@@ -19,15 +19,18 @@ required_constraints = [
     "coef_sum_max"
 ]
 
-SCANNER_CONSTRAINTS = {
-    "Siemens": {
-        "Prisma_fit_167006": {
+SIEMENS_PRISMA_CONSTRAINTS_167006 = {
             "0": [[123100100, 123265000]],
             "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
             "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
                   [-3487.302, 3487.302]],
             "3": []
-        },
+        }
+
+SCANNER_CONSTRAINTS = {
+    "Siemens": {
+        "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
+        "Prisma_fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
         "Investigational_Device_7T_79017": {
             "0": [[296490000, 297490000]],
             "1": [[-2999.899, 2999.399], [-2999.886, 2999.886], [-2999.910, 2999.910]],
@@ -65,16 +68,18 @@ SCANNER_CONSTRAINTS = {
         }
     }
 }
-SCANNER_CONSTRAINTS["Siemens"]["MAGNETOM_Prisma_Fit_167006"] = SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit_167006"]
+
+SIEMENS_PRISMA_DAC_CONSTRAINTS_167006 = {
+    "1": [14436.0, 14265.0, 14045.0],
+    "2": [9998.0] * 5,
+    "3": []
+}
 
 # One can use the Siemens commandline AdjValidate tool to get all the values below
 SCANNER_CONSTRAINTS_DAC = {
     "Siemens": {
-        "Prisma_fit_167006": {
-            "1": [14436.0, 14265.0, 14045.0],
-            "2": [9998.0] * 5,
-            "3": []
-        },
+        "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
+        "Prisma_fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
         "Investigational_Device_7T_79017": {
             "1": [62479.0, 62264.0, 54082.0],
             "2": [18000.0] * 5,
@@ -92,7 +97,6 @@ SCANNER_CONSTRAINTS_DAC = {
         }
     }
 }
-SCANNER_CONSTRAINTS_DAC["Siemens"]["MAGNETOM_Prisma_Fit_167006"] = SCANNER_CONSTRAINTS["Siemens"]["Prisma_fit_167006"]
 
 
 class Coil(object):
@@ -220,16 +224,16 @@ class Coil(object):
                                          f"{self.dim[3]}, currently: {calculated_n_channels}")
 
                     for key in constraints["coef_channel_minmax"]:
-                        if (constraints.get("coefs_used") is not None and
-                                constraints["coefs_used"].get(key) is not None):
+                        if (self.coefs_used is not None and
+                                self.coefs_used.get(key) is not None):
                             # Error checking
                             if constraints["coefs_used"].keys() != constraints["coef_channel_minmax"].keys():
                                 raise ValueError("The coil constraints 'coef_channel_minmax' do not have the same keys "
                                                  "as 'coefs_used'")
-                            if any(len(constraints["coefs_used"][key]) !=
+                            if any(len(self.coefs_used[key]) !=
                                    len(constraints["coef_channel_minmax"][key])
                                    for key in constraints["coef_channel_minmax"]
-                                   if constraints["coefs_used"][key] is not None):
+                                   if self.coefs_used[key] is not None):
                                 raise ValueError("The coil's bounds is not the same length as the initial bounds")
 
                         coef_channel_minmax = self.coef_channel_minmax
@@ -242,25 +246,25 @@ class Coil(object):
                                 coef_channel_minmax[key][i] = [coef_channel_minmax[key][i][0], np.inf]
 
                             # Log a warning if the current coefficients are outside the constraints
-                            if (constraints.get("coefs_used") is not None and
-                                    constraints["coefs_used"].get(key) is not None and
-                                    constraints["coefs_used"][key][i] is not None):
-                                if constraints["coefs_used"][key][i] < coef_channel_minmax[key][i][0]:
+                            if (self.coefs_used is not None and
+                                    self.coefs_used.get(key) is not None and
+                                    self.coefs_used[key][i] is not None):
+                                if self.coefs_used[key][i] < coef_channel_minmax[key][i][0]:
                                     logger.warning(
                                         f"Initial coef is outside the bounds allowed in the constraints: "
                                         f"{coef_channel_minmax[key][i][0]}, "
                                         f"initial: {constraints['coefs_used'][key][i]}")
-                                if constraints["coefs_used"][key][i] > coef_channel_minmax[key][i][1]:
+                                if self.coefs_used[key][i] > coef_channel_minmax[key][i][1]:
                                     logger.warning(
                                         f"Initial coef is outside the bounds allowed in the constraints: "
                                         f"{coef_channel_minmax[key][i][1]}, "
-                                        f"initial: {constraints['coefs_used'][key][i]}")
+                                        f"initial: {self.coefs_used[key][i]}")
 
                                 # Adapt constraints based on currently used coefficients
                                 # new bound = old bound - current value
                                 # eg: [-3, 1] = [-2, 2] - 1
-                                coef_channel_minmax[key][i][0] -= constraints["coefs_used"][key][i]
-                                coef_channel_minmax[key][i][1] -= constraints["coefs_used"][key][i]
+                                coef_channel_minmax[key][i][0] -= self.coefs_used[key][i]
+                                coef_channel_minmax[key][i][1] -= self.coefs_used[key][i]
 
                         self.coef_channel_minmax = coef_channel_minmax
 
