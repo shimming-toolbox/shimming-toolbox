@@ -206,7 +206,7 @@ def shim_to_phys_cs(coefs, manufacturer, orders):
     return coefs
 
 
-def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
+def dac_to_shim_units(manufacturer, manufacturers_model_name, device_serial_number, shim_settings):
     """ Converts the ShimSettings tag from the json BIDS sidecar to the ui units.
         (i.e. For the Prisma fit DAC --> uT/m, uT/m^2 (1st order, 2nd order))
 
@@ -214,6 +214,8 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
         manufacturer (str): Manufacturer of the scanner. "SIEMENS", "GE" or "PHILIPS".
         manufacturers_model_name (str): Name of the model of the scanner. Found in the json BIDS sidecar under
                                         ManufacturersModelName'. Supported names: 'Prisma_fit'.
+        device_serial_number (str): Serial number of the scanner. Found in the json BIDS sidecar under
+                                    DeviceSerialNumber.
         shim_settings (dict): Dictionary with keys: '1', '2'. Found in the json BIDS sidecar under 'ShimSetting'. '2' is
                        a list of 5 coefficients.
 
@@ -223,14 +225,16 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
     """
     scanner_shim_mp = copy.deepcopy(shim_settings)
 
+    scanner_id = f"{manufacturers_model_name}_{device_serial_number}"
+
     # Check if the manufacturer is implemented
     if manufacturer not in SCANNER_CONSTRAINTS_DAC.keys():
         logger.warning(f"{manufacturer} not implemented or does not include enough metadata information")
 
-    # Check if the manufacturer model is implemented
-    elif manufacturers_model_name in SCANNER_CONSTRAINTS_DAC[manufacturer].keys():
-        scanner_constraints_dac = SCANNER_CONSTRAINTS_DAC[manufacturer][manufacturers_model_name]
-        scanner_constraints = SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name]
+    # Check if the scanner_id is implemented
+    elif scanner_id in SCANNER_CONSTRAINTS_DAC[manufacturer].keys():
+        scanner_constraints_dac = SCANNER_CONSTRAINTS_DAC[manufacturer][scanner_id]
+        scanner_constraints = SCANNER_CONSTRAINTS[manufacturer][scanner_id]
 
         # Do all the orders except f0
         for order in ['0', '1', '2', '3']:
@@ -249,7 +253,7 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                     continue
                 # Check if unit conversion for the order is implemented
                 elif not scanner_constraints_dac.get(order):
-                    logger.warning(f"Order {order} conversion of {manufacturers_model_name} not implemented.")
+                    logger.warning(f"Order {order} conversion of {scanner_id} not implemented.")
                     scanner_shim_mp[order] = None
                     continue
 
@@ -259,7 +263,7 @@ def dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings):
                                                               scanner_constraints_dac[order])
 
     else:
-        logger.debug(f"Manufacturer model {manufacturers_model_name} not implemented, "
+        logger.debug(f"Manufacturer model {scanner_id} not implemented, "
                      f"could not convert shim settings")
 
     return scanner_shim_mp
@@ -407,12 +411,17 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
 
 
 class ScannerShimSettings:
-    def __init__(self, nii_fmap, orders=None):
+    def __init__(self, nif_fmap, orders=None):
 
-        shim_settings_dac = nii_fmap.get_scanner_shim_settings(orders=orders)
-        manufacturers_model_name = nii_fmap.get_manufacturers_model_name()
-        manufacturer = nii_fmap.get_json_info('Manufacturer')
-        self.shim_settings = dac_to_shim_units(manufacturer, manufacturers_model_name, shim_settings_dac)
+        shim_settings_dac = nif_fmap.get_scanner_shim_settings(orders=orders)
+        manufacturers_model_name = nif_fmap.get_manufacturers_model_name()
+        manufacturer = nif_fmap.get_json_info('Manufacturer')
+        device_serial_number = nif_fmap.get_json_info('DeviceSerialNumber')
+
+        self.shim_settings = dac_to_shim_units(manufacturer,
+                                               manufacturers_model_name,
+                                               device_serial_number,
+                                               shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):
         coefs = []

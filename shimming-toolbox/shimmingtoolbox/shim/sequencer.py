@@ -752,18 +752,18 @@ class ShimSequencer(Sequencer):
                                     shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
                                                          coefs[0, i + j + i_channel])
                                     manufacturers_model_name = self.nif_fieldmap.get_manufacturers_model_name()
+                                    device_serial_number = self.nif_fieldmap.get_json_info('DeviceSerialNumber')
+                                    scanner_id = f"{manufacturers_model_name}_{device_serial_number}"
                                     if manufacturer in SCANNER_CONSTRAINTS_DAC.keys() \
-                                            and manufacturers_model_name in SCANNER_CONSTRAINTS_DAC[manufacturer].keys() \
-                                            and str(order) in SCANNER_CONSTRAINTS_DAC[manufacturer][
-                                        manufacturers_model_name].keys() \
+                                            and scanner_id in SCANNER_CONSTRAINTS_DAC[manufacturer].keys() \
+                                            and str(order) in SCANNER_CONSTRAINTS_DAC[manufacturer][scanner_id].keys() \
                                             and manufacturer in SCANNER_CONSTRAINTS.keys() \
-                                            and manufacturers_model_name in SCANNER_CONSTRAINTS[manufacturer].keys() \
-                                            and str(order) in SCANNER_CONSTRAINTS[manufacturer][
-                                        manufacturers_model_name].keys():
+                                            and scanner_id in SCANNER_CONSTRAINTS[manufacturer].keys() \
+                                            and str(order) in SCANNER_CONSTRAINTS[manufacturer][scanner_id].keys():
                                         scanner_constraints_dac = SCANNER_CONSTRAINTS_DAC[manufacturer][
-                                            manufacturers_model_name][str(order)][i_channel]
+                                            scanner_id][str(order)][i_channel]
                                         scanner_constraints_ui = SCANNER_CONSTRAINTS[manufacturer][
-                                            manufacturers_model_name][str(order)][i_channel]
+                                            scanner_id][str(order)][i_channel]
 
                                         # This is where Siemens shim units are converted back to DAC units
                                         shim_settings_tmp = (np.array(shim_settings_tmp) * 2 * np.array(scanner_constraints_dac) /

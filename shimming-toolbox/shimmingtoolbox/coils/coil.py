@@ -19,7 +19,7 @@ required_constraints = [
     "coef_sum_max"
 ]
 
-SIEMENS_PRISMA_CONSTRAINTS = {
+SIEMENS_PRISMA_CONSTRAINTS_167006 = {
             "0": [[123100100, 123265000]],
             "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
             "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
@@ -29,15 +29,21 @@ SIEMENS_PRISMA_CONSTRAINTS = {
 
 SCANNER_CONSTRAINTS = {
     "Siemens": {
-        "MAGNETOM_Prisma_Fit": SIEMENS_PRISMA_CONSTRAINTS,
-        "Prisma_fit": SIEMENS_PRISMA_CONSTRAINTS,
-        "Investigational_Device_7T": {
+        "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
+        "Prisma_fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
+        "Investigational_Device_7T_79017": {
+            "0": [[296490000, 297490000]],
+            "1": [[-2999.899, 2999.399], [-2999.886, 2999.886], [-2999.910, 2999.910]],
+            "2": [[-7486.502, 7486.502], [-3743.251, 3743.251], [-3695.261, 3695.261], [-3695.261, 3695.261], [-3647.270, 3647.270]],
+            "3": []
+        },
+        "Investigational_Device_7T_18923": {
             "0": [[296490000, 297490000]],
             "1": [[-4999.976, 4999.976], [-4999.980, 4999.980], [-4999.957, 4999.957]],
             "2": [[-6163.2, 6163.2], [-2592.0, 2592.0], [-2592.0, 2592.0], [-2476.8, 2476.8], [-2476.8, 2476.8]],
             "3": []
         },
-        "Terra": {
+        "Terra_79121": {
             "0": [[296760000, 297250000]],
             "1": [[-3000, 3000], [-3000, 3000], [-3000, 3000]],
             "2": [[-9360.0, 9360.0], [-4680.0, 4680.0], [-4620.0, 4620.0], [-4620.0, 4620.0], [-4560.0, 4560.0]],
@@ -48,7 +54,7 @@ SCANNER_CONSTRAINTS = {
 
     },
     "Philips": {
-        "Ingenia_Elition_X": {
+        "Ingenia_Elition_X_45590": {
             "0": [[-np.inf, np.inf]],
             "1": [[-1.000000, 1.000000],
                   [-1.000000, 1.000000],
@@ -63,7 +69,7 @@ SCANNER_CONSTRAINTS = {
     }
 }
 
-SIEMENS_PRISMA_DAC_CONSTRAINTS = {
+SIEMENS_PRISMA_DAC_CONSTRAINTS_167006 = {
     "1": [14436.0, 14265.0, 14045.0],
     "2": [9998.0] * 5,
     "3": []
@@ -72,14 +78,19 @@ SIEMENS_PRISMA_DAC_CONSTRAINTS = {
 # One can use the Siemens commandline AdjValidate tool to get all the values below
 SCANNER_CONSTRAINTS_DAC = {
     "Siemens": {
-        "MAGNETOM_Prisma_Fit": SIEMENS_PRISMA_DAC_CONSTRAINTS,
-        "Prisma_fit": SIEMENS_PRISMA_DAC_CONSTRAINTS,
-        "Investigational_Device_7T": {
+        "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
+        "Prisma_fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
+        "Investigational_Device_7T_79017": {
             "1": [62479.0, 62264.0, 54082.0],
             "2": [18000.0] * 5,
             "3": []
         },
-        "Terra": {
+        "Investigational_Device_7T_18923": {
+            "1": [62479.0, 62264.0, 54082.0],
+            "2": [18000.0] * 5,
+            "3": []
+        },
+        "Terra_79121": {
             "1": [17729.0, 18009.0, 17872.0],
             "2": [12500.0] * 5,
             "3": []
@@ -350,7 +361,8 @@ class ScannerCoil(Coil):
         return super().__eq__(__value)
 
 
-def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim_settings, external_constraints=None):
+def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, device_serial_number, shim_settings,
+                            external_constraints=None):
     """ Returns the scanner spherical harmonics constraints depending on the manufacturer's model name and required
         order
 
@@ -358,6 +370,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim
         manufacturers_model_name (str): Name of the scanner
         orders (list): List of all orders of the shim system to be used
         manufacturer (str): Manufacturer of the scanner
+        device_serial_number (str): Serial number of the device, used to identify the scanner
         shim_settings (dict): Dictionary containing the shim settings
         external_constraints (dict): External constraints to be used as priority
 
@@ -376,12 +389,12 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim
     else:
         external_minmax = None
 
+    scanner_id = f"{manufacturers_model_name}_{device_serial_number}"
     # If the manufacturer and scanner is implemented
-    if (manufacturer in SCANNER_CONSTRAINTS.keys() and
-            manufacturers_model_name in SCANNER_CONSTRAINTS[manufacturer].keys()):
-        constraints["name"] = manufacturers_model_name
+    if manufacturer in SCANNER_CONSTRAINTS.keys() and scanner_id in SCANNER_CONSTRAINTS[manufacturer].keys():
+        constraints["name"] = scanner_id
         for order in orders:
-            internal_constrs = copy.deepcopy(SCANNER_CONSTRAINTS[manufacturer][manufacturers_model_name][str(order)])
+            internal_constrs = copy.deepcopy(SCANNER_CONSTRAINTS[manufacturer][scanner_id][str(order)])
             if external_minmax is not None:
                 ext_constraints = external_minmax.get(str(order))
             else:
@@ -402,7 +415,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim
                 n_channels = channels_per_order(order, manufacturer)
                 constraints["coef_channel_minmax"][str(order)] = [[None, None] for _ in range(n_channels)]
                 logger.warning(
-                    f"Order {order} not available on {manufacturers_model_name}, unconstrained optimization for "
+                    f"Order {order} not available on {scanner_id}, unconstrained optimization for "
                     f"this order. Consider defining the constraints in an external constraint file. See "
                     f"{__config_scanner_constraints__}")
 
@@ -420,7 +433,7 @@ def get_scanner_constraints(manufacturers_model_name, orders, manufacturer, shim
                 constraints["coef_channel_minmax"][str(order)] = external_minmax.get(str(order))
 
     else:
-        logger.warning(f"Scanner: {manufacturers_model_name} not implemented, constraints are not known internally. "
+        logger.warning(f"Scanner: {scanner_id} not implemented, constraints are not known internally. "
                        f"Consider defining the constraints in an external constraint file. See "
                        f"{__config_scanner_constraints__}")
         constraints["name"] = "Unknown"
