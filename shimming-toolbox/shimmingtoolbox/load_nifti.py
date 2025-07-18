@@ -222,9 +222,11 @@ def get_n_acquired_phase_encode_lines(json_data):
 
     # Parallel acquisition reduction
     parallel_technique = json_data.get('ParallelAcquisitionTechnique')
-    if parallel_technique is not None:
+    matrix_coil_mode = json_data.get('MatrixCoilMode')
 
-        if parallel_technique == 'GRAPPA':
+    if parallel_technique is not None or matrix_coil_mode is not None:
+
+        if parallel_technique == 'GRAPPA' or matrix_coil_mode == 'GRAPPA':
             parallel_reduction_factor_in_plane = json_data.get('ParallelReductionFactorInPlane')
             if parallel_reduction_factor_in_plane is None:
                 parallel_reduction_factor_in_plane = 1.0
