@@ -1631,28 +1631,40 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
 
 
 def write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_coil, coil, path_output):
+    """ Write the updated scanner constraints to a JSON file.
+
+    Args:
+        scanner_coil_order (list): List of scanner coil orders (e.g. [0, 1, 2])
+        manufacturer (str): Manufacturer of the scanner (e.g. 'GE', 'Siemens', 'Philips')
+        coefs_coil (np.ndarray): Array of shim coefficients (n_shims x n_channels)
+        coil (ScannerCoil): ScannerCoil object containing the metadata of the scanner coil.
+        path_output (str): Path to the output directory where the JSON file will be saved.
+
+    """
     coefs_scanner = {}
+    coefs_used = {}
+    coef_channel_minmax = {}
     start_channel_scanner = 0
     for order in scanner_coil_order:
+        # Get coefficients for the current order
         end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
         coefs_scanner[f"{order}"] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order][0]
         start_channel_scanner = end_channel_scanner_order
 
-    coefs_used = {}
-    for order in coil.coefs_used.keys():
-        if coefs_scanner.get(order) is None:
-            coefs_used[order] = coil.coefs_used[order]
+        # Fill the coefficients used (calculated + previous coefs already applied)
+        if coefs_scanner.get(f"{order}") is None:
+            coefs_used[f"{order}"] = coil.coefs_used[order]
         else:
-            coefs_used[order] = np.nan_to_num(np.array(coil.coefs_used[order], dtype=float), nan=0) + coefs_scanner[
-                order]
+            coefs_used[f"{order}"] = (np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0) +
+                                      coefs_scanner[f"{order}"])
 
-    coef_channel_minmax = {}
-    for order, coefs in coil.coef_channel_minmax.items():
-        coef_channel_minmax[order] = []
-        coefs_used_order = np.nan_to_num(np.array(coil.coefs_used[order], dtype=float), nan=0)
-        for i_coef, coefs_channel in enumerate(coefs):
-            coef_channel_minmax[order].append([float(coefs_channel[0]) + coefs_used_order[i_coef],
-                                               float(coefs_channel[1]) + coefs_used_order[i_coef]])
+        # Fill the bounds
+        if coil.coef_channel_minmax.get(f"{order}") is not None:
+            coef_channel_minmax[f"{order}"] = []
+            coefs_used_order = np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0)
+            for i_coef, coefs_channel in enumerate(coil.coef_channel_minmax[f"{order}"]):
+                coef_channel_minmax[f"{order}"].append([float(coefs_channel[0]) + coefs_used_order[i_coef],
+                                                   float(coefs_channel[1]) + coefs_used_order[i_coef]])
 
     data_calculated_constraints = {
         "name": coil.name,
