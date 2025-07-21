@@ -9,7 +9,6 @@ import os
 import pytest
 import tempfile
 
-
 from shimmingtoolbox.files.NiftiFile import NiftiFile, NIFTI_EXTENSIONS
 
 
@@ -140,7 +139,7 @@ def test_niftifile_set_nii(temp_nifti_file):
 
 def test_niftifile_get_json_info(temp_nifti_file, caplog):
     """Test getting info from the JSON file."""
-    caplog.set_level(logging.DEBUG)
+    caplog.set_level(logging.DEBUG, 'shimmingtoolbox.files.NiftiFile')
     nifti = NiftiFile(temp_nifti_file)
     assert nifti.get_json_info("test") == "data"
     with pytest.raises(KeyError):
