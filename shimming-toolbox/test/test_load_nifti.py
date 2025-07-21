@@ -11,8 +11,9 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_acquisition_times, get_isocenter
+from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_acquisition_times
 from shimmingtoolbox import __dir_testing__
+from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 
 class TestCore(object):
@@ -393,7 +394,11 @@ nii_dummy = nib.Nifti1Image(np.zeros((2, 5, 10, 8)), np.eye(4))
 
 def test_get_acquisition_times_gre():
     json_dummy["PulseSequenceDetails"] = "%SiemensSeq%\\gre"
-    slice_timing = get_acquisition_times(nii_dummy, json_dummy)
+    # save nii dummy
+    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
+    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
+    slice_timing = get_acquisition_times(nif_object)
     assert slice_timing.shape == (8, 10)
     assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
 
@@ -401,15 +406,9 @@ def test_get_acquisition_times_gre():
 def test_get_acquisition_times_field_mapping():
     json_dummy["PulseSequenceDetails"] = "%CustomerSeq%\\gre_field_mapping_PMUlog"
     json_dummy["RepetitionTimeExcitation"] = 0.1
-    slice_timing = get_acquisition_times(nii_dummy, json_dummy)
+    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
+    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
+    slice_timing = get_acquisition_times(nif_object)
     assert slice_timing.shape == (8, 10)
     assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
-
-
-class TestGetIsocenter():
-    _json_data = {"TablePosition": [3, 5, 7]}
-
-    def test_get_isocenter_hfs(self):
-        self._json_data["PatientPosition"] = "HFS"
-        isocenter = get_isocenter(self._json_data)
-        assert np.all(isocenter == np.array([-3, -5, -7]))

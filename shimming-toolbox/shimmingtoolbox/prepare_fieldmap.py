@@ -202,7 +202,7 @@ def get_mask(nii_target, mag, nii_mask=None, threshold=None):
         # Check that the mask is the right shape
         if not np.all(nii_mask.shape == nii_target.shape) or not np.all(
                 nii_mask.affine == nii_target.affine):
-            logger.debug("Resampling mask on the target anat")
+            logger.debug("Resampling mask on the target target")
             if nii_target.ndim == 4:
                 nii_tmp_target = nib.Nifti1Image(nii_target.get_fdata()[..., 0], nii_target.affine,
                                                  header=nii_target.header)

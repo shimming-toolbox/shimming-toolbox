@@ -146,8 +146,8 @@ class B0ShimTab(Tab):
                 "required": True
             },
             {
-                "button_label": "Input Anat",
-                "name": "anat",
+                "button_label": "Input target",
+                "name": "target",
                 "button_function": "select_from_overlay",
                 "required": True
             },
@@ -505,8 +505,8 @@ class B0ShimTab(Tab):
                 "required": True
             },
             {
-                "button_label": "Input Anat",
-                "name": "anat",
+                "button_label": "Input target",
+                "name": "target",
                 "button_function": "select_from_overlay",
                 "required": True
             },

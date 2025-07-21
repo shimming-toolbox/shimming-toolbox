@@ -17,12 +17,11 @@ SECONDS_IN_A_DAY = 24 * 60 * 60
 ERROR_MARGIN = 0.99
 
 
-def get_acquisition_times(nii_data, json_data, when='slice-middle'):
-    f""" Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+def get_acquisition_times(nif_data, when='slice-middle'):
+    """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
     Args:
-        nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
-        json_data (dict): Json dict corresponding to a nifti sidecar.
+        nif_data (NiftiFieldMap): NiftiFieldMap object containing the nifti data and json sidecar.
         when (str): When to get the acquisition time. Can be within {POSSIBLE_TIMINGS}.
 
     Returns:
@@ -33,8 +32,8 @@ def get_acquisition_times(nii_data, json_data, when='slice-middle'):
         raise ValueError(f"Invalid 'when' parameter. Must be within {POSSIBLE_TIMINGS}")
 
     # Get number of volumes
-    n_volumes = nii_data.header['dim'][4]
-    n_slices = nii_data.shape[2]
+    n_volumes = nif_data.header['dim'][4]
+    n_slices = nif_data.shape[2]
 
     deltat_volume = get_volume_tr(json_data)
 
@@ -116,7 +115,7 @@ def get_phase_encode_0_crossings(data, n_sli):
     """
 
     # Can be '2D'
-    mr_acquisition_type = data.get('MRAcquisitionType')
+    mr_acquisition_type = data.get_json_info('MRAcquisitionType')
     if mr_acquisition_type != '2D':
         # mr_acquisition_type is None or 3D
         raise NotImplementedError("MR acquisition type is not 2D.")
@@ -580,127 +579,3 @@ def read_nii(fname_nifti, auto_scale=True):
         pass
 
     return nii, json_data, image
-
-
-def get_isocenter(json_data):
-    """ Get the isocenter location in RAS coordinates from the json file. The patient position is used to infer the
-    table position in the patient coordinate system. When the table is at (0,0,0), the origin is at the isocenter.
-    We can therefore infer the isocenter as -table_position when the table_position is in RAS coordinates.
-
-    Args:
-        json_data (dict): Dictionary containing the BIDS sidecar information
-
-    Returns:
-        numpy.ndarray: Isocenter location in RAS coordinates
-    """
-    table_position = json_data.get('TablePosition')
-    if table_position is None:
-        raise ValueError("Table position not found in json sidecar.")
-
-    patient_position = json_data.get('PatientPosition')
-    if patient_position is None:
-        raise ValueError("Patient position not found in json sidecar.")
-
-    # From the Bid specification "TablePosition":
-    # The table position, relative to an implementation-specific reference point, often the isocenter. Values must be
-    # an array (1x3) of three distances in millimeters in absolute coordinates (world coordinates). If an observer
-    # stands in front of the scanner looking at it, a table moving to the left, up or into the scanner (from the
-    # observer's point of view) will increase the 1st, 2nd and 3rd value in the array respectively. The origin is
-    # defined by the image affine.
-    table_position = np.array(table_position)
-
-    # Convert table position to RAS coordinates
-    table_position_ras = np.zeros(3)
-    if patient_position == 'HFS':
-        table_position_ras = table_position
-    elif patient_position == 'HFP':
-        table_position_ras[0] = -table_position[0]
-        table_position_ras[1] = -table_position[1]
-        table_position_ras[2] = table_position[2]
-    elif patient_position == 'FFS':
-        table_position_ras[0] = -table_position[0]
-        table_position_ras[1] = table_position[1]
-        table_position_ras[2] = -table_position[2]
-    elif patient_position == 'FFP':
-        table_position_ras[0] = table_position[0]
-        table_position_ras[1] = -table_position[1]
-        table_position_ras[2] = -table_position[2]
-    elif patient_position == 'LFP':
-        table_position_ras[0] = -table_position[2]
-        table_position_ras[1] = -table_position[1]
-        table_position_ras[2] = -table_position[0]
-    elif patient_position == 'LFS':
-        table_position_ras[0] = -table_position[2]
-        table_position_ras[1] = table_position[1]
-        table_position_ras[2] = table_position[0]
-    elif patient_position == 'RFP':
-        table_position_ras[0] = table_position[2]
-        table_position_ras[1] = -table_position[1]
-        table_position_ras[2] = table_position[0]
-    elif patient_position == 'RFS':
-        table_position_ras[0] = table_position[2]
-        table_position_ras[1] = table_position[1]
-        table_position_ras[2] = -table_position[0]
-    elif patient_position == 'HFDR':
-        table_position_ras[0] = -table_position[1]
-        table_position_ras[1] = table_position[0]
-        table_position_ras[2] = table_position[2]
-    elif patient_position == 'HFDL':
-        table_position_ras[0] = table_position[1]
-        table_position_ras[1] = -table_position[0]
-        table_position_ras[2] = table_position[2]
-    elif patient_position == 'FFDR':
-        table_position_ras[0] = -table_position[1]
-        table_position_ras[1] = -table_position[0]
-        table_position_ras[2] = -table_position[2]
-    elif patient_position == 'FFDL':
-        table_position_ras[0] = table_position[1]
-        table_position_ras[1] = table_position[0]
-        table_position_ras[2] = -table_position[2]
-    elif patient_position == 'AFDR':
-        table_position_ras[0] = -table_position[1]
-        table_position_ras[1] = table_position[2]
-        table_position_ras[2] = -table_position[0]
-    elif patient_position == 'AFDL':
-        table_position_ras[0] = table_position[1]
-        table_position_ras[1] = table_position[2]
-        table_position_ras[2] = table_position[0]
-    elif patient_position == 'PFDR':
-        table_position_ras[0] = -table_position[1]
-        table_position_ras[1] = -table_position[2]
-        table_position_ras[2] = table_position[0]
-    elif patient_position == 'PFDL':
-        table_position_ras[0] = table_position[1]
-        table_position_ras[1] = -table_position[2]
-        table_position_ras[2] = -table_position[0]
-    else:
-        raise NotImplementedError(f"Patient position {patient_position} not implemented")
-
-    # The isocenter is located at -table_position
-    isocenter = -table_position_ras
-
-    return isocenter
-
-
-def is_fatsat_on(json_data):
-    """ Return if the scan was acquired using fat sat.
-
-    Args:
-        json_anat (dict): BIDS Json sidecar
-
-    Returns:
-        bool: Whether fat sat is on
-    """
-
-    if 'ScanOptions' in json_data:
-        if 'FS' in json_data['ScanOptions']:
-            logger.debug("Fat Saturation pulse detected")
-            is_fatsat = True
-        else:
-            logger.debug("No Fat Saturation pulse detected")
-            is_fatsat = False
-    else:
-        logger.warning("No ScanOptions found in JSON sidecar. Cannot determine if fat saturation is on.")
-        is_fatsat = False
-
-    return is_fatsat

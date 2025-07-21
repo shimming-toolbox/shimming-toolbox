@@ -1331,6 +1331,15 @@
         },
         {
             "datatype": "anat",
+            "suffix": "T1wTFE",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "T1FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
             "suffix": "T2wTSE",
             "criteria": {
                 "Manufacturer": "Philips",
@@ -1371,6 +1380,54 @@
                 "EchoNumber": "2",
                 "PulseSequenceName": "FFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-sum",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "EchoNumber": "",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "EchoNumber": "1",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "EchoNumber": "2",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-3",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "EchoNumber": "3",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
             }
         },
         {
