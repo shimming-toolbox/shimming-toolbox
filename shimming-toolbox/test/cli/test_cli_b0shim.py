@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*
 
 import copy
+import math
+
 import pytest
 from click.testing import CliRunner
 import tempfile
@@ -168,11 +170,12 @@ class TestCliDynamic(object):
             with open(__config_scanner_constraints__) as f:
                 constraints_data = json.load(f)
 
-            constraints_data['coefs_used']['0'] = [123100100 + 1000]
+            constraints_data['coefs_used']['0'] = [constraints_data["coef_channel_minmax"]['0'][0][0] + 1000]
             constraints_data['coefs_used']['1'] = None
             constraints_data['coefs_used']['2'] = [None, 1000, 1000, 1000, 1000]
             constraints_data['coef_channel_minmax']['2'][0] = [None, None]
             constraints_data['coef_channel_minmax']['2'][1] = None
+            constraints_data['coef_channel_minmax']['2'][2] = [-np.inf, np.inf]
             fname_scanner_constraints_json = os.path.join(tmp, 'scanner_constraints.json')
             with open(fname_scanner_constraints_json, 'w', encoding='utf-8') as f:
                 json.dump(constraints_data, f, indent=4)
@@ -195,9 +198,9 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
-
-            assert values == [-16.417611, 1.283857, -14.424815, -84.402628, -6.60401, -0.653534, -6.75787,
+            expected_values = [-16.417611, 1.283857, -14.424815, -84.402628, -6.60401, -0.653534, -6.75787,
                               0.955701, -0.168711, -0.139256, -0.094325,  -0.798893, 0.322054]
+            assert values == expected_values
             fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim.json")
             assert os.path.isfile(fname_bids_sidecar_fmap_output)
             with open(fname_bids_sidecar_fmap_output) as f:
@@ -208,6 +211,14 @@ class TestCliDynamic(object):
             assert bids_sidecar_fmap_output_data['ShimSetting'] == [673.058, -7405.47, -9951.41,
                                                                     None, 2813.48, 2834.6, 2818.01, 2866.49,
                                                                     None, None, None, None]
+            with open(os.path.join(tmp, "calculated_scanner_constraints.json")) as f:
+                calc_constraints_data = json.load(f)
+            assert math.isclose(calc_constraints_data['coef_channel_minmax']['0'][0][0],
+                                constraints_data['coef_channel_minmax']['0'][0][0], abs_tol=1e-5)
+            assert math.isclose(calc_constraints_data['coef_channel_minmax']['0'][0][1],
+                                constraints_data['coef_channel_minmax']['0'][0][1], abs_tol=1e-5)
+            assert math.isclose(calc_constraints_data['coefs_used']['0'][0],
+                                constraints_data['coefs_used']['0'][0] + values[0], abs_tol=1e-5)
 
     def test_cli_dynamic_sph_table_not_iso(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
