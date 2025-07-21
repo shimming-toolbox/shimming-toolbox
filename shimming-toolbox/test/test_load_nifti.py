@@ -11,7 +11,7 @@ import shutil
 
 from io import StringIO
 from pathlib import Path
-from shimmingtoolbox.load_nifti import load_nifti, read_nii, get_acquisition_times
+from shimmingtoolbox.load_nifti import load_nifti, read_nii
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
@@ -375,40 +375,3 @@ class TestCore(object):
         assert nii.shape == (64, 96, 1, 10)
         assert ('P' in json_info['ImageType'])
         assert (phasediff.max() <= math.pi) and (phasediff.min() >= -math.pi)
-
-
-json_dummy = {
-    "Manufacturer": "Siemens",
-    "RepetitionTime": "10",
-    "AcquisitionTime": "00:00:00.000000",
-    "MRAcquisitionType": "2D",
-    "SliceTiming": list(range(10)),
-    "PhaseEncodingSteps": 5,
-    "RepetitionTimeExcitation": 0.2,
-    "PulseSequenceDetails": "dummy",
-    "AcquisitionMatrixPE": 5,
-}
-
-nii_dummy = nib.Nifti1Image(np.zeros((2, 5, 10, 8)), np.eye(4))
-
-
-def test_get_acquisition_times_gre():
-    json_dummy["PulseSequenceDetails"] = "%SiemensSeq%\\gre"
-    # save nii dummy
-    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
-    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
-                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
-    slice_timing = get_acquisition_times(nif_object)
-    assert slice_timing.shape == (8, 10)
-    assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
-
-
-def test_get_acquisition_times_field_mapping():
-    json_dummy["PulseSequenceDetails"] = "%CustomerSeq%\\gre_field_mapping_PMUlog"
-    json_dummy["RepetitionTimeExcitation"] = 0.1
-    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
-    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
-                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
-    slice_timing = get_acquisition_times(nif_object)
-    assert slice_timing.shape == (8, 10)
-    assert np.all(slice_timing[0, :3] == [500, 1500, 2500])

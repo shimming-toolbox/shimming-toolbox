@@ -6,7 +6,6 @@ import pytest
 import numpy as np
 import nibabel as nib
 import tempfile
-from pathlib import Path
 import json
 
 from shimmingtoolbox.files.NiftiFile import NiftiFile, NIFTI_EXTENSIONS
@@ -202,7 +201,7 @@ def test_niftifile_no_json(temp_nifti_file):
     nifti = NiftiFile(temp_nifti_file, json_needed=False)
     assert nifti.json is None
 
-    
+
 def test_niftifile_save_json(temp_nifti_file):
     """Test saving JSON data."""
     nifti = NiftiFile(temp_nifti_file, json={"test": "data"})
@@ -214,7 +213,8 @@ def test_niftifile_save_json(temp_nifti_file):
         with open(json_path, 'r') as f:
             data = json.load(f)
             assert data == {"test": "data"}
-            
+
+
 def test_niftifile_save_json_no_data(temp_nifti_file):
     """Test saving NiftiFile without JSON data."""
     nifti = NiftiFile(temp_nifti_file, json_needed=False)
@@ -225,12 +225,14 @@ def test_niftifile_save_json_no_data(temp_nifti_file):
         json_path = os.path.join(tmpdir, "test_saved.json")
         assert not os.path.exists(json_path)  # No JSON file should be created if no data is provided
 
+
 def test_niftifile_save_invalid_extension(temp_nifti_file):
     """Test saving with an invalid file extension."""
     with tempfile.TemporaryDirectory() as tmpdir:
         nifti = NiftiFile(temp_nifti_file, path_output=tmpdir)
         with pytest.raises(ValueError, match="File name must end with .nii or .nii.gz"):
             nifti.save("invalid.txt")
+
 
 def test_niftifile_save_with_custom_filename(temp_nifti_file):
     """Test saving with a custom filename."""
@@ -241,6 +243,7 @@ def test_niftifile_save_with_custom_filename(temp_nifti_file):
         saved_path = os.path.join(tmpdir, "custom_name.nii.gz")
         assert os.path.exists(saved_path)
         assert nib.load(saved_path).shape == (10, 10, 10)
+
 
 def test_niftifile_save_with_custom_filename_no_extension(temp_nifti_file):
     """Test saving with a custom filename without extension."""

@@ -12,8 +12,7 @@ from matplotlib.figure import Figure
 import numpy as np
 import os
 
-from shimmingtoolbox.load_nifti import (get_acquisition_start_time, get_acquisition_stop_time, is_fatsat_on,
-                                        get_excitation_tr, get_slice_timing, get_slice_tr, get_partial_fourier)
+from shimmingtoolbox.files.NiftiFile import NiftiFile
 
 logger = logging.getLogger(__name__)
 ERROR_MARGIN = 0.99
@@ -408,13 +407,12 @@ class PmuExt(Pmu):
         self.min = 0
         self.max = 1
 
-    def get_acquisition_times(self, nii_data, json_data, delay=2):
+    def get_acquisition_times(self, nif, delay=2):
         """ Returns the time at which the middle of the slice was acquired based on getting a trigger at the start of
             a slice. That is: slice_middle = trigger_time + rf_to_middle_of_slice + delay.
 
         Args:
-            nii_data (nibabel.Nifti1Image): Nibabel object containing the image timeseries.
-            json_data (dict): Json dict corresponding to a nifti sidecar (BIDS format).
+            nif (NiftiFile): NiftiFile object containing the image timeseries.
             delay (int): Delay in ms to add to the trigger time. There is a 2ms delay between the trigger and the RF
                          pulse.
 
@@ -422,32 +420,32 @@ class PmuExt(Pmu):
             numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
         """
 
-        if len(nii_data.shape) == 4:
-            n_volumes = nii_data.shape[3]
+        if nif.ndim == 4:
+            n_volumes = nif.shape[3]
         else:
             n_volumes = 1
 
-        if len(nii_data.shape) != 2:
-            n_slices = nii_data.shape[2]
+        if nif.ndim != 2:
+            n_slices = nif.shape[2]
         else:
             n_slices = 1
 
         # Can be '2D'
-        mr_acquisition_type = json_data.get('MRAcquisitionType')
+        mr_acquisition_type = nif.get_json_info('MRAcquisitionType')
         if mr_acquisition_type != '2D':
             # mr_acquisition_type is None or 3D
             raise NotImplementedError("MR acquisition type is not 2D.")
 
         # Offset time in ms to add a buffer to the imprecise timing of the DICOMS
         offset = 5000
-        acq_start_time = int(get_acquisition_start_time(json_data)) - offset
-        acq_stop_time = int(get_acquisition_stop_time(nii_data, json_data)) + offset
+        acq_start_time = int(nif.get_acquisition_start_time()) - offset
+        acq_stop_time = int(nif.get_acquisition_stop_time()) + offset
 
         trigger_times = self.get_trigger_times(acq_start_time, acq_stop_time)
         if len(trigger_times) == 0:
             raise ValueError("No trigger times found in the specified range.")
 
-        fat_suppression = is_fatsat_on(json_data)
+        fat_suppression = nif.get_fat_sat_option()
 
         # If fat suppression, discard half the triggers
         if fat_suppression:
@@ -459,9 +457,9 @@ class PmuExt(Pmu):
         if len(trigger_times) != n_volumes * n_slices:
             raise ValueError("Not enough trigger times for the specified number of volumes and slices.")
 
-        slice_timing_start = get_slice_timing(json_data, n_slices)
+        slice_timing_start = nif.get_slice_timing()
 
-        repetition_slice_excitation = get_excitation_tr(json_data)
+        repetition_slice_excitation = nif.get_excitation_tr()
 
         # If the slice timing is lower than the TR excitation, this is an interleaved multi-slice acquisition
         # (more than one slice acquired within a TR excitation)
@@ -471,7 +469,7 @@ class PmuExt(Pmu):
         if np.any(slice_timing_start[slice_timing_start > 0] < repetition_slice_excitation):
             raise NotImplementedError("Interleaved multi-slice acquisition detected, but not implemented.")
 
-        deltat_slice = get_slice_tr(json_data)
+        deltat_slice = nif.get_slice_tr()
 
         # Order according to slice timing
         slice_timing_from_triggers = np.zeros(n_volumes * n_slices, dtype=float)
@@ -480,7 +478,7 @@ class PmuExt(Pmu):
             slice_timing_from_triggers[i_vol * n_slices:(i_vol + 1) * n_slices] = trigger_times[i_vol * n_slices:(i_vol + 1) * n_slices][slice_timing_order]
 
         # Get when the middle of k-space was acquired
-        fourier = get_partial_fourier(json_data)
+        fourier = nif.get_partial_fourier()
 
         # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
         # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,

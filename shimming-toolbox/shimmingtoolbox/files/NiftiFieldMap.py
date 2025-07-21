@@ -19,7 +19,8 @@ class NiftiFieldMap(NiftiFile):
 
     It inherits all methods and properties from NiftiFile and can be used to handle field map files specifically.
     """
-    def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None, is_realtime: bool = False) -> None:
+    def __init__(self, fname_nii: str, dilation_kernel_size, json:dict = None, path_output: str = None,
+                 is_realtime: bool = False) -> None:
         super().__init__(fname_nii, json=json, path_output=path_output)
         self.dilation_kernel_size = dilation_kernel_size
         self.is_realtime = is_realtime
@@ -38,7 +39,7 @@ class NiftiFieldMap(NiftiFile):
         super().set_nii(nii)
         self.extend_field_map(self.dilation_kernel_size)
 
-    def extend_field_map(self, dilation_kernel_size: int) -> None:
+    def extend_field_map(self, dilation_kernel_size: int) -> nib.Nifti1Image:
         """ Extend the field map to match the dilation kernel size.
         This method checks the dimensions of the field map and extends it if necessary.
         Args:
@@ -82,12 +83,12 @@ class NiftiFieldMap(NiftiFile):
 
         return extended_nii if self.extended else self.nii
 
-    def extend_fmap_to_kernel_size(self, dilation_kernel_size, ret_location=False):
+    def extend_fmap_to_kernel_size(self, dilation_kernel_size: int, ret_location=False) -> nib.Nifti1Image:
         """
         Load the fmap and expand its dimensions to the kernel size
 
         Args:
-            dilation_kernel_size: Size of the kernel
+            dilation_kernel_size (int): Size of the kernel
             ret_location (bool): If True, return the location of the original data in the new data
         Returns:
             nib.Nifti1Image: Nibabel object of the loaded and extended fieldmap

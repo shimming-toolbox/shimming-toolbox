@@ -15,7 +15,6 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
@@ -637,7 +636,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     pmu = PmuResp(fname_resp)
 
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nif_fieldmap)
+    acq_timestamps = nif_fieldmap.get_acquisition_times()
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # Create Coil

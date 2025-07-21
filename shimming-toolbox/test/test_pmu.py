@@ -10,7 +10,6 @@ import scipy.signal
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
@@ -63,7 +62,7 @@ def test_timing_images():
     with open(fname_phase_diff_json) as json_file:
         json_data = json.load(json_file)
     nif_fieldmap.json = json_data
-    fieldmap_timestamps = get_acquisition_times(nif_fieldmap)
+    fieldmap_timestamps = nif_fieldmap.get_acquisition_times()
 
     # Interpolate PMU values onto MRI acquisition timestamp
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
@@ -106,7 +105,7 @@ def test_pmu_fake_data():
                  'AcquisitionMatrixPE': 250}
     nif_fieldmap.json = json_data
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nif_fieldmap)
+    acq_timestamps = nif_fieldmap.get_acquisition_times()
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # 10 volumes, 1 slice

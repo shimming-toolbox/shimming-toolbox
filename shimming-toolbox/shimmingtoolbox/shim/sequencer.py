@@ -22,7 +22,6 @@ from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadPro
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp, PmuExt, OutOfRangeError
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.coils.coordinates import resample_from_to
@@ -1088,10 +1087,10 @@ class RealTimeSequencer(Sequencer):
         mean_respiratory_cycle_time = self.pmu.get_mean_trigger_span() / 2
         if self.pmu_ext is not None:
             # Use the external triggers
-            acq_times = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+            acq_times = self.pmu_ext.get_acquisition_times(self.nif_fieldmap)
         else:
             # Infer everything from the BIDS sidecar
-            acq_times = get_acquisition_times(self.nif_fieldmap, when='slice-middle')
+            acq_times = self.nif_fieldmap.get_acquisition_times(when='slice-middle')
         n_samples = 1000
         start_time_mdh, stop_time_mdh = self.pmu.get_start_and_stop_times()
         min_bound_offset = max(-mean_respiratory_cycle_time / 2, start_time_mdh - acq_times.min())
@@ -1101,9 +1100,9 @@ class RealTimeSequencer(Sequencer):
         mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nif_fieldmap.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nif_fieldmap.data, mask=mask_4d == False)
-        fmap = self.nii_fieldmap_orig.get_fdata()
 
-        n_volumes = self.nii_fieldmap_orig.shape[-1]
+        fmap = self.nif_fieldmap.data
+        n_volumes = self.nif_fieldmap.shape[-1]
 
         # Find best time offset
         best_r2_total = 0
@@ -1245,10 +1244,10 @@ class RealTimeSequencer(Sequencer):
         # Fetch the acquisition time of each volume and slice
         if self.pmu_ext is not None:
             # Use the external triggers
-            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times(self.nii_fieldmap_orig, self.json_fmap)
+            self.acq_timestamps_orig = self.pmu_ext.get_acquisition_times(self.nif_fieldmap)
         else:
             # Infer everything from the BIDS sidecar
-            self.acq_timestamps_orig = get_acquisition_times(self.nif_fieldmap)
+            self.acq_timestamps_orig = self.nif_fieldmap.get_acquisition_times(when='slice-middle')
 
         # Fix the timestamps if the fmap was extended
         if self.nif_fieldmap.extended:
