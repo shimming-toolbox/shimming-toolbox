@@ -1,12 +1,14 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
+import json
+import logging
+import nibabel as nib
+import numpy as np
 import os
 import pytest
-import numpy as np
-import nibabel as nib
 import tempfile
-import json
+
 
 from shimmingtoolbox.files.NiftiFile import NiftiFile, NIFTI_EXTENSIONS
 
@@ -138,6 +140,7 @@ def test_niftifile_set_nii(temp_nifti_file):
 
 def test_niftifile_get_json_info(temp_nifti_file, caplog):
     """Test getting info from the JSON file."""
+    caplog.set_level(logging.DEBUG)
     nifti = NiftiFile(temp_nifti_file)
     assert nifti.get_json_info("test") == "data"
     with pytest.raises(KeyError):

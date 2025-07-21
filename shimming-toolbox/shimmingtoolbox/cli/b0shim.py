@@ -633,8 +633,10 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     # Set logger level
     set_all_loggers(verbose)
-# Prepare the output
+
+    # Prepare the output
     create_output_dir(path_output)
+
     # Set coils and scanner order for riro if none were indicated
     if scanner_coil_order_riro is None:
         scanner_coil_order_riro = scanner_coil_order_static
