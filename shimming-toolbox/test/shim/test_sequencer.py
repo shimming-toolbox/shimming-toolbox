@@ -15,7 +15,6 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
@@ -60,16 +59,16 @@ def create_fieldmap(n_slices=3, is_realtime=False):
         unshimmed = np.repeat(unshimmed[:, :, :, np.newaxis], 4, axis=3)
 
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
-    
+
     # Save in tmp directory
     nib.save(nii_fmap, os.path.join(__dir_testing__, 'fieldmap.nii.gz'))
     # save a fake json file
     json_fmap = {'SliceThickness': 3}
-        
+
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'), 
+    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'),
                              dilation_kernel_size=3, json=json_fmap, is_realtime=is_realtime)
-        
+
     return nif_fmap
 
 
@@ -409,7 +408,7 @@ def define_rt_sim_inputs():
     nib.save(nii_mask_static, os.path.join(__dir_testing__, 'mask_static.nii.gz'))
     # Load the mask
     nif_mask_static = NiftiMask(os.path.join(__dir_testing__, 'mask_static.nii.gz'), nif_target)
-    
+
     nif_mask_riro = copy.deepcopy(nif_mask_static)
 
     # Pmu
@@ -422,9 +421,16 @@ def define_rt_sim_inputs():
     pmu.set_start_and_stop_times(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000,
+                 'RepetitionTimeExcitation': 0.001,
+                 'AcquisitionTime': "00:00:00.000000",
+                 'MRAcquisitionType': "2D",
+                 'SliceTiming': [0.0, 0.001, 0.002],
+                 'PulseSequenceDetails': "%SiemensSeq%\\gre",
+                 'Manufacturer': "Siemens",
+                 'PhaseEncodingSteps': 64,
+                 'AcquisitionMatrixPE': 64}
     nif_fieldmap.json = json_data
-    # acq_timestamps = get_acquisition_times(nii_fieldmap, json_data, when='volume-start')
 
     # Create Coil
     coil_affine = nif_fieldmap.affine
@@ -493,7 +499,7 @@ class TestShimRTpmuSimData(object):
         shim_trace_riro = []
         unshimmed_trace = []
         data = pmu.get_data()
-        
+
         for i_shim in range(len(slices)):
             # Calculate static correction
             correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
@@ -618,10 +624,10 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     static_mask = shapes(nif_target.data, 'cube', len_dim1=5, len_dim2=5, len_dim3=nz)
 
     nii_mask = nib.Nifti1Image(static_mask.astype(int), nif_target.affine, header=nif_target.header)
-    
+
     # save mask
     nib.save(nii_mask, os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_mask_static.nii.gz'))
-    
+
     nif_static_mask = NiftiMask(os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_mask_static.nii.gz'), nif_target)
     nif_riro_mask = copy.deepcopy(nif_static_mask)
     # Pmu
@@ -630,7 +636,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     pmu = PmuResp(fname_resp)
 
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nif_fieldmap)
+    acq_timestamps = nif_fieldmap.get_acquisition_times()
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # Create Coil

@@ -30,7 +30,7 @@ class NiftiTarget(NiftiFile):
         self.check_dimensions()
         self.make_3d()
 
-    def make_3d(self):
+    def make_3d(self) -> None:
         if self.ndim == 3:
             pass
         elif self.ndim == 4:
@@ -39,7 +39,7 @@ class NiftiTarget(NiftiFile):
         else:
             raise ValueError("Target image must be in 3d or 4d")
 
-    def check_dimensions(self):
+    def check_dimensions(self) -> None:
         dim_info = self.header.get_dim_info()
 
         if dim_info[2] is None:
@@ -69,20 +69,3 @@ class NiftiTarget(NiftiFile):
                 # Slice must be the 3rd dimension of the file
                 # TODO: Reorient nifti so that the slice is the 3rd dim
                 raise RuntimeError("Slice encode direction must be the 3rd dimension of the NIfTI file.")
-
-    @safe_getter(default_value=False)
-    def get_fat_sat_option(self) -> bool:
-        """ Check if the NIfTI file has a Fat Saturation pulse.
-
-        Returns:
-            bool: True if Fat Saturation pulse is detected, False otherwise.
-        """
-        scan_options = self.get_json_info('ScanOptions', required=False)
-        if scan_options is not None:
-            if 'FS' in scan_options:
-                logger.debug("Fat Saturation pulse detected")
-                return True
-        else:
-            logger.debug("No ScanOptions found in the JSON metadata, assuming no Fat Saturation pulse")
-
-        return False

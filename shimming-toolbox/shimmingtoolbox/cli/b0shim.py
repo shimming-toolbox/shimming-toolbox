@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
-from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.pmu import PmuResp, PmuExt, PmuRespLog, PmuExtLog
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
@@ -174,11 +174,11 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     # Parse scanner_coil_order
     scanner_coil_order = parse_orders(scanner_coil_order)
 
-    # Load the fieldmap
-    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
-
     # Prepare the output
     create_output_dir(path_output)
+
+    # Load the fieldmap
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
 
     # Load the target
     nif_target = NiftiTarget(fname_target, path_output=path_output)
@@ -518,7 +518,9 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
               help="Target image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
-              help="Siemens respiratory file containing pressure data.")
+              help="Siemens respiratory file containing pressure data. Supported extensions: '.resp', '.log'.")
+@click.option('--trigs', 'fname_ext', type=click.Path(exists=True), required=False,
+              help="Siemens external trigger file containing pressure data. Supported extensions: '.ext', '.log'.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
               help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
 @click.option('--mask-static', 'fname_mask_target_static', type=click.Path(exists=True), required=False,
@@ -618,7 +620,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_mask_target_riro, fname_resp, method,
                      opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
                      scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
-                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, verbose):
+                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, fname_ext, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -641,6 +643,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
+
+    # Prepare the output
+    create_output_dir(path_output)
 
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, is_realtime=True)
@@ -713,13 +718,25 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
-    if time_offset is 'auto':
+    if time_offset == 'auto':
         is_pmu_time_offset_auto = True
         time_offset = 0
     else:
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
-    pmu = PmuResp(fname_resp, time_offset=time_offset)
+
+    if os.path.splitext(fname_resp)[1] == '.log':
+        pmu = PmuRespLog(fname_resp, time_offset=time_offset)
+    else:
+        pmu = PmuResp(fname_resp, time_offset=time_offset)
+    if fname_ext is not None:
+        # Load external trigger file if provided
+        if os.path.splitext(fname_resp)[1] == '.log':
+            pmu_ext = PmuExtLog(fname_ext)
+        else:
+            pmu_ext = PmuExt(fname_ext)
+    else:
+        pmu_ext = None
 
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nif_fmap, nif_target, nif_mask_target_static,
@@ -731,6 +748,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
                                   mask_dilation_kernel_size=dilation_kernel_size,
                                   reg_factor=reg_factor,
                                   path_output=path_output,
+                                  pmu_ext=pmu_ext,
                                   is_pmu_time_offset_auto=is_pmu_time_offset_auto)
     # 2) Launch the sequencer
     coefs_static, coefs_riro, mean_p, p_rms = sequencer.shim()

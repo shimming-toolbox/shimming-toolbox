@@ -7,6 +7,7 @@ import numpy as np
 import nibabel as nib
 import tempfile
 
+from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 
@@ -91,3 +92,41 @@ def test_extend_field_map_realtime(temp_nifti_file):
     nib.save(nii_4d, temp_nifti_file)
     nifti = NiftiFieldMap(temp_nifti_file, 12, is_realtime=True)
     assert nifti.extended_data.shape == (12, 12, 12, 5)
+
+
+
+json_dummy = {
+    "Manufacturer": "Siemens",
+    "RepetitionTime": "10",
+    "AcquisitionTime": "00:00:00.000000",
+    "MRAcquisitionType": "2D",
+    "SliceTiming": list(range(10)),
+    "PhaseEncodingSteps": 5,
+    "RepetitionTimeExcitation": 0.2,
+    "PulseSequenceDetails": "dummy",
+    "AcquisitionMatrixPE": 5,
+}
+
+nii_dummy = nib.Nifti1Image(np.zeros((2, 5, 10, 8)), np.eye(4))
+
+
+def test_get_acquisition_times_gre():
+    json_dummy["PulseSequenceDetails"] = "%SiemensSeq%\\gre"
+    # save nii dummy
+    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
+    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
+    slice_timing = nif_object.get_acquisition_times()
+    assert slice_timing.shape == (8, 10)
+    assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
+
+
+def test_get_acquisition_times_field_mapping():
+    json_dummy["PulseSequenceDetails"] = "%CustomerSeq%\\gre_field_mapping_PMUlog"
+    json_dummy["RepetitionTimeExcitation"] = 0.1
+    nib.save(nii_dummy, os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'))
+    nif_object = NiftiFieldMap(os.path.join(__dir_testing__, 'nifti_dummy.nii.gz'),
+                               dilation_kernel_size=3, json=json_dummy, is_realtime=True)
+    slice_timing = nif_object.get_acquisition_times()
+    assert slice_timing.shape == (8, 10)
+    assert np.all(slice_timing[0, :3] == [500, 1500, 2500])
