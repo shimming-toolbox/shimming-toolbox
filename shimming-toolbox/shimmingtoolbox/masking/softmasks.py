@@ -20,14 +20,14 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
     Returns:
         numpy.ndarray: 3D array containing the soft mask.
     """
-    nifti_binmask = nib.load(fname_binmask)
-    binmask = nifti_binmask.get_fdata()
+    nii_binmask = nib.load(fname_binmask)
+    binmask = nii_binmask.get_fdata()
     softmask = None
     if fname_softmask is not None:
-        nifti_softmask = nib.load(fname_softmask)
-        softmask = nifti_softmask.get_fdata()
+        nii_softmask = nib.load(fname_softmask)
+        softmask = nii_softmask.get_fdata()
 
-    soft_width_px = convert_to_pixels(soft_width, width_unit, nifti_binmask.header)
+    soft_width_px = convert_to_pixels(soft_width, width_unit, nii_binmask.header)
 
     soft_maks_options = {
     '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
