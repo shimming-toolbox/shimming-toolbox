@@ -398,6 +398,13 @@ class NiftiFile:
     def get_acquisition_times(self, when='slice-middle') -> np.ndarray:
         """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
+        Note: If you have trigger timestamps, it is more accurate to use those. BIDS does not include the end of the
+        acquisition, so this function extrapolates the time of later volumes based on the time of a single volume.
+        This can become inaccurate the more volumes you have.
+        (AD has seen up to 600ms difference on the last volume in a 10 slices, 100 volumes with delta_volume of 2.434s)
+        We now use the slice timing to extrapolate the volume TR if 1. 2D acquisition, 2. We are not doing interleaved
+        multi-slice and 3. we have more thn 5 slices
+
         Args:
             when (str): When to get the acquisition time. Can be within {POSSIBLE_TIMINGS}.
 
@@ -664,11 +671,19 @@ class NiftiFile:
 
     @safe_getter(default_value=False)
     def get_volume_tr(self) -> float:
-        """ Get the volume repetition time in milliseconds from the json sidecar.
+        """ Get the volume repetition time in milliseconds from the json sidecar. AcquisitionDuration is not really
+        reliable. Using the slice timing and extrapolation the acquisition duration seems more reliable.
 
         Returns:
             float: Volume repetition time in milliseconds.
         """
+
+        # Use slice timing if we have many slices and not interleaved multi-slice acquisition
+        if not self.is_interleaved_multi_slice() and self.shape[2] > 5:
+            # Slice timing is more reliable than the AcquisitionDuration if we have many slices
+            slice_timing = self.get_slice_timing()
+            deltat_volume = slice_timing.max() / (self.shape[2] - 1) * self.shape[2]
+            return deltat_volume
 
         # If both RepetitionTimeExcitation and RepetitionTime are defined, then RepetitionTime is the volume TR and
         # RepetitionTimeExcitation is the time between 2 RF pulses of the same slice.
@@ -750,6 +765,33 @@ class NiftiFile:
 
         # If the acquisition stop time is greater than 24 hours, then it is the next day
         return acq_stop_time % (SECONDS_IN_A_DAY * 1000)
+
+    @safe_getter(default_value=False)
+    def is_interleaved_multi_slice(self) -> bool:
+        """
+        Check if the acquisition is interleaved multi-slice. Uses the slice timing and the excitation TR to determine.
+
+        Returns:
+            bool: True if the acquisition is interleaved multi-slice, False otherwise.
+        """
+
+        if self.get_json_info('MRAcquisitionType') != '2D':
+            raise NotImplementedError("This function is only implemented for 2D acquisitions.")
+
+        # Trivial case
+        if self.shape[2] == 1:
+            return False
+
+        slice_timing = self.get_slice_timing()
+        excitation_tr = self.get_excitation_tr()
+        # Remove slices that start at 0 ms (acquired during the first TR excitation)
+        slice_timing_no_zero = slice_timing[slice_timing > 0]
+        # If there are slices that start acquiring before the end of a TR excitation, then it is interleaved multi-slice
+        if np.any(slice_timing_no_zero < excitation_tr):
+            logger.debug("Interleaved multi-slice detected.")
+            return True
+        else:
+            return False
 
 
 # TODO: Implement NiftiCoilProfile class
