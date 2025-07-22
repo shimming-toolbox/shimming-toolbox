@@ -29,16 +29,16 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
 
     soft_width_px = convert_to_pixels(soft_width, width_unit, nifti_binmask.header)
 
-    if type == '2levels':
-        return create_two_levels_softmask(binmask, soft_width_px, soft_value)
-    elif type == 'linear':
-        return create_linear_softmask(binmask, soft_width_px)
-    elif type == 'gaussian':
-        return create_gaussian_softmask(binmask, soft_width_px)
-    if type == 'sum':
-        return add_softmask_to_binmask(binmask, softmask)
-    else:
-        raise ValueError("Invalid soft mask type. Must be one of: '2levels', 'linear', 'gaussian', 'sum'")
+    soft_maks_options = {
+    '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
+    'linear': lambda: create_linear_softmask(binmask, soft_width_px),
+    'gaussian': lambda: create_gaussian_softmask(binmask, soft_width_px),
+    'sum': lambda: add_softmask_to_binmask(binmask, softmask)
+}
+    try:
+        return soft_maks_options[type]()
+    except KeyError:
+        raise ValueError("Invalid soft mask type. Must be one of: soft_maks_options.keys()")
 
 
 def convert_to_pixels(lenght, unit, header):

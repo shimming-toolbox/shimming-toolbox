@@ -4,7 +4,7 @@ import tempfile
 import nibabel as nib
 import numpy as np
 
-from shimmingtoolbox.masking.softmasks import create_softmask
+from shimmingtoolbox.masking.softmasks import create_softmask, convert_to_pixels, save_softmask
 
 class TestSoftmaskCreation:
     def setup_method(self):
@@ -51,3 +51,43 @@ class TestSoftmaskCreation:
         nib.save(nii_gaussmask, self.path_gaussmask)
         softmask = create_softmask(self.path_binmask, fname_softmask=self.path_gaussmask, type='sum')
         self.check_softmask(softmask)
+
+class TestUtilityFunctions:
+    def setup_method(self):
+        # Create a dummy binary mask to extract header and test save
+        self.binary_mask = np.zeros((5, 5, 5), dtype=np.float32)
+        self.binary_mask[2, 2, 2] = 1.0
+        self.nii = nib.Nifti1Image(self.binary_mask, affine=np.eye(4))
+        self.tmpdir = tempfile.TemporaryDirectory()
+        self.path_binmask = os.path.join(self.tmpdir.name, 'binmask.nii.gz')
+        nib.save(self.nii, self.path_binmask)
+
+    def teardown_method(self):
+        self.tmpdir.cleanup()
+
+    def test_convert_to_pixels_mm(self):
+        header = self.nii.header
+        header.set_zooms((2.0, 2.0, 2.0))  # voxel size of 2 mm
+        pixels = convert_to_pixels(6, 'mm', header)
+        assert pixels == 3  # 6 mm / 2 mm = 3 pixels
+
+    def test_convert_to_pixels_px(self):
+        header = self.nii.header
+        pixels = convert_to_pixels(5, 'px', header)
+        assert pixels == 5
+
+    def test_convert_to_pixels_invalid_unit(self):
+        header = self.nii.header
+        try:
+            convert_to_pixels(6, 'cm', header)
+            assert False, "Expected ValueError for invalid unit"
+        except ValueError as e:
+            assert "Lenght must be" in str(e)
+
+    def test_save_softmask(self):
+        soft_mask = np.ones_like(self.binary_mask, dtype=np.float32)
+        path_output = os.path.join(self.tmpdir.name, 'softmask.nii.gz')
+        nii_out = save_softmask(soft_mask, path_output, self.path_binmask)
+        assert os.path.exists(path_output)
+        loaded = nib.load(path_output).get_fdata()
+        assert np.allclose(loaded, soft_mask)
