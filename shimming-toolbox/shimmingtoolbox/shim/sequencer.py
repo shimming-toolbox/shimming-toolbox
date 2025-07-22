@@ -1114,7 +1114,7 @@ class RealTimeSequencer(Sequencer):
 
             try:
                 mean_p = self.pmu.mean(acq_times.min(), acq_times.max())
-                pressures = self.pmu.interp_resp_trace(acq_times) - mean_p
+                pressures = self.pmu.interp_resp_trace(acq_times)
 
             except OutOfRangeError:
                 r2_total_list.append(r2_total)
@@ -1133,7 +1133,17 @@ class RealTimeSequencer(Sequencer):
                 fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
                 mask_vec = mask_fmap[..., i_slice].reshape((-1,))
                 non_zero_indexes = np.where(mask_vec != 0)
-                y = fmap_vec[non_zero_indexes[0], :].T
+                # If there are no non-zero indexes, we take the whole fmap_vec
+                if len(non_zero_indexes[0]) == 0:
+                    y = fmap_vec.T
+                else:
+                    y = fmap_vec[non_zero_indexes[0], :].T
+
+                # Todo: Explore idea, limit ourselves to voxels that have
+                # 1. Good SNR, look at magnitude of the fmap
+                # 2. High temporal std (indicates that there is a change in time)
+                #  The idea is that a good r2 score for voxels that are far from the region that changes in time is no
+                #  good for us
 
                 reg = LinearRegression().fit(x, y)
                 # Adjusted r2 score
@@ -1210,7 +1220,10 @@ class RealTimeSequencer(Sequencer):
                 fmap_vec = fmap[..., i_slice, :].reshape((-1, n_volumes))
                 mask_vec = mask_fmap[..., i_slice].reshape((-1,))
                 non_zero_indexes = np.where(mask_vec != 0)
-                y = fmap_vec[non_zero_indexes[0], :].T
+                if len(non_zero_indexes[0]) == 0:
+                    y = fmap_vec.T
+                else:
+                    y = fmap_vec[non_zero_indexes[0], :].T
 
                 # y = (y - y.mean())
                 reg = LinearRegression().fit(x, y)
@@ -1325,13 +1338,13 @@ class RealTimeSequencer(Sequencer):
                     f"data and the fieldmap values")
 
             # Fit to the linear model (no mask)
-            y = fieldmap[..., i_slice, :].reshape(-1, n_volumes).T
+            y = fieldmap[..., i_slice, :].reshape((-1, n_volumes)).T
             reg = LinearRegression().fit(x, y)
 
             # static/riro contains a 3d matrix of static/riro map in the fieldmap space considering the previous equation
             static[..., i_slice] = reg.intercept_.reshape(fieldmap.shape[:-2])
-            riro[..., i_slice] = reg.coef_.reshape(
-                fieldmap.shape[:-2])  # [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+            # Riro: [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
+            riro[..., i_slice] = reg.coef_.reshape(fieldmap.shape[:-2])
 
         # Log the static and riro maps to fit
         if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
@@ -1392,7 +1405,7 @@ class RealTimeSequencer(Sequencer):
 
         return coef_static, coef_riro, mean_p, pressure_rms
 
-    def select_optimizer(self, unshimmed, affine, pmu: PmuResp = None, mean_p=None):
+    def select_optimizer(self, unshimmed, affine, pmu: PmuResp=None, mean_p=None):
         """
         Select and initialize the optimizer
 
