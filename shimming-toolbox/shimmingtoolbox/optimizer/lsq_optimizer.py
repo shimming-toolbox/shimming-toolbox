@@ -15,7 +15,7 @@ from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
+allowed_opt_criteria = ['mse', 'mae', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
 logger = logging.getLogger(__name__)
 
 class LsqOptimizer(OptimizerUtils):
@@ -51,20 +51,18 @@ class LsqOptimizer(OptimizerUtils):
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
-            allowed_opt_criteria[2]: self._residuals_std,
-            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery,
-            allowed_opt_criteria[4]: self._residuals_rmse,
-            allowed_opt_criteria[5]: self._residuals_rmse_signal_recovery,
-            allowed_opt_criteria[6]: self._residuals_ps_huber
+            allowed_opt_criteria[2]: self._residuals_mse_signal_recovery,
+            allowed_opt_criteria[3]: self._residuals_rmse,
+            allowed_opt_criteria[4]: self._residuals_rmse_signal_recovery,
+            allowed_opt_criteria[5]: self._residuals_ps_huber
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
-            allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery_jacobian,
+            allowed_opt_criteria[2]: self._residuals_mse_signal_recovery_jacobian,
+            allowed_opt_criteria[3]: None,
             allowed_opt_criteria[4]: None,
-            allowed_opt_criteria[5]: None,
-            allowed_opt_criteria[6]: None
+            allowed_opt_criteria[5]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -178,9 +176,9 @@ class LsqOptimizer(OptimizerUtils):
         if self._delta is None:
             self._delta = np.percentile(np.abs(residuals), 90)
         # Adapt the weights based on the delta value, so that they adjust depending on the linear/quadratic behavior
-        _alpha = 1 / (1 + self._delta)
-        weights = (1 - _alpha) * np.sqrt(self.mask_coefficients) + _alpha * self.mask_coefficients
-        
+        alpha = 1 / (1 + self._delta)
+        weights = (1 - alpha) * np.sqrt(self.mask_coefficients) + alpha * self.mask_coefficients
+
         return np.mean(weights * pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_mse(self, coef, a, b, c):
@@ -231,25 +229,6 @@ class LsqOptimizer(OptimizerUtils):
         weights = np.sqrt(self.mask_coefficients)
         shimmed_vec = weights * (unshimmed_vec + coil_mat @ coef)
         return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
-
-    def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize the standard deviation (STD)
-
-        Args:
-            coef (np.ndarray): 1D array of channel coefficients
-            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
-
-        Returns:
-            float: Residuals for least squares optimization
-        """
-        # STD regularized to minimize currents
-        weights = self.mask_coefficients
-        residuals = weights * (unshimmed_vec + coil_mat @ coef)
-        return np.std(residuals) / factor + np.abs(coef).dot(self.reg_vector)
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
