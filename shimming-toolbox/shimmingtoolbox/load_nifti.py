@@ -64,7 +64,7 @@ def get_acquisition_times(nif_data, when='slice-middle'):
         """
 
         # Can be '2D' or 3D
-        mr_acquisition_type = data.get_json_info('MRAcquisitionType')
+        mr_acquisition_type = data.get_json_info('MRAcquisitionType', required=False)
         if mr_acquisition_type != '2D':
             # mr_acquisition_type is None or 3D
             logger.warning("MR acquisition type is not 2D.")
