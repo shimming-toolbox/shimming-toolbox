@@ -685,6 +685,7 @@ class ShimSequencer(Sequencer):
 
     def save_calc_fmap_json(self, coefs):
         json_shimmed = copy.deepcopy(self.nif_fieldmap.json)
+        # If volume shim
         if len(self.slices) == 1:
             # i keeps track of the index of the concatenated shim coefficients
             i = 0

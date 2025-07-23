@@ -285,6 +285,12 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
         if type(coil) == ScannerCoil:
             manufacturer = nif_target.get_json_info('Manufacturer')
 
+            # If it's a volume shim, we can update the input constraints
+            # There is a check if fname_sph_constr is provided because if it is not, we can write the updated shim
+            # settings in the JSON sidecar of the output fmap.
+            if (fname_sph_constr is not None) and (slices == 'volume'):
+                write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_coil, coil, path_output)
+
             # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
             # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
             # Therefore, we can only check for the o_format_sph.
@@ -1622,6 +1628,54 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
     coefs_coil = coefs_scanner
 
     return coefs_coil
+
+
+def write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_coil, coil, path_output):
+    """ Write the updated scanner constraints to a JSON file.
+
+    Args:
+        scanner_coil_order (list): List of scanner coil orders (e.g. [0, 1, 2])
+        manufacturer (str): Manufacturer of the scanner (e.g. 'GE', 'Siemens', 'Philips')
+        coefs_coil (np.ndarray): Array of shim coefficients (n_shims x n_channels)
+        coil (ScannerCoil): ScannerCoil object containing the metadata of the scanner coil.
+        path_output (str): Path to the output directory where the JSON file will be saved.
+
+    """
+    coefs_scanner = {}
+    coefs_used = {}
+    coef_channel_minmax = {}
+    start_channel_scanner = 0
+    for order in scanner_coil_order:
+        # Get coefficients for the current order
+        end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
+        coefs_scanner[f"{order}"] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order][0]
+        start_channel_scanner = end_channel_scanner_order
+
+        # Fill the coefficients used (calculated + previous coefs already applied)
+        if coefs_scanner.get(f"{order}") is None:
+            coefs_used[f"{order}"] = coil.coefs_used[order]
+        else:
+            coefs_used[f"{order}"] = (np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0) +
+                                      coefs_scanner[f"{order}"])
+
+        # Fill the bounds
+        if coil.coef_channel_minmax.get(f"{order}") is not None:
+            coef_channel_minmax[f"{order}"] = []
+            coefs_used_order = np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0)
+            for i_coef, coefs_channel in enumerate(coil.coef_channel_minmax[f"{order}"]):
+                coef_channel_minmax[f"{order}"].append([float(coefs_channel[0]) + coefs_used_order[i_coef],
+                                                   float(coefs_channel[1]) + coefs_used_order[i_coef]])
+
+    data_calculated_constraints = {
+        "name": coil.name,
+        "coef_channel_minmax": coef_channel_minmax,
+        "coef_sum_max": coil.coef_sum_max,
+        "coefs_used": {order: coefs.tolist() for order, coefs in coefs_used.items()},
+    }
+    logging.info(data_calculated_constraints)
+    fname_output_json_constraints = os.path.join(path_output, "calculated_scanner_constraints.json")
+    with open(fname_output_json_constraints, "w") as outfile:
+        json.dump(data_calculated_constraints, outfile, indent=4)
 
 
 b0shim_cli.add_command(dynamic)
