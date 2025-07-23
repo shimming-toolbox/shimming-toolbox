@@ -133,10 +133,8 @@ class Optimizer(object):
             mask = mask.astype(float)
         # Reshape mask to 1D
         mask_vec = mask.reshape((-1,))
-        # Get indices of non-zero mask values
-        masked_points_indices = np.where(mask_vec != 0.0)
         # Get the non-zero mask coefficient values
-        self.mask_coefficients = np.array(mask_vec[masked_points_indices[0]])
+        self.mask_coefficients = mask_vec[mask_vec != 0]
 
         # Define number of coil profiles (channels)
         n_channels = self.merged_coils.shape[3] # dimensions : (n_channels,)
@@ -147,10 +145,10 @@ class Optimizer(object):
 
         # Extract the masked coil matrix
         # dimensions : (n_channels, mask.size) --> (mask.size, n_channels) --> (masked_values, n_channels)
-        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T
+        coil_mat = merged_coils_reshaped[:, mask_vec != 0].T
         # Extract the unshimmed vector
         # dimensions : (masked_values,)
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]
 
         return coil_mat, unshimmed_vec
 

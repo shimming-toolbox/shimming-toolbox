@@ -121,7 +121,7 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
     """Calculate a weighted metric within a region of interest (ROI) defined by a mask.
 
     This function computes various metrics (mean, standard deviation, mean absolute error,
-    mean squared error, root mean squared error) over a 3D array, considering only the
+    mean squared error, root mean squared error) over a 3D array, considering only the non-zero
     elements within the mask. The mask can contain values between 0 and 1, where 0 indicates
     the data is masked, or can contain binary values (0 or 1). If the mask contains values
     between 0 and 1, the data is weighted accordingly.
