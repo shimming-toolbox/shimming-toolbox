@@ -71,7 +71,7 @@ def get_acquisition_times(nif_data, when='slice-middle'):
             return np.zeros(n_slices)
 
         # list containing the time at which each slice was acquired
-        slice_timing_start = data.get_json_info('SliceTiming')
+        slice_timing_start = data.get_json_info('SliceTiming', required=False)
         if slice_timing_start is None:
             if n_sli == 1:
                 # Slice timing information does not seem to be defined if there is only one slice
@@ -126,7 +126,7 @@ def get_acquisition_times(nif_data, when='slice-middle'):
             return np.zeros(n_slices)
 
         # Get when the middle of k-space was acquired
-        manufacturer = data.get_json_info('Manufacturer')
+        manufacturer = data.get_json_info('Manufacturer', required=False)
         if manufacturer == 'Siemens':
             fourier = data.get_json_info('PartialFourier')
             if fourier is None:
