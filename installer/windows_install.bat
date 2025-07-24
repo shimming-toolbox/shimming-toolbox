@@ -19,17 +19,17 @@ mkdir "%ST_DIR%\%PYTHON_DIR%"
 
 echo Installing conda in %ST_DIR%\%PYTHON_DIR%
 REM Test for other OSs
-set "CONDA_INSTALLER=Mambaforge-Windows-x86_64.exe"
+set "CONDA_INSTALLER=Miniforge3-Windows-x86_64.exe"
 set "CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/%CONDA_INSTALLER%"
 
 :uniqLoop
 set "UNIQUE_TMP_INSTALLER=%tmp%\st_%RANDOM%_%CONDA_INSTALLER%"
 if exist %UNIQUE_TMP_INSTALLER% (goto :uniqLoop)
 
-REM Download mamba
+REM Download Miniforge
 powershell -Command "Invoke-WebRequest '%CONDA_INSTALLER_URL%' -OutFile '%UNIQUE_TMP_INSTALLER%'"
 
-REM Install mamba
+REM Install Miniforge
 echo Installing ...
 start /wait "" "%UNIQUE_TMP_INSTALLER%" /RegisterPython=0 /S /D=%ST_DIR%\%PYTHON_DIR%
 
