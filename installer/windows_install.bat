@@ -56,16 +56,6 @@ for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\st_*.*") do (
 	copy "%%f" "%ST_DIR%\%BIN_DIR%" || goto error
 )
 
-REM Copy dcm2niix to the bin directory, there are 2 places it might be
-set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Library\bin\dcm2niix.exe"
-if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
-    set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Scripts\dcm2niix.exe"
-    if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
-        echo "dcm2niix.exe not found"
-        goto error
-    )
-)
-
 REM Add scripts to the User's path
 for /F "skip=2 tokens=2,*" %%A in ('reg.exe query "HKEY_CURRENT_USER\Environment" /v path') do set "OLD_PATH=%%B"
 REM If OLD_PATH is not an empty string
