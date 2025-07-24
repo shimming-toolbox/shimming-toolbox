@@ -40,9 +40,10 @@ echo Installing python
 call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge python=3.10 || goto error
 
 REM Installing Shimming Toolbox
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\custom_coil_constraints.json" "%ST_DIR%\custom_coil_constraints.json" || goto error
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\scanner_coil_constraints.json" "%ST_DIR%\scanner_coil_constraints.json" || goto error
+echo Installing Shimming Toolbox
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\custom_coil_constraints.json" "%ST_DIR%\custom_coil_constraints.json" || goto error
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\scanner_coil_constraints.json" "%ST_DIR%\scanner_coil_constraints.json" || goto error
 
 cd "%ST_SOURCE_FILES%"
 "%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install . --no-warn-script-location || goto error
@@ -64,7 +65,6 @@ if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto 
         goto error
     )
 )
-
 
 REM Add scripts to the User's path
 for /F "skip=2 tokens=2,*" %%A in ('reg.exe query "HKEY_CURRENT_USER\Environment" /v path') do set "OLD_PATH=%%B"
