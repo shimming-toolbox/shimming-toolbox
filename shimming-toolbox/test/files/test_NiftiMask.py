@@ -85,6 +85,7 @@ def test_set_nii_4d(temp_nifti_file):
         nif.set_nii(new_nii, nifti_target)
         assert nif.data.shape == (10, 10, 10)
         assert np.sum(nif.data) == 0
+        del nifti_target
 
 
 def test_set_nii_resample(temp_nifti_file):
@@ -97,6 +98,7 @@ def test_set_nii_resample(temp_nifti_file):
         nifti_target = create_nifti_target(tmpdir, (10, 10, 10), np.eye(4))
         nifti.set_nii(new_nii, nifti_target)
         assert nifti.data.shape == (10, 10, 10)
+        del nifti_target
 
 
 def test_set_nii_resample_affine(temp_nifti_file):
@@ -110,3 +112,4 @@ def test_set_nii_resample_affine(temp_nifti_file):
         nifti.set_nii(new_nii, nifti_target)
         assert nifti.data.shape == (10, 10, 10)
         assert not np.all(nifti.affine == new_nii.affine)
+        del nifti_target
