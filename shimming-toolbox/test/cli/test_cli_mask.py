@@ -251,7 +251,7 @@ def test_cli_softmask_two_levels():
 
         # Create soft mask
         out = os.path.join(tmp, 'softmask.nii.gz')
-        result = runner.invoke(mask_cli, ['create-softmask',
+        result = runner.invoke(mask_cli, ['softmask',
                                           '--input', bin, '--output', out,
                                           '--type', '2levels',
                                           '--blur-width', 6,
@@ -291,7 +291,7 @@ def test_cli_softmask_linear():
         # Create a soft mask
         out = os.path.join(tmp, 'softmask.nii.gz')
         blur_width = 4
-        result = runner.invoke(mask_cli, ['create-softmask',
+        result = runner.invoke(mask_cli, ['softmask',
                                           '--input', bin, '--output', out,
                                           '--type', 'linear',
                                           '--blur-width', blur_width,
@@ -333,7 +333,7 @@ def test_cli_softmask_gaussian():
         # Create a soft mask
         out = os.path.join(tmp, 'softmask.nii.gz')
         blur_width = 6
-        result = runner.invoke(mask_cli, ['create-softmask',
+        result = runner.invoke(mask_cli, ['softmask',
                                           '--input', bin, '--output', out,
                                           '--type', 'gaussian',
                                           '--blur-width', blur_width,
