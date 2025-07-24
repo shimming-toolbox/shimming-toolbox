@@ -138,7 +138,7 @@ class NiftiFile:
             os.makedirs(self.path_output)
         elif not os.path.isdir(self.path_output):
             raise ValueError(f"Output path {fname_output} is not a valid directory.")
-        
+
         if self.json is not None:
             # Save json
             fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
@@ -223,7 +223,7 @@ class NiftiFile:
         return path_nii
 
     @safe_getter(default_value=None)
-    def get_json_info(self, key: str, required: bool = False) -> any:
+    def get_json_info(self, key: str, required: bool = True) -> any:
         """ Get a specific key from the JSON file.
 
         Args:
