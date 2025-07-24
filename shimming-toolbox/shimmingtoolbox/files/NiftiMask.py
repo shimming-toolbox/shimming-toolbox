@@ -60,14 +60,12 @@ class NiftiMask(NiftiFile):
         else:
             raise ValueError("Mask must be in 3d or 4d")
 
-        if not np.all(nii_mask_target.shape == nif_target.shape) or not np.all(
-                nii_mask_target.affine == nif_target.affine):
-            logger.debug("Resampling mask on the target target")
-            nii_mask_target_soft = resample_from_to(nii_mask_target, nif_target.nii, order=1, mode='grid-constant')
-            tmp_mask = nii_mask_target_soft.get_fdata()
-            # Change soft mask into binary mask
-            tmp_mask = threshold(tmp_mask, thr=0.001, scaled_thr=True)
-            nii_mask_target = nib.Nifti1Image(tmp_mask, nii_mask_target_soft.affine, header=nii_mask_target_soft.header)
+        # Check if the mask needs to be resampled
+        if not np.all(nii_mask_target.shape == nif_target.shape) or not np.all(nii_mask_target.affine == nif_target.affine):
+            # Resample the mask on the target
+            logger.debug("Resampling mask on the target")
+            nii_mask_target = resample_from_to(nii_mask_target, nif_target.nii, order=1, mode='grid-constant')
+            # Save the resampled mask
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_target, os.path.join(self.path_output, "mask_static_resampled_on_target.nii.gz"))
 

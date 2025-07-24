@@ -34,8 +34,8 @@ class QuadProgOpt(OptimizerUtils):
             initial_guess_method (str): method to find the initial guess
         """
         if reg_factor < 0:
-            raise TypeError(f"reg_factor is negative, and would cause optimization to crash."
-                            f" If you want to keep this reg_factor please use lsq_optimizer")
+            raise TypeError("reg_factor is negative, and would cause optimization to crash. "
+                            "If you want to keep this reg_factor please use lsq_optimizer")
         self.opt_criteria = None
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
@@ -107,6 +107,10 @@ class QuadProgOpt(OptimizerUtils):
         Returns:
             float: Residuals for quad_prog optimization
         """
+        # Apply weights to the coil matrix and unshimmed vector
+        coil_mat = self.mask_coefficients[:, np.newaxis] * coil_mat
+        unshimmed_vec = self.mask_coefficients * unshimmed_vec
+
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
 
@@ -174,7 +178,7 @@ class QuadProgOpt(OptimizerUtils):
 
         return cost_matrix, cost_vector
 
-
+# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuQuadProgOpt(QuadProgOpt):
     """ Optimizer for the realtime component (riro) for this optimization:
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
