@@ -142,8 +142,8 @@ def test_niftifile_get_json_info(temp_nifti_file, caplog):
     nifti = NiftiFile(temp_nifti_file)
     assert nifti.get_json_info("test") == "data"
     with pytest.raises(KeyError):
-        nifti.get_json_info("nonexistent", required=True)
-    assert nifti.get_json_info("nonexistent") is None
+        nifti.get_json_info("nonexistent")
+    assert nifti.get_json_info("nonexistent", required=False) is None
     assert "Key 'nonexistent' not found in JSON file" in caplog.text
 
 
@@ -202,7 +202,7 @@ def test_niftifile_no_json(temp_nifti_file):
     nifti = NiftiFile(temp_nifti_file, json_needed=False)
     assert nifti.json is None
 
-    
+
 def test_niftifile_save_json(temp_nifti_file):
     """Test saving JSON data."""
     nifti = NiftiFile(temp_nifti_file, json={"test": "data"})
@@ -214,7 +214,7 @@ def test_niftifile_save_json(temp_nifti_file):
         with open(json_path, 'r') as f:
             data = json.load(f)
             assert data == {"test": "data"}
-            
+
 def test_niftifile_save_json_no_data(temp_nifti_file):
     """Test saving NiftiFile without JSON data."""
     nifti = NiftiFile(temp_nifti_file, json_needed=False)
