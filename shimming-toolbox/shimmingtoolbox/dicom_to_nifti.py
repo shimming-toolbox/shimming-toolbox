@@ -55,9 +55,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     if not os.path.exists(path_derivatives):
         os.makedirs(path_derivatives)
 
-    # Check if path_nifti is inside path_dicom for recursive copying issues
-    if os.path.commonpath([path_dicom, path_nifti]) == path_dicom:
-        raise ValueError("path_nifti cannot be inside path_dicom, as it may cause recursive copying issues.")
+    # If the drive letter is the same. On macOS/linus, this will results in 2 empty strings (True)
+    if os.path.splitdrive(path_dicom)[0] == os.path.splitdrive(path_nifti)[0]:
+        # Check if path_nifti is inside path_dicom for recursive copying issues
+        if os.path.commonpath([path_dicom, path_nifti]) == path_dicom:
+            raise ValueError("path_nifti cannot be inside path_dicom, as it may cause recursive copying issues.")
 
     # Copy original dicom files into nifti_path/sourcedata
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
