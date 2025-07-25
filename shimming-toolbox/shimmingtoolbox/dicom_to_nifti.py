@@ -55,7 +55,7 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     if not os.path.exists(path_derivatives):
         os.makedirs(path_derivatives)
 
-    # If the drive letter is the same. On macOS/linus, this will results in 2 empty strings (True)
+    # If the drive letter is the same. On macOS/linux, this will results in 2 empty strings (True)
     if os.path.splitdrive(path_dicom)[0] == os.path.splitdrive(path_nifti)[0]:
         # Check if path_nifti is inside path_dicom for recursive copying issues
         if os.path.commonpath([path_dicom, path_nifti]) == path_dicom:
