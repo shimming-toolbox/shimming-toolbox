@@ -67,7 +67,7 @@ If your username contains spaces, you can create a new user account with no spac
 
 .. Note::
 
-    The installer will install ``Shimming Toolbox`` and ``dcm2niix`` into an isolated environment. It will not interfere if you already have ``dcm2niix`` installed.
+    The installer will install ``Shimming Toolbox`` into an isolated environment.
 
 Open a ``cmd`` command prompt. Navigate to where you want to download Shimming Toolbox and run the following commands.
 
@@ -87,11 +87,11 @@ Next, run the installer:
 .. Warning::
     To use Shimming Toolbox's scripts, you will be prompted to either reboot your computer or follow these instructions:
 
-    Open the Start Menu -> Type 'environment' -> Open **Edit environment variables for your account**
+    Open the Start Menu -> Type 'Edit environment' -> Open **Edit environment variables for your account**
 
     Click 'OK'
 
-To make sure the installation was successful, run the following command:
+To make sure the installation was successful, open a new terminal window and run the following command:
 
 .. code:: bat
 

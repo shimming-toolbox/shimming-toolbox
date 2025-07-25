@@ -19,17 +19,17 @@ mkdir "%ST_DIR%\%PYTHON_DIR%"
 
 echo Installing conda in %ST_DIR%\%PYTHON_DIR%
 REM Test for other OSs
-set "CONDA_INSTALLER=Mambaforge-Windows-x86_64.exe"
+set "CONDA_INSTALLER=Miniforge3-Windows-x86_64.exe"
 set "CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/%CONDA_INSTALLER%"
 
 :uniqLoop
 set "UNIQUE_TMP_INSTALLER=%tmp%\st_%RANDOM%_%CONDA_INSTALLER%"
 if exist %UNIQUE_TMP_INSTALLER% (goto :uniqLoop)
 
-REM Download mamba
+REM Download Miniforge
 powershell -Command "Invoke-WebRequest '%CONDA_INSTALLER_URL%' -OutFile '%UNIQUE_TMP_INSTALLER%'"
 
-REM Install mamba
+REM Install Miniforge
 echo Installing ...
 start /wait "" "%UNIQUE_TMP_INSTALLER%" /RegisterPython=0 /S /D=%ST_DIR%\%PYTHON_DIR%
 
@@ -40,9 +40,10 @@ echo Installing python
 call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge python=3.10 || goto error
 
 REM Installing Shimming Toolbox
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\custom_coil_constraints.json" "%ST_DIR%\custom_coil_constraints.json" || goto error
-copy "%ST_SOURCE_FILES%\config\shimmingtoolbox\scanner_coil_constraints.json" "%ST_DIR%\scanner_coil_constraints.json" || goto error
+echo Installing Shimming Toolbox
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\dcm2bids.json" "%ST_DIR%\dcm2bids.json" || goto error
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\custom_coil_constraints.json" "%ST_DIR%\custom_coil_constraints.json" || goto error
+copy "%ST_SOURCE_FILES%\shimmingtoolbox\config\scanner_coil_constraints.json" "%ST_DIR%\scanner_coil_constraints.json" || goto error
 
 cd "%ST_SOURCE_FILES%"
 "%ST_DIR%\%PYTHON_DIR%\python.exe" -m pip install . --no-warn-script-location || goto error
@@ -54,17 +55,6 @@ mkdir "%ST_DIR%\%BIN_DIR%"
 for %%f in ("%ST_DIR%\%PYTHON_DIR%\Scripts\st_*.*") do (
 	copy "%%f" "%ST_DIR%\%BIN_DIR%" || goto error
 )
-
-REM Copy dcm2niix to the bin directory, there are 2 places it might be
-set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Library\bin\dcm2niix.exe"
-if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
-    set "PATH_DCM2NIIX=%ST_DIR%\%PYTHON_DIR%\Scripts\dcm2niix.exe"
-    if exist "%PATH_DCM2NIIX%" (copy "%PATH_DCM2NIIX%" "%ST_DIR%\%BIN_DIR%" || goto error) else (
-        echo "dcm2niix.exe not found"
-        goto error
-    )
-)
-
 
 REM Add scripts to the User's path
 for /F "skip=2 tokens=2,*" %%A in ('reg.exe query "HKEY_CURRENT_USER\Environment" /v path') do set "OLD_PATH=%%B"

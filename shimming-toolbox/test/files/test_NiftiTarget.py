@@ -102,7 +102,9 @@ def test_make_3d(temp_nifti_file_4d):
 
 def test_check_dimensions_wrong_slice_encode(temp_nifti_file_3d):
     """Test check_dimensions with wrong slice encoding direction."""
-    nii = nib.load(temp_nifti_file_3d)
+    fname_renamed = os.path.join(os.path.dirname(temp_nifti_file_3d), "temp.nii")
+    os.rename(temp_nifti_file_3d, fname_renamed)
+    nii = nib.load(fname_renamed)
     nii.header.set_dim_info(freq=2, phase=1, slice=0)
     nib.save(nii, temp_nifti_file_3d)
     with pytest.raises(RuntimeError, match="Slice encode direction must be the 3rd dimension of the NIfTI file."):

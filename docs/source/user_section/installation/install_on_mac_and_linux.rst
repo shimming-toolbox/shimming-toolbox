@@ -23,8 +23,8 @@ Installation Procedure for macOS and Linux
 
 .. Note::
 
-    The installer will install ``Shimming Toolbox``, ``FSLeyes`` and ``dcm2niix`` into an isolated environment.
-    They will not interfere if you already have ``FSLeyes`` or ``dcm2niix`` installed. If you
+    The installer will install ``Shimming Toolbox`` and ``FSLeyes`` into an isolated environment.
+    It will not interfere if you already have ``FSLeyes`` installed. If you
     have previously installed ``FSLeyes``, that version will not support the GUI.
 
 Open a Terminal, navigate where you want to download the source code and run the following commands.

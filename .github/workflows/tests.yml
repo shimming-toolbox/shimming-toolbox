@@ -36,6 +36,8 @@ jobs:
             tests: 'fsleyes-plugin-shimming-toolbox'
           - os: 'macos-13'
             tests: 'fsleyes-plugin-shimming-toolbox'
+          - os: 'windows-latest'
+            tests: 'fsleyes-plugin-shimming-toolbox'
 
     steps:
       - name: Get home directory
@@ -144,6 +146,36 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_FLAG_NAME: ${{ matrix.os }}-Python-${{ matrix.python-version }}
           COVERALLS_PARALLEL: true
+
+  test-windows:
+    name: Test on Windows
+    runs-on: 'windows-latest'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Shimming Toolbox installation
+        shell: cmd /C call {0}
+        run: |
+          echo "Shimming Toolbox installation"
+          installer\windows_install.bat
+
+      - name: Set up environment variables
+        shell: bash
+        run: |
+          echo "$USERPROFILE\shimming-toolbox\python\Scripts" >> $GITHUB_PATH
+          echo "CONDA=$USERPROFILE\shimming-toolbox\python" >> $GITHUB_ENV
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-activate-base: true
+          activate-environment: ""
+          auto-update-conda: false
+
+      - name: Run tests
+        shell: cmd /C call {0}
+        run: |
+          echo "Running tests"
+          py.test .\shimming-toolbox -m "not prelude and not sct and not bet"
 
   coveralls:
     name: Finish Coveralls
