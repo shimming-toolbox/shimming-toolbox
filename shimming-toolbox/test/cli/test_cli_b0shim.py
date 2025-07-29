@@ -1,17 +1,17 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
-import copy
-import math
-
-import pytest
 from click.testing import CliRunner
-import tempfile
-import pathlib
-import os
+import copy
+import json
+import math
 import nibabel as nib
 import numpy as np
-import json
+import os
+import pathlib
+import pytest
+import re
+import tempfile
 
 from shimmingtoolbox import __config_custom_coil_constraints__, __config_scanner_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
@@ -1897,7 +1897,7 @@ class TestCLIRealtime(object):
 
             runner = CliRunner()
             json_fmap = os.path.join(tmp, 'fmap.json')
-            with pytest.raises(OSError, match=f"JSON file not found for {fname_fmap}. Expected at {json_fmap}"):
+            with pytest.raises(OSError, match=re.escape(f"JSON file not found for {fname_fmap}. Expected at {json_fmap}")):
                 runner.invoke(b0shim_cli, ['realtime-dynamic',
                                            '--fmap', fname_fmap,
                                            '--target', fname_target,
