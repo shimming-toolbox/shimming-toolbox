@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.3 (2025-08-31)
+## 1.3 (2025-07-29)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.2...1.3)
 
 ### PACKAGE: SHIMMING TOOLBOX
