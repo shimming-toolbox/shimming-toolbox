@@ -104,12 +104,12 @@ class Optimizer(object):
 
         # Apply weights to the coil matrix and unshimmed vector
         weights = np.sqrt(self.mask_coefficients)
-        coil_mat = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec = weights * unshimmed_vec
+        coil_mat_w = weights[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = weights * unshimmed_vec
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
-        currents = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec
+        currents = -1 * scipy.linalg.pinv(coil_mat_w) @ unshimmed_vec_w
 
         return currents
 
