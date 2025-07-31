@@ -85,6 +85,7 @@ class LsqOptimizer(OptimizerUtils):
         mask_erode = np.zeros_like(mask, dtype=float)
         mask_erode[bin_mask_erode != 0] = mask[bin_mask_erode != 0]
         mask_erode_vec = mask_erode.reshape((-1,))
+        self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
 
         # Define merged coils
         temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
@@ -109,50 +110,6 @@ class LsqOptimizer(OptimizerUtils):
         self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
         self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
         self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-
-        # Interpolated mask coefficients at gradient centers (using map_coordinates)
-        shape_x, shape_y, shape_z = mask_erode.shape
-
-        # Gx: centers between x-voxels, so x in [0.5, ..., shape_x-1.5], y in [0, ..., shape_y-1], z in [0, ..., shape_z-1]
-        gx_x = np.arange(shape_x - 1) + 0.5
-        gx_y = np.arange(shape_y)
-        gx_z = np.arange(shape_z)
-        gx_coords = np.meshgrid(gx_x, gx_y, gx_z, indexing='ij')
-        coords_Gx = np.vstack([c.ravel() for c in gx_coords])
-        mask_Gx_interp = map_coordinates(mask_erode, coords_Gx, order=1, mode='nearest')
-
-        # Gy: centers between y-voxels, so y in [0.5, ..., shape_y-1.5]
-        gy_x = np.arange(shape_x)
-        gy_y = np.arange(shape_y - 1) + 0.5
-        gy_z = np.arange(shape_z)
-        gy_coords = np.meshgrid(gy_x, gy_y, gy_z, indexing='ij')
-        coords_Gy = np.vstack([c.ravel() for c in gy_coords])
-        mask_Gy_interp = map_coordinates(mask_erode, coords_Gy, order=1, mode='nearest')
-
-        # Gz: centers between z-voxels, so z in [0.5, ..., shape_z-1.5]
-        gz_x = np.arange(shape_x)
-        gz_y = np.arange(shape_y)
-        gz_z = np.arange(shape_z - 1) + 0.5
-        gz_coords = np.meshgrid(gz_x, gz_y, gz_z, indexing='ij')
-        coords_Gz = np.vstack([c.ravel() for c in gz_coords])
-        mask_Gz_interp = map_coordinates(mask_erode, coords_Gz, order=1, mode='nearest')
-
-        # Select the coefficients corresponding to the eroded mask.
-        # The coil matrices (e.g., coil_Gx_mat) are masked using mask_erode_vec != 0, so we need to apply
-        # a similar masking to the interpolated mask coefficients.
-        # However, the interpolated masks (e.g., mask_Gx_interp) have smaller dimensions due to the gradient computation
-        # (e.g., shape_x - 1 for Gx), so we must crop the eroded mask accordingly before flattening.
-        # This ensures that the mask used for indexing has the same shape as the interpolated values.
-        mask_erode_Gx = mask_erode[:-1, :, :]
-        mask_erode_Gy = mask_erode[:, :-1, :]
-        mask_erode_Gz = mask_erode[:, :, :-1]
-        mask_erode_vec_Gx = mask_erode_Gx.reshape(-1)
-        mask_erode_vec_Gy = mask_erode_Gy.reshape(-1)
-        mask_erode_vec_Gz = mask_erode_Gz.reshape(-1)
-
-        self.mask_Gx_coefficients = mask_Gx_interp[mask_erode_vec_Gx != 0]
-        self.mask_Gy_coefficients = mask_Gy_interp[mask_erode_vec_Gy != 0]
-        self.mask_Gz_coefficients = mask_Gz_interp[mask_erode_vec_Gz != 0]
 
         if len(self.unshimmed_Gz_vec) == 0:
             raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
@@ -319,7 +276,7 @@ class LsqOptimizer(OptimizerUtils):
         """
         mse_b0 = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         rmse_b0_coef = np.sqrt(mse_b0) / factor # RMSE regularized to minimize currents
-        mse_Gz = np.average(np.square(self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef), weights=self.mask_Gz_coefficients)
+        mse_Gz = np.average(np.square(self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef), weights=self.mask_erode_coefficients)
         rmse_Gz_coef = np.sqrt(mse_Gz) / factor # RMSE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
@@ -460,12 +417,12 @@ class LsqOptimizer(OptimizerUtils):
         # Apply weights to the coil matrices and unshimmed vectors
         coil_mat_w = self.mask_coefficients[:, np.newaxis] * coil_mat
         unshimmed_vec_w = self.mask_coefficients * unshimmed_vec
-        coil_Gz_mat_w = self.mask_Gz_coefficients[:, np.newaxis] * self.coil_Gz_mat
-        unshimmed_Gz_vec_w = self.mask_Gz_coefficients * self.unshimmed_Gz_vec
-        coil_Gx_mat_w = self.mask_Gx_coefficients[:, np.newaxis] * self.coil_Gx_mat
-        unshimmed_Gx_vec_w = self.mask_Gx_coefficients * self.unshimmed_Gx_vec
-        coil_Gy_mat_w = self.mask_Gy_coefficients[:, np.newaxis] * self.coil_Gy_mat
-        unshimmed_Gy_vec_w = self.mask_Gy_coefficients * self.unshimmed_Gy_vec
+        coil_Gz_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gz_mat
+        unshimmed_Gz_vec_w = self.mask_erode_coefficients * self.unshimmed_Gz_vec
+        coil_Gx_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gx_mat
+        unshimmed_Gx_vec_w = self.mask_erode_coefficients * self.unshimmed_Gx_vec
+        coil_Gy_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gy_mat
+        unshimmed_Gy_vec_w = self.mask_erode_coefficients * self.unshimmed_Gy_vec
 
         # MSE term for unshimmed_vec and coil_mat
         a1 = inv_factor * (coil_mat_w.T @ coil_mat_w)
