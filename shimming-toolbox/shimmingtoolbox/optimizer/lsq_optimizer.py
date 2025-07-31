@@ -198,15 +198,8 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        # Apply weights to the coil matrix and unshimmed vector
-        weights = self.mask_coefficients
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
-
-        # Compute the MAE residuals
-        shimmed_vec_w = unshimmed_vec_w + coil_mat_w @ coef
-        mae = np.sum(np.abs(shimmed_vec_w)) / np.sum(weights)
-        mae_coef = mae / factor # MAE regularized to minimize currents
+        mae = np.average(np.abs(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
+        mae_coef = mae / factor  # MAE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         return mae_coef + current_regularization_coef
@@ -227,17 +220,13 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        # Define the weights and the shimmed vector
-        weights = self.mask_coefficients
         shimmed_vec = unshimmed_vec + coil_mat @ coef
-
         # Define delta with the 90th percentile of the absolute shimmed vector
         if self._delta is None:
             self._delta = np.percentile(np.abs(shimmed_vec), 90)
-
         # Compute the mean pseudo huber (MPSH) residuals
-        mpsh = np.sum(weights * pseudo_huber(self._delta, shimmed_vec)) / np.sum(weights)
-        mpsh_coeff = mpsh / factor # Pseudo huber regularized to minimize currents
+        mpsh = np.average(pseudo_huber(self._delta, shimmed_vec), weights=self.mask_coefficients)
+        mpsh_coeff = mpsh / factor # MPSH regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
         return mpsh_coeff + current_regularization_coef
@@ -287,14 +276,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        # Apply weights to the coil matrix and unshimmed vector
-        weights = np.sqrt(self.mask_coefficients)
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
-
-        # Compute the MSE residuals
-        shimmed_vec_w = unshimmed_vec_w + coil_mat_w @ coef
-        mse = np.sum(np.square(shimmed_vec_w)) / np.sum(np.square(weights))
+        mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         mse_coef = mse / factor  # MSE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
@@ -314,14 +296,7 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        # Apply weights to the coil matrix and unshimmed vector
-        weights = np.sqrt(self.mask_coefficients)
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
-
-        # Compute the RMSE residuals
-        shimmed_vec_w = unshimmed_vec_w + coil_mat_w @ coef
-        mse = np.sum(np.square(shimmed_vec_w)) / np.sum(np.square(weights))
+        mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         rmse_coef = np.sqrt(mse) / factor  # RMSE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
@@ -342,22 +317,9 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        # Apply weights to the coil matrix and unshimmed vector (B0)
-        weights = np.sqrt(self.mask_coefficients)
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
-        # Apply weights to the coil matrix and unshimmed vector (Gz)
-        weights_Gz = np.sqrt(self.mask_Gz_coefficients)
-        coil_Gz_mat_w = weights_Gz[:, np.newaxis] * self.coil_Gz_mat
-        unshimmed_Gz_vec_w = weights_Gz * self.unshimmed_Gz_vec
-
-        # Compute the RMSE residuals (B0)
-        shimmed_vec_w = unshimmed_vec_w + coil_mat_w @ coef
-        mse_b0 = np.sum(np.square(shimmed_vec_w)) / np.sum(np.square(weights))
+        mse_b0 = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         rmse_b0_coef = np.sqrt(mse_b0) / factor # RMSE regularized to minimize currents
-        # Compute the RMSE residuals (Gz)
-        shimmed_vec_w_Gz = unshimmed_Gz_vec_w + coil_Gz_mat_w @ coef
-        mse_Gz = np.sum(np.square(shimmed_vec_w_Gz)) / np.sum(np.square(weights_Gz))
+        mse_Gz = np.average(np.square(self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef), weights=self.mask_Gz_coefficients)
         rmse_Gz_coef = np.sqrt(mse_Gz) / factor # RMSE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 

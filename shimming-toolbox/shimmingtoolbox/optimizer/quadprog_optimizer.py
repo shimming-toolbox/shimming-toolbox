@@ -107,14 +107,7 @@ class QuadProgOpt(OptimizerUtils):
         Returns:
             float: Residuals for quad_prog optimization
         """
-        # Apply weights to the coil matrix and unshimmed vector
-        weights = np.sqrt(self.mask_coefficients)
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
-
-        # Compute the stability factor
-        shimmed_vec_w = unshimmed_vec_w + coil_mat_w @ coef
-        mse = np.sum(np.square(shimmed_vec_w)) / np.sum(self.mask_coefficients)
+        mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         mse_coef = mse / factor  # MSE regularized to minimize currents
         current_regularization_coef = np.abs(coef).dot(self.reg_vector)
 
