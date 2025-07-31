@@ -392,10 +392,12 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked, mask_full, self.path_output)
 
-            # Figure that shows shim correction for each shim group
+            # Figures that show shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                # The 0th slice is selected here, but can be changed for debugging purposes
-                self.plot_partial_mask(unshimmed, shimmed, slice=0)
+                num_slices = self.masks_fmap.shape[2]
+                for i in range(num_slices):
+                    self.plot_partial_mask(unshimmed, shimmed, slice=i)
+
 
             self.plot_currents(coefs)
 
@@ -628,7 +630,9 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
+        fname_folder = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
+        fname_figure = os.path.join(fname_folder, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
+        os.makedirs(fname_folder, exist_ok=True)
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_currents(self, static):
