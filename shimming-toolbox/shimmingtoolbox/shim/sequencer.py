@@ -205,6 +205,7 @@ class ShimSequencer(Sequencer):
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
 
+
     def get_resampled_masks(self):
         """
         This function resamples the mask on the fieldmap and on the dilated fieldmap
@@ -391,10 +392,12 @@ class ShimSequencer(Sequencer):
             # Figure that shows unshimmed vs shimmed for each slice
             plot_full_mask(unshimmed, shimmed_masked, mask_full, self.path_output)
 
-            # Figure that shows shim correction for each shim group
+            # Figures that show shim correction for each shim group
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
-                # The 0th slice is selected here, but can be changed for debugging purposes
-                self.plot_partial_mask(unshimmed, shimmed, slice=0)
+                num_slices = self.masks_fmap.shape[2]
+                for i in range(num_slices):
+                    self.plot_partial_mask(unshimmed, shimmed, slice=i)
+
 
             self.plot_currents(coefs)
 
@@ -627,7 +630,9 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         # Save
-        fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_shim_groups.png')
+        fname_folder = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
+        fname_figure = os.path.join(fname_folder, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
+        os.makedirs(fname_folder, exist_ok=True)
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_currents(self, static):
@@ -779,9 +784,8 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked = montage(unshimmed_signal_loss[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
         mt_shimmed_masked = montage(shimmed_signal_loss[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
 
-        nib.save(
-            nib.Nifti1Image(unshimmed_signal_loss, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
-            os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
+        nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
+                 os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
         nib.save(nib.Nifti1Image(shimmed_signal_loss, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_shimmed.nii.gz'))
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),

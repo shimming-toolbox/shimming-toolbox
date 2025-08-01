@@ -77,11 +77,17 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     mask_dilated_in_roi[nii_full_mask_target.get_fdata() != 0] = mask_dilated[nii_full_mask_target.get_fdata() != 0]
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
-    # Save masks for debugging if necessary
-    if logger.getEffectiveLevel() <= logging.DEBUG and path_output is not None:
-        nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
-        nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    # # Save masks for debugging if necessary
+    # path_output_original_mask = os.path.join(path_output, "fig_mask_original")
+    # os.makedirs(path_output_original_mask, exist_ok=True)
+    # path_output_resampled_mask = os.path.join(path_output, "fig_mask_resampled")
+    # os.makedirs(path_output_resampled_mask, exist_ok=True)
+    # path_output_dilated_mask = os.path.join(path_output, "fig_mask_dilated")
+    # os.makedirs(path_output_dilated_mask, exist_ok=True)
+
+    # nib.save(nii_mask, os.path.join(path_output_original_mask, f"fig_mask_original_slice_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_target, os.path.join(path_output_resampled_mask, f"fig_mask_resampled_slice_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_dilated, os.path.join(path_output_dilated_mask, f"fig_mask_dilated_slice_{from_slices[0]}.nii.gz"))
 
     # Return non dilated mask if requested
     if return_non_dil_mask:

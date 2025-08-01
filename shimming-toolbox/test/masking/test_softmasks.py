@@ -4,7 +4,7 @@ import tempfile
 import nibabel as nib
 import numpy as np
 
-from shimmingtoolbox.masking.softmasks import create_softmask
+from shimmingtoolbox.masking.softmasks import create_softmask, save_softmask
 
 class TestSoftmaskCreation:
     def setup_method(self):
@@ -51,3 +51,20 @@ class TestSoftmaskCreation:
         nib.save(nii_gaussmask, self.path_gaussmask)
         softmask = create_softmask(self.path_binmask, fname_softmask=self.path_gaussmask, type='sum')
         self.check_softmask(softmask)
+
+    def test_create_softmask_invalid_unit(self):
+        """Test for invalid width unit"""
+        try:
+            create_softmask(self.path_binmask, type='2levels', soft_width=6, width_unit='invalid')
+        except ValueError as e:
+            assert str(e) == "Lenght must be 'mm' or 'px'"
+        else:
+            assert False
+
+    def test_save_softmask(self):
+        soft_mask = np.ones_like(self.binmask, dtype=np.float32)
+        path_output = os.path.join(self.tmpdir.name, 'softmask.nii.gz')
+        nii_out = save_softmask(soft_mask, path_output, self.path_binmask)
+        assert os.path.exists(path_output)
+        loaded = nib.load(path_output).get_fdata()
+        assert np.allclose(loaded, soft_mask)

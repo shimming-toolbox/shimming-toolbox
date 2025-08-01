@@ -20,45 +20,33 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
     Returns:
         numpy.ndarray: 3D array containing the soft mask.
     """
-    nifti_binmask = nib.load(fname_binmask)
-    binmask = nifti_binmask.get_fdata()
+    # Load masks
+    nii_binmask = nib.load(fname_binmask)
+    binmask = nii_binmask.get_fdata()
     softmask = None
     if fname_softmask is not None:
-        nifti_softmask = nib.load(fname_softmask)
-        softmask = nifti_softmask.get_fdata()
+        nii_softmask = nib.load(fname_softmask)
+        softmask = nii_softmask.get_fdata()
 
-    soft_width_px = convert_to_pixels(soft_width, width_unit, nifti_binmask.header)
-
-    if type == '2levels':
-        return create_two_levels_softmask(binmask, soft_width_px, soft_value)
-    elif type == 'linear':
-        return create_linear_softmask(binmask, soft_width_px)
-    elif type == 'gaussian':
-        return create_gaussian_softmask(binmask, soft_width_px)
-    if type == 'sum':
-        return add_softmask_to_binmask(binmask, softmask)
-    else:
-        raise ValueError("Invalid soft mask type. Must be one of: '2levels', 'linear', 'gaussian', 'sum'")
-
-
-def convert_to_pixels(lenght, unit, header):
-    """
-    Convert a lenght from mm to pixels based on voxel size.
-
-    Args:
-        lenght (float): Lenght in mm or pixels.
-        unit (str): Unit of the lenght ('mm' or 'px').
-        header (nib.Nifti1Header): NIFTI header containing voxel size information.
-
-    Returns:
-        int: Blur lenght in pixels."""
-    if unit == 'mm':
-        voxel_sizes = header.get_zooms()
-        return int(round(float(lenght) / min(voxel_sizes)))
-    elif unit == 'px':
-        return int(lenght)
-    else:
+    # Convert mm to px if needed
+    if width_unit == 'mm':
+        voxel_sizes = nii_binmask.header.get_zooms()
+        soft_width_px = int(round(float(soft_width) / min(voxel_sizes)))
+    elif width_unit == 'px':
+        soft_width_px = int(soft_width)
+    else :
         raise ValueError("Lenght must be 'mm' or 'px'")
+
+    soft_maks_options = {
+    '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
+    'linear': lambda: create_linear_softmask(binmask, soft_width_px),
+    'gaussian': lambda: create_gaussian_softmask(binmask, soft_width_px),
+    'sum': lambda: add_softmask_to_binmask(binmask, softmask)
+}
+    try:
+        return soft_maks_options[type]()
+    except KeyError:
+        raise ValueError("Invalid soft mask type. Must be one of: soft_maks_options.keys()")
 
 
 def create_two_levels_softmask(binary_mask, soft_width, soft_value):

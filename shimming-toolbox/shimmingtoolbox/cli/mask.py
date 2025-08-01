@@ -11,9 +11,8 @@ from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_spher
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
-from shimmingtoolbox.masking.softmasks import save_softmask
+from shimmingtoolbox.masking.softmasks import save_softmask, create_softmask
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
-from shimmingtoolbox.masking.softmasks import create_softmask as create_softmask_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 logging.basicConfig(level=logging.INFO)
@@ -197,7 +196,7 @@ def threshold(fname_input, output, thr, scaled_thr, verbose):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="""Creates a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which
+                  help="""Create a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which
                    size can be specified, requires to identify the spinal cord centerline. The method of identification
                    is specified by the flag '--centerline'. The output of this function is a NIfTI file containing the
                    mask.""")
@@ -422,7 +421,7 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="Creates a soft mask by creating a blur zone around the binary mask.")
+                  help="Create a soft mask by creating a blur zone around the binary mask.")
 @click.option('-i', '--input', 'fname_input_binmask', type=click.Path(), required=True,
               help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-s', '--input-softmask', 'fname_input_softmask', type=click.Path(), default=None,
@@ -443,12 +442,12 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
 @click.option('-b', '--blur-value', 'blur_value', default = 0.5,
               help="Value of the coefficients in the blurred zone. Use only on 2levels-type softmask")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def create_softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, width_unit, blur_value, verbose) :
+def softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, width_unit, blur_value, verbose) :
 
     set_all_loggers(verbose)
 
     # Prepare the output
     create_output_dir(fname_output_softmask, is_file=True)
 
-    output_softmask = create_softmask_api(fname_input_binmask, fname_input_softmask, type, blur_width, width_unit, blur_value)
+    output_softmask = create_softmask(fname_input_binmask, fname_input_softmask, type, blur_width, width_unit, blur_value)
     save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)
