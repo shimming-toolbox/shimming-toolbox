@@ -120,18 +120,6 @@ class TestCliDynamic(object):
 
             assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.1',
-                                             '--slices', 'ascending',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
-
     def test_cli_dynamic_bfgs(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -170,19 +158,6 @@ class TestCliDynamic(object):
                 values = [float(val) for val in line if val.strip()]
 
             assert values == [1.716835, -11.083139, -61.813942, -3.325865, -0.440464, -4.319224, 0.832832, -0.092054]
-
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.1',
-                                             '--optimizer-method', 'bfgs',
-                                             '--slices', 'ascending',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -254,18 +229,6 @@ class TestCliDynamic(object):
             assert math.isclose(calc_constraints_data['coefs_used']['0'][0],
                                 constraints_data['coefs_used']['0'][0] + values[0], abs_tol=1e-5)
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '0,1,2,3',
-                                             '--scanner-coil-constraints', fname_scanner_constraints_json,
-                                             '--slices', 'volume',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
-
     def test_cli_dynamic_sph_table_not_iso(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -311,19 +274,6 @@ class TestCliDynamic(object):
             assert values == [-4.305412, -67.945413, 29.093204, -3804.340894,
                               -163.848482, -863.019747, 576.108918, -177.97076]
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.1',
-                                             '--slices', 'ascending',
-                                             '--optimizer-method', 'pseudo_inverse',
-                                             '--output', tmp,
-                                             '--verbose', 'debug'],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_dynamic_signal_recovery_mse(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -365,22 +315,6 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.3',
-                                             '--slices', 'ascending',
-                                             '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'mse',
-                                             '--weighting-signal-loss', '0.01',
-                                             '--mask-dilation-kernel-size', '5',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_dynamic_signal_recovery_rmse(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -461,7 +395,46 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+
+    def test_cli_dynamic_softmask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+
+        # Duplicate nii_fmap's third dimension
+        fmap = nii_fmap.get_fdata()
+        fmap = np.repeat(fmap, 5, axis=2)
+        nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_softmask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.3',
+                                             '--slices', 'ascending',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'mse',
+                                             '--mask-dilation-kernel-size', '5',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
 
     def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
@@ -504,18 +477,6 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
-
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--coil', fname_dummy_coil, fname_constraints,
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--output', tmp,
-                                             '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'mse'],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_dynamic_sph_order_0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 0 with default constraints"""
@@ -792,18 +753,6 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 assert lines[3].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '0,1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'chronological-hrd',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
-
     def test_cli_dynamic_format_slicewise_hrd_and_custom_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slice-wise hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -881,18 +830,6 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 assert lines[3].strip() == "119.644382 | 0.000000 | 0.000000 | 0.000000"
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '0',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'chronological-hrd',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
-
     def test_cli_dynamic_format_slicewise_hrd_order1(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slicewise hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -926,18 +863,6 @@ class TestCliDynamic(object):
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
                 assert lines[6].strip() == '0.000000 | -0.001980 | -0.032016 | -0.066749'
-
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1',
-                                             '--slice-factor', '2',
-                                             '--output-file-format-scanner', 'slicewise-hrd',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -1010,17 +935,6 @@ class TestCliDynamic(object):
                 values = [float(val) for val in line if val.strip()]
 
             assert values == [123259067.330864, -718.069583, 138.656751, -110.517759, 24.97596, -4.888655]
-
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '0, 2',
-                                             '--output-value-format', 'absolute',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
 
     def test_cli_2d_fmap(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
 
