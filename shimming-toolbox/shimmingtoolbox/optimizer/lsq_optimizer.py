@@ -406,23 +406,22 @@ class LsqOptimizer(OptimizerUtils):
         return currents
 
     def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
-        len_unshimmed = len(unshimmed_vec)
-        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
-        len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
-
-        inv_factor = 1 / (len_unshimmed * factor)
-        w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
-        w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
-
         # Apply weights to the coil matrices and unshimmed vectors
-        coil_mat_w = self.mask_coefficients[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = self.mask_coefficients * unshimmed_vec
-        coil_Gz_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gz_mat
-        unshimmed_Gz_vec_w = self.mask_erode_coefficients * self.unshimmed_Gz_vec
-        coil_Gx_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gx_mat
-        unshimmed_Gx_vec_w = self.mask_erode_coefficients * self.unshimmed_Gx_vec
-        coil_Gy_mat_w = self.mask_erode_coefficients[:, np.newaxis] * self.coil_Gy_mat
-        unshimmed_Gy_vec_w = self.mask_erode_coefficients * self.unshimmed_Gy_vec
+        # The square root of the coefficients is taken since a,b,c are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
+        coil_Gz_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gz_mat
+        unshimmed_Gz_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gz_vec
+        coil_Gx_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gx_mat
+        unshimmed_Gx_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gx_vec
+        coil_Gy_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gy_mat
+        unshimmed_Gy_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gy_vec
+
+        # Define inverse factors
+        inv_factor = 1 / (np.sum(self.mask_coefficients) * factor)
+        w_inv_factor_Gz = self.w_signal_loss / np.sum(self.mask_erode_coefficients)
+        w_inv_factor_Gxy = self.w_signal_loss_xy / np.sum(self.mask_erode_coefficients)
 
         # MSE term for unshimmed_vec and coil_mat
         a1 = inv_factor * (coil_mat_w.T @ coil_mat_w)

@@ -160,11 +160,14 @@ class OptimizerUtils(Optimizer):
                 * float : Float used for the least squares optimizer
 
         """
-        inv_factor = 1 / (len(unshimmed_vec) * factor)
-
         # Apply weights to the coil matrix and unshimmed vector
-        coil_mat_w = self.mask_coefficients[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = self.mask_coefficients * unshimmed_vec
+        # The square root of the coefficients is taken since a,b,c are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
+
+        # Define inverse factor
+        inv_factor = 1 / (np.sum(self.mask_coefficients) * factor)
 
         # Compute the quadratic terms
         a = inv_factor * (coil_mat_w.T @ coil_mat_w) + np.diag(self.reg_vector)
