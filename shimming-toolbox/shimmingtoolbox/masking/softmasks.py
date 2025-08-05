@@ -37,16 +37,16 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
     else :
         raise ValueError("Lenght must be 'mm' or 'px'")
 
-    soft_maks_options = {
+    soft_mask_options = {
     '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
     'linear': lambda: create_linear_softmask(binmask, soft_width_px),
     'gaussian': lambda: create_gaussian_softmask(binmask, soft_width_px),
     'sum': lambda: add_softmask_to_binmask(binmask, softmask)
 }
     try:
-        return soft_maks_options[type]()
+        return soft_mask_options[type]()
     except KeyError:
-        raise ValueError("Invalid soft mask type. Must be one of: soft_maks_options.keys()")
+        raise ValueError("Invalid soft mask type. Must be one of: soft_mask_options.keys()")
 
 
 def create_two_levels_softmask(binary_mask, soft_width, soft_value):

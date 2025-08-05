@@ -630,9 +630,9 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         # Save
-        fname_folder = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
-        fname_figure = os.path.join(fname_folder, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
-        os.makedirs(fname_folder, exist_ok=True)
+        path_figures = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
+        fname_figure = os.path.join(path_figures, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
+        os.makedirs(path_figures, exist_ok=True)
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_currents(self, static):
