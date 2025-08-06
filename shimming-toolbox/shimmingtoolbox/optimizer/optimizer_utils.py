@@ -158,17 +158,18 @@ class OptimizerUtils(Optimizer):
                 * np.ndarray: 2D array using for the optimization
                 * np.ndarray: 1D flattened array used for the optimization
                 * float : Float used for the least squares optimizer
-                * np.ndarray : 1D array used to regularize the optimization
 
         """
 
         inv_factor = 1 / (len(unshimmed_vec) * factor)
-        a = (coil_mat.T @ coil_mat) * inv_factor
+        # Adding the regularization vector to 'a' ensures L2 regularization
+        # (sum of squares of the regularization terms) since 'a' is multiplied
+        # twice with 'coef' in _residuals_mse()
+        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
         b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
         c = inv_factor * (unshimmed_vec @ unshimmed_vec)
-        e = self.reg_vector
 
-        return a, b, c, e
+        return a, b, c
 
     @abstractmethod
     def _get_currents(self, unshimmed_vec, coil_mat, currents_0):

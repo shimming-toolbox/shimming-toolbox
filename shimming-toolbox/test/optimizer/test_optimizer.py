@@ -96,11 +96,11 @@ class TestResiduals:
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
         opt.reg_vector = self.reg_vector
-        a, b, c, e = opt.get_quadratic_term(self.unshimmed_vec, self.coil_mat, self.factor)
-        res = opt._residuals_mse(self.coef, a, b, c, e)
+        a, b, c = opt.get_quadratic_term(self.unshimmed_vec, self.coil_mat, self.factor)
+        res = opt._residuals_mse(self.coef, a, b, c)
 
         shimmed_vec = self.unshimmed_vec + self.coil_mat @ self.coef
         mse = np.sum(np.square(shimmed_vec)) / len(self.mask_coefficients)
-        ref = mse / self.factor + np.abs(self.coef).dot(self.reg_vector)
+        ref = mse / self.factor + np.square(self.coef).dot(self.reg_vector)
 
         assert np.isclose(res, ref, atol=1e-12)
