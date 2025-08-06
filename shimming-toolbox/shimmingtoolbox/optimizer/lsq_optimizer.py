@@ -51,7 +51,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
             allowed_opt_criteria[2]: self._residuals_std,
-            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery,
+            allowed_opt_criteria[3]: self._residuals_mse,
             allowed_opt_criteria[4]: self._residuals_rmse,
             allowed_opt_criteria[5]: self._residuals_rmse_signal_recovery,
             allowed_opt_criteria[6]: self._residuals_ps_huber
@@ -60,7 +60,7 @@ class LsqOptimizer(OptimizerUtils):
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
             allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: self._residuals_mse_signal_recovery_jacobian,
+            allowed_opt_criteria[3]: self._residuals_mse_jacobian,
             allowed_opt_criteria[4]: None,
             allowed_opt_criteria[5]: None,
             allowed_opt_criteria[6]: None
@@ -175,7 +175,7 @@ class LsqOptimizer(OptimizerUtils):
             self._delta = np.percentile(np.abs(residuals), 90)
         return np.mean(pseudo_huber(self._delta, residuals)) / factor + np.abs(coef).dot(self.reg_vector)
 
-    def _residuals_mse(self, coef, a, b, c):
+    def _residuals_mse(self, coef, a, b, c, e):
         """ Objective function to minimize the mean squared error (MSE)
 
         Args:
@@ -183,6 +183,7 @@ class LsqOptimizer(OptimizerUtils):
             a (np.ndarray): 2D array used for the optimization
             b (np.ndarray): 1D flattened array used for the optimization
             c (float) : Float used for the optimization
+            e (np.ndarray): 1D array of the regularization vector
 
         Returns:
             float: Residuals for least squares optimization
@@ -190,21 +191,9 @@ class LsqOptimizer(OptimizerUtils):
         # The first version was :
         # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
         # self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        # For the second version we switched np.sum(coil_mat*coef,axis=1,keepdims=False) by coil_mat@coef
-        # which is way faster Then for a vector, mean(x**2) is equivalent to x.dot( x)/n
-        # it's faster to do this operation instead of a np.mean Finally np.abs(coef).dot(self.reg_vector) is
-        # equivalent and faster to self.reg_factor*np.mean(np.abs(coef) / self.reg_factor_channel) For the
-        # mathematical demonstration see : https://github.com/shimming-toolbox/shimming-toolbox/pull/432
-        # This gave us the following expression for the residuals mse :
-        # shimmed_vec = unshimmed_vec + coil_mat @ coef
-        # mse = (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
-        # The new expression of residuals mse, is the fastest way to the optimization because it allows us to not
-        # calculate everytime some long processing operation, the term of a, b and c were calculated in scipy_minimize
-        return a @ coef @ coef + b @ coef + c
-
-    def _residuals_mse_signal_recovery(self, coef, a, b, c, e):
-        result = coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
-        return result
+        # The new expression is the fastest way to optimize since quadratic terms a, b and c are computed
+        # only once in scipy_minimize. See PR#451 for more details.
+        return coef.T @ a @ coef + b @ coef + c + np.abs(coef) @ e
 
     def _initial_guess_mse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to find the initial guess for the mean squared error (MSE) optimization
@@ -282,29 +271,9 @@ class LsqOptimizer(OptimizerUtils):
 
         return b0_rmse_coef + signal_recovery_coef * self.w_signal_loss + current_regularization_coef
 
-    def _residuals_mse_jacobian(self, coef, a, b, c):
+    def _residuals_mse_jacobian(self, coef, a, b, c, e):
         """ Jacobian of the function that we want to minimize
-        The function to minimize is :
-        np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False)) ** 2) / factor+\
-           (self.reg_factor * np.mean(np.abs(coef) / self.reg_factor_channel))
-        The first Version of the jacobian was :
-        self.b * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector where self.b was equal
-        to 2/(len(unshimmed_vec * factor)
-        This jacobian come from the new version of the residuals mse that was implemented with the PR#451
 
-        Args:
-            coef (np.ndarray): 1D array of channel coefficients
-            a (np.ndarray): 2D array using for the optimization
-            b (np.ndarray): 1D flattened array used for the optimization
-            c (float) : Float used for the optimization but not used here
-
-        Returns:
-            np.ndarray : 1D array of the gradient of the mse function to minimize
-        """
-        return 2 * a @ coef + b
-
-    def _residuals_mse_signal_recovery_jacobian(self, coef, a, b, c, e):
-        """ Jacobian of the function that we want to minimize
 
         Args:
             coef (np.ndarray): 1D array of channel coefficients
@@ -316,6 +285,9 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             np.ndarray : 1D array of the gradient of the mse function to minimize
         """
+        # The first version was :
+        # 2/(len(unshimmed_vec * factor) * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector
+        # The new version uses the quadratic terms implemented with PR#451
         return 2 * a @ coef + b + np.sign(coef) * e
 
     def _define_scipy_constraints(self):
@@ -342,9 +314,9 @@ class LsqOptimizer(OptimizerUtils):
 
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         if self.opt_criteria == 'mse':
-            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            a, b, c, e = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c),
+                                       args=(a, b, c, e),
                                        method='SLSQP',
                                        bounds=self.merged_bounds,
                                        constraints=tuple(scipy_constraints),
@@ -406,6 +378,25 @@ class LsqOptimizer(OptimizerUtils):
         return currents
 
     def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
+        """
+        Returns all the quadratic terms used in MSE signal recovery objective function used in the least
+        squares optimization method
+
+        Args:
+            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
+            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
+                                      (axis 0 must align with unshimmed_vec)
+            factor (float): This allows to scale the output for the minimize function to
+                            avoid positive directional linesearch
+
+        Returns:
+            (tuple) : tuple containing:
+                * np.ndarray: 2D array using for the optimization
+                * np.ndarray: 1D flattened array used for the optimization
+                * float : Float used for the least squares optimizer
+                * np.ndarray : 1D array used to regularize the optimization
+
+        """
         len_unshimmed = len(unshimmed_vec)
         len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
         len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
@@ -435,7 +426,7 @@ class LsqOptimizer(OptimizerUtils):
         c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
 
         # Combining the terms
-        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
+        a = a1 + a2 + a3 + a4
         b = b1 + b2 + b3 + b4
         c = c1 + c2 + c3 + c4
         e = self.reg_vector
@@ -555,10 +546,10 @@ class PmuLsqOptimizer(LsqOptimizer):
     def _scipy_minimize(self, currents_0, unshimmed_vec, coil_mat, scipy_constraints, factor):
         """Redefined from super() since normal bounds are now constraints"""
         if self.opt_criteria == 'mse':
-            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            a, b, c, e = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
 
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c),
+                                       args=(a, b, c, e),
                                        method='SLSQP',
                                        bounds=self.rt_bounds,
                                        constraints=tuple(scipy_constraints),

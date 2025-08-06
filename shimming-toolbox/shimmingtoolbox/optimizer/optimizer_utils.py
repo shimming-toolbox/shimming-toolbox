@@ -143,8 +143,8 @@ class OptimizerUtils(Optimizer):
 
     def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
         """
-        Returns all the quadratic terms used in the lsq_optimizer for the mse method, and for the quadprog optimizer,
-        for more details see PR#451
+        Returns all the quadratic terms used in MSE objective function used in the least squares,
+        quadprog and BFGS optimization methods. For more details see PR#451.
 
         Args:
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
@@ -158,15 +158,17 @@ class OptimizerUtils(Optimizer):
                 * np.ndarray: 2D array using for the optimization
                 * np.ndarray: 1D flattened array used for the optimization
                 * float : Float used for the least squares optimizer
+                * np.ndarray : 1D array used to regularize the optimization
 
         """
 
         inv_factor = 1 / (len(unshimmed_vec) * factor)
-        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
+        a = (coil_mat.T @ coil_mat) * inv_factor
         b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
         c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+        e = self.reg_vector
 
-        return a, b, c
+        return a, b, c, e
 
     @abstractmethod
     def _get_currents(self, unshimmed_vec, coil_mat, currents_0):

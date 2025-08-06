@@ -165,7 +165,7 @@ class QuadProgOpt(OptimizerUtils):
 
         initial_guess = np.zeros(2 * n)
         initial_guess[:n] = currents_0
-        a, b, _ = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+        a, b, _, _ = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
         epsilon = 1e-6
         cost_matrix = np.block([[a, np.zeros([n, n])], [np.zeros([n, n]), np.zeros([n, n])]]) + epsilon * np.eye(2*n)
         cost_matrix = 2 * cost_matrix

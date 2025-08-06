@@ -18,9 +18,9 @@ class BFGSOpt(LsqOptimizer):
         """ Minimize the criteria function using scipy's minimize function. """
 
         if self.opt_criteria == 'mse':
-            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            a, b, c, e = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c),
+                                       args=(a, b, c, e),
                                        method='L-BFGS-B',
                                        bounds=self.merged_bounds,
                                        jac=self._jacobian_func,
@@ -56,9 +56,9 @@ class PmuBFGSOpt(PmuLsqOptimizer):
         """ Minimize the criteria function using scipy's minimize function. """
 
         if self.opt_criteria == 'mse':
-            a, b, c = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
+            a, b, c, e = self.get_quadratic_term(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c),
+                                       args=(a, b, c, e),
                                        method='L-BFGS-B',
                                        bounds=self.rt_bounds,
                                        jac=self._jacobian_func,

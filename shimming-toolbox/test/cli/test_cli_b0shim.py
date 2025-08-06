@@ -113,7 +113,7 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
+            assert values == [4.690057, -8.291199, -65.703276, -3.320815, -0.68741, -7.032426, 1.85338, -0.311091]
 
     def test_cli_dynamic_bfgs(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -150,7 +150,7 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [1.716835, -11.083139, -61.813942, -3.325865, -0.440464, -4.319224, 0.832832, -0.092054]
+            assert values == [17.507848, 26.353976, -66.885465, -43.5857, -162.701991, -539.847684, 350.550789, -185.954958]
 
     def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
