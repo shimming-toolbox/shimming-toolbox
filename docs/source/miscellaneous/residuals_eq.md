@@ -14,12 +14,12 @@ $f$ and a regularization vector $\lambda$ used in L2 regularization.
 1. Pseudo-inverse method - No objective function
 2. Quadprog method - Mean squared error (MSE) objective function
 3. Least squares and BFGS methods
-    3.1. Mean absolute error (MAE) objective function
-    3.2. Mean squared error (MSE) objective function
-    3.3. MSE signal recovery objective function
-    3.4. Root mean squared error (RMSE) objective function
-    3.5. RMSE signal recovery objective function
-    3.6. Mean pseudo-Huber (MPSH) objective function
+    1. Mean absolute error (MAE) objective function
+    2. Mean squared error (MSE) objective function
+    3. MSE signal recovery objective function
+    4. Root mean squared error (RMSE) objective function
+    5. RMSE signal recovery objective function
+    6. Mean pseudo-Huber (MPSH) objective function
 
 ## 1. Pseudo-inverse
 This optimization method consists of solving the linear system presented in the **Problem formulation** section :
@@ -35,8 +35,7 @@ Where $x^2$ is the $x$ coefficients vector where each coefficient has been squar
 [quadprog](https://github.com/quadprog/quadprog) package to obtain the currents.
 
 ## 3. Least squares and BFGS
-The least squares and the BFGS methods share the same objective functions
-(mean squared error (MSE), root mean squared error (RMSE), mean pseudo-Huber (MPSH) and mean absolute error (MAE)). All of these objective functions
+The least squares and the BFGS methods share the same objective functions. All of these objective functions
 are given to the [scipy.optimize.minimize()](https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.minimize.html#scipy.optimize.minimize)
 function to compute the currents. For the least squares method, it's the
 [Sequential Least SQuares Programming (SLSQP) Algorithm (method='SLSQP')](https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html#optimize-minimize-slsqp)
@@ -46,18 +45,21 @@ is used for the BFGS method.
 
 ### 3.1. Mean absolute error (MAE) objective function
 The objective function is the following :
-$r = \frac{\sum^n_{i=1} |m_i||a^T_ix+u_i|}{f \cdot \sum^n_{i=1} m_i} + {x^2}^{T}\lambda$
+$r = \frac{\sum^n_{i=1} m_i\cdot|a^T_ix+u_i|}{f \cdot \sum^n_{i=1} m_i} + {x^2}^{T}\lambda$
 
 ### 3.2. Mean squared error (MSE) objective function
 A different formulation is used with this objective function to accelerate the compute time. The objective function is the following :
 $r = x^{T}ax + x^Tb + c$
 
 Where $a$, $b$ and $c$ are quadratic coefficients computed in the following way :
-$a = \frac{(\sqrt{m}^{T}A)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i} + \Lambda$,
-$b = 2 \cdot \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i}$,
+
+$a = \frac{(\sqrt{m}^{T}A)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i} + \Lambda$
+
+$b = 2 \cdot \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i}$
+
 $c = \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}u)}{f \cdot \sum^n_{i=1} m_i}$
 
-Where $\Lambda$ is the diagonalized matrix equivalent of the $\lambda$.
+Where $\Lambda$ is the diagonalized matrix equivalent of the $\lambda$ vector.
 
 ### 3.3. MSE signal recovery objective function
 To enhance signal recovery with slice-wise shimming, it is possible to consider the gradients (x-wise, y-wise and z-wise) in the optimization
@@ -65,18 +67,27 @@ process. It is an eroded mask $m_e$ that is used in this case. The objective fun
 $r = x^{T}ax + x^Tb + c$
 
 Where $a$, $b$ and $c$ are computed in the following way :
-$a = a_0 + a_x + a_y + a_z \Lambda$,
-$b = b_0 + b_x + b_y + b_z$,
+
+$a = a_0 + a_x + a_y + a_z + \Lambda$
+
+$b = b_0 + b_x + b_y + b_z$
+
 $c = c_0 + c_x + c_y + c_z$
 
-Where $a_0$, $b_0$ and $c_0$ are the same quadratic terms computed in the standard MSE objective functions :
-$a_0 = \frac{(\sqrt{m}^{T}A)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i} + \Lambda$,
-$b_0 = 2 \cdot \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i}$,
+Where $a_0$, $b_0$ and $c_0$ are the same quadratic terms computed in the standard MSE objective function :
+
+$a_0 = \frac{(\sqrt{m}^{T}A)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i} + \Lambda$
+
+$b_0 = 2 \cdot \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}A)}{f \cdot \sum^n_{i=1} m_i}$
+
 $c_0 = \frac{(\sqrt{m}^{T}u)(\sqrt{m}^{T}u)}{f \cdot \sum^n_{i=1} m_i}$
 
 And where $a_i$, $b_i$ and $c_i$ are the quadratic terms for a gradient in the direction $i$ :
-$a_i = w_i \cdot \frac{(\sqrt{m_e}^{T}A_i)(\sqrt{m}^{T}A_i)}{\sum^n_{j=1} m_{e,j}} + \Lambda$,
-$b_i = 2w_i \cdot \frac{(\sqrt{m_e}^{T}u_i)(\sqrt{m}^{T}A_i)}{\sum^n_{j=1} m_{e,j}}$,
+
+$a_i = w_i \cdot \frac{(\sqrt{m_e}^{T}A_i)(\sqrt{m}^{T}A_i)}{\sum^n_{j=1} m_{e,j}} + \Lambda$
+
+$b_i = 2w_i \cdot \frac{(\sqrt{m_e}^{T}u_i)(\sqrt{m}^{T}A_i)}{\sum^n_{j=1} m_{e,j}}$
+
 $c_i = w_i \cdot \frac{(\sqrt{m_e}^{T}u_i)(\sqrt{m}^{T}u_i)}{\sum^n_{j=1} m_{e,j}}$
 
 Where $w_i$ is a signal loss factor.
