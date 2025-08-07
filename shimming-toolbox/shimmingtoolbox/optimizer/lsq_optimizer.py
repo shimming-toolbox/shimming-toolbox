@@ -377,8 +377,8 @@ class LsqOptimizer(OptimizerUtils):
 
     def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
         """
-        Returns all the quadratic terms used in MSE signal recovery objective function used in the least
-        squares optimization method
+        Returns all the quadratic terms used in the MSE signal recovery objective function used in the
+        least squares and BFGS optimization methods.
 
         Args:
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
@@ -424,7 +424,7 @@ class LsqOptimizer(OptimizerUtils):
 
         # Combining the terms
         # Adding the regularization vector to 'a' ensures L2 regularization
-        # (sum of squares of the regularization terms) since 'a' is multiplied
+        # (sum of the squared regularization terms) since 'a' is multiplied
         # twice with 'coef' in _residuals_mse()
         a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
         b = b1 + b2 + b3 + b4
