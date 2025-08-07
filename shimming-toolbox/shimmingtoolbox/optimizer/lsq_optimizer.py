@@ -293,7 +293,7 @@ class LsqOptimizer(OptimizerUtils):
         # The first version was :
         # 2/(len(unshimmed_vec * factor) * (unshimmed_vec + coil_mat @ coef) @ coil_mat + np.sign(coef) * self.reg_vector
         # The new version uses the quadratic terms implemented with PR#451
-        return 2 * a @ coef + b + np.sign(coef) * self.reg_vector
+        return 2 * a @ coef + b
 
     def _define_scipy_constraints(self):
         return self._define_scipy_coef_sum_max_constraint()
