@@ -108,7 +108,7 @@ class QuadProgOpt(OptimizerUtils):
             float: Residuals for quad_prog optimization
         """
         shimmed_vec = unshimmed_vec + coil_mat @ coef
-        return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.abs(coef).dot(self.reg_vector)
+        return shimmed_vec.dot(shimmed_vec) / len(unshimmed_vec) / factor + np.square(coef).dot(self.reg_vector)
 
     def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
         """

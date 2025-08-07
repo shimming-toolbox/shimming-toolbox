@@ -27,9 +27,9 @@ class BFGSOpt(LsqOptimizer):
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
         elif self.opt_criteria == 'mse_signal_recovery':
-            a, b, c, e = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
+            a, b, c = self.get_quadratic_term_grad(unshimmed_vec, coil_mat, factor)
             currents_sp = opt.minimize(self._criteria_func, currents_0,
-                                       args=(a, b, c, e),
+                                       args=(a, b, c),
                                        method='L-BFGS-B',
                                        bounds=self.merged_bounds,
                                        jac=self._jacobian_func,
