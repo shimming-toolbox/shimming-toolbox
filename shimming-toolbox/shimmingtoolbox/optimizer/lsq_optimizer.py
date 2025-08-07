@@ -419,32 +419,32 @@ class LsqOptimizer(OptimizerUtils):
         w_inv_factor_Gxy = self.w_signal_loss_xy / np.sum(self.mask_erode_coefficients)
 
         # MSE term for unshimmed_vec and coil_mat
-        a1 = inv_factor * (coil_mat_w.T @ coil_mat_w)
-        b1 = 2 * inv_factor * (unshimmed_vec_w @ coil_mat_w)
-        c1 = inv_factor * (unshimmed_vec_w @ unshimmed_vec_w)
+        a_0 = inv_factor * (coil_mat_w.T @ coil_mat_w)
+        b_0 = 2 * inv_factor * (unshimmed_vec_w @ coil_mat_w)
+        c_0 = inv_factor * (unshimmed_vec_w @ unshimmed_vec_w)
 
         # MSE term for unshimmed_Gz_vec and coil_Gz_mat
-        a2 = w_inv_factor_Gz * (coil_Gz_mat_w.T @ coil_Gz_mat_w)
-        b2 = 2 * w_inv_factor_Gz * (unshimmed_Gz_vec_w @ coil_Gz_mat_w)
-        c2 = w_inv_factor_Gz * (unshimmed_Gz_vec_w @ unshimmed_Gz_vec_w)
+        a_z = w_inv_factor_Gz * (coil_Gz_mat_w.T @ coil_Gz_mat_w)
+        b_z = 2 * w_inv_factor_Gz * (unshimmed_Gz_vec_w @ coil_Gz_mat_w)
+        c_z = w_inv_factor_Gz * (unshimmed_Gz_vec_w @ unshimmed_Gz_vec_w)
 
         # MSE term for unshimmed_Gx_vec and coil_Gx_mat
-        a3 = w_inv_factor_Gxy * (coil_Gx_mat_w.T @ coil_Gx_mat_w)
-        b3 = 2 * w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ coil_Gx_mat_w)
-        c3 = w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ unshimmed_Gx_vec_w)
+        a_x = w_inv_factor_Gxy * (coil_Gx_mat_w.T @ coil_Gx_mat_w)
+        b_x = 2 * w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ coil_Gx_mat_w)
+        c_x = w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ unshimmed_Gx_vec_w)
 
         # MSE term for unshimmed_Gy_vec and coil_Gy_mat
-        a4 = w_inv_factor_Gxy * (coil_Gy_mat_w.T @ coil_Gy_mat_w)
-        b4 = 2 * w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ coil_Gy_mat_w)
-        c4 = w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ unshimmed_Gy_vec_w)
+        a_y = w_inv_factor_Gxy * (coil_Gy_mat_w.T @ coil_Gy_mat_w)
+        b_y = 2 * w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ coil_Gy_mat_w)
+        c_y = w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ unshimmed_Gy_vec_w)
 
         # Combining the terms
         # Adding the regularization vector to 'a' ensures L2 regularization
         # (sum of the squared regularization terms) since 'a' is multiplied
         # twice with 'coef' in _residuals_mse()
-        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
-        b = b1 + b2 + b3 + b4
-        c = c1 + c2 + c3 + c4
+        a = a_0 + a_x + a_y + a_z + np.diag(self.reg_vector)
+        b = b_0 + b_x + b_y + b_z
+        c = c_0 + c_x + c_y + c_z
 
         return a, b, c
 
