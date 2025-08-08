@@ -236,3 +236,127 @@ def test_cli_mask_rda():
 
         assert result.exit_code == 0
         assert np.all(nii_out.get_fdata() == expected)
+
+
+def test_cli_softmask_two_levels():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        # Create binary mask
+        bin = os.path.join(tmp, 'binmask.nii.gz')
+        size1, size2, size3 = 10, 20, 5
+        result_bin = runner.invoke(mask_cli, ['box',
+                                              '--input', inp, '--output', bin,
+                                              '--size', size1, size2, size3])
+
+        # Create soft mask
+        out = os.path.join(tmp, 'softmask.nii.gz')
+        result = runner.invoke(mask_cli, ['softmask',
+                                          '--input', bin, '--output', out,
+                                          '--type', '2levels',
+                                          '--blur-width', 6,
+                                          '--width-unit', 'px',
+                                          '--blur-value', 0.5])
+
+        assert result.exit_code == 0
+        assert os.path.isfile(out)
+
+        nii = nib.load(out)
+        softmask = nii.get_fdata()
+
+        assert softmask.shape == (128, 76, 10)
+        assert np.min(softmask) >= 0.0 and np.max(softmask) <= 1.0
+
+        # The center of the mask is the middle of the array [64, 38, 5] so the expected mask for the positions [58:62,
+        # 28:31, 7:9] is :
+        expected = np.array([[[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]],
+                             [[1.0, 0.5], [1.0, 0.5], [1.0, 0.5]],
+                             [[1.0, 0.5], [1.0, 0.5], [1.0, 0.5]],
+                             [[1.0, 0.5], [1.0, 0.5], [1.0, 0.5]]])
+
+        assert np.allclose(softmask[58:62, 28:31, 7:9], expected)
+
+
+def test_cli_softmask_linear():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        # Create a binary mask
+        bin = os.path.join(tmp, 'binmask.nii.gz')
+        size1, size2, size3 = 10, 20, 5
+        result_bin = runner.invoke(mask_cli, ['box',
+                                              '--input', inp, '--output', bin,
+                                              '--size', size1, size2, size3])
+
+        # Create a soft mask
+        out = os.path.join(tmp, 'softmask.nii.gz')
+        blur_width = 4
+        result = runner.invoke(mask_cli, ['softmask',
+                                          '--input', bin, '--output', out,
+                                          '--type', 'linear',
+                                          '--blur-width', blur_width,
+                                          '--width-unit', 'px'])
+
+        assert result.exit_code == 0
+        assert os.path.isfile(out)
+
+        nii = nib.load(out)
+        softmask = nii.get_fdata()
+
+        assert softmask.shape == (128, 76, 10)
+        assert np.min(softmask) >= 0.0 and np.max(softmask) <= 1.0
+
+        # Compute the value of the linear gradient at distance 1 and np.sqrt(2)
+        val1 = 1 - 1 / (blur_width + 1)
+        val2 = 1 - np.sqrt(2) / (blur_width + 1)
+        # The center of the mask is the middle of the array [64, 38, 5] so the expected mask for the positions [58:62,
+        # 28:31, 7:9] is :
+        expected = np.array([[[val1, val2], [val1, val2], [val1, val2]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]]])
+
+        assert np.allclose(softmask[58:62, 28:31, 7:9], expected)
+
+
+def test_cli_softmask_gaussian():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        # Create a binary mask
+        bin = os.path.join(tmp, 'binmask.nii.gz')
+        size1, size2, size3 = 10, 20, 5
+        result_bin = runner.invoke(mask_cli, ['box',
+                                              '--input', inp, '--output', bin,
+                                              '--size', size1, size2, size3])
+
+        # Create a soft mask
+        out = os.path.join(tmp, 'softmask.nii.gz')
+        blur_width = 6
+        result = runner.invoke(mask_cli, ['softmask',
+                                          '--input', bin, '--output', out,
+                                          '--type', 'gaussian',
+                                          '--blur-width', blur_width,
+                                          '--width-unit', 'px'])
+
+        assert result.exit_code == 0
+        assert os.path.isfile(out)
+
+        nii = nib.load(out)
+        softmask = nii.get_fdata()
+
+        assert softmask.shape == (128, 76, 10)
+        assert np.min(softmask) >= 0.0 and np.max(softmask) <= 1.0
+
+        sigma = blur_width / 3
+        # Compute the value of the Gaussian at distance 1 and np.sqrt(2)
+        val1 = np.exp(-(1**2) / (2 * sigma**2))
+        val2 = np.exp(-(np.sqrt(2)**2) / (2 * sigma**2))
+        # The center of the mask is the middle of the array [64, 38, 5] so the expected mask for the positions [58:62,
+        # 28:31, 7:9] is :
+        expected = np.array([[[val1, val2], [val1, val2], [val1, val2]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]],
+                             [[1.0, val1], [1.0, val1], [1.0, val1]]])
+
+        assert np.allclose(softmask[58:62, 28:31, 7:9], expected)
