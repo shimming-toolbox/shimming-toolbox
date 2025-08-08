@@ -109,7 +109,7 @@ class QuadProgOpt(OptimizerUtils):
         """
         mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         mse_coef = mse / factor  # MSE regularized to minimize currents
-        current_regularization_coef = np.abs(coef).dot(self.reg_vector)
+        current_regularization_coef = np.square(coef).dot(self.reg_vector)
 
         return mse_coef + current_regularization_coef
 

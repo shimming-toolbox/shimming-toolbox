@@ -589,12 +589,9 @@ class ShimSequencer(Sequencer):
             shimmed (np.ndarray): Shimmed fieldmap
             slice (int): Slice to plot
         """
-        # Binarize the mask
-        bin_mask = (self.masks_fmap != 0).astype(int)
-
         unshimmed_repeated = unshimmed[..., np.newaxis] * np.ones(self.masks_fmap.shape[-1])
-        nan_unshimmed_masked = np.ma.array(unshimmed_repeated, mask=(bin_mask == 0), fill_value=np.nan)
-        nan_shimmed_masked = np.ma.array(shimmed, mask=(bin_mask == 0), fill_value=np.nan)
+        nan_unshimmed_masked = np.ma.array(unshimmed_repeated, mask=(self.masks_fmap == 0), fill_value=np.nan)
+        nan_shimmed_masked = np.ma.array(shimmed, mask=(self.masks_fmap == 0), fill_value=np.nan)
 
         mt_unshimmed = montage(unshimmed_repeated[:, :, slice, :])
         mt_shimmed = montage(shimmed[:, :, slice, :])
@@ -630,9 +627,9 @@ class ShimSequencer(Sequencer):
         fig.colorbar(im, cax=cax)
 
         # Save
-        fname_folder = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
-        fname_figure = os.path.join(fname_folder, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
-        os.makedirs(fname_folder, exist_ok=True)
+        path_figures = os.path.join(self.path_output, "fig_shimmed_vs_unshimmed_shim_groups")
+        fname_figure = os.path.join(path_figures, f"fig_shimmed_vs_unshimmed_shim_groups_slice_{slice}.png")
+        os.makedirs(path_figures, exist_ok=True)
         fig.savefig(fname_figure, bbox_inches='tight')
 
     def plot_currents(self, static):
@@ -775,7 +772,6 @@ class ShimSequencer(Sequencer):
 
         # Convert soft mask into binary mask
         bin_mask = (mask != 0).astype(int)
-
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
 
@@ -840,7 +836,6 @@ class ShimSequencer(Sequencer):
 
         # Convert soft mask into binary mask
         bin_mask = (mask != 0).astype(int)
-
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
 
@@ -1920,6 +1915,7 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
         mask (np.ndarray): Mask in the fieldmap space
         path_output (str): Path to the output folder
     """
+
     # Plot
     nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask==0), fill_value=np.nan)
     nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(mask==0), fill_value=np.nan)

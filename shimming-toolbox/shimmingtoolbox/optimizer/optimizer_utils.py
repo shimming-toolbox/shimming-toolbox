@@ -143,8 +143,8 @@ class OptimizerUtils(Optimizer):
 
     def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
         """
-        Returns all the quadratic terms used in the lsq_optimizer for the mse method, and for the quadprog optimizer,
-        for more details see PR#451
+        Returns all the quadratic terms used in the MSE objective function used in the least squares,
+        quadprog and BFGS optimization methods. For more details, see PR#451.
 
         Args:
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
@@ -160,12 +160,18 @@ class OptimizerUtils(Optimizer):
                 * float : Float used for the least squares optimizer
 
         """
-        inv_factor = 1 / (len(unshimmed_vec) * factor)
-
         # Apply weights to the coil matrix and unshimmed vector
-        coil_mat_w = self.mask_coefficients[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = self.mask_coefficients * unshimmed_vec
+        # The square root of the coefficients is taken since a,b,c are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
 
+        # Define inverse factor
+        inv_factor = 1 / (np.sum(self.mask_coefficients) * factor)
+
+        # Adding the regularization vector to 'a' ensures L2 regularization
+        # (sum of the squared regularization terms) since 'a' is multiplied
+        # twice with 'coef' in _residuals_mse()
         # Compute the quadratic terms
         a = inv_factor * (coil_mat_w.T @ coil_mat_w) + np.diag(self.reg_vector)
         b = 2 * inv_factor * (unshimmed_vec_w @ coil_mat_w)

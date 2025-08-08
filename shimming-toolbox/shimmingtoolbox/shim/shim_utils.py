@@ -122,9 +122,8 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
 
     This function computes various metrics (mean, standard deviation, mean absolute error,
     mean squared error, root mean squared error) over a 3D array, considering only the non-zero
-    elements within the mask. The mask can contain values between 0 and 1, where 0 indicates
-    the data is masked, or can contain binary values (0 or 1). If the mask contains values
-    between 0 and 1, the data is weighted accordingly.
+    elements within the mask. The mask contains values from 0 to 1, where 0 indicates
+    the data is masked. For values between 0 and 1, the data is weighted accordingly.
 
     Args:
         array (np.ndarray): 3D array of numerical values to compute the metric on.
@@ -139,35 +138,32 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
     Returns:
         np.ndarray: Array containing the output metrics, if axis is None, the output is a single value
     """
-    if mask.dtype != float:
-        mask = mask.astype(float)
-
-    ma_array = np.ma.masked_where(mask == 0, array)
+    ma_array = np.ma.array(array, mask=mask == 0)
     ma_array = np.ma.array(ma_array, mask=np.isnan(ma_array))
 
-    # Prevent division by zero in all metrics using weights by checking np.sum(mask)
-    if np.sum(mask) == 0:
+    # Prevent division by zero
+    if np.ma.sum(mask) == 0:
         return np.nan
 
     if metric == 'mean':
-        output = np.average(ma_array, weights=mask, axis=axis)
+        output = np.ma.average(ma_array, weights=mask, axis=axis)
 
     elif metric == 'std':
-        mean_weighted = np.average(ma_array, weights=mask, axis=axis)
-        variance = np.average(np.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
-        output = np.sqrt(variance)
+        mean_weighted = np.ma.average(ma_array, weights=mask, axis=axis)
+        variance = np.ma.average(np.ma.power(ma_array - mean_weighted, 2), weights=mask, axis=axis)
+        output = np.ma.sqrt(variance)
 
     elif metric == 'mae':
-        abs_diff = np.abs(ma_array)
-        output = np.average(abs_diff, weights=mask, axis=axis)
+        abs_diff = np.ma.abs(ma_array)
+        output = np.ma.average(abs_diff, weights=mask, axis=axis)
 
     elif metric == 'mse' :
-        squared_diff = np.power(ma_array, 2)
-        output = np.average(squared_diff, weights=mask, axis=axis)
+        squared_diff = np.ma.power(ma_array, 2)
+        output = np.ma.average(squared_diff, weights=mask, axis=axis)
 
     elif metric == 'rmse':
-        squared_diff = np.power(ma_array, 2)
-        output = np.sqrt(np.average(squared_diff, weights=mask, axis=axis))
+        squared_diff = np.ma.power(ma_array, 2)
+        output = np.ma.sqrt(np.ma.average(squared_diff, weights=mask, axis=axis))
 
     else:
         raise NotImplementedError(f"Metric '{metric}' not implemented. Available metrics: 'mean', 'std', 'mae', 'mse', 'rmse'.")
@@ -181,7 +177,6 @@ def calculate_metric_within_mask(array, mask, metric, axis=None):
         return output.filled(np.nan)
 
     return output
-
 
 def phys_to_shim_cs(coefs, manufacturer, orders):
     """Convert a list of coefficients from RAS to the Shim Coordinate System

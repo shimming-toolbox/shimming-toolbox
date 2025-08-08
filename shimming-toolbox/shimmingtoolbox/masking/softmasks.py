@@ -37,21 +37,21 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
     else :
         raise ValueError("Lenght must be 'mm' or 'px'")
 
-    soft_maks_options = {
+    soft_mask_options = {
     '2levels': lambda: create_two_levels_softmask(binmask, soft_width_px, soft_value),
     'linear': lambda: create_linear_softmask(binmask, soft_width_px),
     'gaussian': lambda: create_gaussian_softmask(binmask, soft_width_px),
     'sum': lambda: add_softmask_to_binmask(binmask, softmask)
 }
     try:
-        return soft_maks_options[type]()
+        return soft_mask_options[type]()
     except KeyError:
-        raise ValueError("Invalid soft mask type. Must be one of: soft_maks_options.keys()")
+        raise ValueError("Invalid soft mask type. Must be one of: soft_mask_options.keys()")
 
 
 def create_two_levels_softmask(binary_mask, soft_width, soft_value):
     """
-    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version
+    Create a soft mask from a binary mask. The final mask combines the binary mask and its dilated version
     multiplied by a soft value.
 
     Args:
@@ -82,7 +82,7 @@ def create_two_levels_softmask(binary_mask, soft_width, soft_value):
 
 def create_linear_softmask(binary_mask, soft_width):
     """
-    Creates a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
+    Create a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
     the background.
 
     Args:
@@ -116,7 +116,7 @@ def create_linear_softmask(binary_mask, soft_width):
 
 def create_gaussian_softmask(binary_mask, soft_width):
     """
-    Creates a soft mask from a binary mask. The final mask contains a gaussian blur from the binary mask to
+    Create a soft mask from a binary mask. The final mask contains a gaussian blur from the binary mask to
     the background.
 
     Args:
@@ -150,7 +150,7 @@ def create_gaussian_softmask(binary_mask, soft_width):
 
 def add_softmask_to_binmask(soft_mask, binary_mask):
     """
-    Adds a soft mask to a binary mask to create a new soft mask.
+    Add a soft mask to a binary mask to create a new soft mask.
 
     Args:
         soft_mask (numpy.ndarray): 3D array containing the soft mask.

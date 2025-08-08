@@ -103,9 +103,10 @@ class Optimizer(object):
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
         # Apply weights to the coil matrix and unshimmed vector
-        weights = np.sqrt(self.mask_coefficients)
-        coil_mat_w = weights[:, np.newaxis] * coil_mat
-        unshimmed_vec_w = weights * unshimmed_vec
+        # The square root of the coefficients is taken since the currents are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
 
         # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
         # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
@@ -121,7 +122,7 @@ class Optimizer(object):
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
-            tuple: tuple containing:
+            (tuple) : tuple containing:
                 * np.ndarray: 2D flattened array (masked_values, n_channels) of masked coils
                               (axis 0 must align with unshimmed_vec)
                 * np.ndarray: 1D flattened array (masked_values,) of the masked unshimmed map
