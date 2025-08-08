@@ -122,7 +122,7 @@ class Optimizer(object):
             mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
-            tuple: tuple containing:
+            (tuple) : tuple containing:
                 * np.ndarray: 2D flattened array (masked_values, n_channels) of masked coils
                               (axis 0 must align with unshimmed_vec)
                 * np.ndarray: 1D flattened array (masked_values,) of the masked unshimmed map

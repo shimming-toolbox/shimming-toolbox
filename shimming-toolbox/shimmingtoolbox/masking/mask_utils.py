@@ -23,11 +23,13 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     This function performs the following steps:
     1. **Slice Selection**: If `from_slices` is specified, only the corresponding axial slices from the input mask are used.
     2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`.
-    3. **Dilation**: If the mask is binary (i.e., contains only 0/1 or boolean values), a morphological dilation is applied
-    using the specified kernel and size. If the mask is soft (i.e., contains float values between 0 and 1), a custom dilation
-    is performed using a maximum filter within a spherical neighborhood.
+    3. **Dilation**:
+        - If the mask is binary (i.e., contains only 0/1 or boolean values), morphological dilation is applied using the specified
+        kernel and size.
+        - If the mask is soft (i.e., contains float values between 0 and 1), dilation is performed by assigning the **minimum
+        non-zero voxel value** to the surrounding voxels within a specified distance, based on the Euclidean distance transform.
     4. **ROI Constraint**: The dilated mask is intersected with the resampled full original mask (before slice selection)
-    to ensure that added voxels remain within the originally defined anatomical region.
+    to ensure that added voxels remain within the originally defined ROI.
     5. **Output**: The function returns the final mask (dilated and ROI-restricted). If `return_non_dil_mask` is True,
     it also returns the undilated mask.
 

@@ -51,7 +51,7 @@ def create_softmask(fname_binmask, fname_softmask=None, type='2levels', soft_wid
 
 def create_two_levels_softmask(binary_mask, soft_width, soft_value):
     """
-    Creates a soft mask from a binary mask. The final mask combines the binary mask and its dilated version
+    Create a soft mask from a binary mask. The final mask combines the binary mask and its dilated version
     multiplied by a soft value.
 
     Args:
@@ -82,7 +82,7 @@ def create_two_levels_softmask(binary_mask, soft_width, soft_value):
 
 def create_linear_softmask(binary_mask, soft_width):
     """
-    Creates a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
+    Create a soft mask from a binary mask. The final mask contains a linear gradient from the binary mask to
     the background.
 
     Args:
@@ -116,7 +116,7 @@ def create_linear_softmask(binary_mask, soft_width):
 
 def create_gaussian_softmask(binary_mask, soft_width):
     """
-    Creates a soft mask from a binary mask. The final mask contains a gaussian blur from the binary mask to
+    Create a soft mask from a binary mask. The final mask contains a gaussian blur from the binary mask to
     the background.
 
     Args:
@@ -150,7 +150,7 @@ def create_gaussian_softmask(binary_mask, soft_width):
 
 def add_softmask_to_binmask(soft_mask, binary_mask):
     """
-    Adds a soft mask to a binary mask to create a new soft mask.
+    Add a soft mask to a binary mask to create a new soft mask.
 
     Args:
         soft_mask (numpy.ndarray): 3D array containing the soft mask.

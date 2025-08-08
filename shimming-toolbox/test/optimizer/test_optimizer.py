@@ -50,10 +50,10 @@ class TestResiduals:
         # Coefficients
         self.coef = np.random.rand(nb_channels)
 
-        # Regularisation vector
+        # Regularization vector
         self.reg_vector = np.ones(nb_channels)
 
-        # Refularisation factor
+        # Regularization factor
         self.factor = 1
 
         # Delta variable for ps_huber residuals
