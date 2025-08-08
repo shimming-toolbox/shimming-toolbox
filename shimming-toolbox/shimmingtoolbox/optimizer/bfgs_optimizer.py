@@ -1,10 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import numpy as np
-import warnings
-from typing import List
 from scipy import optimize as opt
+
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
 
 

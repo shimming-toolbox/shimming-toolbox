@@ -54,7 +54,7 @@ class OptimizerUtils(Optimizer):
             if coefs is not None:
                 self.initial_coefs = coefs
             else:
-                raise ValueError(f"There are no coefficients to set")
+                raise ValueError("There are no coefficients to set")
 
         self._initial_guess_method = method
 
@@ -160,14 +160,22 @@ class OptimizerUtils(Optimizer):
                 * float : Float used for the least squares optimizer
 
         """
+        # Apply weights to the coil matrix and unshimmed vector
+        # The square root of the coefficients is taken since a,b,c are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
 
-        inv_factor = 1 / (len(unshimmed_vec) * factor)
+        # Define inverse factor
+        inv_factor = 1 / (np.sum(self.mask_coefficients) * factor)
+
         # Adding the regularization vector to 'a' ensures L2 regularization
         # (sum of the squared regularization terms) since 'a' is multiplied
         # twice with 'coef' in _residuals_mse()
-        a = (coil_mat.T @ coil_mat) * inv_factor + np.diag(self.reg_vector)
-        b = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        c = inv_factor * (unshimmed_vec @ unshimmed_vec)
+        # Compute the quadratic terms
+        a = inv_factor * (coil_mat_w.T @ coil_mat_w) + np.diag(self.reg_vector)
+        b = 2 * inv_factor * (unshimmed_vec_w @ coil_mat_w)
+        c = inv_factor * (unshimmed_vec_w @ unshimmed_vec_w)
 
         return a, b, c
 

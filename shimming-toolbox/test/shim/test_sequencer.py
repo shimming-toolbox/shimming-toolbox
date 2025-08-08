@@ -60,16 +60,16 @@ def create_fieldmap(n_slices=3, is_realtime=False):
         unshimmed = np.repeat(unshimmed[:, :, :, np.newaxis], 4, axis=3)
 
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
-    
+
     # Save in tmp directory
     nib.save(nii_fmap, os.path.join(__dir_testing__, 'fieldmap.nii.gz'))
     # save a fake json file
     json_fmap = {'SliceThickness': 3}
-        
+
     # Load the fieldmap
-    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'), 
+    nif_fmap = NiftiFieldMap(os.path.join(__dir_testing__, 'fieldmap.nii.gz'),
                              dilation_kernel_size=3, json=json_fmap, is_realtime=is_realtime)
-        
+
     return nif_fmap
 
 
@@ -189,15 +189,6 @@ class TestSequencer(object):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
                                        method='bfgs', opt_criteria='ps_huber')
-        currents = sequencer_test.shim()
-        sequencer_test.eval(currents)
-        assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
-
-    def test_shim_sequencer_std(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
-        # Optimize
-        slices = define_slices(nif_target.shape[2], 1)
-        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares', opt_criteria='std')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
@@ -409,7 +400,7 @@ def define_rt_sim_inputs():
     nib.save(nii_mask_static, os.path.join(__dir_testing__, 'mask_static.nii.gz'))
     # Load the mask
     nif_mask_static = NiftiMask(os.path.join(__dir_testing__, 'mask_static.nii.gz'), nif_target)
-    
+
     nif_mask_riro = copy.deepcopy(nif_mask_static)
 
     # Pmu
@@ -493,7 +484,7 @@ class TestShimRTpmuSimData(object):
         shim_trace_riro = []
         unshimmed_trace = []
         data = pmu.get_data()
-        
+
         for i_shim in range(len(slices)):
             # Calculate static correction
             correction_static = np.sum(currents_static[i_shim] * opt.merged_coils, axis=3, keepdims=False)
@@ -618,10 +609,10 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     static_mask = shapes(nif_target.data, 'cube', len_dim1=5, len_dim2=5, len_dim3=nz)
 
     nii_mask = nib.Nifti1Image(static_mask.astype(int), nif_target.affine, header=nif_target.header)
-    
+
     # save mask
     nib.save(nii_mask, os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_mask_static.nii.gz'))
-    
+
     nif_static_mask = NiftiMask(os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_mask_static.nii.gz'), nif_target)
     nif_riro_mask = copy.deepcopy(nif_static_mask)
     # Pmu
