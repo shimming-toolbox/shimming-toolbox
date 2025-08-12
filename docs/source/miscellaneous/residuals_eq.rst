@@ -22,20 +22,20 @@ The main variables used throughout this document are:
   in the region of interest (ROI) and ``nb_channels`` is the number of shim coil channels. Each column corresponds to the spatial
   magnetic field profile (per unit current) for a particular coil channel, evaluated at all voxels in the ROI.
 
-- :math:`u` – *Unshimmed field vector* of size (``masked_values``,).
+- :math:`u` – *Unshimmed field vector* of size (``masked_values``).
   Contains the measured values of the magnetic field map before shimming, at each voxel in the ROI.
 
-- :math:`m` – *Mask/weight vector* of size (``masked_values``,).
+- :math:`m` – *Mask/weight vector* of size (``masked_values``).
   Contains non-zero values for voxels included in the optimization, weighting their contribution to the objective function.
 
-- :math:`x` – *Solution vector* of size (``nb_channels``,).
+- :math:`x` – *Solution vector* of size (``nb_channels``).
   Contains the coil currents to be induced in each channel.
 
 - :math:`r` – *Residual* (objective function value) to be minimized. This scalar value represents the inhomogeneity after applying the coil currents.
 
 - :math:`f` – Stability factor used to scale the residual term for numerical stability.
 
-- :math:`\lambda` – Regularization vector of size (``nb_channels``,).
+- :math:`\lambda` – Regularization vector of size (``nb_channels``).
   Used to penalize large current amplitudes (L2 regularization). Its diagonalized matrix form is :math:`\Lambda`, of size
   (``nb_channels``, ``nb_channels``).
 
