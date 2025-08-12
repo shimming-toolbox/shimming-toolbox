@@ -23,4 +23,4 @@ FAQ
 5. **Where can I find the equations used in the optimization algorithms?**
 
     The mathematical foundations and equations used in the optimization algorithms are documented here:
-    :doc:`Optimization equations <../miscellaneous/residuals_eq>`.
+    :doc:`Objective Function Equations for Magnetic Field Shimming Optimization <../miscellaneous/residuals_eq>`.
