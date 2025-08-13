@@ -411,6 +411,8 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
 
 
 class ScannerShimSettings:
+    """ Class to handle the scanner shim settings from a NIfTI fieldmap file.
+    """
     def __init__(self, nif_fmap, orders=None):
 
         shim_settings_dac = nif_fmap.get_scanner_shim_settings(orders=orders)

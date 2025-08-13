@@ -38,6 +38,8 @@ def safe_getter(default_value=None):
 
 
 class NiftiFile:
+    """Parent class for handling NIfTI files.
+    """
     def __init__(self, fname_nii: str, json: dict = None, path_output: str = None, json_needed: bool = True) -> None:
         if not isinstance(fname_nii, str):
             raise TypeError("fname_nii must be a string")
@@ -138,7 +140,7 @@ class NiftiFile:
             os.makedirs(self.path_output)
         elif not os.path.isdir(self.path_output):
             raise ValueError(f"Output path {fname_output} is not a valid directory.")
-        
+
         if self.json is not None:
             # Save json
             fname_json = fname_output.rsplit('.nii', 1)[0] + '.json'
@@ -372,14 +374,3 @@ class NiftiFile:
         """
         model = self.get_json_info('ManufacturersModelName', required=False)
         return model.replace(" ", "_") if model is not None else None
-
-
-# TODO: Implement NiftiCoilProfile class
-class NiftiCoilProfile(NiftiFile):
-    """NiftiCoilProfile is a subclass of NiftiFile that represents a NIfTI coil profile file.
-
-    It inherits all methods and properties from NiftiFile and can be used to handle coil profile files specifically.
-    """
-
-    def __init__(self, fname_nii: str) -> None:
-        super().__init__(fname_nii)

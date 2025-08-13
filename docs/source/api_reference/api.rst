@@ -21,6 +21,9 @@ Field mapping
 .. automodule:: shimmingtoolbox.unwrap.prelude
    :members:
 
+.. automodule:: shimmingtoolbox.unwrap.skimage_unwrap
+   :members:
+
 Masking
 -------
 
@@ -55,11 +58,21 @@ Coils
 Shim
 ----
 
+Sequencer
+_________
 .. automodule:: shimmingtoolbox.shim.sequencer
    :members:
 
+Shim Utils
+__________
+.. automodule:: shimmingtoolbox.shim.shim_utils
+   :members:
+
+B1 Shim
+_______
 .. automodule:: shimmingtoolbox.shim.b1shim
    :members:
+
 
 Optimizer
 ---------
@@ -68,7 +81,25 @@ Optimizer
    :members:
    :special-members: __init__
 
+.. automodule:: shimmingtoolbox.optimizer.optimizer_utils
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+   :inherited-members:
+
 .. automodule:: shimmingtoolbox.optimizer.lsq_optimizer
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+   :inherited-members:
+
+.. automodule:: shimmingtoolbox.optimizer.quadprog_optimizer
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+   :inherited-members:
+
+.. automodule:: shimmingtoolbox.optimizer.bfgs_optimizer
    :members:
    :special-members: __init__
    :show-inheritance:
@@ -112,20 +143,31 @@ Numerical model
 .. automodule:: shimmingtoolbox.simulate.numerical_model
    :members:
 
+
 Miscellaneous
 -------------
 
+Dicom to Nifti
+______________
 .. automodule:: shimmingtoolbox.dicom_to_nifti
    :members:
 
+Load Nifti
+__________
 .. automodule:: shimmingtoolbox.load_nifti
    :members:
 
+Download
+________
 .. automodule:: shimmingtoolbox.download
    :members:
 
+PMU
+________
 .. automodule:: shimmingtoolbox.pmu
    :members:
 
+Shimming toolbox utils
+______________________
 .. automodule:: shimmingtoolbox.utils
    :members:
