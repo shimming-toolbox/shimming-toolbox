@@ -9,8 +9,8 @@ The following section outlines the API of shimming-toolbox.
    :depth: 1
 ..
 
-Fieldmapping
-------------
+Field mapping
+-------------
 
 .. automodule:: shimmingtoolbox.prepare_fieldmap
     :members:
@@ -73,6 +73,32 @@ Optimizer
    :special-members: __init__
    :show-inheritance:
    :inherited-members:
+
+Nifti file handling
+-------------------
+
+.. automodule:: shimmingtoolbox.files.NiftiFile
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+
+.. automodule:: shimmingtoolbox.files.NiftiFieldMap
+   :members:
+   :special-members: __init__
+   :inherited-members:
+   :show-inheritance:
+
+.. automodule:: shimmingtoolbox.files.NiftiMask
+   :members:
+   :special-members: __init__
+   :inherited-members:
+   :show-inheritance:
+
+.. automodule:: shimmingtoolbox.files.NiftiTarget
+   :members:
+   :special-members: __init__
+   :inherited-members:
+   :show-inheritance:
 
 Image manipulation
 ------------------
