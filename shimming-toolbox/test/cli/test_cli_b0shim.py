@@ -1504,7 +1504,6 @@ class TestCLIRealtime(object):
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
                          nii_softmask=nii_softmask, fname_softmask=fname_softmask,
-                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
