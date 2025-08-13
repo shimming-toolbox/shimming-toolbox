@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 import logging
 import numpy as np
 from numpy.linalg import norm
@@ -8,13 +9,14 @@ from scipy.special import pseudo_huber
 from typing import List
 import warnings
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
+from scipy.ndimage import map_coordinates
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
-allowed_opt_criteria = ['mse', 'mae', 'std', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
+allowed_opt_criteria = ['mse', 'mae', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
 logger = logging.getLogger(__name__)
 
 class LsqOptimizer(OptimizerUtils):
@@ -50,20 +52,18 @@ class LsqOptimizer(OptimizerUtils):
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
             allowed_opt_criteria[1]: self._residuals_mae,
-            allowed_opt_criteria[2]: self._residuals_std,
-            allowed_opt_criteria[3]: self._residuals_mse,
-            allowed_opt_criteria[4]: self._residuals_rmse,
-            allowed_opt_criteria[5]: self._residuals_rmse_signal_recovery,
-            allowed_opt_criteria[6]: self._residuals_ps_huber
+            allowed_opt_criteria[2]: self._residuals_mse,
+            allowed_opt_criteria[3]: self._residuals_rmse,
+            allowed_opt_criteria[4]: self._residuals_rmse_signal_recovery,
+            allowed_opt_criteria[5]: self._residuals_ps_huber
         }
         lsq_jacobian_dict = {
             allowed_opt_criteria[0]: self._residuals_mse_jacobian,
             allowed_opt_criteria[1]: None,
-            allowed_opt_criteria[2]: None,
-            allowed_opt_criteria[3]: self._residuals_mse_jacobian,
+            allowed_opt_criteria[2]: self._residuals_mse_jacobian,
+            allowed_opt_criteria[3]: None,
             allowed_opt_criteria[4]: None,
-            allowed_opt_criteria[5]: None,
-            allowed_opt_criteria[6]: None
+            allowed_opt_criteria[5]: None
         }
 
         if opt_criteria in allowed_opt_criteria:
@@ -79,10 +79,15 @@ class LsqOptimizer(OptimizerUtils):
         self.counter += 1
         # Define coil profiles
         n_channels = self.merged_coils.shape[3]
-        # Personalized parameters to LSQ
-        mask_erode = modify_binary_mask(mask, shape='sphere', size=3, operation='erode')
+        # Erode mask
+        bin_mask = (mask != 0).astype(int)
+        bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
+        mask_erode = np.zeros_like(mask, dtype=float)
+        mask_erode[bin_mask_erode != 0] = mask[bin_mask_erode != 0]
         mask_erode_vec = mask_erode.reshape((-1,))
+        self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
 
+        # Define merged coils
         temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
         merged_coils_Gx = np.zeros(np.shape(temp))
         merged_coils_Gy = np.zeros(np.shape(temp))
@@ -92,18 +97,19 @@ class LsqOptimizer(OptimizerUtils):
             merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
             merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
 
+        # Define coil matrices for each gradient
         self.coil_Gz_mat = np.reshape(merged_coils_Gz,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
         self.coil_Gx_mat = np.reshape(merged_coils_Gx,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
         self.coil_Gy_mat = np.reshape(merged_coils_Gy,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # masked points x N
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
 
-        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # mV'
-
-        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # mV'
-        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # mV'
-        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # mV'
+        # Define unshimmed vector for each gradient
+        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
 
         if len(self.unshimmed_Gz_vec) == 0:
             raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
@@ -149,9 +155,11 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
+        mae = np.average(np.abs(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
+        mae_coef = mae / factor  # MAE regularized to minimize currents
+        current_regularization_coef = np.square(coef).dot(self.reg_vector)
 
-        # MAE regularized to minimize currents
-        return np.mean(np.abs(unshimmed_vec + coil_mat @ coef)) / factor + np.square(coef).dot(self.reg_vector)
+        return mae_coef + current_regularization_coef
 
     def _residuals_ps_huber(self, coef, unshimmed_vec, coil_mat, factor):
         """ Pseudo huber objective function to minimize mean squared error or mean absolute error.
@@ -169,11 +177,16 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        residuals = unshimmed_vec + coil_mat @ coef
+        shimmed_vec = unshimmed_vec + coil_mat @ coef
+        # Define delta with the 90th percentile of the absolute shimmed vector
         if self._delta is None:
-            # self._delta = np.max(np.abs(residuals))
-            self._delta = np.percentile(np.abs(residuals), 90)
-        return np.mean(pseudo_huber(self._delta, residuals)) / factor + np.square(coef).dot(self.reg_vector)
+            self._delta = np.percentile(np.abs(shimmed_vec), 90)
+        # Compute the mean pseudo huber (MPSH) residuals
+        mpsh = np.average(pseudo_huber(self._delta, shimmed_vec), weights=self.mask_coefficients)
+        mpsh_coeff = mpsh / factor # MPSH regularized to minimize currents
+        current_regularization_coef = np.square(coef).dot(self.reg_vector)
+
+        return mpsh_coeff + current_regularization_coef
 
     def _residuals_mse(self, coef, a, b, c):
         """ Objective function to minimize the mean squared error (MSE)
@@ -216,26 +229,11 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        shimmed_vec = unshimmed_vec + coil_mat @ coef
-        return (shimmed_vec).dot(shimmed_vec) / len(unshimmed_vec) / factor + np.square(coef).dot(self.reg_vector)
+        mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
+        mse_coef = mse / factor  # MSE regularized to minimize currents
+        current_regularization_coef = np.square(coef).dot(self.reg_vector)
 
-    def _residuals_std(self, coef, unshimmed_vec, coil_mat, factor):
-        """ Objective function to minimize the standard deviation (STD)
-
-        Args:
-            coef (np.ndarray): 1D array of channel coefficients
-            unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
-            coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
-                                      (axis 0 must align with unshimmed_vec)
-            factor (float): Devise the result by 'factor'. This allows to scale the output for the minimize function to
-                            avoid positive directional linesearch
-
-        Returns:
-            float: Residuals for least squares optimization
-        """
-
-        # STD regularized to minimize currents
-        return np.std(unshimmed_vec + coil_mat @ coef) / factor + np.square(coef).dot(self.reg_vector)
+        return mse_coef + current_regularization_coef
 
     def _residuals_rmse(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
@@ -251,11 +249,11 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization
         """
-        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
+        mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
+        rmse_coef = np.sqrt(mse) / factor  # RMSE regularized to minimize currents
         current_regularization_coef = np.square(coef).dot(self.reg_vector)
 
-        # RMSE regularized to minimize currents
-        return b0_rmse_coef + current_regularization_coef
+        return rmse_coef + current_regularization_coef
 
     def _residuals_rmse_signal_recovery(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the root mean squared error (RMSE)
@@ -272,15 +270,16 @@ class LsqOptimizer(OptimizerUtils):
         Returns:
             float: Residuals for least squares optimization with through-slice gradient minimization
         """
-        b0_rmse_coef = norm((unshimmed_vec + coil_mat @ coef) / factor, 2)
-        signal_recovery_coef = norm((self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef) / factor, 2)
+        mse_b0 = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
+        rmse_b0_coef = np.sqrt(mse_b0) / factor # RMSE regularized to minimize currents
+        mse_Gz = np.average(np.square(self.unshimmed_Gz_vec + self.coil_Gz_mat @ coef), weights=self.mask_erode_coefficients)
+        rmse_Gz_coef = np.sqrt(mse_Gz) / factor # RMSE regularized to minimize currents
         current_regularization_coef = np.square(coef).dot(self.reg_vector)
 
-        return b0_rmse_coef + signal_recovery_coef * self.w_signal_loss + current_regularization_coef
+        return rmse_b0_coef + rmse_Gz_coef * self.w_signal_loss + current_regularization_coef
 
     def _residuals_mse_jacobian(self, coef, a, b, c):
         """ Jacobian of the function that we want to minimize
-
 
         Args:
             coef (np.ndarray): 1D array of channel coefficients
@@ -402,45 +401,54 @@ class LsqOptimizer(OptimizerUtils):
                 * float : Float used for the least squares optimizer
 
         """
-        len_unshimmed = len(unshimmed_vec)
-        len_unshimmed_Gz = len(self.unshimmed_Gz_vec)
-        len_unshimmed_Gx = len(self.unshimmed_Gx_vec)
+        # Apply weights to the coil matrices and unshimmed vectors
+        # The square root of the coefficients is taken since a,b,c are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
+        coil_Gz_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gz_mat
+        unshimmed_Gz_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gz_vec
+        coil_Gx_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gx_mat
+        unshimmed_Gx_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gx_vec
+        coil_Gy_mat_w = np.sqrt(self.mask_erode_coefficients)[:, np.newaxis] * self.coil_Gy_mat
+        unshimmed_Gy_vec_w = np.sqrt(self.mask_erode_coefficients) * self.unshimmed_Gy_vec
 
-        inv_factor = 1 / (len_unshimmed * factor)
-        w_inv_factor_Gz = self.w_signal_loss / len_unshimmed_Gz
-        w_inv_factor_Gxy = self.w_signal_loss_xy / len_unshimmed_Gx
+        # Define inverse factors
+        inv_factor = 1 / (np.sum(self.mask_coefficients) * factor)
+        w_inv_factor_Gz = self.w_signal_loss / np.sum(self.mask_erode_coefficients)
+        w_inv_factor_Gxy = self.w_signal_loss_xy / np.sum(self.mask_erode_coefficients)
 
         # MSE term for unshimmed_vec and coil_mat
-        a1 = inv_factor * (coil_mat.T @ coil_mat)
-        b1 = 2 * inv_factor * (unshimmed_vec @ coil_mat)
-        c1 = inv_factor * (unshimmed_vec @ unshimmed_vec)
+        a_0 = inv_factor * (coil_mat_w.T @ coil_mat_w)
+        b_0 = 2 * inv_factor * (unshimmed_vec_w @ coil_mat_w)
+        c_0 = inv_factor * (unshimmed_vec_w @ unshimmed_vec_w)
 
         # MSE term for unshimmed_Gz_vec and coil_Gz_mat
-        a2 = w_inv_factor_Gz * (self.coil_Gz_mat.T @ self.coil_Gz_mat)
-        b2 = 2 * w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.coil_Gz_mat)
-        c2 = w_inv_factor_Gz * (self.unshimmed_Gz_vec @ self.unshimmed_Gz_vec)
+        a_z = w_inv_factor_Gz * (coil_Gz_mat_w.T @ coil_Gz_mat_w)
+        b_z = 2 * w_inv_factor_Gz * (unshimmed_Gz_vec_w @ coil_Gz_mat_w)
+        c_z = w_inv_factor_Gz * (unshimmed_Gz_vec_w @ unshimmed_Gz_vec_w)
 
         # MSE term for unshimmed_Gx_vec and coil_Gx_mat
-        a3 = w_inv_factor_Gxy * (self.coil_Gx_mat.T @ self.coil_Gx_mat)
-        b3 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.coil_Gx_mat)
-        c3 = w_inv_factor_Gxy * (self.unshimmed_Gx_vec @ self.unshimmed_Gx_vec)
+        a_x = w_inv_factor_Gxy * (coil_Gx_mat_w.T @ coil_Gx_mat_w)
+        b_x = 2 * w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ coil_Gx_mat_w)
+        c_x = w_inv_factor_Gxy * (unshimmed_Gx_vec_w @ unshimmed_Gx_vec_w)
 
         # MSE term for unshimmed_Gy_vec and coil_Gy_mat
-        a4 = w_inv_factor_Gxy * (self.coil_Gy_mat.T @ self.coil_Gy_mat)
-        b4 = 2 * w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.coil_Gy_mat)
-        c4 = w_inv_factor_Gxy * (self.unshimmed_Gy_vec @ self.unshimmed_Gy_vec)
+        a_y = w_inv_factor_Gxy * (coil_Gy_mat_w.T @ coil_Gy_mat_w)
+        b_y = 2 * w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ coil_Gy_mat_w)
+        c_y = w_inv_factor_Gxy * (unshimmed_Gy_vec_w @ unshimmed_Gy_vec_w)
 
         # Combining the terms
         # Adding the regularization vector to 'a' ensures L2 regularization
         # (sum of the squared regularization terms) since 'a' is multiplied
         # twice with 'coef' in _residuals_mse()
-        a = a1 + a2 + a3 + a4 + np.diag(self.reg_vector)
-        b = b1 + b2 + b3 + b4
-        c = c1 + c2 + c3 + c4
+        a = a_0 + a_x + a_y + a_z + np.diag(self.reg_vector)
+        b = b_0 + b_x + b_y + b_z
+        c = c_0 + c_x + c_y + c_z
 
         return a, b, c
 
-
+# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuLsqOptimizer(LsqOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
         field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)

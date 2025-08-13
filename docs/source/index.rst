@@ -18,6 +18,7 @@
    user_section/tutorials.rst
    cli_reference/cli.rst
    user_section/help.rst
+   user_section/faq.rst
    user_section/citing.rst
 
 .. toctree::
