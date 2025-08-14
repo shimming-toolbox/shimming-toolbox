@@ -225,7 +225,7 @@ class NiftiFile:
         return path_nii
 
     @safe_getter(default_value=None)
-    def get_json_info(self, key: str, required: bool = False) -> any:
+    def get_json_info(self, key: str, required: bool = True) -> any:
         """ Get a specific key from the JSON file.
 
         Args:

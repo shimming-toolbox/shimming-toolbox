@@ -28,6 +28,7 @@ class Optimizer(object):
                                       concatenated on the 4th dimension. See self.merge_coils() for more details
         merged_bounds (list): list of bounds corresponding to each merged coils: merged_bounds[3] is the (min, max)
                               bound for merged_coils[..., 3]
+        mask_coefficients (np.ndarray): 1d array of coefficients corresponding to the mask used for optimization
     """
 
     def __init__(self, coils: ListCoil, unshimmed, affine):
@@ -48,6 +49,7 @@ class Optimizer(object):
         self.unshimmed_affine = []
         self.merged_coils = []
         self.merged_bounds = []
+        self.mask_coefficients = None
         self.set_unshimmed(unshimmed, affine)
 
     def set_unshimmed(self, unshimmed, affine):
@@ -56,7 +58,7 @@ class Optimizer(object):
 
         Args:
             unshimmed (np.ndarray): 3d array of unshimmed volume
-            affine: (np.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
+            affine (np.ndarray): 4x4 array containing the qform affine transformation for the unshimmed array
         """
         # Check dimensions of unshimmed map
         if unshimmed.ndim != 3:
@@ -92,8 +94,7 @@ class Optimizer(object):
         Optimize unshimmed volume by varying current to each channel
 
         Args:
-            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
-                                  unshimmed
+            mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
 
         Returns:
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
@@ -101,37 +102,54 @@ class Optimizer(object):
         """
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
 
-        output = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec  # N x mV' @ mV'
+        # Apply weights to the coil matrix and unshimmed vector
+        # The square root of the coefficients is taken since the currents are computed
+        # by multiplying two weighted arrays
+        coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
+        unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
 
-        return output
+        # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
+        # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
+        currents = -1 * scipy.linalg.pinv(coil_mat_w) @ unshimmed_vec_w
+
+        return currents
 
     def get_coil_mat_and_unshimmed(self, mask):
         """
         Returns the coil matrix, and the unshimmed vector used for the optimization
 
         Args:
-            mask (np.ndarray): 3d array of integers marking volume for optimization. Must be the same shape as
-                              unshimmed
+            mask (np.ndarray): 3d array marking volume for optimization. Must be the same shape as unshimmed
+
         Returns:
             (tuple) : tuple containing:
-                * np.ndarray: 2D flattened array (point, channel) of masked coils
+                * np.ndarray: 2D flattened array (masked_values, n_channels) of masked coils
                               (axis 0 must align with unshimmed_vec)
-                * np.ndarray: 1D flattened array (point) of the masked unshimmed map
-
+                * np.ndarray: 1D flattened array (masked_values,) of the masked unshimmed map
         """
         # Check for sizing errors
         self._check_sizing(mask)
-        # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
+        # Convert mask to float
+        if mask.dtype != float:
+            mask = mask.astype(float)
+        # Reshape mask to 1D
         mask_vec = mask.reshape((-1,))
-        # Reshape coil profile: X, Y, Z, N --> N, X, Y, Z --> N, [mask.shape]
-        # --> N, mask.size --> mask.size, N --> masked points, N
-        merged_coils_reshaped = np.reshape(np.transpose(self.merged_coils, axes=(3, 0, 1, 2)),
-                                           (n_channels, -1))
-        masked_points_indices = np.where(mask_vec != 0)
+        # Get the non-zero mask coefficient values
+        self.mask_coefficients = mask_vec[mask_vec != 0]
 
-        coil_mat = merged_coils_reshaped[:, masked_points_indices[0]].T  # masked points x N
-        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[masked_points_indices[0]]  # mV'
+        # Define number of coil profiles (channels)
+        n_channels = self.merged_coils.shape[3] # dimensions : (n_channels,)
+        # Transpose coil profile : (X, Y, Z, n_channels) --> (n_channels, X, Y, Z) or (n_channels, [mask.shape])
+        merged_coils_transposed = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        # Reshape coil profile : (n_channels, X, Y, Z) --> (n_channels, X * Y * Z) or (n_channels, mask.size)
+        merged_coils_reshaped = np.reshape(merged_coils_transposed, (n_channels, -1))
+
+        # Extract the masked coil matrix
+        # dimensions : (n_channels, mask.size) --> (mask.size, n_channels) --> (masked_values, n_channels)
+        coil_mat = merged_coils_reshaped[:, mask_vec != 0].T
+        # Extract the unshimmed vector
+        # dimensions : (masked_values,)
+        unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_vec != 0]
 
         return coil_mat, unshimmed_vec
 

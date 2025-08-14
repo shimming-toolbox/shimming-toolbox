@@ -320,9 +320,9 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                                                     options, coil_number=i_coil)
 
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs)
-    logger.info(f" Plotting currents")
+    logger.info("Plotting currents")
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Plot the coefs after outputting the currents to the text file
@@ -340,7 +340,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                 _plot_coefs(coil, list_slices, coefs_coil, path_output, i_coil,
                             bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-        logger.info(f"Finished plotting figure(s)")
+        logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options, coil_number,
@@ -359,7 +359,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 
         # Print the average shim coefficients without considering slices with 0s
         logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
-                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0)}")
+                    f"{np.mean(np.sum(abs(coefs), axis=1, where=(coefs != 0)), axis=0):.6f}")
 
         with open(fname_output, 'w', encoding='utf-8') as f:
             # (len(slices) x n_channels)
@@ -376,7 +376,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                             else:
                                 # Output initial coefs (absolute)
                                 f.write(f"{default_coefs[i_channel]:.6f}, ")
-                        f.write(f"\n")
+                        f.write("\n")
 
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
@@ -858,9 +858,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
             list_fname_output += _save_to_text_file_rt(coil, coefs_coil_static, coefs_coil_riro, mean_p, list_slices,
                                                        path_output, o_format_coil, options, i_coil, 0)
     logger.info(f"Coil txt file(s) are here:\n{os.linesep.join(list_fname_output)}")
-    logger.info(f"Plotting figure(s)")
+    logger.info("Plotting figure(s)")
     sequencer.eval(coefs_static, coefs_riro, mean_p, p_rms)
-    logger.info(f"Plotting Currents")
+    logger.info("Plotting Currents")
     # Plot the coefs after outputting the currents to the text file
 
     for i_coil, coil in enumerate(all_coils):
@@ -881,7 +881,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
                         pres_probe_max=pmu.max - mean_p, pres_probe_min=pmu.min - mean_p,
                         bounds=[bound for bounds in coil.coef_channel_minmax.values() for bound in bounds])
 
-    logger.info(f"Finished plotting figure(s)")
+    logger.info("Finished plotting figure(s)")
 
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
@@ -1508,7 +1508,7 @@ def parse_add_channels(channels: str, n_channels: int):
         channels = [int(channel) for channel in channels]
         channels.sort()
         if len(channels) + n_channels <= max(channels):
-            raise ValueError(f"The provided channels to add would leave gaps in the channels")
+            raise ValueError("The provided channels to add would leave gaps in the channels")
         return channels
     except ValueError:
         raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")

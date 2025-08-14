@@ -1,5 +1,38 @@
 # Changelog
 
+## 1.3 (2025-07-29)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.2...1.3)
+
+**BUG**
+ - **st_dicom_to_nifti**: Make sure niftis are not in diocoms path. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/593)
+ - **st_sort_dicoms**: Add fix when dicom files have the same name. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/595)
+ - Set default value for required in get_json_info to True. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/621)
+
+**FEATURE**
+ - **st_b0shim**: Adding Gradient-based optimizer (BFGS) and pseudo huber loss function . [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/515)
+ - **st_b0shim**: Output an updated constraint file after performing a volume shim. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/611)
+ - **st_maths**: Add division and standard deviation calculation to st_maths. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/612)
+ - **st_prepare_fieldmap**: Add unwrapping and filtering in 2D when field mapping. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/618)
+
+**ENHANCEMENT**
+ - **st_b0shim**: Gradient output. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/586)
+ - **st_b0shim**: Add single file output for real-time shimming (chronological-coil/slicewise-coil). [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/587)
+ - **st_b0shim**: Add 4th dimensions if coil profiles have 1 channel. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/591)
+ - **st_b0shim**: Change B0 map slice thickness to consider slice gap. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/594)
+ - **st_b0shim**: Use DeviceSerialNumber to differentiate scanners. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/610)
+ - **st_b0shim**: NiftiFile class. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/614)
+ - **st_b0shim, st_realtime_shim**: Improve realtime shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/482)
+ - **st_dicom_to_nifti**: Update BIDS config file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/582)
+ - **st_maths**: Add ability to compute magnitude and phase data from complex NIfTIs. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/583)
+ - **st_maths**: Create output directory if it does not exist in st_maths mean. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/596)
+
+**REFACTORING**
+ - **st_b0shim**: NiftiFile class. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/614)
+
+**INSTALLATION**
+ - add requirement.txt to setup files in preparation for release automa…. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/585)
+ - Update dcm2niix to v1.0.20250506. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/606)
+
 ## 1.2 (2025-03-31)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.1...1.2)
 
