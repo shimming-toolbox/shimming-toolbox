@@ -33,6 +33,12 @@ Masking
 .. automodule:: shimmingtoolbox.masking.mask_utils
     :members:
 
+.. automodule:: shimmingtoolbox.masking.mask_mrs
+    :members:
+
+.. automodule:: shimmingtoolbox.masking.softmasks
+    :members:
+
 Coils
 -----
 

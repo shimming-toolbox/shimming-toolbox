@@ -177,7 +177,6 @@ class QuadProgOpt(OptimizerUtils):
 
         return cost_matrix, cost_vector
 
-# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuQuadProgOpt(QuadProgOpt):
     """ Optimizer for the realtime component (riro) for this optimization:
             field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
@@ -205,8 +204,8 @@ class PmuQuadProgOpt(QuadProgOpt):
     def _get_linear_inequality_matrices(self):
 
         """
-        This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
-        g @ x < h, to see all details please see the PR 458
+        This functions returns the linear inequality matrix and vector that will be used in the optimization, such as
+        g @ x < h. To see all details please see the PR 458
         Redefined from QuadProg to match the new bounds and constraints
 
         Returns:

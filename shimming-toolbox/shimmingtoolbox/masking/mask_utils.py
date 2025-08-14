@@ -21,6 +21,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     and applying optional dilation restricted to the region of interest (ROI).
 
     This function performs the following steps:
+
     1. **Slice Selection**: If `from_slices` is specified, only the corresponding axial slices from the input mask are used.
     2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`.
     3. **Dilation**:

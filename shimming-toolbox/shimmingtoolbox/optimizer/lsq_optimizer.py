@@ -448,7 +448,6 @@ class LsqOptimizer(OptimizerUtils):
 
         return a, b, c
 
-# TODO : Realtime softmask B0 shimming needs to be implemented
 class PmuLsqOptimizer(LsqOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
         field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)

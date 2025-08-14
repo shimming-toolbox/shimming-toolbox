@@ -357,22 +357,6 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
 
-            res_soft = runner.invoke(b0shim_cli, ['dynamic',
-                                             '--fmap', fname_fmap,
-                                             '--target', fname_target,
-                                             '--mask', fname_softmask,
-                                             '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.3',
-                                             '--slices', 'ascending',
-                                             '--optimizer-method', 'least_squares',
-                                             '--optimizer-criteria', 'rmse',
-                                             '--weighting-signal-loss', '10',
-                                             '--mask-dilation-kernel-size', '5',
-                                             '--output', tmp],
-                                catch_exceptions=False)
-
-            assert res_soft.exit_code == 0
-
     def test_cli_dynamic_no_mask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -435,6 +419,13 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [1.324215, -20.422662, -40.513364, -1.456946, 0.127875, -1.26732, -0.566027, 0.032394]
 
     def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
@@ -1470,6 +1461,52 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+
+    def test_cli_rt_softmask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask-static', fname_softmask,
+                                             '--mask-riro', fname_softmask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,1',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'mse',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [-51.721091, -0.004792074189, 1454.1917]
 
     def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

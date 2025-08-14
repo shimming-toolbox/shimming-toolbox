@@ -53,8 +53,7 @@ class NiftiMask(NiftiFile):
             # 80% of the volumes must contain the desired pixel to be included, this avoids having dead voxels in the
             # output mask
             tmp_3d = threshold(tmp_3d, thr=int(n_vol * 0.8))
-            nii_mask_target = nib.Nifti1Image(tmp_3d.astype(int), self.affine,
-                                            header=self.header)
+            nii_mask_target = nib.Nifti1Image(tmp_3d.astype(int), self.affine, header=self.header)
             if logger.level <= getattr(logging, 'DEBUG') and self.path_output is not None:
                 nib.save(nii_mask_target, os.path.join(self.path_output, "fig_3d_mask.nii.gz"))
         else:
