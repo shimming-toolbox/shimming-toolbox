@@ -419,6 +419,13 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [1.324215, -20.422662, -40.513364, -1.456946, 0.127875, -1.26732, -0.566027, 0.032394]
 
     def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
@@ -1490,6 +1497,16 @@ class TestCLIRealtime(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [-51.721091, -0.004792074189, 1454.1917]
 
     def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
