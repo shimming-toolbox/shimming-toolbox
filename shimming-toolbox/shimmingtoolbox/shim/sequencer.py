@@ -1040,7 +1040,7 @@ class RealTimeSequencer(Sequencer):
         max_bound_offset = min(mean_respiratory_cycle_time / 2, stop_time_mdh - acq_times.max())
         time_offsets = np.linspace(min_bound_offset, max_bound_offset, n_samples)
 
-        mask_fmap = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
+        mask_fmap = np.maximum(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
         mask_4d = np.repeat(np.expand_dims(mask_fmap, axis=-1), self.nif_fieldmap.shape[-1], axis=-1)
         fmap_ma = np.ma.array(self.nif_fieldmap.data, mask=mask_4d == False)
 
@@ -1187,7 +1187,7 @@ class RealTimeSequencer(Sequencer):
         pressure_rms = self.pmu.get_pressure_rms(self.acq_timestamps[0].min(), self.acq_timestamps[-1].max())
 
         # Mask the voxels not being shimmed for riro
-        mask_fmap = np.logical_or(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
+        mask_fmap = np.maximum(self.mask_static_fmcs_dil, self.mask_riro_fmcs_dil)
         masked_fieldmap = np.repeat(mask_fmap[..., np.newaxis], fieldmap.shape[-1], 3) * fieldmap
 
         static = np.zeros(fieldmap.shape[:-1])
@@ -1458,16 +1458,15 @@ class RealTimeSequencer(Sequencer):
         shimmed_static = np.zeros(shape)
         shimmed_riro = np.zeros(shape)
         masked_shim_static_riro = np.zeros(shape)
-        masked_shim_static = np.zeros(shape)
-        masked_shim_riro = np.zeros(shape)
         masked_unshimmed = np.zeros(shape)
         shim_trace_static_riro = []
         shim_trace_static = []
         shim_trace_riro = []
         unshimmed_trace = []
 
-        mask_fmcs_per_shim = np.logical_or(self.mask_static_orig_fmcs_per_shim, self.mask_riro_orig_fmcs_per_shim)
-        mask_fmcs = np.logical_or(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
+        # Combine static and riro masks
+        mask_fmcs_per_shim = np.maximum(self.mask_static_orig_fmcs_per_shim, self.mask_riro_orig_fmcs_per_shim)
+        mask_fmcs = np.maximum(self.mask_static_orig_fmcs, self.mask_riro_orig_fmcs)
 
         if self.nif_fieldmap.extended:
             # Remove extended slices if the field map was smaller than the kernel size
@@ -1497,27 +1496,23 @@ class RealTimeSequencer(Sequencer):
                 shimmed_riro[..., i_t, i_shim] = unshimmed[..., i_t] + correction_riro
 
                 # Calculate masked shim
-                masked_shim_static[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] *
-                                                        shimmed_static[..., i_t, i_shim])
-                masked_shim_static_riro[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] *
-                                                             shimmed_static_riro[..., i_t, i_shim])
-                masked_shim_riro[..., i_t, i_shim] = mask_fmcs_per_shim[..., i_shim] * shimmed_riro[..., i_t, i_shim]
+                masked_shim_static_riro[..., i_t, i_shim] = (mask_fmcs_per_shim[..., i_shim] * shimmed_static_riro[..., i_t, i_shim])
                 masked_unshimmed[..., i_t, i_shim] = mask_fmcs_per_shim[..., i_shim] * unshimmed[..., i_t]
 
-                # Calculate the sum over the ROI
+                # Calculate weighted RMSE
                 # TODO: Calculate the sum of mask_fmap_cs[..., i_shim] and divide by that (If the roi is bigger due to
                 #  interpolation, it should not count more). Possibly use soft mask?
-                rmse_shimmed_static = calculate_metric_within_mask(masked_shim_static[..., i_t, i_shim],
-                                                                   mask_fmcs_per_shim[..., i_shim].astype(bool),
+                rmse_shimmed_static = calculate_metric_within_mask(shimmed_static[..., i_t, i_shim],
+                                                                   mask_fmcs_per_shim[..., i_shim],
                                                                    metric='rmse')
-                rmse_shimmed_static_riro = calculate_metric_within_mask(masked_shim_static_riro[..., i_t, i_shim],
-                                                                        mask_fmcs_per_shim[..., i_shim].astype(bool),
+                rmse_shimmed_static_riro = calculate_metric_within_mask(shimmed_static_riro[..., i_t, i_shim],
+                                                                        mask_fmcs_per_shim[..., i_shim],
                                                                         metric='rmse')
-                rmse_shimmed_riro = calculate_metric_within_mask(masked_shim_riro[..., i_t, i_shim],
-                                                                 mask_fmcs_per_shim[..., i_shim].astype(bool),
+                rmse_shimmed_riro = calculate_metric_within_mask(shimmed_riro[..., i_t, i_shim],
+                                                                 mask_fmcs_per_shim[..., i_shim],
                                                                  metric='rmse')
-                rmse_unshimmed = calculate_metric_within_mask(masked_unshimmed[..., i_t, i_shim],
-                                                              mask_fmcs_per_shim[..., i_shim].astype(bool),
+                rmse_unshimmed = calculate_metric_within_mask(unshimmed[..., i_t],
+                                                              mask_fmcs_per_shim[..., i_shim],
                                                               metric='rmse')
 
                 if rmse_shimmed_static_riro > rmse_unshimmed:
@@ -1618,6 +1613,9 @@ class RealTimeSequencer(Sequencer):
         n_t = unshimmed.shape[3]
         n_shims = len(self.slices)
         n_slices_fm = unshimmed.shape[2]
+
+        # Binarize mask
+        mask_fm = (mask_fm != 0).astype(int)
 
         # Remove
         plots = []
@@ -1836,7 +1834,7 @@ class RealTimeSequencer(Sequencer):
             unshimmed (np.ndarray): Original fieldmap not shimmed shaped (x, y, z, time)
             masked_shim_static_riro(np.ndarray): Masked shimmed fieldmap shaped (x, y, z, time, slices)
             mask_fmap_cs (np.ndarray): Field map mask indicating where delta B0 is not 0 in each slice -- shaped (x, y, z, slices)
-            mask (np.ndarray): Binary mask in the fieldmap space shaped (x, y, z)
+            mask (np.ndarray): Mask in the fieldmap space shaped (x, y, z)
         """
         # Transform shimmed field map to shape (x, y, z, time)
         sum_mask_fmap_cs = np.sum(mask_fmap_cs, axis=3)
@@ -1861,6 +1859,7 @@ class RealTimeSequencer(Sequencer):
         mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
         mt_shimmed_masked = montage(nan_shimmed_masked.filled())
 
+        # Compute weighted mean
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
         metric_shimmed_mean = calculate_metric_within_mask(std_shimmed_masked, mask, metric='mean')
 
@@ -1880,7 +1879,7 @@ class RealTimeSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 1)
         ax.imshow(mt_unshimmed, cmap='gray')
         mt_unshimmed_masked[mt_unshimmed_masked == 0] = np.nan
-        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='viridis')
+        im = ax.imshow(mt_unshimmed_masked, vmin=min_value, vmax=max_value, cmap='jet')
         ax.set_title(f"Before shimming\nmean: {metric_unshimmed_mean:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
