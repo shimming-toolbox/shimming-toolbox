@@ -169,7 +169,7 @@ ________
    :members:
 
 PMU
-________
+___
 .. automodule:: shimmingtoolbox.pmu
    :members:
 
