@@ -1196,14 +1196,15 @@ class RealTimeSequencer(Sequencer):
             self.pmu.adjust_start_time(round(best_time_offset))
 
             pmu_plot_times = self.pmu.get_times(acq_times.min() - 1000, acq_times.max() + 1000)
-            pmu_plot_pressures = (self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000) - 2048) / 100
+            pmu_plot_pressures = self.pmu.get_trace(acq_times.min() - 1000, acq_times.max() + 1000)
 
             ax2 = fig.add_subplot(312)
-            ax2.plot((pmu_plot_times - pmu_plot_times.min()) / 1000, pmu_plot_pressures, label='pmu')
             for i_slice in range(n_slices):
                 y = fmap_ma.mean(axis=(0, 1))[i_slice].filled()
                 y = (y - y.mean())
                 ax2.scatter((acq_times[:, i_slice] - pmu_plot_times.min()) / 1000, y, label=f"slice: {i_slice}")
+            ax2_tw = ax2.twinx()
+            ax2_tw.plot((pmu_plot_times - pmu_plot_times.min()) / 1000, pmu_plot_pressures, label='pmu')
 
             ax2.legend()
             ax2.set_xlabel("Time [s]")

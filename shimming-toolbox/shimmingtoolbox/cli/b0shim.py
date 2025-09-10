@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
-from shimmingtoolbox.pmu import PmuResp, PmuExt, PmuRespLog, PmuExtLog
+from shimmingtoolbox.pmu import PmuResp, PmuExt, PmuRespLog, PmuExtLog, PmuRespBiopac, PmuExtBiopac
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
@@ -725,18 +725,27 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
 
-    if os.path.splitext(fname_resp)[1] == '.log':
-        pmu = PmuRespLog(fname_resp, time_offset=time_offset)
-    else:
-        pmu = PmuResp(fname_resp, time_offset=time_offset)
     if fname_ext is not None:
         # Load external trigger file if provided
-        if os.path.splitext(fname_resp)[1] == '.log':
+        if os.path.splitext(fname_ext)[1] == '.log':
             pmu_ext = PmuExtLog(fname_ext)
+        elif os.path.splitext(fname_ext)[1] == '.txt':
+            pmu_ext = PmuExtBiopac(fname_ext, nif_fmap)
         else:
             pmu_ext = PmuExt(fname_ext)
     else:
         pmu_ext = None
+
+    if os.path.splitext(fname_resp)[1] == '.log':
+        pmu = PmuRespLog(fname_resp, time_offset=time_offset)
+    elif os.path.splitext(fname_resp)[1] == '.txt':
+        # Triggers are required when using the Biopac. Since the information is in the same file, using the pmu or the
+        # trigger option works
+        if pmu_ext is None:
+            pmu_ext = PmuExtBiopac(fname_resp, nif_fmap)
+        pmu = PmuRespBiopac(fname_resp, pmu_ext, time_offset=time_offset)
+    else:
+        pmu = PmuResp(fname_resp, time_offset=time_offset)
 
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nif_fmap, nif_target, nif_mask_target_static,

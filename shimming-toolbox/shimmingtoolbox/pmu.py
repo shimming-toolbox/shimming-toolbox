@@ -222,8 +222,7 @@ class Pmu(object):
 
     def get_trigger_times(self, start_time=None, stop_time=None):
         """
-        Returns the trigger times in ms of the resp trace.
-        cycle
+        Returns the trigger times in ms of the resp trace
 
         Args:
             start_time (int): Start time in milliseconds past midnight
@@ -237,7 +236,7 @@ class Pmu(object):
         trigger_times = []
         i = 0
         for data in self.data_triggers:
-            if data > 4096:
+            if data > self.max:
                 if data == 5000 and (index_start <= i <= index_stop):
                     trigger_times.append(float(self.timepoints[i]))
             else:
@@ -361,6 +360,19 @@ class PmuResp(Pmu):
 
         return interp_data
 
+    def interp_resp_derivative(self, acquisition_times):
+        start_time, stop_time = self.get_start_and_stop_times()
+        if np.any(start_time > acquisition_times) or np.any(stop_time < acquisition_times):
+            start_offset = np.min(acquisition_times - start_time)
+            stop_offset = np.min(stop_time - acquisition_times)
+            logger.debug(f"start_offset: {start_offset}")
+            logger.debug(f"stop_offset: {stop_offset}")
+            raise OutOfRangeError("acquisition_times don't fit within time limits for resp trace")
+
+        deriv = np.gradient(self.get_data(), self.get_times())
+        interp_data = np.interp(acquisition_times, self.get_times(), deriv)
+
+        return interp_data
     def mean(self, start_time=None, stop_time=None):
         """
         Returns the mean value of the resp trace between ``start_time`` and ``stop_time``
@@ -588,33 +600,145 @@ class PmuExtLog(PmuExt):
     def _add_triggers_in_data(self):
         data_with_triggers = []
         is_trig = False
-        trig_cnt = 0
+        # Biopac seems to trig on both upwards and downwards transitions, we only want upwards
+        going_up = True
 
         # Add triggers (5000) between the "1s" of the original data so that it looks like a PMU file
-        # 0 0 0 0 1 1 1 1 0 0 1 1 1     ->     0 0 0 0 1 1 5000 1 1 0 0 1 5000 1 1
+        # 0 0 0 0 1 1 1 1 0 0 1 1 1     ->     0 0 0 0 1 5000 1 1 1 0 0 1 5000 1 1
         for i_data, a_data in enumerate(self.get_data()):
 
             if is_trig:
-                if a_data > 0:
-                    trig_cnt += 1
-                else:
+                if a_data < 1:
                     is_trig = False
-                    if trig_cnt <= 1:
-                        data_with_triggers.append(5000)
-                    else:
-                        data_with_triggers.insert(-1 - int((trig_cnt - 1) / 2), 5000)
             else:
                 if a_data > 0:
-                    trig_cnt = 1
                     is_trig = True
-                else:
-                    pass
+                    data_with_triggers.append(a_data)
+                    if going_up:
+                        data_with_triggers.append(5000)
+                    going_up = not going_up
+                    continue
 
             data_with_triggers.append(a_data)
 
         # If the last data point was a trigger, add a final trigger since it was not added in the for loop
         if is_trig:
             data_with_triggers.append(5000)
+
+        return np.array(data_with_triggers)
+
+
+class PmuExtBiopac(PmuExtLog):
+    """ Read Biopac and extract trigger data """
+
+    def __init__(self, fname_biopac: str, nif: NiftiFile=None):
+        data = self.read_pmu(fname_biopac)
+
+        self.fname = fname_biopac
+        if data.get('time') is None:
+            raise ValueError("The biopac file does not contain the required 'time' field.")
+        if data.get('trigs') is None:
+            raise ValueError("The log file does not contain the required 'trigs' field.")
+
+        # Trigger data is from 0 to 5, we convert it to 0 and 1
+        # Decimate data by 10 (1 value every ms)
+        self._data = (np.array(data.get('trigs'))[::10] > 4).astype(int)
+        self._start_time_mdh = min(data.get('time')) * 60000
+        self._stop_time_mdh = max(data.get('time')) * 60000
+        self.start_time_mpcu = None
+        self.stop_time_mpcu = None
+
+        self.data_triggers = self._add_triggers_in_data()
+
+        self.min = 0
+        self.max = 1
+        self.timepoints = self.get_all_times()
+
+        if nif is not None:
+            # Adjust start time so that it corresponds with the start of the acquisition
+            trigger_times = self.get_trigger_times()
+            if len(trigger_times) == 0:
+                raise ValueError("No trigger times found in the PMU Ext file.")
+
+            self._start_time_mdh = min(data.get('time')) * 60000 - trigger_times[0] + nif.get_acquisition_start_time()
+            self._stop_time_mdh = max(data.get('time')) * 60000 - trigger_times[0] + nif.get_acquisition_start_time()
+
+            self.timepoints = self.get_all_times()
+
+    def read_pmu(self, fname_pmu):
+        return read_biopac(fname_pmu)
+
+
+class PmuRespBiopac(PmuResp):
+    """ Read Biopac and extrac respiratory data """
+
+    def __init__(self, fname_biopac: str, pmu_ext_biopac: PmuExtBiopac=None, time_offset=0):
+        data = self.read_pmu(fname_biopac)
+
+        self.fname = fname_biopac
+        if data.get('time') is None:
+            raise ValueError("The biopac file does not contain the required 'time' field.")
+        if data.get('resp') is None:
+            raise ValueError("The log file does not contain the required 'resp' field.")
+
+        # Decimate data by 10 (1 value every ms)
+        self._data = np.array(data.get('resp'))[::10]
+
+        if pmu_ext_biopac is None:
+            # If no trigger file is provided, we can't compute the start and stop times based on the triggers.
+            self._start_time_mdh = min(data.get('time')) * 60000
+            self._stop_time_mdh = max(data.get('time')) * 60000
+        else:
+            # This is so that the resp trace and the Ext trace are aligned in time
+            if self.fname != pmu_ext_biopac.fname:
+                raise ValueError("The Biopac file and the PMU Ext file must be the same.")
+            trigger_times = pmu_ext_biopac.get_trigger_times()
+            if len(trigger_times) == 0:
+                raise ValueError("No trigger times found in the PMU Ext file.")
+            self._start_time_mdh, self._stop_time_mdh = pmu_ext_biopac.get_start_and_stop_times()
+
+        self.start_time_mpcu = None
+        self.stop_time_mpcu = None
+
+        self.time_offset = 0
+        self.adjust_start_time(time_offset)
+
+        self.data_triggers = None
+        self.data_triggers = self._add_triggers_in_data()
+
+        self.min = 0
+        self.max = 1
+
+    def read_pmu(self, fname_pmu):
+        return read_biopac(fname_pmu)
+
+    def _add_triggers_in_data(self):
+        data_with_triggers = []
+        time_since_last_trig = 0
+        data = self.get_data()
+        time_between_datapoints = (self.timepoints[-1] - self.timepoints[0]) / (len(self.timepoints) - 1)
+
+        # Add triggers (5000) in the data when a new resp cycle starts
+        # 0 1000 2000 3000 4000 3000 2000 1000 0  ->     0 1000 2000 5000 3000 4000 3000 2000 1000 0
+        prev_data = data[0]
+        for i_data, a_data in enumerate(data):
+            # 20s span in number of indexes
+            idx_span = int(20000 / time_between_datapoints)
+            mean_start_ix = max(0, i_data - idx_span)
+            if mean_start_ix == 0:
+                data_mean = np.mean(data[mean_start_ix:i_data])
+            else:
+                # Faster running average
+                data_mean += a_data / idx_span
+                data_mean -= data[mean_start_ix - 1] / idx_span
+
+            if time_since_last_trig > 500 and prev_data <= data_mean < a_data:
+                data_with_triggers.append(5000)
+                time_since_last_trig = 0
+
+            data_with_triggers.append(a_data)
+            prev_data = a_data
+            time_since_last_trig += time_between_datapoints
 
         return np.array(data_with_triggers)
 
@@ -669,6 +793,33 @@ def read_pmu_dicom(fname_dicom):
     decompressed = gzip.decompress(pmu_compressed).decode()
     # I verified a dataset, it contains exactly the same data as the resp log file.
     # There is also information about slice timing
+
+
+def read_biopac(fname_biopac):
+    with open(fname_biopac, 'r') as f:
+        lines = f.readlines()
+
+    # Todo: Remove header if it's there
+    # if lines[0].strip()
+
+    data = {
+        'time': [],
+        'trigs': [],
+        'resp': []
+    }
+    for i_line in range(9, len(lines)):
+        line = lines[i_line].strip().split('\t')
+        if len(line) == 3:
+            data['time'].append(float(line[0]))
+            data['trigs'].append(float(line[1]))
+            data['resp'].append(float(line[2]))
+        elif len(line) == 2:
+            data['trigs'].append(float(line[0]))
+            data['resp'].append(float(line[1]))
+        else:
+            NotImplementedError("2 or 3 channels are supported for Biopac")
+
+    return data
 
 
 class OutOfRangeError(Exception):
