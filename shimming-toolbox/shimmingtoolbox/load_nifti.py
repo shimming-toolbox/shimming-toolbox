@@ -314,9 +314,9 @@ def read_nii(fname_nifti, auto_scale=True):
         logger.info("Scaling the selected NIfTI")
 
         # If B0 phase maps
-        if json_data.get('Manufacturer') == 'Siemens' and \
-                (('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments'])
-                 or ('ImageType' in json_data) and ('P' in json_data['ImageType'])):
+        if (json_data.get('Manufacturer') == 'Siemens'
+            and ((('ImageComments' in json_data) and ("*phase*" in json_data['ImageComments']))
+             or (('ImageType' in json_data) and (('P' in json_data['ImageType']) or ('PHASE' in json_data['ImageType']))))):
             # Rescales from -pi to pi
             extent = (np.amax(image) - np.amin(image))
 
