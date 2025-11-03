@@ -450,11 +450,25 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
         coefs_array = np.hstack(arrays)
 
         if "slicewise" in o_format:
-            # reorder according to list_slices
-            # Build a reverse mapping: from list_slices to target positions
-            inverse_slice_order = np.argsort([tup[0] for tup in list_slices])
-            # Reorder the array
-            coefs_array = coefs_array[inverse_slice_order, :]
+            # Find # of slices
+            n_slices = 0
+            for shim_slices in list_slices:
+                if max(shim_slices) >= n_slices:
+                    n_slices = max(shim_slices) + 1
+
+            # Reorder according to list_slices
+            coefs_array_chrono = copy.deepcopy(coefs_array)
+            coefs_array = np.zeros([n_slices, coefs_array.shape[1]])
+            for i_slice in range(n_slices):
+                found = False
+                for i_shim, shim_slices in enumerate(list_slices):
+                    if i_slice in shim_slices:
+                        coefs_array[i_slice, :] = coefs_array_chrono[i_shim, :]
+                        found = True
+                        break
+                # Make sure all slices are found
+                if not found:
+                    raise ValueError(f"Slice {i_slice} not found in any shim group.")
 
         # Compute column widths
         # 1. Get max formatted value length in each column
