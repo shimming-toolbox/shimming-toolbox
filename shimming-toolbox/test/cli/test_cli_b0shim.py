@@ -743,6 +743,48 @@ class TestCliDynamic(object):
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
                 assert lines[3].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert len(lines) == 21
+
+    def test_cli_dynamic_format_hrd_sms2(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil with huan readable format o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+
+            target_data['SliceTiming'] = [0.5, 0, 0.55469, 0.05469, 0.60156, 0.10156, 0.64844, 0.14844, 0.70312, 0.20312, 0.5, 0, 0.55469, 0.05469, 0.60156, 0.10156, 0.64844, 0.14844, 0.70312, 0.20312]
+            with open(fname_target_json, 'w', encoding='utf-8') as f:
+                json.dump(target_data, f, indent=4)
+
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[6].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert lines[16].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert len(lines) == 21
 
     def test_cli_dynamic_format_slicewise_hrd_and_custom_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slice-wise hrd o_format"""
