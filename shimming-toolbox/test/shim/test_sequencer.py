@@ -192,15 +192,6 @@ class TestSequencer(object):
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
 
-    def test_shim_sequencer_std(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
-        # Optimize
-        slices = define_slices(nif_target.shape[2], 1)
-        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares', opt_criteria='std')
-        currents = sequencer_test.shim()
-        sequencer_test.eval(currents)
-        assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
-
     def test_shim_sequencer_mae(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         # Optimize
         slices = define_slices(nif_target.shape[2], 1)

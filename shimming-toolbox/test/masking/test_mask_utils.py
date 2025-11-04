@@ -15,7 +15,6 @@ dummy_image[2, 2, 3] = 1
 dummy_image[7:10, 2, 5] = 1
 dummy_image[2, 6:8, 6:8] = 1
 
-
 @pytest.mark.parametrize(
     "input_mask,", [(
         dummy_image,

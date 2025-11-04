@@ -2,10 +2,11 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os
 import nibabel as nib
 import numpy as np
-import os
-from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure
+from scipy.ndimage import binary_dilation, binary_erosion, binary_opening, generate_binary_structure, iterate_structure, distance_transform_edt
+from skimage.morphology import ball
 
 from shimmingtoolbox.coils.coordinates import resample_from_to
 
@@ -16,18 +17,34 @@ mask_operations = {'dilate': binary_dilation, 'erode': binary_erosion}
 def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='None', dilation_size=3,
                   path_output=None, return_non_dil_mask=False):
     """
-    Select the appropriate slices from ``nii_mask_from`` using ``from_slices`` and resample onto ``nii_target``
+    Resample a source mask (`nii_mask_from`) onto a target image (`nii_target`) while selecting specific slices
+    and applying optional dilation restricted to the region of interest (ROI).
+
+    This function performs the following steps:
+
+    1. **Slice Selection**: If `from_slices` is specified, only the corresponding axial slices from the input mask are used.
+    2. **Resampling**: The sliced mask is resampled to match the spatial resolution, dimensions, and orientation of `nii_target`.
+    3. **Dilation**:
+
+       - If the mask is binary (i.e., contains only 0/1 or boolean values), morphological dilation is applied using the specified
+         kernel and size.
+       - If the mask is soft (i.e., contains float values between 0 and 1), dilation is performed by assigning the **minimum
+         non-zero voxel value** to the surrounding voxels within a specified distance, based on the Euclidean distance transform.
+
+    4. **ROI Constraint**: The dilated mask is intersected with the resampled full original mask (before slice selection)
+       to ensure that added voxels remain within the originally defined ROI.
+    5. **Output**: The function returns the final mask (dilated and ROI-restricted). If `return_non_dil_mask` is True,
+       it also returns the undilated mask.
 
     Args:
-        nii_mask_from (nib.Nifti1Image): Mask to resample from. False or 0 signifies not included.
-        nii_target (nib.Nifti1Image): Target image to resample onto.
-        from_slices (tuple): Tuple containing the slices to select from nii_mask_from. None selects all the slices.
-        dilation_kernel (str): kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
-                               'cube'. See :func:`modify_binary_mask` for more details.
-        dilation_size (int): Length of a side of the 3d kernel to dilate the mask. Must be odd. For example,
-                                         a kernel of size 3 will dilate the mask by 1 pixel.
-        path_output (str): Path to output debug artefacts.
-        return_non_dil_mask (bool): See if we want to return the dilated and non dilated resampled mask
+        nii_mask_from (nib.Nifti1Image): Source mask to resample. Voxels with value 0 or False are considered outside the mask.
+        nii_target (nib.Nifti1Image): Target image defining the desired output space.
+        from_slices (tuple): Indices of the slices to select from `nii_mask_from`. If None, all slices are used.
+        dilation_kernel (str): Shape of the kernel used for dilation. Allowed shapes: 'sphere', 'cross', 'line', 'cube'.
+                            See :func:`modify_binary_mask` for more details.
+        dilation_size (int): Size of the 3D dilation kernel. Must be odd. For instance, a size of 3 dilates the mask by 1 voxel.
+        path_output (str): Optional path to save masks when debugging.
+        return_non_dil_mask (bool): If True, both the dilated and undilated resampled masks are returned.
 
     Returns:
         nib.Nifti1Image: Mask resampled with nii_target.shape and nii_target.affine.
@@ -38,7 +55,7 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
         from_slices = tuple(range(mask_from.shape[2]))
 
     # Initialize a sliced mask and select the slices from from_slices
-    sliced_mask = np.full_like(mask_from, fill_value=False)
+    sliced_mask = np.full_like(mask_from, fill_value=0)
     sliced_mask[:, :, from_slices] = mask_from[:, :, from_slices]
 
     # Create nibabel object of sliced mask
@@ -47,29 +64,53 @@ def resample_mask(nii_mask_from, nii_target, from_slices=None, dilation_kernel='
     nii_mask_target = resample_from_to(nii_mask, nii_target, order=1, mode='grid-constant', cval=0)
     # Resample the full mask onto nii_target
     nii_full_mask_target = resample_from_to(nii_mask_from, nii_target, order=0, mode='grid-constant', cval=0)
-    # TODO: Deal with soft mask
-    # Find highest value and stretch to 1
-    # Look into dilation of soft mask
 
     # Dilate the mask to add more pixels in particular directions
-    mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
+    if np.array_equal(np.unique(nii_mask_from.get_fdata()), [0, 1]) or nii_mask_from.get_fdata().dtype == bool:
+        mask_dilated = modify_binary_mask(nii_mask_target.get_fdata(), dilation_kernel, dilation_size, 'dilate')
+    else :
+        # For soft masks, the voxel added should be the minimum non-zero value of the mask
+        mask_target = nii_mask_target.get_fdata()
+        nonzero_values = mask_target[mask_target != 0]
+        voxel_value = np.min(nonzero_values) if nonzero_values.size > 0 else 0
+        # Binarize the mask
+        binary_mask = (mask_target != 0).astype(int)
+        # Invert mask: inside object is 0, outside is 1
+        outside_mask = ~binary_mask.astype(bool)
+        # Compute distance for outside voxels to nearest inside
+        dist = distance_transform_edt(outside_mask)
+        # Create dilation region
+        dilation_region = (dist > 0) & (dist <= dilation_size//2)
+        # Apply the dilation
+        mask_target[dilation_region] = voxel_value
+        mask_dilated = np.clip(mask_target, 0, 1)
+
     # Make sure the mask is within the original ROI
-    mask_dilated_in_roi = np.logical_and(mask_dilated, nii_full_mask_target.get_fdata())
+    mask_dilated_in_roi = np.zeros_like(mask_dilated)
+    mask_dilated_in_roi[nii_full_mask_target.get_fdata() != 0] = mask_dilated[nii_full_mask_target.get_fdata() != 0]
     nii_mask_dilated = nib.Nifti1Image(mask_dilated_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
-    # if logger.level <= getattr(logging, 'DEBUG') and path_output is not None:
-    #     nib.save(nii_mask, os.path.join(path_output, f"fig_mask_{from_slices[0]}.nii.gz"))
-    #     nib.save(nii_mask_target, os.path.join(path_output, f"fig_mask_res{from_slices[0]}.nii.gz"))
-    #     nib.save(nii_mask_dilated, os.path.join(path_output, f"fig_mask_dilated{from_slices[0]}.nii.gz"))
+    # # Save masks for debugging if necessary
+    # path_output_original_mask = os.path.join(path_output, "fig_mask_original")
+    # os.makedirs(path_output_original_mask, exist_ok=True)
+    # path_output_resampled_mask = os.path.join(path_output, "fig_mask_resampled")
+    # os.makedirs(path_output_resampled_mask, exist_ok=True)
+    # path_output_dilated_mask = os.path.join(path_output, "fig_mask_dilated")
+    # os.makedirs(path_output_dilated_mask, exist_ok=True)
 
+    # nib.save(nii_mask, os.path.join(path_output_original_mask, f"fig_mask_original_slice_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_target, os.path.join(path_output_resampled_mask, f"fig_mask_resampled_slice_{from_slices[0]}.nii.gz"))
+    # nib.save(nii_mask_dilated, os.path.join(path_output_dilated_mask, f"fig_mask_dilated_slice_{from_slices[0]}.nii.gz"))
+
+    # Return non dilated mask if requested
     if return_non_dil_mask:
-        mask_in_roi = np.logical_and(nii_mask_target.get_fdata(), nii_full_mask_target.get_fdata())
+        mask_in_roi = np.zeros_like(mask_dilated)
+        mask_in_roi[nii_full_mask_target.get_fdata() != 0] = nii_mask_target.get_fdata()[nii_full_mask_target.get_fdata() != 0]
         nii_mask_resampled = nib.Nifti1Image(mask_in_roi, nii_mask_target.affine, header=nii_mask_target.header)
 
         return nii_mask_resampled, nii_mask_dilated
 
     else:
-
         return nii_mask_dilated
 
 
@@ -110,7 +151,7 @@ def modify_binary_mask(mask, shape='sphere', size=3, operation='dilate'):
 
                     np.array([[[0 0 0 0 0],
                                [0 0 0 0 0],
-                               [0 0  1 0 0],
+                               [0 0 1 0 0],
                                [0 0 0 0 0],
                                [0 0 0 0 0]],
                               [[0 0 0 0 0],

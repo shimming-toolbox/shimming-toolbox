@@ -44,6 +44,8 @@ def safe_getter(default_value=None):
 
 
 class NiftiFile:
+    """Parent class for handling NIfTI files.
+    """
     def __init__(self, fname_nii: str, json: dict = None, path_output: str = None, json_needed: bool = True) -> None:
         if not isinstance(fname_nii, str):
             raise TypeError("fname_nii must be a string")
@@ -227,7 +229,7 @@ class NiftiFile:
         return path_nii
 
     @safe_getter(default_value=None)
-    def get_json_info(self, key: str, required: bool = False) -> any:
+    def get_json_info(self, key: str, required: bool = True) -> any:
         """ Get a specific key from the JSON file.
 
         Args:
@@ -801,14 +803,3 @@ class NiftiFile:
             return True
         else:
             return False
-
-
-# TODO: Implement NiftiCoilProfile class
-class NiftiCoilProfile(NiftiFile):
-    """NiftiCoilProfile is a subclass of NiftiFile that represents a NIfTI coil profile file.
-
-    It inherits all methods and properties from NiftiFile and can be used to handle coil profile files specifically.
-    """
-
-    def __init__(self, fname_nii: str) -> None:
-        super().__init__(fname_nii)

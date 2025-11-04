@@ -1,22 +1,23 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
 
-import copy
-import math
-
-import pytest
 from click.testing import CliRunner
-import tempfile
-import pathlib
-import os
+import copy
+import json
+import math
 import nibabel as nib
 import numpy as np
-import json
+import os
+import pathlib
+import pytest
+import re
+import tempfile
 
 from shimmingtoolbox import __config_custom_coil_constraints__, __config_scanner_constraints__
 from shimmingtoolbox.cli.b0shim import define_slices_cli
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
+from shimmingtoolbox.masking.softmasks import create_linear_softmask
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
@@ -67,30 +68,34 @@ def _define_inputs(fmap_dim, manufacturers_model_name=None, no_shim_settings=Fal
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
                   len_dim1=10, len_dim2=10, len_dim3=nz - 10)
+    softmask = create_linear_softmask(mask, 6)
 
     nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_target.affine)
+    nii_softmask = nib.Nifti1Image(softmask, nii_target.affine)
 
-    return nii_fmap, nii_target, nii_mask, fm_data, target_data
+    return nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_target,nii_mask,fm_data,target_data", [(
+    "nii_fmap,nii_target,nii_mask,nii_softmask,fm_data,target_data", [(
             _define_inputs(fmap_dim=3)
     )]
 )
 class TestCliDynamic(object):
-    def test_cli_dynamic_sph(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_sph(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -115,18 +120,20 @@ class TestCliDynamic(object):
 
             assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
 
-    def test_cli_dynamic_bfgs(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_bfgs(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -152,18 +159,20 @@ class TestCliDynamic(object):
 
             assert values == [1.716835, -11.083139, -61.813942, -3.325865, -0.440464, -4.319224, 0.832832, -0.092054]
 
-    def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -220,7 +229,7 @@ class TestCliDynamic(object):
             assert math.isclose(calc_constraints_data['coefs_used']['0'][0],
                                 constraints_data['coefs_used']['0'][0] + values[0], abs_tol=1e-5)
 
-    def test_cli_dynamic_sph_table_not_iso(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_sph_table_not_iso(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             fm_data = copy.deepcopy(fm_data)
@@ -231,11 +240,13 @@ class TestCliDynamic(object):
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -263,7 +274,8 @@ class TestCliDynamic(object):
             assert values == [-4.305412, -67.945413, 29.093204, -3804.340894,
                               -163.848482, -863.019747, 576.108918, -177.97076]
 
-    def test_cli_dynamic_signal_recovery_mse(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+
+    def test_cli_dynamic_signal_recovery_mse(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
 
         # Duplicate nii_fmap's third dimension
@@ -276,11 +288,13 @@ class TestCliDynamic(object):
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -302,7 +316,7 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
 
-    def test_cli_dynamic_signal_recovery_rmse(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_signal_recovery_rmse(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
 
         # Duplicate nii_fmap's third dimension
@@ -315,11 +329,13 @@ class TestCliDynamic(object):
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -341,7 +357,7 @@ class TestCliDynamic(object):
 
             assert res.exit_code == 0
 
-    def test_cli_dynamic_no_mask(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_no_mask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
@@ -363,20 +379,68 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
 
             assert res.exit_code == 0
-            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_softmask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+
+        # Duplicate nii_fmap's third dimension
+        fmap = nii_fmap.get_fdata()
+        fmap = np.repeat(fmap, 5, axis=2)
+        nii_fmap = nib.Nifti1Image(fmap, nii_fmap.affine, header=nii_fmap.header)
+
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_softmask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.3',
+                                             '--slices', 'ascending',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'mse',
+                                             '--mask-dilation-kernel-size', '5',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [1.324215, -20.422662, -40.513364, -1.456946, 0.127875, -1.26732, -0.566027, 0.032394]
+
+    def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -391,6 +455,7 @@ class TestCliDynamic(object):
                 json.dump(dummy_coil_constraints, f, indent=4)
 
             runner = CliRunner()
+
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--coil', fname_dummy_coil, fname_constraints,
                                              '--fmap', fname_fmap,
@@ -404,22 +469,25 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_dynamic_sph_order_0(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_sph_order_0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 0 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
             runner = CliRunner()
+
             res = runner.invoke(b0shim_cli, ['dynamic',
                                              '--fmap', fname_fmap,
                                              '--target', fname_target,
@@ -431,18 +499,20 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_sph_order_3(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_sph_order_3(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 3 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -458,18 +528,20 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_coils_and_sph(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_coils_and_sph(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil and scanner coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -497,18 +569,20 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with chronological-coil o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -526,18 +600,20 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_fatsat(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_fatsat(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -565,18 +641,20 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_dynamic_format_chronological_ch(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with chronological_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -598,18 +676,20 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
             # There should be 4 x 10 x 1 value
 
-    def test_cli_dynamic_format_slicewise_ch(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_slicewise_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slicewise_ch o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -630,18 +710,20 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_dynamic_format_hrd_order01(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_hrd_order01(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with huan readable format o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -661,19 +743,63 @@ class TestCliDynamic(object):
             with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
                 lines = file.readlines()
                 assert lines[3].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert len(lines) == 21
 
-    def test_cli_dynamic_format_slicewise_hrd_and_custom_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_hrd_sms2(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil with huan readable format o_format"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+
+            target_data['SliceTiming'] = [0.5, 0, 0.55469, 0.05469, 0.60156, 0.10156, 0.64844, 0.14844, 0.70312, 0.20312, 0.5, 0, 0.55469, 0.05469, 0.60156, 0.10156, 0.64844, 0.14844, 0.70312, 0.20312]
+            with open(fname_target_json, 'w', encoding='utf-8') as f:
+                json.dump(target_data, f, indent=4)
+
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1',
+                                             '--slice-factor', '2',
+                                             '--output-file-format-scanner', 'slicewise-hrd',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
+            with open(os.path.join(tmp, "scanner_shim.txt"), 'r') as file:
+                lines = file.readlines()
+                assert lines[6].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert lines[16].strip() == "11.007908 | -0.001260 | -0.029665 | -0.060548"
+                assert len(lines) == 21
+
+    def test_cli_dynamic_format_slicewise_hrd_and_custom_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slice-wise hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -703,18 +829,20 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_dynamic_format_chronological_hrd_order0(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_chronological_hrd_order0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with chronological hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -735,18 +863,20 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 assert lines[3].strip() == "119.644382 | 0.000000 | 0.000000 | 0.000000"
 
-    def test_cli_dynamic_format_slicewise_hrd_order1(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_format_slicewise_hrd_order1(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with slicewise hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -767,18 +897,20 @@ class TestCliDynamic(object):
                 lines = file.readlines()
                 assert lines[6].strip() == '0.000000 | -0.001980 | -0.032016 | -0.066749'
 
-    def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_debug_verbose(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -801,18 +933,20 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_dynamic_absolute(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_absolute(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -835,19 +969,21 @@ class TestCliDynamic(object):
 
             assert values == [123259067.330864, -718.069583, 138.656751, -110.517759, 24.97596, -4.888655]
 
-    def test_cli_2d_fmap(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_2d_fmap(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
 
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             nii_fmap = nib.Nifti1Image(nii_fmap.get_fdata()[..., 0], nii_fmap.affine, header=nii_fmap.header)
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -861,18 +997,20 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
             assert res.exit_code == 0
 
-    def test_cli_dynamic_no_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_no_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -886,7 +1024,7 @@ class TestCliDynamic(object):
                                            '--output', tmp],
                               catch_exceptions=False)
 
-    def test_cli_dynamic_wrong_dim_info(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_wrong_dim_info(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             nii_new_target = copy.deepcopy(nii_target)
             nii_new_target.header.set_dim_info(2, 1, 0)
@@ -895,6 +1033,7 @@ class TestCliDynamic(object):
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
@@ -914,12 +1053,13 @@ class TestCliDynamic(object):
                                            '--output', tmp],
                               catch_exceptions=False)
 
-    def test_cli_dynamic_no_fmap_json(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_dynamic_no_fmap_json(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
@@ -941,7 +1081,7 @@ class TestCliDynamic(object):
 
 def test_cli_dynamic_unknown_scanner():
     """Test cli with scanner coil profiles of order 1 with default constraints"""
-    nii_fmap, nii_target, nii_mask, fm_data, target_data = _define_inputs(fmap_dim=3,
+    nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data = _define_inputs(fmap_dim=3,
                                                                       manufacturers_model_name='not_set',
                                                                       no_shim_settings=True)
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -949,11 +1089,13 @@ def test_cli_dynamic_unknown_scanner():
         fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
         fname_fm_json = os.path.join(tmp, 'fmap.json')
         fname_mask = os.path.join(tmp, 'mask.nii.gz')
+        fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
         fname_target = os.path.join(tmp, 'target.nii.gz')
         fname_target_json = os.path.join(tmp, 'target.json')
         _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                      nii_target=nii_target, fname_target=fname_target,
                      nii_mask=nii_mask, fname_mask=fname_mask,
+                     nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                      fm_data=fm_data, fname_fm_json=fname_fm_json,
                      target_data=target_data, fname_target_json=fname_target_json)
 
@@ -972,22 +1114,24 @@ def test_cli_dynamic_unknown_scanner():
 
 
 @pytest.mark.parametrize(
-    "nii_fmap,nii_target,nii_mask,fm_data,target_data", [(
+    "nii_fmap,nii_target,nii_mask,nii_softmask,fm_data,target_data", [(
             _define_inputs(fmap_dim=4)
     )]
 )
 class TestCLIRealtime(object):
-    def test_cli_rt_sph(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_sph(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1020,17 +1164,19 @@ class TestCLIRealtime(object):
                 values = [float(val) for val in line if val.strip()]
             assert np.allclose(values, [10.809849, -0.015250208108, 1454.1917])
 
-    def test_cli_rt_time_offset_auto(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_time_offset_auto(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1062,17 +1208,19 @@ class TestCLIRealtime(object):
                 values = [float(val) for val in line if val.strip()]
             assert values == [10.901898, -0.014273692604, 1537.7406]
 
-    def test_cli_rt_sph_order_0(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_sph_order_0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1095,17 +1243,19 @@ class TestCLIRealtime(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_sph_order_02(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_sph_order_02(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1133,17 +1283,19 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch7_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch8_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_custom_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_custom_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1179,17 +1331,19 @@ class TestCLIRealtime(object):
             for i_channel in range(9):
                 assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_ch{i_channel}_Dummy_coil.txt"))
 
-    def test_cli_rt_custom_coil_chr_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_custom_coil_chr_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1225,17 +1379,19 @@ class TestCLIRealtime(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_rt_custom_coil_sli_coil(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_custom_coil_sli_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1271,17 +1427,19 @@ class TestCLIRealtime(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, f"coefs_coil0_Dummy_coil.txt"))
 
-    def test_cli_rt_debug(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_debug(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1314,7 +1472,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "mask.nii.gz"))
             assert os.path.isfile(os.path.join(tmp, "fig_currents.png"))
 
-    def test_cli_rt_no_mask(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_no_mask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -1346,17 +1504,65 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_softmask(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            # Input pmu fname
+            fname_resp = os.path.join(__dir_testing__, 'ds_b0', 'derivatives', 'sub-realtime',
+                                      'sub-realtime_PMUresp_signal.resp')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['realtime-dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask-static', fname_softmask,
+                                             '--mask-riro', fname_softmask,
+                                             '--resp', fname_resp,
+                                             '--slice-factor', '2',
+                                             '--scanner-coil-order', '0,1',
+                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-criteria', 'mse',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch1_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_ch0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [-51.721091, -0.004792074189, 1454.1917]
+
+    def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1383,17 +1589,19 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_slicewise_hrd_order01(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_slicewise_hrd_order01(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1424,17 +1632,19 @@ class TestCLIRealtime(object):
                 lines = file.readlines()
                 assert lines[7].strip() == "-0.015250 | 0.000000 | -0.000005 | -0.000015" and lines[0].strip() == "Mean pressure = 1454.19"
 
-    def test_cli_rt_chronological_hrd_order1(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_chronological_hrd_order1(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with (tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp):
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1468,17 +1678,19 @@ class TestCLIRealtime(object):
                 assert lines[4].strip() == "0.000000 | 0.000001 | -0.000004 | -0.000005" and \
                     lines[0].strip() == ("Mean pressure = 1454.19")
 
-    def test_cli_rt_absolute(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_absolute(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1505,17 +1717,19 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_pseudo_inverse(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_pseudo_inverse(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1542,17 +1756,19 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_bfgs(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_bfgs(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1579,17 +1795,19 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_lsq(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_rt_lsq(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
                          nii_target=nii_target, fname_target=fname_target,
                          nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
                          fm_data=fm_data, fname_fm_json=fname_fm_json,
                          target_data=target_data, fname_target_json=fname_target_json)
 
@@ -1616,8 +1834,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-
-    def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_realtime_wrong_dim_info(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             nii_new_target = copy.deepcopy(nii_target)
             nii_new_target.header.set_dim_info(2, 1, 0)
@@ -1626,6 +1843,7 @@ class TestCLIRealtime(object):
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_fm_json = os.path.join(tmp, 'fmap.json')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
@@ -1652,12 +1870,13 @@ class TestCLIRealtime(object):
                                            '--output', tmp],
                               catch_exceptions=False)
 
-    def test_cli_realtime_no_fmap_json(self, nii_fmap, nii_target, nii_mask, fm_data, target_data):
+    def test_cli_realtime_no_fmap_json(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
             fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
             fname_target = os.path.join(tmp, 'target.nii.gz')
             fname_target_json = os.path.join(tmp, 'target.json')
             _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
@@ -1671,7 +1890,7 @@ class TestCLIRealtime(object):
 
             runner = CliRunner()
             json_fmap = os.path.join(tmp, 'fmap.json')
-            with pytest.raises(OSError, match=f"JSON file not found for {fname_fmap}. Expected at {json_fmap}"):
+            with pytest.raises(OSError, match=re.escape(f"JSON file not found for {fname_fmap}. Expected at {json_fmap}")):
                 runner.invoke(b0shim_cli, ['realtime-dynamic',
                                            '--fmap', fname_fmap,
                                            '--target', fname_target,
@@ -1745,6 +1964,7 @@ def test_cli_define_slices_wrong_output():
 def _save_inputs(nii_fmap=None, fname_fmap=None,
                  nii_target=None, fname_target=None,
                  nii_mask=None, fname_mask=None,
+                 nii_softmask=None, fname_softmask=None,
                  fm_data=None, fname_fm_json=None,
                  target_data=None, fname_target_json=None):
     """Save inputs if they are not None, use the respective fnames for the different inputs to save"""
@@ -1769,6 +1989,10 @@ def _save_inputs(nii_fmap=None, fname_fmap=None,
     if nii_mask is not None:
         # Save the mask
         nib.save(nii_mask, fname_mask)
+
+    if nii_softmask is not None:
+        # Save the soft mask
+        nib.save(nii_softmask, fname_softmask)
 
 
 def _create_dummy_coil(nii_fmap):

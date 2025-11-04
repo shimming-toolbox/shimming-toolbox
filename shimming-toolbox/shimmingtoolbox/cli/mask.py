@@ -3,14 +3,15 @@
 import pathlib
 import click
 import logging
+import os
 import nibabel as nib
 import numpy as np
-import os
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
 from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
+from shimmingtoolbox.masking.softmasks import save_softmask, create_softmask
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -195,7 +196,7 @@ def threshold(fname_input, output, thr, scaled_thr, verbose):
 
 
 @mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="""Creates a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which
+                  help="""Create a mask around the spinal cord using the Spinal Cord Toolbox (SCT). The mask, which
                    size can be specified, requires to identify the spinal cord centerline. The method of identification
                    is specified by the flag '--centerline'. The output of this function is a NIfTI file containing the
                    mask.""")
@@ -234,17 +235,6 @@ def threshold(fname_input, output, thr, scaled_thr, verbose):
               help="Remove temporary files.")
 @click.option('--verbose', type=click.IntRange(0, 2), default=1, show_default=True,
               help="Verbose: 0 = nothing, 1 = classic, 2 = expended.")
-# Options for _get_centerline
-# @click.option('--method', type=click.Choice(['optic', 'fitseg']), default='optic',
-#               help="(str): Method used for extracting the centerline: "
-#                    "- optic: automatic spinal cord detection method"
-#                    "- fitseg: fit a regularized centerline on an already-existing cord segmentation. It will "
-#                    "interpolate if slices are missing and extrapolate beyond the segmentation boundaries (i.e., "
-#                    "every axial slice will exhibit a centerline pixel). (default: optic)")
-# @click.option('--centerline_algo', type=click.Choice(['polyfit', 'bspline', 'linear', 'nurbs']), default='bspline',
-#               help="(str): Algorithm for centerline fitting. Only relevant with -method fitseg (default: bspline)")
-# @click.option('--centerline_smooth', default=30, help="(int): Degree of smoothing for centerline fitting. Only for "
-#                                                      "-centerline-algo {bspline, linear}. (default: 30)")
 def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain, kernel, size, shape, remove_tmp,
         verbose):
 
@@ -271,13 +261,6 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 
     fname_seg = os.path.join(os.path.dirname(fname_output), 'seg.nii.gz')
 
-    # sct_get_centerline is faster than sct_deepseg_sc, however, it is a bit less accurate. More investigations needed
-    # in the future, this code is commented out so that we can persue investigation.
-    # # Get the centerline
-    # _get_centerline(fname_process, fname_seg)
-
-    # Run sct_deepseg_sc
-    # Use sct parameter convention
     if remove_tmp:
         remove = 1
     else:
@@ -366,6 +349,7 @@ def bet(fname_input, fname_output, f_param, g_param, verbose):
               help="operation to perform. Allowed operations are: 'dilate', 'erode'.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbose):
+
     set_all_loggers(verbose)
 
     # Prepare the output
@@ -423,7 +407,6 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def mrs(fname_input, output, raw_data, center, size, verbose):
 
-    # Set all loggers
     set_all_loggers(verbose)
 
     # Prepare the output
@@ -437,43 +420,34 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     logger.info(f"The filename for the output mask is: {os.path.abspath(output)}")
 
 
-# def _get_centerline(fname_process, fname_output, method='optic', contrast='t2', centerline_algo='bspline',
-#                     centerline_smooth='30', verbose='1'):
-#     """ Wrapper to sct_get_centerline. Allows to get the centerline of the spinal cord and outputs a nifti file
-#     containing the output mask.
-#
-#     Args:
-#         fname_process (str): Input filename containing the spinal cord image. Supported extensions are .nii or
-#                              .nii.gz.
-#         fname_output (str): Output filename containing the senterline of the spinal cord.Supported extensions is
-#                             ".nii.gz".
-#         method (str): Method used for extracting the centerline:
-#                       - optic: automatic spinal cord detection method
-#                       - fitseg: fit a regularized centerline on an already-existing cord segmentation. It will
-#                       interpolate if slices are missing and extrapolate beyond the segmentation boundaries
-#                       (i.e., every axial slice will exhibit a centerline pixel).
-#         contrast (str): Type of image contrast. Supported contrast: t1, t2, t2s, dwi.
-#         centerline_algo (str): Algorithm for centerline fitting. Only relevant with -method fitseg.
-#                          Supported algo: polyfit, bspline, linear, nurbs.
-#         centerline_smooth (int): Degree of smoothing for centerline fitting.
-#                                  Only for -centerline-algo {bspline, linear}.
-#         verbose (int): Verbose: 0 = nothing, 1 = classic, 2 = expended.
-#
-#     Returns:
-#
-#     """
-#     path_seg = fname_output.rsplit('.nii.gz', 1)[0]
-#
-#     if method == "optic":
-#         run_subprocess(f"sct_get_centerline -i {fname_process} -c {contrast} -o {path_seg} -v {str(verbose)}")
-#
-#     elif method == "fitseg" and (centerline_algo == "polyfit" or centerline_algo == "nurbs"):
-#         run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-#                        f"-o {path_seg} -v {str(verbose)}")
-#
-#     elif method == "fitseg" and (centerline_algo == "bspline" or centerline_algo == "linear"):
-#         run_subprocess(f"sct_get_centerline -i {fname_process} -method {method} -centerline-algo {centerline_algo} "
-#                        f"-centerline-smooth {str(centerline_smooth)} -o {path_seg} -v {str(verbose)}")
-#
-#     else:
-#         raise ValueError("Could not get centerline.")
+@mask_cli.command(context_settings=CONTEXT_SETTINGS,
+                  help="Create a soft mask by creating a blur zone around the binary mask.")
+@click.option('-i', '--input', 'fname_input_binmask', type=click.Path(), required=True,
+              help="Path to the binary mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-s', '--input-softmask', 'fname_input_softmask', type=click.Path(), default=None,
+              help="Path to an existing soft mask. Use only on sum-type softmask. Supported extensions are .nii or .nii.gz.")
+@click.option('-o', '--output', 'fname_output_softmask', type=click.Path(), default=os.path.join(os.curdir, 'softmask.nii.gz'),
+              show_default=True, help="Path to the output soft mask. Supported extensions are .nii or .nii.gz.")
+@click.option('-t', '--type', type=click.Choice(['2levels', 'linear', 'gaussian', 'sum']), default='2levels',
+              help="""Type of soft mask :\n
+              - 2levels: All blur zone coefficients have the same value. Specify blur_value (-b)\n
+              - linear: Radial linear gradient, from 1 to 0.\n
+              - gaussian: Gaussian distribution.\n
+              - sum: Sum of the binary mask and an existing softmask. Specify the existing softmask (-s).\n
+              """)
+@click.option('-w', '--blur-width', 'blur_width', default = 6,
+              help="Width of the blurred zone.")
+@click.option('-u', '--width-unit', 'width_unit', type=click.Choice(['mm', 'px']), default='mm',
+              help="Unit of the blur width. Can be in pixels (px) or in millimeters (mm).")
+@click.option('-b', '--blur-value', 'blur_value', default = 0.5,
+              help="Value of the coefficients in the blurred zone. Use only on 2levels-type softmask")
+@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
+def softmask(fname_input_binmask, fname_input_softmask, fname_output_softmask, type, blur_width, width_unit, blur_value, verbose) :
+
+    set_all_loggers(verbose)
+
+    # Prepare the output
+    create_output_dir(fname_output_softmask, is_file=True)
+
+    output_softmask = create_softmask(fname_input_binmask, fname_input_softmask, type, blur_width, width_unit, blur_value)
+    save_softmask(output_softmask, fname_output_softmask, fname_input_binmask)

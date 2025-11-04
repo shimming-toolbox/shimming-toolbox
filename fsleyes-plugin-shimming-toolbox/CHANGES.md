@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3 (2025-07-29)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.2...1.3)
+
+**INSTALLATION**
+ - add requirement.txt to setup files in preparation for release automa…. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/585)
+
 ## 1.2 (2025-03-31)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.1...1.2)
 
