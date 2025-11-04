@@ -1,9 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*
-#
-# Read Siemens Physiological Log files
-# Adapted from https://gist.github.com/rtrhd/6172344
-#
 
 from pydicom import dcmread
 import gzip
@@ -139,7 +135,9 @@ class Pmu(object):
 
     def read_pmu(self, fname_pmu):
         """
-        Read a Siemens Physiological Log file. Returns a tuple with the logging data as numpy integer array and times
+        Read a Siemens Physiological Log file. Adapted from https://gist.github.com/rtrhd/6172344
+
+        Returns a tuple with the logging data as numpy integer array and times
         in the form of milliseconds past midnight.
 
         Args:
@@ -410,10 +408,10 @@ class PmuResp(Pmu):
 class PmuExt(Pmu):
     def __init__(self, fname_pmu: str):
         """
-        PMU object containing the trigger values of a Siemens .trig file
+        PMU object containing the trigger values of a Siemens .ext file (trigger file)
 
         Args:
-            fname_pmu (str): Filename of the Siemens .trig file
+            fname_pmu (str): Filename of the Siemens .ext file
         """
         super().__init__(fname_pmu)
         self.min = 0
@@ -776,7 +774,7 @@ def read_pmu_log_file(fname_log: str):
 
 
 def read_pmu_dicom(fname_dicom):
-    # raise NotImplementedError("Reading PMU data from DICOM files is not implemented yet.")
+    raise NotImplementedError("Reading PMU data from DICOM files is not implemented yet.")
     ds = dcmread(fname_dicom)
 
     if 'PMUDATA' not in ds['ImageType'].value:

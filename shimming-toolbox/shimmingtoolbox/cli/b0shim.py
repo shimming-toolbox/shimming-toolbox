@@ -725,27 +725,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
 
-    if fname_ext is not None:
-        # Load external trigger file if provided
-        if os.path.splitext(fname_ext)[1] == '.log':
-            pmu_ext = PmuExtLog(fname_ext)
-        elif os.path.splitext(fname_ext)[1] == '.txt':
-            pmu_ext = PmuExtBiopac(fname_ext, nif_fmap)
-        else:
-            pmu_ext = PmuExt(fname_ext)
-    else:
-        pmu_ext = None
-
-    if os.path.splitext(fname_resp)[1] == '.log':
-        pmu = PmuRespLog(fname_resp, time_offset=time_offset)
-    elif os.path.splitext(fname_resp)[1] == '.txt':
-        # Triggers are required when using the Biopac. Since the information is in the same file, using the pmu or the
-        # trigger option works
-        if pmu_ext is None:
-            pmu_ext = PmuExtBiopac(fname_resp, nif_fmap)
-        pmu = PmuRespBiopac(fname_resp, pmu_ext, time_offset=time_offset)
-    else:
-        pmu = PmuResp(fname_resp, time_offset=time_offset)
+    pmu, pmu_ext = load_pmu(fname_resp, fname_ext, nif_fmap, time_offset)
 
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nif_fmap, nif_target, nif_mask_target_static,
@@ -1124,6 +1104,50 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
+
+
+def load_pmu(fname_resp_file, fname_ext_file, nif_fieldmap, time_offset):
+    """Load the PMU and external trigger files based on their extensions.
+
+    Args:
+        fname_resp_file (str): Filename of the respiratory file
+        fname_ext_file (str): Filename of the external trigger file
+        nif_fieldmap (NiftiFieldMap): NiftiFieldMap object
+        time_offset (int): Time offset in milliseconds
+
+    Returns:
+        tuple: A tuple containing the PMU object and the external trigger object
+    """
+
+    if fname_ext_file is not None:
+        extension = os.path.splitext(fname_ext_file)[1]
+        # Load external trigger file if provided
+        if extension == '.log':
+            pmu_ext = PmuExtLog(fname_ext_file)
+        elif extension == '.txt':
+            pmu_ext = PmuExtBiopac(fname_ext_file, nif_fmap)
+        elif extension == '.ext':
+            pmu_ext = PmuExt(fname_ext_file)
+        else:
+            raise ValueError(f"Unsupported external trigger file format: {extension}")
+    else:
+        pmu_ext = None
+
+    extension = os.path.splitext(fname_resp_file)[1]
+    if extension == '.log':
+        pmu = PmuRespLog(fname_resp_file, time_offset=time_offset)
+    elif extension == '.txt':
+        # Triggers are required when using the Biopac. Since the information is in the same file, using the pmu or the
+        # trigger option works
+        if pmu_ext is None:
+            pmu_ext = PmuExtBiopac(fname_resp_file, nif_fmap)
+        pmu = PmuRespBiopac(fname_resp_file, pmu_ext, time_offset=time_offset)
+    elif extension == '.resp':
+        pmu = PmuResp(fname_resp_file, time_offset=time_offset)
+    else:
+        raise ValueError(f"Unsupported respiratory file format: {extension}")
+
+    return pmu, pmu_ext
 
 
 def _save_nii_to_new_dir(list_save):

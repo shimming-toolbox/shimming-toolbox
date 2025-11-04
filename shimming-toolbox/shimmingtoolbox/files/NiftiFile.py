@@ -34,7 +34,7 @@ def safe_getter(default_value=None):
             except Exception as e:
                 logger.debug(f"{func.__name__}: {e}")
                 # terminate the program if the error is critical
-                if isinstance(e, (KeyError, NameError, ValueError, OSError)):
+                if isinstance(e, (KeyError, NameError, ValueError, OSError, NotImplementedError)):
                     raise e
                 return default_value
 
@@ -394,16 +394,16 @@ class NiftiFile:
 
         return False
 
-    @safe_getter(default_value=False)
+    @safe_getter(default_value=None)
     def get_acquisition_times(self, when='slice-middle') -> np.ndarray:
         """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
 
         Note: If you have trigger timestamps, it is more accurate to use those. BIDS does not include the end of the
         acquisition, so this function extrapolates the time of later volumes based on the time of a single volume.
         This can become inaccurate the more volumes you have.
-        (AD has seen up to 600ms difference on the last volume in a 10 slices, 100 volumes with delta_volume of 2.434s)
+        (AD has seen up to 600ms difference on the last volume in a 10 slice, 100 volumes with delta_volume of 2.434s)
         We now use the slice timing to extrapolate the volume TR if 1. 2D acquisition, 2. We are not doing interleaved
-        multi-slice and 3. we have more thn 5 slices
+        multi-slice and 3. we have more than 5 slices
 
         Args:
             when (str): When to get the acquisition time. Can be within {POSSIBLE_TIMINGS}.
@@ -425,18 +425,19 @@ class NiftiFile:
         acq_start_time_ms = self.get_acquisition_start_time()
 
         # Start time for each volume [ms]
-        volume_start_times = np.arange(acq_start_time_ms, (n_volumes * deltat_volume) + acq_start_time_ms, deltat_volume)
+        volume_start_times = np.arange(acq_start_time_ms,
+                                       (n_volumes * deltat_volume) + acq_start_time_ms,
+                                       deltat_volume,
+                                       dtype=float)
 
         if when == 'volume-start':
             return volume_start_times
         if when == 'volume-middle':
             return volume_start_times + (deltat_volume / 2)
 
-        try:
-            slice_timing_middle = self.get_phase_encode_0_crossings()
-        except Exception as e:
-            logger.error(f"Error while getting slice timing: {e}")
-            raise e
+        slice_timing_middle = self.get_phase_encode_0_crossings()
+        if slice_timing_middle is None:
+            logger.warning("Could not figure out slice_timing_middle.")
             slice_timing_middle = np.zeros(n_slices)
 
         timing = np.zeros((n_volumes, n_slices))
@@ -454,7 +455,7 @@ class NiftiFile:
 
         return timing  # [ms]
 
-    @safe_getter(default_value=False)
+    @safe_getter(default_value=None)
     def get_slice_tr(self) -> float:
         """ Get the slice repetition time in milliseconds from the json sidecar.
 
@@ -482,10 +483,11 @@ class NiftiFile:
 
         return deltat_slice
 
-    @safe_getter(default_value=False)
+    @safe_getter(default_value=None)
     def get_phase_encode_0_crossings(self) -> np.ndarray:
         """ Return the best guess of when the middle of k-space was acquired for each slice of 1 volume, relative to the
-         start of the volume. This is implemented for Siemens, for 2D acquisitions and reads tags found in the JSON sidecar
+         start of the volume. This is implemented for Siemens, for 2D acquisitions and reads tags found in the JSON
+         sidecar.
 
         Returns:
             np.ndarray: Slice timing in ms (n_slices).
@@ -526,7 +528,7 @@ class NiftiFile:
 
         return slice_timing_mid
 
-    @safe_getter(default_value=False)
+    @safe_getter(default_value=None)
     def get_slice_timing(self) -> np.ndarray:
         """ Get the slice timing from the json sidecar.
 
@@ -547,7 +549,7 @@ class NiftiFile:
 
         return np.array(slice_timing_start)  # [ms]
 
-    @safe_getter(default_value=False)
+    @safe_getter(default_value=None)
     def get_n_acquired_phase_encode_lines(self) -> int:
         """ Get the number of acquired phase encoding lines from the json sidecar.
 
@@ -571,20 +573,10 @@ class NiftiFile:
         # Base resolution
         # PhaseEncodingSteps should include the calculations below, but I have noticed that it sometimes does not
         # phase_encode_steps = json_data.get('PhaseEncodingSteps')
-        phase_encode_steps = self.get_json_info('AcquisitionMatrixPE')
-        if phase_encode_steps is None:
-            raise ValueError("AcquisitionMatrixPE not found in JSON sidecar.")
-        # Convert to int if it was not None
-        phase_encode_steps = int(phase_encode_steps)
+        phase_encode_steps = int(self.get_json_info('AcquisitionMatrixPE'))
 
         # Phase oversampling
-        phase_over = self.get_json_info('PhaseOversampling')
-        if phase_over is None:
-            # If phase oversampling is not defined, assume it is 1 (no phase oversampling)
-            phase_over = 1.0
-        else:
-            # PhaseOversampling is given as a percentage, we add 1 so it can be multiplied
-            phase_over = float(phase_over) + 1.0
+        phase_over = self.get_phase_oversampling()
 
         # Partial Fourier
         partial_fourier = self.get_partial_fourier()
@@ -621,6 +613,23 @@ class NiftiFile:
                                f"dcm2niix. Using {n_phase_encode_steps} phase encoding steps (from ST).")
 
         return n_phase_encode_steps
+
+    @safe_getter(default_value=1.0)
+    def get_phase_oversampling(self):
+        """ Get the phase oversampling from the json sidecar.
+
+        Returns:
+            float: Phase oversampling factor. If no phase oversampling is defined, returns 1.0.
+        """
+        phase_over = self.get_json_info('PhaseOversampling', requred=False)
+        if phase_over is None:
+            # If phase oversampling is not defined, assume it is 1 (no phase oversampling)
+            phase_over = 1.0
+        else:
+            # PhaseOversampling is given as a percentage, we add 1 so it can be multiplied
+            phase_over = float(phase_over) + 1.0
+
+        return phase_over
 
     @safe_getter(default_value=False)
     def get_partial_fourier(self) -> float:
