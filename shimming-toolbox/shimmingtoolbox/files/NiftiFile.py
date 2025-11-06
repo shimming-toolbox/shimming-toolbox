@@ -538,7 +538,7 @@ class NiftiFile:
             numpy.ndarray: Slice timing in ms (n_slices).
         """
         # list containing the time at which each slice was acquired
-        slice_timing_start = self.get_json_info('SliceTiming')
+        slice_timing_start = self.get_json_info('SliceTiming', required=False)
         n_slices = self.shape[2]
         if slice_timing_start is None:
             if n_slices == 1:
@@ -586,13 +586,14 @@ class NiftiFile:
         n_phase_encode_steps = phase_encode_steps * partial_fourier * phase_over
 
         # Parallel acquisition reduction
-        parallel_technique = self.get_json_info('ParallelAcquisitionTechnique')
-        matrix_coil_mode = self.get_json_info('MatrixCoilMode')
+        parallel_technique = self.get_json_info('ParallelAcquisitionTechnique', required=False)
+        matrix_coil_mode = self.get_json_info('MatrixCoilMode', required=False)
 
         if parallel_technique is not None or matrix_coil_mode is not None:
 
             if parallel_technique == 'GRAPPA' or matrix_coil_mode == 'GRAPPA':
-                parallel_reduction_factor_in_plane = self.get_json_info('ParallelReductionFactorInPlane')
+                parallel_reduction_factor_in_plane = self.get_json_info('ParallelReductionFactorInPlane',
+                                                                        required=False)
                 if parallel_reduction_factor_in_plane is None:
                     parallel_reduction_factor_in_plane = 1.0
                 parallel_reduction_factor_in_plane = float(parallel_reduction_factor_in_plane)
@@ -606,7 +607,7 @@ class NiftiFile:
             else:
                 NotImplementedError(f"{parallel_technique} parallel acquisition technique is not implemented yet.")
 
-        ph_encode_steps_dcm2niix = self.get_json_info('PhaseEncodingSteps')
+        ph_encode_steps_dcm2niix = self.get_json_info('PhaseEncodingSteps', required=False)
         if ph_encode_steps_dcm2niix is not None:
             ph_encode_steps_dcm2niix = int(ph_encode_steps_dcm2niix)
             if ph_encode_steps_dcm2niix != n_phase_encode_steps:
@@ -623,7 +624,7 @@ class NiftiFile:
         Returns:
             float: Phase oversampling factor. If no phase oversampling is defined, returns 1.0.
         """
-        phase_over = self.get_json_info('PhaseOversampling', requred=False)
+        phase_over = self.get_json_info('PhaseOversampling', required=False)
         if phase_over is None:
             # If phase oversampling is not defined, assume it is 1 (no phase oversampling)
             phase_over = 1.0
@@ -642,7 +643,7 @@ class NiftiFile:
         """
         manufacturer = self.get_json_info('Manufacturer')
         if manufacturer == 'Siemens':
-            partial_fourier = self.get_json_info('PartialFourier')
+            partial_fourier = self.get_json_info('PartialFourier', required=False)
             if partial_fourier is None:
                 logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
                 partial_fourier = 1.0
@@ -653,7 +654,7 @@ class NiftiFile:
                 if not (0 <= partial_fourier <= 1):
                     raise ValueError("Partial Fourier value format not supported, make sure it is between 0 and 1.")
         else:
-            NotImplementedError("Partial Fourier not implemented for this manufacturer. ")
+            NotImplementedError("Partial Fourier not implemented for this manufacturer.")
 
         return partial_fourier
 

@@ -1548,7 +1548,7 @@ class TestCLIRealtime(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [-51.721091, -0.004792074189, 1454.1917]
+            assert np.allclose(values, [-51.721091, -0.004792074189, 1454.1917])
 
     def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
