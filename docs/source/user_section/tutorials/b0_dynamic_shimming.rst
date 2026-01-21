@@ -48,8 +48,9 @@ Create a Fieldmap
 
 - Navigate to the *Fieldmap* Tab. If you don't see the tab, drag the right edge of the ``Shimming Toolbox`` panel to make all the tabs appear.
 - Enter 1 for the *Number of Echoes*.
-- Select the phase from the overlay and click the *Input Phase 1* button.
+- Select the phase image from the overlay and click the *Input Phase 1* button.
 - Select the first magnitude image in the overlay and click the *Input Magnitude*.
+- Select the unwrapper you wish to use. Select skimage if you do not have prelude installed (External dependency: FSL).
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output fieldmap should load automatically.
@@ -65,7 +66,10 @@ Create a Mask
 - Select *Box* from the dropdown.
 - Select the target image from the overlay, click the button *Input*.
 - Input voxel indexes for *center* and *size*. TIP: Look at the Location panel of fsleyes to locate the center of the ROI.
-  - For the spine, a *center* of 140, 124, 6 and a *size* of 30, 15, 12 could work.
+
+  - For the spine, a *center* of 128, 124, 6 and a *size* of 30, 15, 12 could work.
+  - TIP: You can use external tools such as `Spinal Cord Toolbox <https://github.com/spinalcordtoolbox/spinalcordtoolbox>`__ (SCT) to create spinal cord masks automatically.
+
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output mask should load automatically.

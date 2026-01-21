@@ -8,11 +8,10 @@ demo_realtime_shimming.sh
 
 This  `shell script <https://github.com/shimming-toolbox/shimming-toolbox/blob/master/examples/demo_realtime_shimming.sh>`__ calls different shimming-toolbox command lines functions to perform a whole shimming scenario. Acquisitions are downloaded from a `Github repository <https://github.com/shimming-toolbox/data-testing>`__ and output text files and quality control figures are generated.
 
-This function will generate static and dynamic (due to respiration) Gx, Gy, Gz components based on a fieldmap time
+This function will generate static and dynamic (due to respiration) Gx, Gy, Gz components based on a field map time
 series (magnitude and phase images) and respiratory trace information obtained from Siemens bellows. An additional
-multi-gradient echo (MGRE) magnitude image is used to generate an ROI and resample the static and dynamic Gx, Gy, Gz
-component maps to match the MGRE image. Lastly the average Gx, Gy, Gz values within the ROI are computed for each
-slice.
+multi-gradient echo (MGRE) magnitude image is used to generate a ROI. The static and real-time components are
+extracted and decomposed into the optimal Gx, Gy and Gz values for each slice.
 
 B1+ shimming
 ------------
