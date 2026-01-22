@@ -19,9 +19,9 @@ jobs:
     strategy:
       matrix:
         os:
-          - 'macos-13'
           - 'macos-14'
           - 'macos-15'
+          - 'macos-26'
           - 'ubuntu-24.04'
           - 'ubuntu-22.04'
         python-version:
@@ -30,11 +30,11 @@ jobs:
           - 'fsleyes-plugin-shimming-toolbox'
           - 'shimming-toolbox'
         exclude:
+          - os: 'macos-26'
+            tests: 'fsleyes-plugin-shimming-toolbox'
           - os: 'macos-15'
             tests: 'fsleyes-plugin-shimming-toolbox'
           - os: 'macos-14'
-            tests: 'fsleyes-plugin-shimming-toolbox'
-          - os: 'macos-13'
             tests: 'fsleyes-plugin-shimming-toolbox'
           - os: 'windows-latest'
             tests: 'fsleyes-plugin-shimming-toolbox'
