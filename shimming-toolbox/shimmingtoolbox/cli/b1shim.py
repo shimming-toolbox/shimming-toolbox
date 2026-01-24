@@ -52,7 +52,7 @@ def b1shim_cli(fname_b1, fname_mask, algorithm, target, fname_vop, sar_factor, p
     nii_b1 = nib.load(fname_b1)
     with open(fname_b1.split('.nii')[0] + '.json') as json_b1_file:
         json_b1 = json.load(json_b1_file)
-    b1_map = np.array(nii_b1.dataobj)
+    b1_map = np.asanyarray(nii_b1.dataobj)
 
     # Load static mask
     if fname_mask is not None:

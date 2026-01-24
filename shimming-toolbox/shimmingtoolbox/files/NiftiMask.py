@@ -32,7 +32,7 @@ class NiftiMask(NiftiFile):
         super().set_nii(nii)
         self.load_mask(nif_target)
 
-    def load_mask(self, nif_target: NiftiTarget):
+    def load_mask(self, nif_target: NiftiTarget) -> None:
         """ Load a mask and resample it on the target image.
 
         Args:

@@ -606,8 +606,8 @@
             "suffix": "magnitude1",
             "criteria": {
                 "Manufacturer": "Siemens",
-                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\neuropoly_gre_advshim|%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "1"
@@ -619,7 +619,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "2"
@@ -631,7 +631,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "3"
@@ -643,7 +643,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "4"
@@ -655,7 +655,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "5"
@@ -667,7 +667,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
                 "EchoNumber": "6"
@@ -679,7 +679,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "1"
@@ -691,7 +691,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "2"
@@ -703,7 +703,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "3"
@@ -715,7 +715,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "4"
@@ -727,7 +727,7 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "5"
@@ -739,10 +739,178 @@
             "criteria": {
                 "Manufacturer": "Siemens",
                 "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
-                "SequenceName": ".*fl[2-3]d[2-8]",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "ImageType": [".*", ".*", "P", ".*", ".*"],
                 "EchoNumber": "6"
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
+                "EchoNumber": ""
+            }
+        },
+            {
+            "datatype": "anat",
+            "suffix": "magnitude",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "PulseSequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"],
+                "EchoNumber": ""
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude1",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "1",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude2",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "2",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude3",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "3",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude4",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "4",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude5",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "5",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "magnitude6",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "6",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "M", ".*", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase1",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "1",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase2",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "2",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase3",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "3",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase4",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "4",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase5",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "5",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "phase6",
+            "criteria": {
+                "Manufacturer": "Siemens",
+                "EchoNumber": "6",
+                "PulseSequenceDetails": "^(%CustomerSeq%\\\\gre_shimming|%CustomerSeq%\\\\gre_realtime_zshim|%SiemensSeq%\\\\gre|%CustomerSeq%\\\\a_gre_DYNshim|%SiemensSeq%\\\\CV_pTX_638|%CustomerSeq%\\\\a_gre_SSreversal|%CustomerSeq%\\\\a_gre_dyn_realtime_shimming_TTL)$",
+                "SequenceName": ".*fl[2-3]d[1-8]",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "ImageType": [".*", ".*", "P", ".*", ".*"]
             }
         },
         {

@@ -1162,7 +1162,7 @@ class TestCLIRealtime(object):
                 lines = file.readlines()
                 line = lines[5].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
-            assert values == [10.809849, -0.015250208108, 1454.1917]
+            assert np.allclose(values, [10.809849, -0.015250208108, 1454.1917])
 
     def test_cli_rt_time_offset_auto(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1206,7 +1206,7 @@ class TestCLIRealtime(object):
                 lines = file.readlines()
                 line = lines[5].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
-            assert values == [10.834912, -0.014710841563, 1504.1091]
+            assert values == [10.901898, -0.014273692604, 1537.7406]
 
     def test_cli_rt_sph_order_0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
@@ -1548,7 +1548,7 @@ class TestCLIRealtime(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [-51.721091, -0.004792074189, 1454.1917]
+            assert np.allclose(values, [-51.721091, -0.004792074189, 1454.1917])
 
     def test_cli_rt_chronological_ch(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

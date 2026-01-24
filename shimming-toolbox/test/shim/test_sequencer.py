@@ -15,7 +15,6 @@ from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.pmu import PmuResp
@@ -413,9 +412,16 @@ def define_rt_sim_inputs():
     pmu.set_start_and_stop_times(0, 1000)
 
     # Define a dummy json data with the bare minimum fields and calculate the pressures
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000,
+                 'RepetitionTimeExcitation': 0.001,
+                 'AcquisitionTime': "00:00:00.000000",
+                 'MRAcquisitionType': "2D",
+                 'SliceTiming': [0.0, 0.001, 0.002],
+                 'PulseSequenceDetails': "%SiemensSeq%\\gre",
+                 'Manufacturer': "Siemens",
+                 'PhaseEncodingSteps': 64,
+                 'AcquisitionMatrixPE': 64}
     nif_fieldmap.json = json_data
-    # acq_timestamps = get_acquisition_times(nii_fieldmap, json_data, when='volume-start')
 
     # Create Coil
     coil_affine = nif_fieldmap.affine
@@ -621,7 +627,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
     pmu = PmuResp(fname_resp)
 
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nif_fieldmap)
+    acq_timestamps = nif_fieldmap.get_acquisition_times()
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # Create Coil

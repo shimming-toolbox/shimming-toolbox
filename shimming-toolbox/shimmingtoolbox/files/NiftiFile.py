@@ -2,19 +2,25 @@
 # -*- coding: utf-8 -*
 
 from __future__ import annotations
-import logging
-import nibabel as nib
-import os
-import numpy as np
-import json
-
 from functools import wraps
+import json
+import logging
+import math
+import nibabel as nib
+import numpy as np
+import os
+
+from shimmingtoolbox.utils import iso_times_to_ms
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 NIFTI_EXTENSIONS = ('.nii.gz', '.nii')
 DEFAULT_SUFFIX = '_saved.nii.gz'
+
+POSSIBLE_TIMINGS = ['slice-middle', 'volume-start', 'volume-middle']
+SECONDS_IN_A_DAY = 24 * 60 * 60
+ERROR_MARGIN = 0.99
 
 
 def safe_getter(default_value=None):
@@ -26,9 +32,9 @@ def safe_getter(default_value=None):
             try:
                 return func(self, *args, **kwargs)
             except Exception as e:
-                logger.warning(f"{func.__name__}: {e}")
+                logger.debug(f"{func.__name__}: {e}")
                 # terminate the program if the error is critical
-                if isinstance(e, (KeyError, NameError, ValueError, OSError)):
+                if isinstance(e, (KeyError, NameError, ValueError, OSError, NotImplementedError)):
                     raise e
                 return default_value
 
@@ -75,10 +81,8 @@ class NiftiFile:
         self.set_nii(other)
         return self  # Return self for method chaining
 
-    def load_nii(self):
+    def load_nii(self) -> list:
         """ Load a NIfTI file and return the NIfTI object and its data.
-        Args:
-            fname_nii (str): Path to the NIfTI file.
 
         Raises:
             ValueError: If the provided path does not exist or is not a valid NIfTI file.
@@ -100,7 +104,7 @@ class NiftiFile:
         and have the same base name.
 
         Args:
-            None
+            json_needed (bool): Specifies whether the JSON file is required.
 
         Returns:
             dict: The content of the JSON file if found, otherwise None.
@@ -187,7 +191,7 @@ class NiftiFile:
             return None
 
     @safe_getter(default_value=None)
-    def get_filename(self):
+    def get_filename(self) -> str:
         """ Get the filename without the extension from the NIfTI file path.
         Verifies that the file has a valid NIfTI extension (.nii or .nii.gz).
         If the file does not have a valid extension, raises a ValueError.
@@ -210,7 +214,7 @@ class NiftiFile:
         return file_name
 
     @safe_getter(default_value=None)
-    def get_path_nii(self):
+    def get_path_nii(self) -> str:
         """Gets the path_nii of the Nifti file
 
         Returns:
@@ -246,7 +250,7 @@ class NiftiFile:
             raise Warning(f"Key '{key}' not found in JSON file. Returning None.")
 
     @safe_getter(default_value=None)
-    def get_isocenter(self):
+    def get_isocenter(self) -> np.ndarray:
         """ Get the isocenter location in RAS coordinates from the json file.
 
         The patient position is used to infer the table position in the patient coordinate system.
@@ -312,7 +316,7 @@ class NiftiFile:
         return -table_position_ras
 
     @safe_getter(default_value=None)
-    def get_frequency(self):
+    def get_frequency(self) -> int | None:
         """ Get the imaging frequency from the JSON metadata.
 
         Returns:
@@ -374,3 +378,429 @@ class NiftiFile:
         """
         model = self.get_json_info('ManufacturersModelName', required=False)
         return model.replace(" ", "_") if model is not None else None
+
+    @safe_getter(default_value=False)
+    def get_fat_sat_option(self) -> bool:
+        """ Check if the NIfTI file has a Fat Saturation pulse.
+
+        Returns:
+            bool: True if Fat Saturation pulse is detected, False otherwise.
+        """
+        scan_options = self.get_json_info('ScanOptions', required=False)
+        if scan_options is not None:
+            if 'FS' in scan_options:
+                logger.debug("Fat Saturation pulse detected")
+                return True
+        else:
+            logger.warning("No ScanOptions found in the JSON metadata, assuming no Fat Saturation pulse")
+
+        return False
+
+    @safe_getter(default_value=None)
+    def get_acquisition_times(self, when='slice-middle') -> np.ndarray:
+        """ Return the acquisition timestamps from a json sidecar. This assumes BIDS convention.
+
+        Note: If you have trigger timestamps, it is more accurate to use those. BIDS does not include the end of the
+        acquisition, so this function extrapolates the time of later volumes based on the time of a single volume.
+        This can become inaccurate the more volumes you have.
+        (AD has seen up to 600ms difference on the last volume in a 10 slice, 100 volumes with delta_volume of 2.434s)
+        We now use the slice timing to extrapolate the volume TR if 1. 2D acquisition, 2. We are not doing interleaved
+        multi-slice and 3. we have more than 5 slices
+
+        Args:
+            when (str): When to get the acquisition time. Can be within {POSSIBLE_TIMINGS}.
+
+        Returns:
+            numpy.ndarray: Acquisition timestamps in ms (n_volumes x n_slices).
+        """
+
+        if when not in POSSIBLE_TIMINGS:
+            raise ValueError(f"Invalid 'when' parameter. Must be within {POSSIBLE_TIMINGS}")
+
+        # Get number of volumes
+        n_volumes = self.header['dim'][4]
+        n_slices = self.shape[2]
+
+        deltat_volume = self.get_volume_tr()
+
+        # Time the acquisition of data that this image started (ISO format)
+        acq_start_time_ms = self.get_acquisition_start_time()
+
+        # Start time for each volume [ms]
+        volume_start_times = np.arange(acq_start_time_ms,
+                                       (n_volumes * deltat_volume) + acq_start_time_ms,
+                                       deltat_volume,
+                                       dtype=float)
+
+        if when == 'volume-start':
+            return volume_start_times
+        if when == 'volume-middle':
+            return volume_start_times + (deltat_volume / 2)
+
+        slice_timing_middle = self.get_phase_encode_0_crossings()
+        if slice_timing_middle is None:
+            logger.warning("Could not figure out slice_timing_middle.")
+            slice_timing_middle = np.zeros(n_slices)
+
+        timing = np.zeros((n_volumes, n_slices))
+
+        if np.all(slice_timing_middle == 0):
+            logger.warning("Could not figure out the slice timing. Using one time-point per volume instead.")
+            # If the slice timing is set to 0, then we could not figure out the slice timing, then set the best guess to
+            # the time required to get to the middle of the volume
+            for i in range(n_volumes):
+                timing[i, :] = np.repeat(volume_start_times[i] + (deltat_volume / 2), n_slices)
+        else:
+            # If we figured out the slice timing, then we can use it to get the timing of each slice for each volume
+            for i in range(n_volumes):
+                timing[i, :] = volume_start_times[i] + slice_timing_middle  # [ms]
+
+        return timing  # [ms]
+
+    @safe_getter(default_value=None)
+    def get_slice_tr(self) -> float:
+        """ Get the slice repetition time in milliseconds from the json sidecar.
+
+        Returns:
+            float: Slice repetition time in milliseconds.
+        """
+        excitation_tr = self.get_excitation_tr()
+
+        pulse_sequence_details = self.get_json_info('PulseSequenceDetails')
+        if pulse_sequence_details is None:
+            raise ValueError("No PulseSequenceDetails name found in JSON file.")
+
+        n_phase_encode_steps = self.get_n_acquired_phase_encode_lines()
+
+        if "gre_field_mapping" in pulse_sequence_details:
+            # This protocol acquires 2 echos with 2 different TRs
+            deltat_slice = excitation_tr * n_phase_encode_steps * 2
+            logging.info("Detected field mapping sequence, doubling the slice duration (1 RF pulse per echo).")
+        elif ("%SiemensSeq%\\gre" == pulse_sequence_details or
+              "gre_PMUlog" in pulse_sequence_details or
+              pulse_sequence_details == '%CustomerSeq%\\gre_shimming'):
+            deltat_slice = excitation_tr * n_phase_encode_steps
+        else:
+            raise NotImplementedError("Protocol name not recognized.")
+
+        return deltat_slice
+
+    @safe_getter(default_value=None)
+    def get_phase_encode_0_crossings(self) -> np.ndarray:
+        """ Return the best guess of when the middle of k-space was acquired for each slice of 1 volume, relative to the
+         start of the volume. This is implemented for Siemens, for 2D acquisitions and reads tags found in the JSON
+         sidecar.
+
+        Returns:
+            np.ndarray: Slice timing in ms (n_slices).
+        """
+
+        # Can be '2D'
+        mr_acquisition_type = self.get_json_info('MRAcquisitionType')
+        if mr_acquisition_type != '2D':
+            # mr_acquisition_type is None or 3D
+            raise NotImplementedError("MR acquisition type is not 2D.")
+
+        # list containing the time at which each slice was acquired
+        slice_timing_start = self.get_slice_timing()
+
+        deltat_slice = self.get_slice_tr()
+
+        # Error check
+        volume_tr = self.get_volume_tr()
+
+        n_slices = self.shape[2]
+        if (deltat_slice * n_slices) * ERROR_MARGIN > volume_tr:
+            ValueError("Slice timing of slices is longer than the volume timing.")
+
+        # Get when the middle of k-space was acquired
+        fourier = self.get_partial_fourier()
+
+        # The crossing of the center-line of k-space in the phase encoding direction is not exactly at 1/2
+        # of the time it takes to acquire a slice if partial Fourier is not 1. For a 7/8 partial Fourier,
+        # it would acquire the center-line of k-space after 3/7 of the time it takes to acquire a slice.
+        # (For a 700ms slice, the center-line would be acquired ~300ms). I simulated a couple of sequences in
+        # POET and observed that the "smaller" portion is always acquired first (the 1/8 portion is skipped,
+        # then 3/8 is acquired, k-space is crossed then the final 1/2 is acquired. In total, the k-space crossing
+        # was at 3/7 of the slice time).
+
+        ratio = (fourier - 0.5) / fourier
+
+        slice_timing_mid = slice_timing_start + (deltat_slice * ratio)
+
+        return slice_timing_mid
+
+    @safe_getter(default_value=None)
+    def get_slice_timing(self) -> np.ndarray:
+        """ Get the slice timing from the json sidecar.
+
+        Returns:
+            numpy.ndarray: Slice timing in ms (n_slices).
+        """
+        # list containing the time at which each slice was acquired
+        slice_timing_start = self.get_json_info('SliceTiming', required=False)
+        n_slices = self.shape[2]
+        if slice_timing_start is None:
+            if n_slices == 1:
+                # Slice timing information does not seem to be defined if there is only one slice
+                slice_timing_start = [0.0]
+            else:
+                raise ValueError("No slice timing information found in JSON file.")
+        else:
+            slice_timing_start = np.array(slice_timing_start) * 1000  # [ms]
+
+        return np.array(slice_timing_start)  # [ms]
+
+    @safe_getter(default_value=None)
+    def get_n_acquired_phase_encode_lines(self) -> int:
+        """ Get the number of acquired phase encoding lines from the json sidecar.
+
+        Returns:
+            int: Number of acquired phase encoding lines.
+        """
+
+        # On a Siemens scanner, I simulated many acquistions to figure out how many phase encoding lines get acquired
+        # depending on sequence parameters. Here is a summary of the results:
+        #   Basematrix  |   IPAT  | Ref lines | Partial Fourier | Phase oversampling | -> Acquired PE lines
+        #   64          | 2       | 24        | 1               | 0                  | 44
+        #   64          | 2       | 24        | 7/8             | 0                  | 40
+        #   64          | 2       | 24        | 6/8             | 0                  | 36
+        #   64          | 1       | 0         | 6/8             | 0                  | 48
+        #   64          | 2       | 32        | 7/8             | 0                  | 44
+        #   64          | 2       | 32        | 7/8             | 0.3                | 53
+
+        if self.get_json_info('Manufacturer') != 'Siemens':
+            raise ValueError("This function is only implemented for Siemens scanners.")
+
+        # Base resolution
+        # PhaseEncodingSteps should include the calculations below, but I have noticed that it sometimes does not
+        # phase_encode_steps = json_data.get('PhaseEncodingSteps')
+        phase_encode_steps = int(self.get_json_info('AcquisitionMatrixPE'))
+
+        # Phase oversampling
+        phase_over = self.get_phase_oversampling()
+
+        # Partial Fourier
+        partial_fourier = self.get_partial_fourier()
+
+        n_phase_encode_steps = phase_encode_steps * partial_fourier * phase_over
+
+        # Parallel acquisition reduction
+        parallel_technique = self.get_json_info('ParallelAcquisitionTechnique', required=False)
+        matrix_coil_mode = self.get_json_info('MatrixCoilMode', required=False)
+
+        if parallel_technique is not None or matrix_coil_mode is not None:
+
+            if parallel_technique == 'GRAPPA' or matrix_coil_mode == 'GRAPPA':
+                parallel_reduction_factor_in_plane = self.get_json_info('ParallelReductionFactorInPlane',
+                                                                        required=False)
+                if parallel_reduction_factor_in_plane is None:
+                    parallel_reduction_factor_in_plane = 1.0
+                parallel_reduction_factor_in_plane = float(parallel_reduction_factor_in_plane)
+
+                ref_lines_pe = self.get_json_info('RefLinesPE')
+                if ref_lines_pe is None and parallel_reduction_factor_in_plane != 1.0:
+                    raise ValueError("RefLinesPE not found in JSON sidecar.")
+                ref_lines_pe = int(ref_lines_pe)
+
+                n_phase_encode_steps = math.ceil((n_phase_encode_steps + ref_lines_pe) / parallel_reduction_factor_in_plane)
+            else:
+                NotImplementedError(f"{parallel_technique} parallel acquisition technique is not implemented yet.")
+
+        ph_encode_steps_dcm2niix = self.get_json_info('PhaseEncodingSteps', required=False)
+        if ph_encode_steps_dcm2niix is not None:
+            ph_encode_steps_dcm2niix = int(ph_encode_steps_dcm2niix)
+            if ph_encode_steps_dcm2niix != n_phase_encode_steps:
+                logger.warning(f"PhaseEncodingSteps in JSON sidecar ({ph_encode_steps_dcm2niix}) does not match "
+                               f"calculated value ({n_phase_encode_steps}). This is a bug in Shimming Toolbox or in "
+                               f"dcm2niix. Using {n_phase_encode_steps} phase encoding steps (from ST).")
+
+        return n_phase_encode_steps
+
+    @safe_getter(default_value=1.0)
+    def get_phase_oversampling(self):
+        """ Get the phase oversampling from the json sidecar.
+
+        Returns:
+            float: Phase oversampling factor. If no phase oversampling is defined, returns 1.0.
+        """
+        phase_over = self.get_json_info('PhaseOversampling', required=False)
+        if phase_over is None:
+            # If phase oversampling is not defined, assume it is 1 (no phase oversampling)
+            phase_over = 1.0
+        else:
+            # PhaseOversampling is given as a percentage, we add 1 so it can be multiplied
+            phase_over = float(phase_over) + 1.0
+
+        return phase_over
+
+    @safe_getter(default_value=False)
+    def get_partial_fourier(self) -> float:
+        """ Get the partial fourier value from the json sidecar.
+
+        Returns:
+            float: Partial Fourier value between 0 and 1. If no partial fourier is defined, returns 1.0.
+        """
+        manufacturer = self.get_json_info('Manufacturer')
+        if manufacturer == 'Siemens':
+            partial_fourier = self.get_json_info('PartialFourier', required=False)
+            if partial_fourier is None:
+                logger.warning("No partial fourier information found in JSON file, assuming no partial fourier.")
+                partial_fourier = 1.0
+            elif partial_fourier < 1 / 2:
+                raise ValueError("Partial fourier value is less than 1/2. That should not be possible.")
+            else:
+                partial_fourier = float(partial_fourier)
+                if not (0 <= partial_fourier <= 1):
+                    raise ValueError("Partial Fourier value format not supported, make sure it is between 0 and 1.")
+        else:
+            NotImplementedError("Partial Fourier not implemented for this manufacturer.")
+
+        return partial_fourier
+
+    @safe_getter(default_value=False)
+    def get_excitation_tr(self) -> float:
+        """ Get the slice excitation repetition time in milliseconds from the json sidecar.
+
+        Returns:
+            float: Slice excitation repetition time in milliseconds.
+        """
+
+        # If RepetitionTimeExcitation is not defined, then the RepetitionTime is the time between 2 RF pulses of the
+        # same slice
+        if self.get_json_info('RepetitionTimeExcitation') is None:
+            excitation_tr = self.get_json_info('RepetitionTime')
+            if excitation_tr is None:
+                raise ValueError("RepetitionTimeExcitation nor RepetitionTime is defined in the JSON sidecar. "
+                                 "Can't figure out excitation TR")
+        else:
+            excitation_tr = self.get_json_info('RepetitionTimeExcitation')
+
+        if excitation_tr is not None:
+            excitation_tr = float(excitation_tr) * 1000  # [ms]
+
+        return excitation_tr
+
+    @safe_getter(default_value=False)
+    def get_volume_tr(self) -> float:
+        """ Get the volume repetition time in milliseconds from the json sidecar. AcquisitionDuration is not really
+        reliable. Using the slice timing and extrapolation the acquisition duration seems more reliable.
+
+        Returns:
+            float: Volume repetition time in milliseconds.
+        """
+
+        # Use slice timing if we have many slices and not interleaved multi-slice acquisition
+        if not self.is_interleaved_multi_slice() and self.shape[2] > 5:
+            # Slice timing is more reliable than the AcquisitionDuration if we have many slices
+            slice_timing = self.get_slice_timing()
+            deltat_volume = slice_timing.max() / (self.shape[2] - 1) * self.shape[2]
+            return deltat_volume
+
+        # If both RepetitionTimeExcitation and RepetitionTime are defined, then RepetitionTime is the volume TR and
+        # RepetitionTimeExcitation is the time between 2 RF pulses of the same slice.
+        # If RepetitionTimeExcitation is not defined, RepetitionTime is the time between 2 RF pulses of the same slice and
+        # AcquisitionDuration is the time to acquire a single volume (i.e.: volume TR).
+        if self.get_json_info('RepetitionTimeExcitation') is None:
+            acq_duration = self.get_json_info('AcquisitionDuration')
+            if acq_duration is None:
+                # deltat_slice = get_slice_tr(json_data)
+                # n_slices = nii_data.shape[2]
+                # deltat_volume = deltat_slice * n_slices
+
+                raise ValueError("RepetitionTimeExcitation nor AcquisitionDuration is defined in the JSON "
+                                 "sidecar. Can't compute volume repetition time.")
+            else:
+                # If AcquisitionDuration is defined and RepetitionTimeExcitation is not,
+                # then AcquisitionDuration is the time to acquire a single volume
+                deltat_volume = float(acq_duration) * 1000
+        else:
+            # If RepetitionTimeExcitation is defined, RepetitionTime is the volume TR
+            tr = self.get_json_info('RepetitionTime')
+            if tr is None:
+                raise ValueError("RepetitionTime is not defined in the JSON sidecar.")
+            deltat_volume = float(tr) * 1000  # [ms]
+
+        if deltat_volume is None:
+            raise ValueError("Can't compute volume repetition time. RepetitionTimeExcitation, AcquisitionDuration and/or "
+                             "RepetitionTime can't be used to determine volume TR.")
+
+        return deltat_volume
+
+    @safe_getter(default_value=False)
+    def get_acquisition_duration(self) -> float:
+        """ Compute the acquisition duration from the nifti data and the json sidecar.
+
+        Returns:
+            float: Acquisition duration in milliseconds.
+        """
+
+        if self.ndim == 4:
+            n_volumes = self.shape[3]
+        else:
+            # If the data is not 4D, then there is no time dimension, so there is only a single volume
+            n_volumes = 1
+
+        deltat_volume = self.get_volume_tr()
+
+        return n_volumes * deltat_volume  # [ms]
+
+    @safe_getter(default_value=False)
+    def get_acquisition_start_time(self) -> float:
+        """
+        Get the acquisition start time in milliseconds past midnight from the json sidecar.
+
+        Returns:
+            float: Acquisition start time in milliseconds past midnight.
+
+        """
+        acq_start_time_iso = self.get_json_info('AcquisitionTime')
+        if acq_start_time_iso is None:
+            raise ValueError("Acquisition time not found in json sidecar.")
+        # todo: dummy scans?
+        acq_start_time_ms = iso_times_to_ms(np.array([acq_start_time_iso]))[0]  # [ms]
+        return acq_start_time_ms
+
+    @safe_getter(default_value=False)
+    def get_acquisition_stop_time(self) -> float:
+        """
+        Get the acquisition stop time in milliseconds past midnight from the json sidecar.
+
+        Returns:
+            float: Acquisition stop time in milliseconds past midnight.
+
+        """
+
+        acq_start_time = self.get_acquisition_start_time()
+        acq_duration = self.get_acquisition_duration()
+        acq_stop_time = acq_start_time + acq_duration
+
+        # If the acquisition stop time is greater than 24 hours, then it is the next day
+        return acq_stop_time % (SECONDS_IN_A_DAY * 1000)
+
+    @safe_getter(default_value=False)
+    def is_interleaved_multi_slice(self) -> bool:
+        """
+        Check if the acquisition is interleaved multi-slice. Uses the slice timing and the excitation TR to determine.
+
+        Returns:
+            bool: True if the acquisition is interleaved multi-slice, False otherwise.
+        """
+
+        if self.get_json_info('MRAcquisitionType') != '2D':
+            raise NotImplementedError("This function is only implemented for 2D acquisitions.")
+
+        # Trivial case
+        if self.shape[2] == 1:
+            return False
+
+        slice_timing = self.get_slice_timing()
+        excitation_tr = self.get_excitation_tr()
+        # Remove slices that start at 0 ms (acquired during the first TR excitation)
+        slice_timing_no_zero = slice_timing[slice_timing > 0]
+        # If there are slices that start acquiring before the end of a TR excitation, then it is interleaved multi-slice
+        if np.any(slice_timing_no_zero < excitation_tr):
+            logger.debug("Interleaved multi-slice detected.")
+            return True
+        else:
+            return False

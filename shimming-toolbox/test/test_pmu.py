@@ -10,7 +10,6 @@ import scipy.signal
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox import __dir_testing__
 from shimmingtoolbox.pmu import PmuResp
-from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 
 fname_fieldmap = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_fieldmap.nii.gz')
@@ -48,7 +47,7 @@ def test_interp_resp_trace():
 
     acq_pressure = pmu.interp_resp_trace(acq_times)
     data = pmu.get_data()
-    
+
     index_pmu_data = np.linspace(0, len(data) - 1, int(num_points)).astype(int)
     index_pmu_interp = np.linspace(0, num_points - 1, int(num_points)).astype(int)
 
@@ -63,7 +62,7 @@ def test_timing_images():
     with open(fname_phase_diff_json) as json_file:
         json_data = json.load(json_file)
     nif_fieldmap.json = json_data
-    fieldmap_timestamps = get_acquisition_times(nif_fieldmap)
+    fieldmap_timestamps = nif_fieldmap.get_acquisition_times()
 
     # Interpolate PMU values onto MRI acquisition timestamp
     acquisition_pressures = pmu.interp_resp_trace(fieldmap_timestamps)
@@ -96,10 +95,17 @@ def test_pmu_fake_data():
     pmu.set_data(fake_data)
     pmu.set_start_and_stop_times(125, 250 * (len(fake_data) - 1) + 125)
 
-    json_data = {'RepetitionTime': 250 / 1000, 'AcquisitionTime': "00:00:00.000000"}
+    json_data = {'RepetitionTime': 250 / 1000,
+                 'RepetitionTimeExcitation': 0.001,
+                 'AcquisitionTime': "00:00:00.000000",
+                 'MRAcquisitionType': '2D',
+                 'PulseSequenceDetails': "%SiemensSeq%\\gre",
+                 'Manufacturer': "Siemens",
+                 'PhaseEncodingSteps': 250,
+                 'AcquisitionMatrixPE': 250}
     nif_fieldmap.json = json_data
     # Calc pressure
-    acq_timestamps = get_acquisition_times(nif_fieldmap)
+    acq_timestamps = nif_fieldmap.get_acquisition_times()
     acq_pressures = pmu.interp_resp_trace(acq_timestamps)
 
     # 10 volumes, 1 slice

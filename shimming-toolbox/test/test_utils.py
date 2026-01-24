@@ -2,9 +2,7 @@ import tempfile
 import pathlib
 import os
 
-from shimmingtoolbox.utils import create_output_dir
-from shimmingtoolbox.utils import create_fname_from_path
-
+from shimmingtoolbox.utils import create_output_dir, create_fname_from_path, ms_past_midnight_to_iso_time
 
 def test_create_output_dir_folder():
     with tempfile.TemporaryDirectory(prefix='st_'+pathlib.Path(__file__).stem) as tmp:
@@ -56,3 +54,9 @@ def test_create_fname_from_path_2():
     fname = create_fname_from_path(path, file)
 
     assert fname == os.path.abspath("./file.nii")
+
+
+def test_ms_past_midnight_to_iso_time():
+    ms = 61923232.0
+    iso = ms_past_midnight_to_iso_time(ms)
+    assert iso == "171203.232000"

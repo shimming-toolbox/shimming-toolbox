@@ -20,7 +20,7 @@ from matplotlib.figure import Figure
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
-from shimmingtoolbox.pmu import PmuResp
+from shimmingtoolbox.pmu import PmuResp, PmuExt, PmuRespLog, PmuExtLog, PmuRespBiopac, PmuExtBiopac
 from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
@@ -174,11 +174,11 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     # Parse scanner_coil_order
     scanner_coil_order = parse_orders(scanner_coil_order)
 
-    # Load the fieldmap
-    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
-
     # Prepare the output
     create_output_dir(path_output)
+
+    # Load the fieldmap
+    nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
 
     # Load the target
     nif_target = NiftiTarget(fname_target, path_output=path_output)
@@ -532,7 +532,9 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
               help="Target image to apply the correction onto.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
-              help="Siemens respiratory file containing pressure data.")
+              help="Siemens respiratory file containing pressure data. Supported extensions: '.resp', '.log'.")
+@click.option('--trigs', 'fname_ext', type=click.Path(exists=True), required=False,
+              help="Siemens external trigger file containing pressure data. Supported extensions: '.ext', '.log'.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
               help="Time offset (ms) between the respiratory recording and the acquired time in the DICOMs.")
 @click.option('--mask-static', 'fname_mask_target_static', type=click.Path(exists=True), required=False,
@@ -632,7 +634,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_mask_target_riro, fname_resp, method,
                      opt_criteria, slices, slice_factor, coils_static, coils_riro, dilation_kernel_size,
                      scanner_coil_order_static, scanner_coil_order_riro, fname_sph_constr, fatsat, path_output,
-                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, verbose):
+                     o_format_coil, o_format_sph, output_value_format, reg_factor, time_offset, fname_ext, verbose):
     """ Realtime shim by fitting a fieldmap to a pressure monitoring unit. Use the option --optimizer-method to change
     the shimming algorithm used to optimize. Use the options --slices and --slice-factor to change the shimming
     order/size of the slices.
@@ -655,6 +657,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
+
+    # Prepare the output
+    create_output_dir(path_output)
 
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, is_realtime=True)
@@ -727,13 +732,14 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
-    if time_offset is 'auto':
+    if time_offset == 'auto':
         is_pmu_time_offset_auto = True
         time_offset = 0
     else:
         is_pmu_time_offset_auto = False
         time_offset = round(int(time_offset))
-    pmu = PmuResp(fname_resp, time_offset=time_offset)
+
+    pmu, pmu_ext = load_pmu(fname_resp, fname_ext, nif_fmap, time_offset)
 
     # 1 ) Create the real time pmu sequencer object
     sequencer = RealTimeSequencer(nif_fmap, nif_target, nif_mask_target_static,
@@ -745,6 +751,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
                                   mask_dilation_kernel_size=dilation_kernel_size,
                                   reg_factor=reg_factor,
                                   path_output=path_output,
+                                  pmu_ext=pmu_ext,
                                   is_pmu_time_offset_auto=is_pmu_time_offset_auto)
     # 2) Launch the sequencer
     coefs_static, coefs_riro, mean_p, p_rms = sequencer.shim()
@@ -1111,6 +1118,50 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         raise RuntimeError("No custom or scanner coils were selected. Use --coil and/or --scanner-coil-order")
 
     return list_coils
+
+
+def load_pmu(fname_resp_file, fname_ext_file, nif_fieldmap, time_offset):
+    """Load the PMU and external trigger files based on their extensions.
+
+    Args:
+        fname_resp_file (str): Filename of the respiratory file
+        fname_ext_file (str): Filename of the external trigger file
+        nif_fieldmap (NiftiFieldMap): NiftiFieldMap object
+        time_offset (int): Time offset in milliseconds
+
+    Returns:
+        tuple: A tuple containing the PMU object and the external trigger object
+    """
+
+    if fname_ext_file is not None:
+        extension = os.path.splitext(fname_ext_file)[1]
+        # Load external trigger file if provided
+        if extension == '.log':
+            pmu_ext = PmuExtLog(fname_ext_file)
+        elif extension == '.txt':
+            pmu_ext = PmuExtBiopac(fname_ext_file, nif_fmap)
+        elif extension == '.ext':
+            pmu_ext = PmuExt(fname_ext_file)
+        else:
+            raise ValueError(f"Unsupported external trigger file format: {extension}")
+    else:
+        pmu_ext = None
+
+    extension = os.path.splitext(fname_resp_file)[1]
+    if extension == '.log':
+        pmu = PmuRespLog(fname_resp_file, time_offset=time_offset)
+    elif extension == '.txt':
+        # Triggers are required when using the Biopac. Since the information is in the same file, using the pmu or the
+        # trigger option works
+        if pmu_ext is None:
+            pmu_ext = PmuExtBiopac(fname_resp_file, nif_fmap)
+        pmu = PmuRespBiopac(fname_resp_file, pmu_ext, time_offset=time_offset)
+    elif extension == '.resp':
+        pmu = PmuResp(fname_resp_file, time_offset=time_offset)
+    else:
+        raise ValueError(f"Unsupported respiratory file format: {extension}")
+
+    return pmu, pmu_ext
 
 
 def _save_nii_to_new_dir(list_save):
