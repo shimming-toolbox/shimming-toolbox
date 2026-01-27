@@ -48,8 +48,9 @@ Create a Fieldmap
 
 - Navigate to the *Fieldmap* Tab. If you don't see the tab, drag the right edge of the ``Shimming Toolbox`` panel to make all the tabs appear.
 - Enter 1 for the *Number of Echoes*.
-- Select the phase from the overlay and click the *Input Phase 1* button.
-- Select the first magnitude image in the overlay and click the *Input Magnitude*.
+- Select the phase image in the overlay (**sub-spine_phase2**) and click the *Input Phase 1* button.
+- Select the first magnitude image in the overlay (**sub-spine_magnitude1**) and click the *Input Magnitude*.
+- Select the unwrapper you wish to use. Select skimage if you do not have prelude installed (External dependency: FSL).
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output fieldmap should load automatically.
@@ -63,9 +64,12 @@ Create a Mask
 
 - Select The *Mask* Tab.
 - Select *Box* from the dropdown.
-- Select the target image from the overlay, click the button *Input*.
+- Select the target image in the overlay (**sub-spine_unshimmed_e1**), then click the button *Input*.
 - Input voxel indexes for *center* and *size*. TIP: Look at the Location panel of fsleyes to locate the center of the ROI.
-  - For the spine, a *center* of 140, 124, 6 and a *size* of 30, 15, 12 could work.
+
+  - For the spine, a *center* of 128, 124, 6 and a *size* of 30, 15, 12 could work.
+  - TIP: You can use external tools such as `Spinal Cord Toolbox <https://github.com/spinalcordtoolbox/spinalcordtoolbox>`__ (SCT) to create spinal cord masks automatically.
+
 - *(Optional)* Change the output file and folder by clicking on *Output File*.
 - Click *Run*.
 - The output mask should load automatically.
@@ -75,9 +79,9 @@ Dynamic shimming
 
 - Navigate to the *B0 Shim* Tab.
 - Select *Dynamic* in the dropdown menu (it should already be selected by default).
-- Select the fieldmap from the overlay, click the button *Input Fieldmap*.
-- Select the target image, click the button *Input target*.
-- Select the mask, click the button *Input Mask*.
+- Select the fieldmap in the overlay and click the button *Input Fieldmap*.
+- Select the target image in the overlay (**sub-spine_unshimmed_e1**), then click the button *Input target*.
+- Select the mask in the overlay and click the button *Input Mask*.
 - Select a *Slice Ordering* of Ascending.
 - Select a *Slice Factor* of 1 (should be the default).
 - Select a *Scanner Order* of 1. It means that dynamic shimming will be
