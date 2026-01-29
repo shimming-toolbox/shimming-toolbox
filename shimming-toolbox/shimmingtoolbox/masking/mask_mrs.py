@@ -40,7 +40,7 @@ def mask_mrs(fname_input, raw_datas, center, size):
     if fname_input is None:
         raise TypeError(f"The input field map needs to be specified")
 
-    if raw_datas is None:
+    if raw_datas is None or len(raw_datas) == 0:
         logger.info("MRS raw data not provided, creating the mask with the given voxel position and size info")
         if center is None or size is None:
             raise TypeError('The raw_data is not provided; the voxel position and size are required to proceed')
