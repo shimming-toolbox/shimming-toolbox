@@ -1049,6 +1049,26 @@
         },
         {
             "datatype": "anat",
+            "suffix": "T2wTSE2D",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "TSE",
+                "MRAcquisitionType": "2D",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "SE", "M", "SE", "MAGNITUDE"]
+            }
+        },
+                {
+            "datatype": "anat",
+            "suffix": "T2wTSE3D",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "TSE",
+                "MRAcquisitionType": "3D",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "SE", "M", "SE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
             "suffix": "FFE",
             "criteria": {
                 "Manufacturer": "Philips",
