@@ -81,11 +81,9 @@ def mask_mrs(fname_input, raw_datas, center, size):
             nii = nib.load(fname_rawdata_nifti)
 
             if nii.ndim == 4:
-                data = nii.get_fdata()[..., 0]
+                data = np.ones_like(nii.get_fdata()[..., 0])
             else:
-                data = nii.get_fdata()
-
-            data[data != 0] = 1
+                data = np.ones_like(nii.get_fdata())
 
             nii_tmp = nib.Nifti1Image(data, nii.affine, nii.header)
             nii_target = nib.load(fname_input)
