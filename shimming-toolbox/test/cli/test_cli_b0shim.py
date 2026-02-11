@@ -229,6 +229,77 @@ class TestCliDynamic(object):
             assert math.isclose(calc_constraints_data['coefs_used']['0'][0],
                                 constraints_data['coefs_used']['0'][0] + values[0], abs_tol=1e-5)
 
+    def test_cli_dynamic_external_scanner_constraint_absolute(self, nii_fmap, nii_target, nii_mask, nii_softmask,
+                                                              fm_data, target_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            with open(__config_scanner_constraints__) as f:
+                constraints_data = json.load(f)
+
+            constraints_data['coefs_used']['0'] = [constraints_data["coef_channel_minmax"]['0'][0][0] + 1000]
+            constraints_data['coefs_used']['1'] = [1000, 1000, 1000]
+            constraints_data['coefs_used']['2'] = [1000, 1000, 1000, 1000, 1000]
+            constraints_data['coef_channel_minmax']['2'][0] = [None, None]
+            constraints_data['coef_channel_minmax']['2'][1] = None
+            constraints_data['coef_channel_minmax']['2'][2] = [-np.inf, np.inf]
+            fname_scanner_constraints_json = os.path.join(tmp, 'scanner_constraints.json')
+            with open(fname_scanner_constraints_json, 'w', encoding='utf-8') as f:
+                json.dump(constraints_data, f, indent=4)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1,2',
+                                             '--scanner-coil-constraints', fname_scanner_constraints_json,
+                                             '--slices', 'volume',
+                                             '--output-value-format', 'absolute',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+            expected_values = [123101083.581176, 1001.284052, 985.575163, 915.594228, 993.39577, 999.346443, 993.241762,
+                               1000.95573, 999.83129]
+            assert values == expected_values
+            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim.json")
+            assert os.path.isfile(fname_bids_sidecar_fmap_output)
+            with open(fname_bids_sidecar_fmap_output) as f:
+                bids_sidecar_fmap_output_data = json.load(f)
+            assert bids_sidecar_fmap_output_data['ImagingFrequency'] == 123.101083
+            # Siemens scanner need to be scaled to DAC units. Moreover, we input the 'coefs_used' as ui units.
+            # This is why these values are not the direct sum of coefs + coefs_used
+            assert bids_sidecar_fmap_output_data['ShimSetting'] == [6284.58, 6112.71, 5591.1,
+                                                                    2002.81, 2813.48, 2834.59, 2818.01, 2866.49]
+            with open(os.path.join(tmp, "calculated_scanner_constraints.json")) as f:
+                calc_constraints_data = json.load(f)
+            assert math.isclose(calc_constraints_data['coef_channel_minmax']['0'][0][0],
+                                constraints_data['coef_channel_minmax']['0'][0][0], abs_tol=1e-5)
+            assert math.isclose(calc_constraints_data['coef_channel_minmax']['0'][0][1],
+                                constraints_data['coef_channel_minmax']['0'][0][1], abs_tol=1e-5)
+            assert math.isclose(calc_constraints_data['coefs_used']['0'][0],
+                                values[0], abs_tol=1e-5)
+
     def test_cli_dynamic_sph_table_not_iso(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

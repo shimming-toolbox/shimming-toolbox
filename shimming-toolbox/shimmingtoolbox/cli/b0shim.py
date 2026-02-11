@@ -25,7 +25,7 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import extend_fmap_to_kernel_size, parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import ScannerShimSettings
+from shimmingtoolbox.shim.shim_utils import ScannerShimSettings, concatenate_shim_settings
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
 from shimmingtoolbox.files.NiftiMask import NiftiMask
@@ -302,8 +302,12 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
             else:
                 # If the output format is absolute, add the initial coefs
                 if output_value_format == 'absolute':
-                    initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order)
+                    initial_coefs = concatenate_shim_settings(coil.coefs_used, scanner_coil_order)
                     for i_channel in range(n_channels):
+                        if not isinstance(initial_coefs[i_channel], (int, float)):
+                            raise ValueError(f"Initial shim coefficient for channel {i_channel} is not a number:"
+                                             f"{initial_coefs[i_channel]}. Can't output 'absolute' "
+                                             f"--output-value-format. Use 'delta'")
                         # abs_coef = delta + initial
                         coefs_coil[:, i_channel] = coefs_coil[:, i_channel] + initial_coefs[i_channel]
 
@@ -839,7 +843,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
                     # If the output format is absolute, add the initial coefs
                     if output_value_format == 'absolute' and coefs_coil_static is not None:
-                        initial_coefs = scanner_shim_settings.concatenate_shim_settings(scanner_coil_order_static)
+                        initial_coefs = concatenate_shim_settings(coil.coefs_used, scanner_coil_order_static)
                         for i_channel in range(coefs_coil_static.shape[-1]):
                             # abs_coef = delta + initial
                             coefs_coil_static[:, i_channel] = coefs_coil_static[:, i_channel] + initial_coefs[i_channel]
@@ -1084,26 +1088,26 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
-        # Todo: Skip loading constraints if the algo does not support constraints?
         if os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 external_contraints = json.load(json_file)
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
-                                                         orders,
-                                                         manufacturer,
-                                                         device_serial_number,
-                                                         scanner_shim_settings,
-                                                         external_contraints)
         else:
-            scanner_contraints = get_scanner_constraints(manufacturers_model_name,
-                                                         orders,
-                                                         manufacturer,
-                                                         device_serial_number,
-                                                         scanner_shim_settings)
+            external_contraints = None
+
+        scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+                                                     orders,
+                                                     manufacturer,
+                                                     device_serial_number,
+                                                     scanner_shim_settings,
+                                                     external_contraints)
 
         isocenter = nif_fmap.get_isocenter()
-        scanner_coil = ScannerCoil(nif_fmap.extended_shape[:3], nif_fmap.extended_affine, scanner_contraints, orders,
-                                   manufacturer=manufacturer, isocenter=isocenter)
+        scanner_coil = ScannerCoil(nif_fmap.extended_shape[:3],
+                                   nif_fmap.extended_affine,
+                                   scanner_contraints,
+                                   orders,
+                                   manufacturer=manufacturer,
+                                   isocenter=isocenter)
         list_coils.append(scanner_coil)
 
     # Make sure a coil is selected
@@ -1657,7 +1661,6 @@ def write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_co
     """
     coefs_scanner = {}
     coefs_used = {}
-    coef_channel_minmax = {}
     start_channel_scanner = 0
     for order in scanner_coil_order:
         # Get coefficients for the current order
@@ -1672,17 +1675,9 @@ def write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_co
             coefs_used[f"{order}"] = (np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0) +
                                       coefs_scanner[f"{order}"])
 
-        # Fill the bounds
-        if coil.coef_channel_minmax.get(f"{order}") is not None:
-            coef_channel_minmax[f"{order}"] = []
-            coefs_used_order = np.nan_to_num(np.array(coil.coefs_used[f"{order}"], dtype=float), nan=0)
-            for i_coef, coefs_channel in enumerate(coil.coef_channel_minmax[f"{order}"]):
-                coef_channel_minmax[f"{order}"].append([float(coefs_channel[0]) + coefs_used_order[i_coef],
-                                                   float(coefs_channel[1]) + coefs_used_order[i_coef]])
-
     data_calculated_constraints = {
         "name": coil.name,
-        "coef_channel_minmax": coef_channel_minmax,
+        "coef_channel_minmax": coil.original_constraints.get("coef_channel_minmax"),
         "coef_sum_max": coil.coef_sum_max,
         "coefs_used": {order: coefs.tolist() for order, coefs in coefs_used.items()},
     }
