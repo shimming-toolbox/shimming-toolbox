@@ -215,27 +215,41 @@ def test_cli_mask_rda():
         # The MRS voxel size and its center coordinates (x, y, z) are extracted from the raw data by first converting
         # the raw data to a NIfTI file and then reading the header of that file.
         mrs_raw_data = os.path.join(__dir_testing__, 'ds_mrs', 'sub-1_acq-press-siemens-shim_nuc-H_echo-135_svs.rda')
-        fname_gre = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-1_acq-gre_magnitude1.nii.gz')
+        fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-1_acq-gre_magnitude1.nii.gz')
         fname_out = os.path.join(tmp, 'mask_mrs.nii.gz')
 
         result = runner.invoke(mask_cli, ['mrs',
-                                          '--input', fname_gre,
+                                          '--input', fname_target,
                                           '--output', fname_out,
-                                          '--raw', mrs_raw_data],
+                                          mrs_raw_data],
                                catch_exceptions=False)
 
         assert result.exit_code == 0
-        # Knowing that the input magnitude data(GRE) has a pixel size of 4.4 x 4.4 x 4.4 mm, and the MRS voxel size
-        # was originally chosen to be 20 x 20 x 20 mm, we can calculate the expected mask size. By dividing 20 by 4.4,
-        # rounding up, and adding one margin pixel to the mask, the expected mask will have dimensions of 6 x 6 x 6 pixels.
-
-        nii_fmap = nib.load(fname_gre)
-        expected = np.zeros(nii_fmap.shape)
-        expected[29:35, 37:43, 6:12] = 1
         nii_out = nib.load(fname_out)
+        assert result.exit_code == 0
+        assert np.all(nii_out.get_fdata()[31:33, 39:42, 8:11] == 1)
+
+
+def test_cli_mask_sdat_spar():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+
+        mrs_raw_data1 = os.path.join(__dir_testing__, 'ds_mrs', 'sub-2_acq-press_philips_svs.SDAT')
+        mrs_raw_data2 = os.path.join(__dir_testing__, 'ds_mrs', 'sub-2_acq-press_philips_svs.SPAR')
+        fname_target = os.path.join(__dir_testing__, 'ds_mrs', 'sub-2_magnitude1.nii.gz')
+        fname_out = os.path.join(tmp, 'mask_mrs.nii.gz')
+
+        runner = CliRunner()
+        result = runner.invoke(mask_cli, ['mrs',
+                                          '--input', fname_target,
+                                          '--output', fname_out,
+                                          mrs_raw_data1, mrs_raw_data2],
+                               catch_exceptions=False)
 
         assert result.exit_code == 0
-        assert np.all(nii_out.get_fdata() == expected)
+        nii_out = nib.load(fname_out)
+        expected = np.zeros_like(nii_out.get_fdata())
+        expected[54: 58, 54: 58, 24: 41] = 1
+        assert np.allclose(nii_out.get_fdata(), expected)
 
 
 def test_cli_softmask_two_levels():
