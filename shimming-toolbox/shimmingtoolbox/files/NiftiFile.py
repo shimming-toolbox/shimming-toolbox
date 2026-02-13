@@ -343,7 +343,7 @@ class NiftiFile:
         }
 
         # get_shim_orders
-        shim_settings_list = self.get_json_info('ShimSetting')
+        shim_settings_list = self.get_json_info('ShimSetting', required=False)
         if shim_settings_list is not None:
             n_shim_values = len(shim_settings_list)
             if n_shim_values == 3:

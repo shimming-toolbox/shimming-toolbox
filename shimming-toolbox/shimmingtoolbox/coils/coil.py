@@ -13,19 +13,19 @@ from shimmingtoolbox import __config_scanner_constraints__
 
 logger = logging.getLogger(__name__)
 
-required_constraints = [
+REQUIRED_CONSTRAINTS = [
     "name",
     "coef_channel_minmax",
     "coef_sum_max"
 ]
 
 SIEMENS_PRISMA_CONSTRAINTS_167006 = {
-            "0": [[123100100, 123265000]],
-            "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
-            "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
-                  [-3487.302, 3487.302]],
-            "3": []
-        }
+    "0": [[123100100, 123265000]],
+    "1": [[-2300, 2300], [-2300, 2300], [-2300, 2300]],
+    "2": [[-4959.01, 4959.01], [-3551.29, 3551.29], [-3503.299, 3503.299], [-3551.29, 3551.29],
+          [-3487.302, 3487.302]],
+    "3": []
+}
 
 SCANNER_CONSTRAINTS = {
     "Siemens": {
@@ -34,7 +34,8 @@ SCANNER_CONSTRAINTS = {
         "Investigational_Device_7T_79017": {
             "0": [[296490000, 297490000]],
             "1": [[-2999.899, 2999.399], [-2999.886, 2999.886], [-2999.910, 2999.910]],
-            "2": [[-7486.502, 7486.502], [-3743.251, 3743.251], [-3695.261, 3695.261], [-3695.261, 3695.261], [-3647.270, 3647.270]],
+            "2": [[-7486.502, 7486.502], [-3743.251, 3743.251], [-3695.261, 3695.261], [-3695.261, 3695.261],
+                  [-3647.270, 3647.270]],
             "3": []
         },
         "Investigational_Device_7T_18923": {
@@ -109,7 +110,6 @@ class Coil(object):
         profile (np.ndarray): (dim1, dim2, dim3, channels) 4d array of N 3d coil profiles
         affine (np.ndarray): 4x4 array containing the affine transformation associated with the NIfTI file of the coil
                              profile. This transformation relates to the physical coordinates of the scanner (qform).
-        required_constraints (list): List containing the required keys for ``constraints``
         coef_sum_max (float): Contains the maximum value for the sum of the coefficients
         coef_channel_minmax (dict): Dict of ``(min, max)`` pairs for each coil channels. (None, None) is
                                     used to specify no bounds.
@@ -178,7 +178,6 @@ class Coil(object):
 
         self.dim = (np.nan,) * 4
         self.profile = profile
-        self.required_constraints = required_constraints
 
         if affine.shape != (4, 4):
             raise ValueError("Shape of affine matrix should be 4x4")
@@ -188,6 +187,7 @@ class Coil(object):
         self.coef_channel_minmax = None
         self.coef_sum_max = None
         self.coefs_used = None
+        self.original_constraints = copy.deepcopy(constraints)
         self.load_constraints(constraints)
 
     @property
@@ -206,78 +206,73 @@ class Coil(object):
         Loads the constraints as attribute to this class. The constraints are updated according to the 'coefs_used',
         if available.
         """
+        for key_name in REQUIRED_CONSTRAINTS:
+            if constraints.get(key_name) is None:
+                if constraints["coef_sum_max"] is None:
+                    constraints["coef_sum_max"] = np.inf
+                else:
+                    raise KeyError(f"Missing required constraint: {key_name}")
 
         # Read in "coefs_used"
         if constraints.get("coefs_used") is not None:
             self.coefs_used = constraints["coefs_used"]
 
-        for key_name in required_constraints:
-            if key_name in constraints:
-                if key_name == "coef_channel_minmax":
-                    self.coef_channel_minmax = constraints["coef_channel_minmax"]
-                    # Error checking
-                    if sum([len(constraints["coef_channel_minmax"][key]) for key in
-                            constraints["coef_channel_minmax"]]) != self.dim[3]:
-                        calculated_n_channels = sum([len(constraints['coef_channel_minmax'][key]) for key in
-                                                     constraints['coef_channel_minmax']])
-                        raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
-                                         f"{self.dim[3]}, currently: {calculated_n_channels}")
+        self.coef_channel_minmax = constraints["coef_channel_minmax"]
+        # Error checking
+        if sum([len(constraints["coef_channel_minmax"][key]) for key in
+                constraints["coef_channel_minmax"]]) != self.dim[3]:
+            calculated_n_channels = sum([len(constraints['coef_channel_minmax'][key]) for key in
+                                         constraints['coef_channel_minmax']])
+            raise ValueError(f"length of 'coef_channel_max' must be the same as the number of channels: "
+                             f"{self.dim[3]}, currently: {calculated_n_channels}")
 
-                    for key in constraints["coef_channel_minmax"]:
-                        if (self.coefs_used is not None and
-                                self.coefs_used.get(key) is not None):
-                            # Error checking
-                            if constraints["coefs_used"].keys() != constraints["coef_channel_minmax"].keys():
-                                raise ValueError("The coil constraints 'coef_channel_minmax' do not have the same keys "
-                                                 "as 'coefs_used'")
-                            if any(len(self.coefs_used[key]) !=
-                                   len(constraints["coef_channel_minmax"][key])
-                                   for key in constraints["coef_channel_minmax"]
-                                   if self.coefs_used[key] is not None):
-                                raise ValueError("The coil's bounds is not the same length as the initial bounds")
+        for key in constraints["coef_channel_minmax"]:
+            if (self.coefs_used is not None and
+                    self.coefs_used.get(key) is not None):
+                # Error checking
+                if constraints["coefs_used"].keys() != constraints["coef_channel_minmax"].keys():
+                    raise ValueError("The coil constraints 'coef_channel_minmax' do not have the same keys "
+                                     "as 'coefs_used'")
+                if any(len(self.coefs_used[key]) !=
+                       len(constraints["coef_channel_minmax"][key])
+                       for key in constraints["coef_channel_minmax"]
+                       if self.coefs_used[key] is not None):
+                    raise ValueError("The coil's bounds is not the same length as the initial bounds")
 
-                        coef_channel_minmax = self.coef_channel_minmax
-                        for i in range(len(constraints["coef_channel_minmax"][key])):
-                            if constraints["coef_channel_minmax"][key][i] is None:
-                                coef_channel_minmax[key][i] = [-np.inf, np.inf]
-                            if constraints["coef_channel_minmax"][key][i][0] is None:
-                                coef_channel_minmax[key][i] = [-np.inf, coef_channel_minmax[key][i][1]]
-                            if constraints["coef_channel_minmax"][key][i][1] is None:
-                                coef_channel_minmax[key][i] = [coef_channel_minmax[key][i][0], np.inf]
+            coef_channel_minmax = self.coef_channel_minmax
+            for i in range(len(constraints["coef_channel_minmax"][key])):
+                if constraints["coef_channel_minmax"][key][i] is None:
+                    coef_channel_minmax[key][i] = [-np.inf, np.inf]
+                if constraints["coef_channel_minmax"][key][i][0] is None:
+                    coef_channel_minmax[key][i] = [-np.inf, coef_channel_minmax[key][i][1]]
+                if constraints["coef_channel_minmax"][key][i][1] is None:
+                    coef_channel_minmax[key][i] = [coef_channel_minmax[key][i][0], np.inf]
 
-                            # Log a warning if the current coefficients are outside the constraints
-                            if (self.coefs_used is not None and
-                                    self.coefs_used.get(key) is not None and
-                                    self.coefs_used[key][i] is not None):
-                                if self.coefs_used[key][i] < coef_channel_minmax[key][i][0]:
-                                    logger.warning(
-                                        f"Initial coef is outside the bounds allowed in the constraints: "
-                                        f"{coef_channel_minmax[key][i][0]}, "
-                                        f"initial: {constraints['coefs_used'][key][i]}")
-                                if self.coefs_used[key][i] > coef_channel_minmax[key][i][1]:
-                                    logger.warning(
-                                        f"Initial coef is outside the bounds allowed in the constraints: "
-                                        f"{coef_channel_minmax[key][i][1]}, "
-                                        f"initial: {self.coefs_used[key][i]}")
+                # Log a warning if the current coefficients are outside the constraints
+                if (self.coefs_used is not None and
+                        self.coefs_used.get(key) is not None and
+                        self.coefs_used[key][i] is not None):
+                    if self.coefs_used[key][i] < coef_channel_minmax[key][i][0]:
+                        logger.warning(
+                            f"Initial coef is outside the bounds allowed in the constraints: "
+                            f"{coef_channel_minmax[key][i][0]}, "
+                            f"initial: {constraints['coefs_used'][key][i]}")
+                    if self.coefs_used[key][i] > coef_channel_minmax[key][i][1]:
+                        logger.warning(
+                            f"Initial coef is outside the bounds allowed in the constraints: "
+                            f"{coef_channel_minmax[key][i][1]}, "
+                            f"initial: {self.coefs_used[key][i]}")
 
-                                # Adapt constraints based on currently used coefficients
-                                # new bound = old bound - current value
-                                # eg: [-3, 1] = [-2, 2] - 1
-                                coef_channel_minmax[key][i][0] -= self.coefs_used[key][i]
-                                coef_channel_minmax[key][i][1] -= self.coefs_used[key][i]
+                    # Adapt constraints based on currently used coefficients
+                    # new bound = old bound - current value
+                    # eg: [-3, 1] = [-2, 2] - 1
+                    coef_channel_minmax[key][i][0] -= self.coefs_used[key][i]
+                    coef_channel_minmax[key][i][1] -= self.coefs_used[key][i]
 
-                        self.coef_channel_minmax = coef_channel_minmax
+            self.coef_channel_minmax = coef_channel_minmax
 
-                elif key_name == "coef_sum_max":
-                    coef_sum_max = constraints["coef_sum_max"]
-                    if constraints["coef_sum_max"] is None:
-                        coef_sum_max = np.inf
-                    self.coef_sum_max = coef_sum_max
-                else:
-                    setattr(self, key_name, constraints[key_name])
-
-            else:
-                raise KeyError(f"Missing required constraint: {key_name}")
+        self.coef_sum_max = constraints["coef_sum_max"]
+        self.name = constraints["name"]
 
     def __hash__(self):
         return hash(self.name)
