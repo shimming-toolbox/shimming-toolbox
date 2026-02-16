@@ -404,13 +404,15 @@ def mrs(fname_input, output, mrs_data, center, size, verbose):
     Create a NIfTI file mask to shim single voxel MRS in the given --input geometry. Voxel position and size can be
     directly given or these info can be inferred from MRS raw-data given as an argument.
 
+    \b
+    Optional argument:
     MRS_DATA: Input path(s) of the raw-data (Supported inputs: Single .rda file, pair of .SPAR/.SDAT files)
 
+    \b
     Example:
-    st_mask mrs -i target.nii.gz mrs_data.rda -o mask_mrs.nii.gz
+    st_mask mrs mrs_data.rda -i target.nii.gz -o mask_mrs.nii.gz
     st_mask mrs mrs_data.sdat mrs_data.spar -i fieldmap.nii.gz -o mask_mrs.nii.gz
     st_mask mrs -i target.nii.gz -o mask_mrs.nii.gz --size 20 20 20 --center 0 0 0
-
     """
 
     set_all_loggers(verbose)
