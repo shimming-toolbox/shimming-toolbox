@@ -37,7 +37,7 @@ del "%UNIQUE_TMP_INSTALLER%"
 
 REM Installing python
 echo Installing python
-call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge python=3.10 || goto error
+call "%ST_DIR%\%PYTHON_DIR%\condabin\mamba.bat" install -y -c conda-forge python=3.11 || goto error
 
 REM Installing Shimming Toolbox
 echo Installing Shimming Toolbox

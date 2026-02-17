@@ -541,7 +541,7 @@ class ShimSequencer(Sequencer):
         mask_weight = np.sum(self.masks_fmap, axis=3)
 
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool), out=None)
 
         # Apply the correction to the unshimmed image
         shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
@@ -572,7 +572,7 @@ class ShimSequencer(Sequencer):
         mask_weight = np.sum(self.masks_fmap, axis=3)
 
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool), out=None)
 
         # Apply the correction to the unshimmed image
         shimmed_masked = full_correction_scaled * mask_full_binary
@@ -698,7 +698,7 @@ class ShimSequencer(Sequencer):
                     # If its volume shim (len(slices == 1)) and a scanner coil
                     # Dump the shim coefficients as ShimSettingsCurrent + calculated shimmed coefs
                     if 0 in coil.orders:
-                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'] + coefs[0, i]) / 1e6
+                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'][0] + coefs[0, i]) / 1e6
                         j += 1
                     shim_settings_output = []
                     for order in (1, 2, 3):

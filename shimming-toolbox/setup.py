@@ -27,7 +27,7 @@ else:
 
 setup(
     name="shimmingtoolbox",
-    python_requires=">=3.10",
+    python_requires=">=3.11",
     version=version,
     description="Code for performing real-time shimming using external MRI shim coils",
     long_description=long_description,
