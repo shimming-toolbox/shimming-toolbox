@@ -12,7 +12,7 @@ import zipfile
 import requests
 from email.message import Message
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util import Retry
+from urllib3.util import Retry
 
 from shimmingtoolbox.utils import st_progress_bar
 
