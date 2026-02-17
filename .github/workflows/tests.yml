@@ -167,8 +167,9 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@v3
         with:
-          auto-activate-base: true
-          activate-environment: ""
+          channels: conda-forge,defaults
+          auto-activate: true
+          activate-environment: base
           auto-update-conda: false
 
       - name: Run tests
