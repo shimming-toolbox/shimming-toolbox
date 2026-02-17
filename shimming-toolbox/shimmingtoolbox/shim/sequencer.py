@@ -541,7 +541,7 @@ class ShimSequencer(Sequencer):
         mask_weight = np.sum(self.masks_fmap, axis=3)
 
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool), out=None)
 
         # Apply the correction to the unshimmed image
         shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
@@ -572,7 +572,7 @@ class ShimSequencer(Sequencer):
         mask_weight = np.sum(self.masks_fmap, axis=3)
 
         # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool))
+        full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_full_binary.astype(bool), out=None)
 
         # Apply the correction to the unshimmed image
         shimmed_masked = full_correction_scaled * mask_full_binary

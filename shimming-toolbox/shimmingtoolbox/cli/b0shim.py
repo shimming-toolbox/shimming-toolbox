@@ -727,7 +727,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     logger.info(f"The slices to shim are: {list_slices}")
 
     # Load PMU
-    if time_offset is 'auto':
+    if time_offset == 'auto':
         is_pmu_time_offset_auto = True
         time_offset = 0
     else:
