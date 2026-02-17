@@ -5,12 +5,12 @@
 import os
 import shutil
 import logging
-import cgi
 import tempfile
 import urllib.parse
 import tarfile
 import zipfile
 import requests
+from email.message import Message
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util import Retry
 
@@ -45,8 +45,9 @@ def download_data(urls):
 
             filename = os.path.basename(urllib.parse.urlparse(url).path)
             if "Content-Disposition" in response.headers:
-                _, content = cgi.parse_header(response.headers['Content-Disposition'])
-                filename = content["filename"]
+                m = Message()
+                m['content-type'] = response.headers['Content-Disposition']
+                filename = dict(m.get_params()).get('filename', filename)
 
             # protect against directory traversal
             filename = os.path.basename(filename)
