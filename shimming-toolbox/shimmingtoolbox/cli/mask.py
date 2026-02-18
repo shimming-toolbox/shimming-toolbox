@@ -388,16 +388,10 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
     return fname_output
 
 
-@mask_cli.command(context_settings=CONTEXT_SETTINGS,
-                  help="Create a mask to shim single voxel MRS. "
-                       "Voxel position and size can be directly given or these info can be read "
-                       "from the siemens raw-data. "
-                       "The mask is stored by default under the name 'mask_mrs.nii.gz' in the output "
-                       "folder. Return an output nifti file to be used as a mask for MRS shimming.")
+@mask_cli.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('mrs_data', nargs=-1, type=click.Path(exists=True), required=False)
 @click.option('-i', '--input', 'fname_input', type=click.Path(), required=True,
-              help="Input path of the fieldmap to be shimmed.")
-@click.option('-r', '--raw', 'raw_data', type=click.Path(),
-              help="Input path of the raw-data (supported extention .rda)")
+              help="Input path of the target geometry to mask.")
 @click.option('-o', '--output', type=click.Path(), default=os.path.join(os.curdir, 'mask_mrs.nii.gz'),
               show_default=True, help="Name of the output mask. Supported extensions are .nii or .nii.gz.")
 @click.option('-c', '--center', nargs=3, type=click.FLOAT, help="Voxel's center position in mm of the x, y and z of "
@@ -405,7 +399,21 @@ def modify_binary_mask(fname_input, fname_output, shape, size, operation, verbos
 @click.option('-s', '--size', nargs=3, type=click.FLOAT, help="Voxel size in mm of the x, y and z of the scanner's "
               "coordinate")
 @click.option('--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def mrs(fname_input, output, raw_data, center, size, verbose):
+def mrs(fname_input, output, mrs_data, center, size, verbose):
+    """
+    Create a NIfTI file mask to shim single voxel MRS in the given --input geometry. Voxel position and size can be
+    directly given or these info can be inferred from MRS raw-data given as an argument.
+
+    \b
+    Optional argument:
+    MRS_DATA: Input path(s) of the raw-data (Supported inputs: Single .rda file, pair of .SPAR/.SDAT files)
+
+    \b
+    Example:
+    st_mask mrs mrs_data.rda -i target.nii.gz -o mask_mrs.nii.gz
+    st_mask mrs mrs_data.sdat mrs_data.spar -i fieldmap.nii.gz -o mask_mrs.nii.gz
+    st_mask mrs -i target.nii.gz -o mask_mrs.nii.gz --size 20 20 20 --center 0 0 0
+    """
 
     set_all_loggers(verbose)
 
@@ -413,7 +421,7 @@ def mrs(fname_input, output, raw_data, center, size, verbose):
     create_output_dir(output, is_file=True)
 
     nii = nib.load(fname_input)
-    output_mask = mask_mrs(fname_input, raw_data, center, size)  # creation of the MRS mask
+    output_mask = mask_mrs(fname_input, mrs_data, center, size)  # creation of the MRS mask
     output_mask = output_mask.astype(np.int32)
     nii_img = nib.Nifti1Image(output_mask, nii.affine, header=nii.header)
     nib.save(nii_img, output)

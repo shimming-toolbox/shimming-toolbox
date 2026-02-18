@@ -449,15 +449,29 @@ class ScannerShimSettings:
                                                shim_settings_dac)
 
     def concatenate_shim_settings(self, orders=[2]):
-        coefs = []
+        return concatenate_shim_settings(self.shim_settings, orders=orders)
 
-        if any(order >= 0 for order in orders):
-            for order in sorted(orders):
-                if self.shim_settings.get(str(order)) is not None:
-                    # Concatenate 2 lists
-                    coefs.extend(self.shim_settings.get(str(order)))
-                else:
-                    n_coefs = channels_per_order(order)
-                    coefs.extend([0] * n_coefs)
 
-        return coefs
+def concatenate_shim_settings(shim_settings, orders=[2]):
+    """
+
+    Args:
+        shim_settings (dict): Dictionary of shimSettings.
+        orders (list): List of orders to concatenate.
+
+    Returns:
+        list: List of coefficients concatenated in the order of the orders. If an order is not available,
+              it will be filled with zeros.
+    """
+    coefs = []
+
+    if any(order >= 0 for order in orders):
+        for order in sorted(orders):
+            if shim_settings.get(str(order)) is not None:
+                # Concatenate 2 lists
+                coefs.extend(shim_settings.get(str(order)))
+            else:
+                n_coefs = channels_per_order(order)
+                coefs.extend([0] * n_coefs)
+
+    return coefs
