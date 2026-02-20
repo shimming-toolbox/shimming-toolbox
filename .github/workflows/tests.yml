@@ -66,6 +66,7 @@ jobs:
       - name: Set path for Shimming Toolbox
         run: |
           echo "$HOME/shimming-toolbox/bin" >> $GITHUB_PATH
+          echo "ST_DIR=$HOME\shimming-toolbox" >> $GITHUB_ENV
 
       - name: Spinal Cord Toolbox clone
         run: |
@@ -162,8 +163,9 @@ jobs:
       - name: Set up environment variables
         shell: bash
         run: |
-          echo "$USERPROFILE\shimming-toolbox\python\Scripts" >> $GITHUB_PATH
+          echo "$USERPROFILE\shimming-toolbox\bin" >> $GITHUB_PATH
           echo "CONDA=$USERPROFILE\shimming-toolbox\python" >> $GITHUB_ENV
+          echo "ST_DIR=$USERPROFILE\shimming-toolbox" >> $GITHUB_ENV
 
       - uses: conda-incubator/setup-miniconda@v3
         with:

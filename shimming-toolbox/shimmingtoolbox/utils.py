@@ -2,6 +2,8 @@
 # -*- coding: utf-8
 # Misc functions
 
+from pathlib import Path
+import platform
 import numpy as np
 import os
 import tqdm
@@ -25,6 +27,16 @@ def run_subprocess(cmd):
         cmd (list): list of arguments to be passed to the command line
     """
     logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
+
+    if platform.system() == "Windows":
+        if 'ST_DIR' in os.environ:
+            os.environ['PATH'] = os.path.join(os.environ['ST_DIR'],
+                                              'python', 'Scripts') + os.pathsep + os.environ['PATH']
+        elif 'HOME' in os.environ:
+            raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing "
+                                   "Shimming Toolbox. Try restarting your computer if you just installed Shimming "
+                                   "Toolbox, or check that the installation was successful.")
+
     try:
 
         subprocess.run(

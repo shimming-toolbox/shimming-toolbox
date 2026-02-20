@@ -1,6 +1,7 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
+import platform
 from shutil import copytree
 import json
 import logging
@@ -11,6 +12,7 @@ from dcm2bids.dcm2bids_gen import Dcm2BidsGen
 from dcm2bids.utils.tools import check_latest
 from dcm2bids import version
 import shutil
+from pathlib import Path
 
 from shimmingtoolbox import __config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
@@ -64,12 +66,17 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     # Copy original dicom files into nifti_path/sourcedata
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
 
-    # Update the PATH environment variable to include the dcm2niix executable
-    # TODO: Try this out on Windows, path could be Scripts instead of bin
-    if 'ST_DIR' in os.environ and os.path.exists(os.environ['ST_DIR']):
-        os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'bin') + os.pathsep + os.environ['PATH']
+    if platform.system() == "Windows":
+        bin_dir = 'Scripts'
     else:
-        logger.warning("Environment variable ST_DIR not found. Using default path.")
+        bin_dir = 'bin'
+
+    if 'ST_DIR' in os.environ:
+        os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', bin_dir) + os.pathsep + os.environ['PATH']
+    else:
+        raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing "
+                               "Shimming Toolbox. Try restarting your computer if you just installed Shimming "
+                               "Toolbox, or check that the installation was successful.")
 
     # Run dcm2bids
     check_latest('dcm2bids')

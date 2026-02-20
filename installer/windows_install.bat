@@ -6,9 +6,10 @@ REM The installation path cannot have spaces
 REM Todo: Make the installation path a script argument so that users with spaces in their paths have an alternative
 
 set "ST_DIR=%userprofile%\shimming-toolbox"
+echo Installing Shimming Toolbox in %ST_DIR%
 set "PYTHON_DIR=python"
 for %%d in ("%~dp0..") do set "ST_REPO=%%~fd"
-echo %ST_REPO%
+echo Shimming Toolbox repo: %ST_REPO%
 set "ST_SOURCE_FILES=%ST_REPO%\shimming-toolbox"
 pushd "%CD%"
 
@@ -68,6 +69,9 @@ if "%PATH_NO_ST%"=="%OLD_PATH%" (
 	set "NEW_ST_PATH=!LIST_PATH!%ST_DIR%\%BIN_DIR%\;"
 	REG ADD "HKEY_CURRENT_USER\Environment" /v path /d "!NEW_ST_PATH!" /t REG_EXPAND_SZ /f
 	)
+
+REM Add ST_DIR to the environment variables
+REG ADD "HKEY_CURRENT_USER\Environment" /v ST_DIR /d "%ST_DIR%" /t REG_EXPAND_SZ /f
 
 echo To use Shimming Toolbox's scripts, either reboot your computer or follow these instructions:
 echo:
