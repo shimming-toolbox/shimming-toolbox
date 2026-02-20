@@ -66,19 +66,19 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     # Copy original dicom files into nifti_path/sourcedata
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
     
+    logger.info(os.environ)
+    logger.info(os.environ['PATH'])
+    
     if platform.system() == "Windows":
-        logger.info(os.environ)
-        if 'ST_DIR' in os.environ:
-            os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'Scripts') + os.pathsep + os.environ['PATH']
-        else:
-            os.environ['PATH'] = os.path.join(Path.home(), 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
+        bin_dir = 'Scripts'
     else:
-        # Update the PATH environment variable to include the dcm2niix executable
-        # TODO: Try this out on Windows, path could be Scripts instead of bin
-        if 'ST_DIR' in os.environ and os.path.exists(os.environ['ST_DIR']):
-            os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'bin') + os.pathsep + os.environ['PATH']
-        else:
-            logger.warning("Environment variable ST_DIR not found. Using default path.")
+        bin_dir = 'bin'
+    
+    if 'ST_DIR' in os.environ:
+        os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', bin_dir) + os.pathsep + os.environ['PATH']
+    else:
+        raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing Shimming Toolbox." \
+            "Try restarting your computer if you just installed Shimming Toolbox, or check that the installation was successful.")
 
     logger.info(os.environ['PATH'])
 

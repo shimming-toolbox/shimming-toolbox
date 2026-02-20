@@ -32,7 +32,8 @@ def run_subprocess(cmd):
         if 'ST_DIR' in os.environ:
             os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'Scripts') + os.pathsep + os.environ['PATH']
         elif 'HOME' in os.environ:
-            os.environ['PATH'] = os.path.join(Path.home(), 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
+            raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing Shimming Toolbox." \
+            "Try restarting your computer if you just installed Shimming Toolbox, or check that the installation was successful.")
 
     try:
 
