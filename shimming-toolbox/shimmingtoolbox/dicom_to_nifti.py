@@ -65,22 +65,18 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
 
     # Copy original dicom files into nifti_path/sourcedata
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
-    
-    logger.info(os.environ)
-    logger.info(os.environ['PATH'])
-    
+
     if platform.system() == "Windows":
         bin_dir = 'Scripts'
     else:
         bin_dir = 'bin'
-    
+
     if 'ST_DIR' in os.environ:
         os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', bin_dir) + os.pathsep + os.environ['PATH']
     else:
-        raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing Shimming Toolbox." \
-            "Try restarting your computer if you just installed Shimming Toolbox, or check that the installation was successful.")
-
-    logger.info(os.environ['PATH'])
+        raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing "
+                               "Shimming Toolbox. Try restarting your computer if you just installed Shimming "
+                               "Toolbox, or check that the installation was successful.")
 
     # Run dcm2bids
     check_latest('dcm2bids')
