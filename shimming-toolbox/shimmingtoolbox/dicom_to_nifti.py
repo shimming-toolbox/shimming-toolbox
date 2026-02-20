@@ -12,6 +12,7 @@ from dcm2bids.dcm2bids_gen import Dcm2BidsGen
 from dcm2bids.utils.tools import check_latest
 from dcm2bids import version
 import shutil
+from pathlib import Path
 
 from shimmingtoolbox import __config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
@@ -66,10 +67,11 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
     
     if platform.system() == "Windows":
+        logger.info(os.environ)
         if 'ST_DIR' in os.environ:
             os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'Scripts') + os.pathsep + os.environ['PATH']
-        elif 'HOME' in os.environ:
-            os.environ['PATH'] = os.path.join(os.environ['HOME'], 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
+        else:
+            os.environ['PATH'] = os.path.join(Path.home(), 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
     else:
         # Update the PATH environment variable to include the dcm2niix executable
         # TODO: Try this out on Windows, path could be Scripts instead of bin
@@ -78,10 +80,8 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
         else:
             logger.warning("Environment variable ST_DIR not found. Using default path.")
 
-    #logger.warning(os.environ)
-    logger.warning(os.environ['PATH'])
-    os.environ['PATH'] = os.path.join('C:\\Users\\po09i\\shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
-    logger.warning(os.environ['PATH'])
+    logger.info(os.environ['PATH'])
+
     # Run dcm2bids
     check_latest('dcm2bids')
     Dcm2BidsGen(path_dicom, subject_id, fname_config_dcm2bids, path_nifti).run()

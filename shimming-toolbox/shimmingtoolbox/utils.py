@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 # Misc functions
 
+from pathlib import Path
 import platform
 import numpy as np
 import os
@@ -31,7 +32,7 @@ def run_subprocess(cmd):
         if 'ST_DIR' in os.environ:
             os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', 'Scripts') + os.pathsep + os.environ['PATH']
         elif 'HOME' in os.environ:
-            os.environ['PATH'] = os.path.join(os.environ['HOME'], 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
+            os.environ['PATH'] = os.path.join(Path.home(), 'shimming-toolbox', 'python', 'Scripts') + os.pathsep + os.environ['PATH']
 
     try:
 
