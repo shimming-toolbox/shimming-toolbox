@@ -33,7 +33,9 @@ def test_check_installation_errors():
 
     result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
     assert result.exit_code == 0
-    assert result.stdout.count('FAIL') == 3
+    # SCT and Prelude should fail here. Bet will pass if installed in the same environment (as done in the CI).
+    # This is why we put >= 2
+    assert result.stdout.count('FAIL') >= 2
 
 
 def test_check_prelude_installation():
