@@ -322,16 +322,27 @@ def are_jsons_equal(json1: dict, json2: dict):
         hashlib.sha256(json2_bytes).hexdigest()
 
 
-def check_exe(name):
+def check_exe(name, must_be_within_env=False):
     """
-    Ensure that a program exists and can be executed
+    Ensure that a program exists and can be executed.
+    Args:
+        name (str): Name of the executable.
+        must_be_within_env (bool): If True, check that the executable is within the environment. The environment is
+                                   defined as the location of the python executable running this code, which is what
+                                   sys.prefix gives us. If False, check if the executable can be found on the PATH.
     """
     _, filename = os.path.split(name)
-    # Case 1: Check full filepath directly (which may point to a location not on the PATH)
-    if os.path.isfile(name) and os.access(name, os.X_OK):
-        return True
-    # Case 2: Check filename only via the PATH
-    elif shutil.which(filename) and os.access(shutil.which(filename), os.X_OK):
-        return True
+    if must_be_within_env:
+        if shutil.which(filename) is not None and shutil.which(filename).startswith(sys.prefix) and os.access(shutil.which(filename), os.X_OK):
+            return True
+        else:
+            return False
     else:
-        return False
+        # Case 1: Check full filepath directly (which may point to a location not on the PATH)
+        if os.path.isfile(name) and os.access(name, os.X_OK):
+            return True
+        # Case 2: Check filename only via the PATH
+        elif shutil.which(filename) and os.access(shutil.which(filename), os.X_OK):
+            return True
+        else:
+            return False
