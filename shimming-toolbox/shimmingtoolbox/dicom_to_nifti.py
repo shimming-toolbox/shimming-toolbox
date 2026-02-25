@@ -69,9 +69,6 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     # If the CLI is launched from launchers, then we need to add it.
     add_executable_dir_to_path_if_necessary()
 
-    import subprocess
-    subprocess.run(["which", "dcm2bids"], text=True, check=True)
-
     # Run dcm2bids
     check_latest('dcm2bids')
     Dcm2BidsGen(path_dicom, subject_id, fname_config_dcm2bids, path_nifti).run()
