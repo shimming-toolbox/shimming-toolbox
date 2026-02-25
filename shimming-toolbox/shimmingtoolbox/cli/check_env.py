@@ -99,8 +99,6 @@ def check_dependencies():
 def check_prelude_installation():
     """Checks that ``prelude`` is installed.
 
-    This function calls ``which prelude`` and checks the exit code to verify that ``prelude`` is installed.
-
     Returns:
         bool: True if prelude is installed, False if not.
     """
@@ -116,8 +114,6 @@ def check_prelude_installation():
 
 def check_bet_installation():
     """Checks that ``bet`` is installed.
-
-    This function calls ``which bet`` and checks the exit code to verify that ``bet`` is installed.
 
     Returns:
         bool: True if bet is installed, False if not.
@@ -136,8 +132,6 @@ def check_bet_installation():
 def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
 
-    This function calls ``which dcm2niix`` and checks the exit code to verify that ``dcm2niix`` is installed.
-
     Returns:
         bool: True if dcm2niix is installed, False if not.
     """
@@ -152,12 +146,10 @@ def check_dcm2niix_installation():
 
 
 def check_spec2nii_installation():
-    """Checks that ``dcm2niix`` is installed.
-
-    This function calls ``which dcm2niix`` and checks the exit code to verify that ``dcm2niix`` is installed.
+    """Checks that ``spec2nii`` is installed.
 
     Returns:
-        bool: True if dcm2niix is installed, False if not.
+        bool: True if spec2nii is installed, False if not.
     """
     if check_exe('spec2nii', must_be_within_env=True):
         print_ok()
@@ -171,8 +163,6 @@ def check_spec2nii_installation():
 
 def check_sct_installation():
     """Checks that ``SCT`` is installed.
-
-    This function calls ``which sct_check_dependencies`` and checks the exit code to verify that ``sct`` is installed.
 
     Returns:
         bool: True if sct is installed, False if not.
@@ -237,11 +227,7 @@ def get_spec2nii_version() -> str:
     Returns:
         str: Version of the ``spec2nii`` installation.
     """
-    # `spec2nii --version` returns an error code and output is in stderr
     spec2nii_version: str = subprocess.run(["spec2nii", "--version"], capture_output=True, encoding="utf-8")
-    # If the behaviour of spec2nii changes to output help with a 0 exit code,
-    # this function must fail loudly so we can update its behaviour
-    # accordingly:
     assert spec2nii_version.returncode == 0
     version_output: str = spec2nii_version.stdout.rstrip()
     return version_output
