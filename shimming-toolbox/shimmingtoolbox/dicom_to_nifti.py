@@ -1,7 +1,6 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
-import platform
 from shutil import copytree
 import json
 import logging
@@ -12,11 +11,10 @@ from dcm2bids.dcm2bids_gen import Dcm2BidsGen
 from dcm2bids.utils.tools import check_latest
 from dcm2bids import version
 import shutil
-from pathlib import Path
 
 from shimmingtoolbox import __config_dcm2bids__
 from shimmingtoolbox.coils.coordinates import get_main_orientation
-from shimmingtoolbox.utils import create_output_dir
+from shimmingtoolbox.utils import create_output_dir, add_executable_dir_to_path_if_necessary
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -66,17 +64,13 @@ def dicom_to_nifti(path_dicom, path_nifti, subject_id='sub-01', fname_config_dcm
     # Copy original dicom files into nifti_path/sourcedata
     copytree(path_dicom, os.path.join(path_nifti, 'sourcedata'), dirs_exist_ok=True)
 
-    if platform.system() == "Windows":
-        bin_dir = 'Scripts'
-    else:
-        bin_dir = 'bin'
+    # Dcm2Bids expects dcm2bids and dcm2niix to be in the PATH. We add it here if it is not.
+    # If the CLI is launched from a venv, the PATH should already be correctly set
+    # If the CLI is launched from launchers, then we need to add it.
+    add_executable_dir_to_path_if_necessary()
 
-    if 'ST_DIR' in os.environ:
-        os.environ['PATH'] = os.path.join(os.environ['ST_DIR'], 'python', bin_dir) + os.pathsep + os.environ['PATH']
-    else:
-        raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing "
-                               "Shimming Toolbox. Try restarting your computer if you just installed Shimming "
-                               "Toolbox, or check that the installation was successful.")
+    import subprocess
+    subprocess.run(["which", "dcm2bids"], text=True, check=True)
 
     # Run dcm2bids
     check_latest('dcm2bids')
@@ -148,9 +142,9 @@ def rename_phasediff(path_nifti, subject_id):
                 # Make sure it is phase data and that the keys EchoTime1 and EchoTime2 are defined and that
                 # the tag "sequenceName" includes fm2d2 which is Siemens' sequence that outputs a phasediff
                 if ('ImageType' in json_data) and ('P' in json_data['ImageType']) and \
-                   ('EchoTime1' in json_data) and ('EchoTime2' in json_data) and \
-                   ('SequenceName' in json_data) and ('fm2d2' in json_data['SequenceName']) and \
-                   ('EchoNumber' in json_data) and (int(json_data['EchoNumber']) == 2):
+                        ('EchoTime1' in json_data) and ('EchoTime2' in json_data) and \
+                        ('SequenceName' in json_data) and ('fm2d2' in json_data['SequenceName']) and \
+                        ('EchoNumber' in json_data) and (int(json_data['EchoNumber']) == 2):
                     # Make sure it is not already named phasediff
                     if len(os.path.basename(fname_json).split(subject_id, 1)[-1].rsplit('phasediff', 1)) == 1:
                         # Split the filename in 2 and remove phase
@@ -192,7 +186,7 @@ def fix_tfl_b1(nii_b1, json_data):
     # The number of slices corresponds to the 3rd dimension of the shuffled NIfTI volume.
     n_slices = image.shape[2]
     # The number of Tx channels corresponds to the 4th dimension of the shuffled NIfTI of the shuffled NIfTI volume.
-    n_channels = image.shape[3]//2
+    n_channels = image.shape[3] // 2
 
     # Magnitude values are stored in the first half of the 4th dimension
     b1_mag = image[:, :, :, :n_channels]

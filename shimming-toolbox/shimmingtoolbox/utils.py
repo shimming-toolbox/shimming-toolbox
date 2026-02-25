@@ -16,6 +16,7 @@ import functools
 from scipy import ndimage as nd
 import hashlib
 import shutil
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -28,14 +29,9 @@ def run_subprocess(cmd):
     """
     logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
 
-    if platform.system() == "Windows":
-        if 'ST_DIR' in os.environ:
-            os.environ['PATH'] = os.path.join(os.environ['ST_DIR'],
-                                              'python', 'Scripts') + os.pathsep + os.environ['PATH']
-        elif 'HOME' in os.environ:
-            raise EnvironmentError("Environment variable ST_DIR not found. This variable should be set when installing "
-                                   "Shimming Toolbox. Try restarting your computer if you just installed Shimming "
-                                   "Toolbox, or check that the installation was successful.")
+    # Add the python bin/Scripts directory to the path if it is not there, otherwise subprocess.run() may not be able
+    # to find the executable to run
+    add_executable_dir_to_path_if_necessary()
 
     try:
 
@@ -48,6 +44,33 @@ def run_subprocess(cmd):
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
         print(msg)
         raise err
+
+
+def add_executable_dir_to_path_if_necessary():
+    """ Looks at the environment where these files are installed and adds the python bin/Scripts directory to the path
+    if it is not there.
+    """
+    logger.debug("add_executable_dir_to_path_if_necessary")
+
+    if platform.system() == "Windows":
+        bin_dir = 'Scripts'
+    else:
+        bin_dir = 'bin'
+
+    found_bin_dir = False
+
+    # Check if the python bin/Scripts directory is already in PATH. If it is, do nothing, otherwise add it to PATH.
+    logger.debug(f"{sys.prefix=}")
+    path_binaries = os.path.join(sys.prefix, bin_dir)
+    for path in os.environ['PATH'].split(os.pathsep):
+        if path == path_binaries:
+            found_bin_dir = True
+            break
+
+    if not found_bin_dir:
+        logger.debug(f"{path_binaries} directory not found in PATH. Adding it to PATH.")
+        os.environ['PATH'] = os.path.join(sys.prefix, bin_dir) + os.pathsep + os.environ['PATH']
+        logger.debug(f"{os.environ['PATH']=}")
 
 
 def add_suffix(fname, suffix):
@@ -205,7 +228,7 @@ def montage(X):
     X = np.rot90(X)
     x, y, n_images = np.shape(X)
     mm = np.floor(np.sqrt(n_images)).astype(int)
-    nn = np.ceil(n_images/mm).astype(int)
+    nn = np.ceil(n_images / mm).astype(int)
     result = np.empty((mm * x, nn * y))
     result.fill(np.nan)
     image_id = 0
@@ -251,7 +274,6 @@ def timeit(func):
 
     @functools.wraps(func)
     def timed(*args, **kw):
-
         ts = time.time()
         # Call the original function
         result = func(*args, **kw)
@@ -286,18 +308,18 @@ def fill(data, invalid=None):
     return data[tuple(ind)]
 
 
-def are_niis_equal(nii1:nib.nifti1.Nifti1Image, nii2:nib.nifti1.Nifti1Image):
+def are_niis_equal(nii1: nib.nifti1.Nifti1Image, nii2: nib.nifti1.Nifti1Image):
     return hashlib.sha256(nii1.get_fdata().tobytes()).hexdigest() == \
-           hashlib.sha256(nii2.get_fdata().tobytes()).hexdigest() and \
-           hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
-           hashlib.sha256(nii2.affine.tobytes()).hexdigest()
+        hashlib.sha256(nii2.get_fdata().tobytes()).hexdigest() and \
+        hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
+        hashlib.sha256(nii2.affine.tobytes()).hexdigest()
 
 
-def are_jsons_equal(json1:dict, json2:dict):
+def are_jsons_equal(json1: dict, json2: dict):
     json1_bytes = json.dumps(json1).encode('utf-8')
     json2_bytes = json.dumps(json2).encode('utf-8')
     return hashlib.sha256(json1_bytes).hexdigest() == \
-           hashlib.sha256(json2_bytes).hexdigest()
+        hashlib.sha256(json2_bytes).hexdigest()
 
 
 def check_exe(name):
