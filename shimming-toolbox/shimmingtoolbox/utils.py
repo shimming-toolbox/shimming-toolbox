@@ -323,8 +323,8 @@ def are_jsons_equal(json1: dict, json2: dict):
 
 
 def check_exe(name, must_be_within_env=False):
-    """
-    Ensure that a program exists and can be executed.
+    """ Ensure that a program exists and can be executed.
+
     Args:
         name (str): Name of the executable.
         must_be_within_env (bool): If True, check that the executable is within the environment. The environment is
