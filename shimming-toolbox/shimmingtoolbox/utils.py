@@ -2,6 +2,8 @@
 # -*- coding: utf-8
 # Misc functions
 
+from pathlib import Path
+import platform
 import numpy as np
 import os
 import tqdm
@@ -14,6 +16,7 @@ import functools
 from scipy import ndimage as nd
 import hashlib
 import shutil
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,11 @@ def run_subprocess(cmd):
         cmd (list): list of arguments to be passed to the command line
     """
     logger.debug(f"Command to run on the terminal:\n{' '.join(cmd)}")
+
+    # Add the python bin/Scripts directory to the path if it is not there, otherwise subprocess.run() may not be able
+    # to find the executable to run
+    add_executable_dir_to_path_if_necessary()
+
     try:
 
         subprocess.run(
@@ -36,6 +44,33 @@ def run_subprocess(cmd):
         msg = "Return code: ", err.returncode, "\nOutput: ", err.stderr
         print(msg)
         raise err
+
+
+def add_executable_dir_to_path_if_necessary():
+    """ Looks at the environment where these files are installed and adds the python bin/Scripts directory to the path
+    if it is not there.
+    """
+    logger.debug("add_executable_dir_to_path_if_necessary")
+
+    if platform.system() == "Windows":
+        bin_dir = 'Scripts'
+    else:
+        bin_dir = 'bin'
+
+    found_bin_dir = False
+
+    # Check if the python bin/Scripts directory is already in PATH. If it is, do nothing, otherwise add it to PATH.
+    logger.debug(f"{sys.prefix=}")
+    path_binaries = os.path.join(sys.prefix, bin_dir)
+    for path in os.environ['PATH'].split(os.pathsep):
+        if path == path_binaries:
+            found_bin_dir = True
+            break
+
+    if not found_bin_dir:
+        logger.debug(f"{path_binaries} directory not found in PATH. Adding it to PATH.")
+        os.environ['PATH'] = os.path.join(sys.prefix, bin_dir) + os.pathsep + os.environ['PATH']
+        logger.debug(f"{os.environ['PATH']=}")
 
 
 def add_suffix(fname, suffix):
@@ -193,7 +228,7 @@ def montage(X):
     X = np.rot90(X)
     x, y, n_images = np.shape(X)
     mm = np.floor(np.sqrt(n_images)).astype(int)
-    nn = np.ceil(n_images/mm).astype(int)
+    nn = np.ceil(n_images / mm).astype(int)
     result = np.empty((mm * x, nn * y))
     result.fill(np.nan)
     image_id = 0
@@ -239,7 +274,6 @@ def timeit(func):
 
     @functools.wraps(func)
     def timed(*args, **kw):
-
         ts = time.time()
         # Call the original function
         result = func(*args, **kw)
@@ -274,30 +308,41 @@ def fill(data, invalid=None):
     return data[tuple(ind)]
 
 
-def are_niis_equal(nii1:nib.nifti1.Nifti1Image, nii2:nib.nifti1.Nifti1Image):
+def are_niis_equal(nii1: nib.nifti1.Nifti1Image, nii2: nib.nifti1.Nifti1Image):
     return hashlib.sha256(nii1.get_fdata().tobytes()).hexdigest() == \
-           hashlib.sha256(nii2.get_fdata().tobytes()).hexdigest() and \
-           hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
-           hashlib.sha256(nii2.affine.tobytes()).hexdigest()
+        hashlib.sha256(nii2.get_fdata().tobytes()).hexdigest() and \
+        hashlib.sha256(nii1.affine.tobytes()).hexdigest() == \
+        hashlib.sha256(nii2.affine.tobytes()).hexdigest()
 
 
-def are_jsons_equal(json1:dict, json2:dict):
+def are_jsons_equal(json1: dict, json2: dict):
     json1_bytes = json.dumps(json1).encode('utf-8')
     json2_bytes = json.dumps(json2).encode('utf-8')
     return hashlib.sha256(json1_bytes).hexdigest() == \
-           hashlib.sha256(json2_bytes).hexdigest()
+        hashlib.sha256(json2_bytes).hexdigest()
 
 
-def check_exe(name):
-    """
-    Ensure that a program exists and can be executed
+def check_exe(name, must_be_within_env=False):
+    """ Ensure that a program exists and can be executed.
+
+    Args:
+        name (str): Name of the executable.
+        must_be_within_env (bool): If True, check that the executable is within the environment. The environment is
+                                   defined as the location of the python executable running this code, which is what
+                                   sys.prefix gives us. If False, check if the executable can be found on the PATH.
     """
     _, filename = os.path.split(name)
-    # Case 1: Check full filepath directly (which may point to a location not on the PATH)
-    if os.path.isfile(name) and os.access(name, os.X_OK):
-        return True
-    # Case 2: Check filename only via the PATH
-    elif shutil.which(filename) and os.access(shutil.which(filename), os.X_OK):
-        return True
+    if must_be_within_env:
+        if shutil.which(filename) is not None and shutil.which(filename).startswith(sys.prefix) and os.access(shutil.which(filename), os.X_OK):
+            return True
+        else:
+            return False
     else:
-        return False
+        # Case 1: Check full filepath directly (which may point to a location not on the PATH)
+        if os.path.isfile(name) and os.access(name, os.X_OK):
+            return True
+        # Case 2: Check filename only via the PATH
+        elif shutil.which(filename) and os.access(shutil.which(filename), os.X_OK):
+            return True
+        else:
+            return False

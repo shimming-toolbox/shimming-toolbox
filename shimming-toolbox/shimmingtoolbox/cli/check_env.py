@@ -14,7 +14,7 @@ import psutil
 import sys
 
 from shimmingtoolbox import __version__, __dir_repo__
-from shimmingtoolbox.utils import check_exe
+from shimmingtoolbox.utils import check_exe, add_executable_dir_to_path_if_necessary
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
@@ -54,6 +54,8 @@ def check_dependencies():
     """Verifies dependencies are installed by calling helper functions and
     formatting output accordingly.
     """
+    add_executable_dir_to_path_if_necessary()
+
     check_name = "Check if {} is installed"
 
     # Shimming Toolbox
@@ -70,18 +72,21 @@ def check_dependencies():
     prelude_check_msg = check_name.format("prelude")
     print_line(prelude_check_msg)
     check_prelude_installation()
-    
+
     # Bet
     bet_check_msg = check_name.format("bet")
     print_line(bet_check_msg)
     check_bet_installation()
 
-    # # dcm2niix
-    # dcm2niix now comes bundled with shimming toolbox. Therefore we don't need to check if it is in the path since it
-    # is already in the environment
-    # dcm2niix_check_msg = check_name.format("dcm2niix")
-    # print_line(dcm2niix_check_msg)
-    # check_dcm2niix_installation()
+    # dcm2niix
+    dcm2niix_check_msg = check_name.format("dcm2niix")
+    print_line(dcm2niix_check_msg)
+    check_dcm2niix_installation()
+
+    # spec2nii
+    spec2nii_check_msg = check_name.format("spec2nii")
+    print_line(spec2nii_check_msg)
+    check_spec2nii_installation()
 
     # SCT
     sct_check_msg = check_name.format("Spinal Cord Toolbox")
@@ -93,8 +98,6 @@ def check_dependencies():
 
 def check_prelude_installation():
     """Checks that ``prelude`` is installed.
-
-    This function calls ``which prelude`` and checks the exit code to verify that ``prelude`` is installed.
 
     Returns:
         bool: True if prelude is installed, False if not.
@@ -111,37 +114,28 @@ def check_prelude_installation():
 
 def check_bet_installation():
     """Checks that ``bet`` is installed.
-    
-    This function calls ``which bet`` and checks the exit code to verify that ``bet`` is installed.
-    
+
     Returns:
         bool: True if bet is installed, False if not.
     """
-    
-    try:
-        if sys.platform == 'win32':
-            subprocess.check_call(['where', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        else:
-            subprocess.check_call(['which', 'bet2'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except subprocess.CalledProcessError as error:
-        print_fail()
-        print(f"Error {error.returncode}: bet is not installed or not in your PATH.")
-        return False
-    else:
+
+    if check_exe('bet2'):
         print_ok()
         print("    " + "\n    ".join(get_bet_version().split("\n")[1:3]))
         return True
-    
+    else:
+        print_fail()
+        print(f"Error: bet is not installed or not in your PATH.")
+        return False
+
 
 def check_dcm2niix_installation():
     """Checks that ``dcm2niix`` is installed.
 
-    This function calls ``which dcm2niix`` and checks the exit code to verify that ``dcm2niix`` is installed.
-
     Returns:
         bool: True if dcm2niix is installed, False if not.
     """
-    if check_exe('dcm2niix'):
+    if check_exe('dcm2niix', must_be_within_env=True):
         print_ok()
         print("    " + get_dcm2niix_version().replace("\n", "\n    "))
         return True
@@ -151,10 +145,24 @@ def check_dcm2niix_installation():
         return False
 
 
+def check_spec2nii_installation():
+    """Checks that ``spec2nii`` is installed.
+
+    Returns:
+        bool: True if spec2nii is installed, False if not.
+    """
+    if check_exe('spec2nii', must_be_within_env=True):
+        print_ok()
+        print("    " + get_spec2nii_version().replace("\n", "\n    "))
+        return True
+    else:
+        print_fail()
+        print(f"Error: spec2nii is not installed or not in your PATH.")
+        return False
+
+
 def check_sct_installation():
     """Checks that ``SCT`` is installed.
-
-    This function calls ``which sct_check_dependencies`` and checks the exit code to verify that ``sct`` is installed.
 
     Returns:
         bool: True if sct is installed, False if not.
@@ -207,6 +215,21 @@ def get_dcm2niix_version() -> str:
     # accordingly:
     assert dcm2niix_version.returncode != 0
     version_output: str = dcm2niix_version.stdout.rstrip()
+    return version_output
+
+
+def get_spec2nii_version() -> str:
+    """Gets the ``spec2nii`` installation version.
+
+    This function calls ``spec2nii --version`` and captures the output to
+    obtain the installation version.
+
+    Returns:
+        str: Version of the ``spec2nii`` installation.
+    """
+    spec2nii_version: str = subprocess.run(["spec2nii", "--version"], capture_output=True, encoding="utf-8")
+    assert spec2nii_version.returncode == 0
+    version_output: str = spec2nii_version.stdout.rstrip()
     return version_output
 
 

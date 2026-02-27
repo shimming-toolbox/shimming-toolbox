@@ -33,7 +33,9 @@ def test_check_installation_errors():
 
     result = runner.invoke(st_ce.check_dependencies, catch_exceptions=False)
     assert result.exit_code == 0
-    assert result.stdout.count('FAIL') == 3
+    # SCT and Prelude should fail here. Bet will pass if installed in the same environment (as done in the CI).
+    # This is why we put >= 2
+    assert result.stdout.count('FAIL') >= 2
 
 
 def test_check_prelude_installation():
@@ -52,6 +54,14 @@ def test_check_dcm2niix_installation():
     """
     check_dcm2niix_installation_exit = st_ce.check_dcm2niix_installation()
     assert isinstance(check_dcm2niix_installation_exit, int)
+
+
+def test_check_spec2nii_installation():
+    """Tests that the function returns a bool as expected. it does not depend on sct being
+    installed.
+    """
+    check_spec2nii_installation_exit = st_ce.check_spec2nii_installation()
+    assert isinstance(check_spec2nii_installation_exit, bool)
 
 
 def test_check_sct_installation():
@@ -78,6 +88,14 @@ def test_get_dcm2niix_version(test_dcm2niix_installation):
     dcm2niix_version_info = st_ce.get_dcm2niix_version()
     version_regex = r"Chris.*\nv\d\.\d.\d{8}"
     assert re.search(version_regex, dcm2niix_version_info)
+
+
+def test_get_spec2nii_version():
+    """Checks spec2nii version output for expected structure.
+    """
+    spec2nii_version_info = st_ce.get_spec2nii_version()
+    version_regex = "\d\.\d"
+    assert re.search(version_regex, spec2nii_version_info)
 
 
 @pytest.mark.bet
