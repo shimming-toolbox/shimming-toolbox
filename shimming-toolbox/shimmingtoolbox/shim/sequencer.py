@@ -593,10 +593,17 @@ class ShimSequencer(Sequencer):
         nan_unshimmed_masked = np.ma.array(unshimmed_repeated, mask=(self.masks_fmap == 0), fill_value=np.nan)
         nan_shimmed_masked = np.ma.array(shimmed, mask=(self.masks_fmap == 0), fill_value=np.nan)
 
-        mt_unshimmed = montage(unshimmed_repeated[:, :, slice, :])
-        mt_shimmed = montage(shimmed[:, :, slice, :])
-        mt_unshimmed_masked = montage(nan_unshimmed_masked[:, :, slice, :].filled())
-        mt_shimmed_masked = montage(nan_shimmed_masked[:, :, slice, :].filled() * np.ceil(self.masks_fmap[:, :, slice, :]))
+        x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(np.sum(self.masks_fmap, axis=3), margin=3)
+        shimmed_zoom = shimmed[x_min:x_max, y_min:y_max, :, :]
+        unshimmed_repeated_zoom = unshimmed_repeated[x_min:x_max, y_min:y_max, :, :]
+        nan_unshimmed_masked_zoom = nan_unshimmed_masked[x_min:x_max, y_min:y_max, :, :]
+        nan_shimmed_masked_zoom = nan_shimmed_masked[x_min:x_max, y_min:y_max, :, :]
+        masks_fmap_zoom = self.masks_fmap[x_min:x_max, y_min:y_max, :, :]
+
+        mt_unshimmed = montage(unshimmed_repeated_zoom[:, :, slice, :])
+        mt_shimmed = montage(shimmed_zoom[:, :, slice, :])
+        mt_unshimmed_masked = montage(nan_unshimmed_masked_zoom[:, :, slice, :].filled())
+        mt_shimmed_masked = montage(nan_shimmed_masked_zoom[:, :, slice, :].filled() * np.ceil(masks_fmap_zoom[:, :, slice, :]))
 
         min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
         max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
@@ -775,10 +782,15 @@ class ShimSequencer(Sequencer):
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
 
+        x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(bin_mask_erode, margin=3)
+        unshimmed_signal_loss_zoom = unshimmed_signal_loss[x_min:x_max, y_min:y_max, :]
+        shimmed_signal_loss_zoom = shimmed_signal_loss[x_min:x_max, y_min:y_max, :]
+        bin_mask_erode_zoom = bin_mask_erode[x_min:x_max, y_min:y_max, :]
+
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(bin_mask_erode, axis=(0, 1)))[0]
-        mt_unshimmed_masked = montage(unshimmed_signal_loss[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
-        mt_shimmed_masked = montage(shimmed_signal_loss[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
+        mt_unshimmed_masked = montage(unshimmed_signal_loss_zoom[:, :, nonzero_indices] * bin_mask_erode_zoom[:, :, nonzero_indices])
+        mt_shimmed_masked = montage(shimmed_signal_loss_zoom[:, :, nonzero_indices] * bin_mask_erode_zoom[:, :, nonzero_indices])
 
         nib.save(nib.Nifti1Image(unshimmed_signal_loss, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
                  os.path.join(self.path_output, 'signal_loss_unshimmed.nii.gz'))
@@ -839,10 +851,15 @@ class ShimSequencer(Sequencer):
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
 
+        x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(bin_mask_erode, margin=3)
+        unshimmed_G_zoom = unshimmed_G[x_min:x_max, y_min:y_max, :]
+        shimmed_G_zoom = shimmed_G[x_min:x_max, y_min:y_max, :]
+        bin_mask_erode_zoom = bin_mask_erode[x_min:x_max, y_min:y_max, :]
+
         # choose selected slices to plot
         nonzero_indices = np.nonzero(np.sum(bin_mask_erode, axis=(0, 1)))[0]
-        mt_unshimmed_masked = montage(unshimmed_G[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
-        mt_shimmed_masked = montage(shimmed_G[:, :, nonzero_indices] * bin_mask_erode[:, :, nonzero_indices])
+        mt_unshimmed_masked = montage(unshimmed_G_zoom[:, :, nonzero_indices] * bin_mask_erode_zoom[:, :, nonzero_indices])
+        mt_shimmed_masked = montage(shimmed_G_zoom[:, :, nonzero_indices] * bin_mask_erode_zoom[:, :, nonzero_indices])
 
         metric_unshimmed_std = calculate_metric_within_mask(unshimmed_G, mask_erode, metric='std')
         metric_shimmed_std = calculate_metric_within_mask(shimmed_G, mask_erode, metric='std')
@@ -1855,9 +1872,15 @@ class RealTimeSequencer(Sequencer):
         nan_unshimmed_masked = np.ma.array(std_unshimmed, mask=(mask==0), fill_value=np.nan)
         nan_shimmed_masked = np.ma.array(std_shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
-        mt_unshimmed = montage(np.mean(unshimmed, axis=-1))
-        mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
-        mt_shimmed_masked = montage(nan_shimmed_masked.filled())
+        # Compute one 2D crop box that captures valid voxels across all slices.
+        x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(mask, margin=3)
+        unshimmed_zoom = unshimmed[x_min:x_max, y_min:y_max, :, :]
+        nan_unshimmed_masked_zoom = nan_unshimmed_masked[x_min:x_max, y_min:y_max, :]
+        nan_shimmed_masked_zoom = nan_shimmed_masked[x_min:x_max, y_min:y_max, :]
+
+        mt_unshimmed = montage(np.mean(unshimmed_zoom, axis=-1))
+        mt_unshimmed_masked = montage(nan_unshimmed_masked_zoom.filled())
+        mt_shimmed_masked = montage(nan_shimmed_masked_zoom.filled())
 
         # Compute weighted mean
         metric_unshimmed_mean = calculate_metric_within_mask(std_unshimmed, mask, metric='mean')
@@ -1921,9 +1944,15 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     nan_unshimmed_masked = np.ma.array(unshimmed, mask=(mask==0), fill_value=np.nan)
     nan_shimmed_masked = np.ma.array(shimmed_masked, mask=(mask==0), fill_value=np.nan)
 
-    mt_unshimmed = montage(unshimmed)
-    mt_unshimmed_masked = montage(nan_unshimmed_masked.filled())
-    mt_shimmed_masked = montage(nan_shimmed_masked.filled())
+    # Compute one 2D crop box that captures valid voxels across all slices.
+    x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(mask, margin=3)
+    unshimmed_zoom = unshimmed[x_min:x_max, y_min:y_max, :]
+    nan_unshimmed_masked_zoom = nan_unshimmed_masked[x_min:x_max, y_min:y_max, :]
+    nan_shimmed_masked_zoom = nan_shimmed_masked[x_min:x_max, y_min:y_max, :]
+
+    mt_unshimmed = montage(unshimmed_zoom)
+    mt_unshimmed_masked = montage(nan_unshimmed_masked_zoom.filled())
+    mt_shimmed_masked = montage(nan_shimmed_masked_zoom.filled())
 
     metric_unshimmed_std = calculate_metric_within_mask(unshimmed, mask, metric='std')
     metric_shimmed_std = calculate_metric_within_mask(shimmed_masked, mask, metric='std')
@@ -1968,6 +1997,28 @@ def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
     # Save
     fname_figure = os.path.join(path_output, 'fig_shimmed_vs_unshimmed.png')
     fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def get_bounds_to_zoom_in(mask, margin):
+    """ Get the x and y bounds that would allow to zoom in on the valid voxels in the mask, with a margin around them.
+     The bounds are the same for all slices.
+
+    Args:
+        mask (np.array): 3d array filled from 0 to 1.
+        margin (int): Number of voxels to add around the valid voxels.
+
+    Returns:
+        tuple: x_min, x_max, y_min, y_max
+    """
+    valid_voxels = np.any(mask != 0, axis=2)
+    if np.any(valid_voxels):
+        x_idx, y_idx = np.where(valid_voxels)
+        x_min, x_max = max(x_idx.min() - margin, 0), min(x_idx.max() + margin, mask.shape[0] - 1)
+        y_min, y_max = max(y_idx.min() - margin, 0), min(y_idx.max() + margin, mask.shape[1] - 1)
+    else:
+        x_min, x_max, y_min, y_max = 0, mask.shape[0], 0, mask.shape[1]
+
+    return x_min, x_max, y_min, y_max
 
 
 def new_bounds_from_currents(currents: dict, old_bounds: dict):
