@@ -1049,6 +1049,15 @@
         },
         {
             "datatype": "anat",
+            "suffix": "T1wTSE",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "PulseSequenceName": "TFE",
+                "ImageType": ["ORIGINAL", "PRIMARY", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
             "suffix": "T2wTSE2D",
             "criteria": {
                 "Manufacturer": "Philips",
