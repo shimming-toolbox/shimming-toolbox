@@ -21,7 +21,7 @@ mkdir "%ST_DIR%\%PYTHON_DIR%"
 echo Installing conda in %ST_DIR%\%PYTHON_DIR%
 REM Test for other OSs
 set "CONDA_INSTALLER=Miniforge3-Windows-x86_64.exe"
-set "CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/%CONDA_INSTALLER%"
+set "CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/download/24.5.0-0/%CONDA_INSTALLER%"
 
 :uniqLoop
 set "UNIQUE_TMP_INSTALLER=%tmp%\st_%RANDOM%_%CONDA_INSTALLER%"
