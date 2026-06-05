@@ -73,12 +73,16 @@ class LsqOptimizer(OptimizerUtils):
         else:
             raise ValueError("Optimization criteria not supported")
 
-    def _prepare_signal_recovery_data(self, mask):
+    def _prepare_signal_recovery_data(self, mask, slice_idxs):
         """ Prepares the data for the optimization.
         """
         self.counter += 1
         # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
+        n_channels = np.sum(self.merged_onoff_channels)
+
+        # Remove channels not used in the optimization
+        merged_coil_opt, unshimmed_opt = self._get_coil_mat_and_unshimmed_on_channels(slice_idxs)
+
         # Erode mask
         bin_mask = (mask != 0).astype(int)
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
@@ -88,7 +92,7 @@ class LsqOptimizer(OptimizerUtils):
         self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
 
         # Define merged coils
-        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        temp = np.transpose(merged_coil_opt, axes=(3, 0, 1, 2))
         merged_coils_Gx = np.zeros(np.shape(temp))
         merged_coils_Gy = np.zeros(np.shape(temp))
         merged_coils_Gz = np.zeros(np.shape(temp))
@@ -106,10 +110,10 @@ class LsqOptimizer(OptimizerUtils):
                                       (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
 
         # Define unshimmed vector for each gradient
-        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_vec = np.reshape(unshimmed_opt, (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(unshimmed_opt, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(unshimmed_opt, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(unshimmed_opt, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
 
         if len(self.unshimmed_Gz_vec) == 0:
             raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
@@ -128,7 +132,7 @@ class LsqOptimizer(OptimizerUtils):
                             The shape of the array returned has shape corresponding to the total number of channels
         """
         if 'signal_recovery' in self.opt_criteria:
-            self._prepare_signal_recovery_data(mask)
+            self._prepare_signal_recovery_data(mask, slice_idxs)
 
         return super().optimize(mask, slice_idxs)
 

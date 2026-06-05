@@ -143,7 +143,7 @@ class OptimizerUtils(Optimizer):
                            The shape of the array returned has shape corresponding to the total number of channels
         """
         self.mask = mask
-        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask, slice_idxs)
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed_masked(mask, slice_idxs)
 
         self.merged_bounds_off_channels = [self.merged_bounds[i] for i, is_on in enumerate(self.merged_onoff_channels) if is_on]
         self.set_reg_vector(self.merged_bounds_off_channels)

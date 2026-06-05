@@ -111,11 +111,10 @@ def b0shim_cli():
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
                    "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
-                   "grad: Signal Loss, grad: mse of Bz + weighting X mse of Grad Z, relevant for signal recovery, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method.")
 @click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
               show_default=True,
-              help="weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
+              help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
                    " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
                    "weights to recover the signal loss over the B0 inhomogeneity."
                    " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"

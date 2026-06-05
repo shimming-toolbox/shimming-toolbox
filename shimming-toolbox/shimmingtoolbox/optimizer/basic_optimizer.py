@@ -104,7 +104,7 @@ class Optimizer(object):
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
-        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask, slice_idxs)
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed_masked(mask, slice_idxs)
 
         # Apply weights to the coil matrix and unshimmed vector
         # The square root of the coefficients is taken since the currents are computed
@@ -119,7 +119,7 @@ class Optimizer(object):
 
         return currents_all
 
-    def get_coil_mat_and_unshimmed(self, mask, slice_idxs):
+    def get_coil_mat_and_unshimmed_masked(self, mask, slice_idxs):
         """
         Returns the coil matrix, and the unshimmed vector used for the optimization
 
@@ -143,15 +143,7 @@ class Optimizer(object):
         # Get the non-zero mask coefficient values
         self.mask_coefficients = mask_vec[mask_vec != 0]
 
-        # Remove the channels that are off from the merged channels
-        if np.sum(self.merged_onoff_channels) < len(self.merged_onoff_channels):
-            merged_coil_opt = self.merged_coils[..., self.merged_onoff_channels]
-            merged_coil_not_used = self.merged_coils[..., np.logical_not(self.merged_onoff_channels)]
-            coefs = self.merge_channels_off_values_single_shim_group(slice_idxs)
-            unshimmed_opt = self.unshimmed + merged_coil_not_used @ np.array(coefs)
-        else:
-            merged_coil_opt = self.merged_coils
-            unshimmed_opt = self.unshimmed
+        merged_coil_opt, unshimmed_opt = self._get_coil_mat_and_unshimmed_on_channels(slice_idxs)
 
         # Define number of coil profiles (channels)
         n_channels = merged_coil_opt.shape[3] # dimensions : (n_channels,)
@@ -168,6 +160,22 @@ class Optimizer(object):
         unshimmed_vec = np.reshape(unshimmed_opt, (-1,))[mask_vec != 0]
 
         return coil_mat, unshimmed_vec
+
+    def _get_coil_mat_and_unshimmed_on_channels(self, slice_idxs):
+        """ Returns the coil matrix for the channels that are ON. The values for the channels that are OFF are added
+        to the unshimmed vector."""
+
+        # Remove the channels that are off from the merged channels
+        if np.sum(self.merged_onoff_channels) < len(self.merged_onoff_channels):
+            merged_coil_opt = self.merged_coils[..., self.merged_onoff_channels]
+            merged_coil_not_used = self.merged_coils[..., np.logical_not(self.merged_onoff_channels)]
+            coefs = self.merge_channels_off_values_single_shim_group(slice_idxs)
+            unshimmed_opt = self.unshimmed + merged_coil_not_used @ np.array(coefs)
+        else:
+            merged_coil_opt = self.merged_coils
+            unshimmed_opt = self.unshimmed
+
+        return merged_coil_opt, unshimmed_opt
 
     def merge_channels_off_values_single_shim_group(self, slice_idxs):
         """ Marge the chim values for the channels that are off for a single shim group for each coil in a single array.
@@ -192,6 +200,8 @@ class Optimizer(object):
     def _verify_all_channels_off_values_same(self, slice_idxs):
         for coil in self.coils:
             if coil.channels_off_values is not None:
+                if np.max(slice_idxs) >= coil.channels_off_values.shape[0]:
+                    raise ValueError(f"Channels turned OFF fixed values are not the same shape as the number of slices to shim.")
                 coil_fixed_values = coil.channels_off_values[slice_idxs[0]]
                 for i_slice in range(1, len(slice_idxs)):
                     if not np.allclose(coil.channels_off_values[slice_idxs[i_slice]], coil_fixed_values):
@@ -206,6 +216,7 @@ class Optimizer(object):
 
         Args:
             currents (np.ndarray): 1D array (n_channels_on) containing the coefficients for the channels that are ON
+            slice_idxs (tuple): Tuple of slice indices being optimized.
 
         Returns:
             np.ndarray: 1D array (n_channels) containing the coefficients for all channels, with the OFF channels

@@ -181,8 +181,9 @@ class ShimSequencer(Sequencer):
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
             opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
-                                'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error,
-                                'ps_huber': pseudo huber cost function.
+                                'mae': mean absolute error, 'rmse': root mean squared error,
+                                'ps_huber': pseudo huber cost function, 'mse_signal_recovery',
+                                'rmse_signal_recovery'.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
