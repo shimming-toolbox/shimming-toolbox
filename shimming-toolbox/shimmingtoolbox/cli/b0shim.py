@@ -64,6 +64,25 @@ def b0shim_cli():
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
+@click.option('--off-channels', 'off_channels', type=click.STRING, default='',
+              show_default=True,
+              help="Turn off the corresponding channels during the optimization. By default, all channels are active. "
+                   "The channel number to turn off can be found using the following rules. 1) Channels should be "
+                   "writen with a coma separating the values (i.e.: 0,2,7). 2) Active coil channels are concatenated "
+                   "and indexed to 0. 3) When using custom and scanner coils, the custom coils are indexed first."
+                   "For example: a 10 channel custom coil and orders 1 (3 channels) and 2 (5 channels) scanner coil "
+                   "(--scanner-coil-order 1,2): To turn off the 6th channel of the custom coil and the 3rd "
+                   "channel of the scanner coil (Z), use --off-channels 5,12.")
+@click.option('--off-channels-values', 'fname_off_channels_values', type=click.Path(exists=True),
+              show_default=False, required=False,
+              help="Specify the values to set for the channels turned off with '--off-channels'. By default, the "
+                   "channels turned off are set to 0. This option allows to specify a text file with the values to "
+                   "set for the channels turned off. Concatenate all coil channels that are off and start with custom "
+                   "coils first. The input text file should be formatted using "
+                   "'--output-file-format-scanner/--output-file-format-coil slicewise-coil' and "
+                   "'--output-value-format delta'. For example, if you have 2 channels turned off, "
+                   "the text file should have 2 columns (one for each channel) and the # of slices (NIfTI indexed) as "
+                   "rows.")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
@@ -81,7 +100,7 @@ def b0shim_cli():
               type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
               help="Method used by the optimizer. LS and QP will respect the constraints, "
                    "BFGS method only accepts constraints for each channel (not constraints on the total current), "
-                   "PS will not respect any constraints")
+                   "PI will not respect any constraints")
 @click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
               show_default=True,
               help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
@@ -158,7 +177,8 @@ def b0shim_cli():
 @timeit
 def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, slices, slice_factor, coils,
             dilation_kernel_size, scanner_coil_order, fname_sph_constr, fatsat, path_output, o_format_coil,
-            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, verbose):
+            o_format_sph, output_value_format, reg_factor, w_signal_loss, w_signal_loss_xy, off_channels,
+            fname_off_channels_values, verbose):
     """ Static shim by fitting a fieldmap. Use the option --optimizer-method to change the shimming algorithm used to
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
@@ -174,6 +194,9 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     # Parse scanner_coil_order
     scanner_coil_order = parse_orders(scanner_coil_order)
 
+    # Parse the channels to turn off
+    off_channels = parse_channels_off(off_channels)
+
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output)
 
@@ -182,6 +205,26 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
 
     # Load the target
     nif_target = NiftiTarget(fname_target, path_output=path_output)
+    n_slices = nif_target.shape[2]
+
+    # Load the values for the channels to turn off
+    if off_channels and fname_off_channels_values is None:
+        off_channels_values = np.zeros((n_slices, len(off_channels)))
+    elif off_channels and fname_off_channels_values is not None:
+        with open(fname_off_channels_values, 'r') as f:
+            off_channels_values = np.loadtxt(f, delimiter=',')
+            if off_channels_values.shape[0] != n_slices:
+                raise ValueError(f"The number of rows in the off channels values file ({off_channels_values.shape[0]}) "
+                                 f"must match the number of slices in the target image ({n_slices}).")
+            if off_channels_values.shape[1] != len(off_channels):
+                raise ValueError(f"The number of columns in the off channels values file ({off_channels_values.shape[1]}) "
+                                 f"must match the number of channels turned off ({len(off_channels)}).")
+    elif not off_channels and fname_off_channels_values is not None:
+        raise ValueError("You have provided a file with values for channels to turn off but you have not specified any "
+                         "channels to turn off with the '--off-channels' option.")
+    else:
+        # If there is no channels turned off, we don't need to load any values
+        off_channels_values = None
 
     # Get the EPI echo time and set signal recovery optimizer criteria if w signal loss is set
     if (w_signal_loss is not None) or (w_signal_loss_xy is not None):
@@ -238,10 +281,15 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     options = {'scanner_shim': scanner_shim_settings.shim_settings}
 
     # Load the coils
-    list_coils = load_coils(coils, scanner_coil_order, fname_sph_constr, nif_fmap, options['scanner_shim'])
+    list_coils = load_coils(coils,
+                            scanner_coil_order,
+                            fname_sph_constr,
+                            nif_fmap,
+                            options['scanner_shim'],
+                            off_channels=off_channels,
+                            off_channels_values=off_channels_values)
 
     # Get the shim slice ordering
-    n_slices = nif_target.shape[2]
     if slices == 'auto':
         list_slices = parse_slices(fname_target)
     else:
@@ -573,7 +621,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
               type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
               help="Method used by the optimizer. LS and QP will respect the constraints, "
                    "BFGS method only accepts constraints for each channel (not constraints on the total current), "
-                   "PS will not respect any constraints")
+                   "PI will not respect any constraints")
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
               help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
@@ -1037,6 +1085,8 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
 
 
 def parse_orders(orders: str):
+    """ Convert the string of orders into a list of integers. For example, "0,1,2" will be converted to [0, 1, 2]."""
+
     orders = orders.split(',')
     try:
         orders = [int(order) for order in orders]
@@ -1048,7 +1098,27 @@ def parse_orders(orders: str):
         raise ValueError(f"Invalid orders: {orders}\n Orders must be integers ")
 
 
-def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings):
+def parse_channels_off(opt_channels: str) -> list[int]:
+    """ Convert the string of channels to turn off into a list of integers.
+    For example, "0,2,5" will be converted to [0, 2, 5].
+
+    Args:
+        opt_channels (str): String of channels to turn off, separated by commas. For example, "0,2,5".
+                            If empty, no channels will be turned off.
+
+    Returns:
+        list[int]: List of channels to turn off as integers. For example, [0, 2, 5]. If the input string is empty,
+                   returns an empty list.
+
+    """
+    if opt_channels == "":
+        return []
+    else:
+        return [int(ch) for ch in opt_channels.split(',')]
+
+
+def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings, off_channels=(),
+               off_channels_values=None):
     """ Loads the Coil objects from filenames
 
     Args:
@@ -1058,10 +1128,30 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         nif_fmap (NiftiFieldMap): Field map
         scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
         json_fm_data (dict): BIDS JSON sidecar as a dictionary
+        off_channels (tuple): Tuple of channels to turn off.
+        off_channels_values (np.array): (n_slices x n_off_channels) array of values to set for the channels that are
+                                        off.
 
     Returns:
         list: List of Coil objects containing the custom coils followed by the scanner coil if requested
     """
+
+    def _create_channels_onoff(channels_off, channel_start, n_channels, off_channels_values):
+        channels_onoff = [True] * n_channels
+
+        for ch in channels_off:
+            if channel_start <= ch < (channel_start + n_channels):
+                channels_onoff[ch - channel_start] = False
+
+        # Slice the corresponding channels from off_channels_values
+        if off_channels_values is not None:
+            off_channels_values_start_idx = np.sum(np.array(channels_off) < channel_start)
+            off_channels_values_end_idx = np.sum(np.array(channels_off) < (channel_start + n_channels))
+            off_channels_values_out = off_channels_values[:, off_channels_values_start_idx:off_channels_values_end_idx]
+        else:
+            off_channels_values_out = None
+
+        return channels_onoff, off_channels_values_out
 
     manufacturer = nif_fmap.get_json_info('Manufacturer')
     manufacturers_model_name = nif_fmap.get_manufacturers_model_name()
@@ -1069,8 +1159,10 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     list_coils = []
 
+    # Used to find the index of the channels to turn off
+    channel_start = 0
+
     # Load custom coils
-    # TODO: Change coil profiles to NiftiCoilProfile objects
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
@@ -1079,9 +1171,17 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         if coil_data.ndim == 3:
             coil_data = coil_data[..., np.newaxis]
 
+        n_channels = coil_data.shape[-1]
+        channels_onoff, off_channels_values_coil = _create_channels_onoff(off_channels, channel_start, n_channels, off_channels_values)
+        channel_start = channel_start + n_channels
+
         with open(coil[1]) as json_file:
             constraints = json.load(json_file)
-        list_coils.append(Coil(coil_data, nii_coil_profiles.affine, constraints))
+        list_coils.append(Coil(coil_data,
+                               nii_coil_profiles.affine,
+                               constraints,
+                               channels_onoff=channels_onoff,
+                               channels_off_values=off_channels_values_coil))
 
     if len(list_coils) != len(set(list_coils)):
         raise ValueError("Coils must be unique. Make sure different coils have different names.")
@@ -1101,14 +1201,24 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
                                                      scanner_shim_settings,
                                                      external_contraints)
 
+        n_channels = np.array([channels_per_order(order, manufacturer) for order in orders]).sum()
+        channels_onoff, off_channels_values_coil = _create_channels_onoff(off_channels, channel_start, n_channels, off_channels_values)
+        channel_start = channel_start + n_channels
+
         isocenter = nif_fmap.get_isocenter()
         scanner_coil = ScannerCoil(nif_fmap.extended_shape[:3],
                                    nif_fmap.extended_affine,
                                    scanner_contraints,
                                    orders,
                                    manufacturer=manufacturer,
-                                   isocenter=isocenter)
+                                   isocenter=isocenter,
+                                   channels_onoff=channels_onoff,
+                                   channels_off_values=off_channels_values_coil)
         list_coils.append(scanner_coil)
+
+    if off_channels and np.any(off_channels >= channel_start):
+        raise ValueError(f"Channels to turn off {off_channels} exceed the total number of channels {channel_start}. "
+                         f"Choose channels between 0 and {channel_start - 1}.")
 
     # Make sure a coil is selected
     if len(list_coils) == 0:

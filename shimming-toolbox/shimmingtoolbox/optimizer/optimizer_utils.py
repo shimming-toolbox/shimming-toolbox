@@ -37,8 +37,9 @@ class OptimizerUtils(Optimizer):
         super().__init__(coils, unshimmed, affine)
         self.initial_guess_method = initial_guess_method
         self.initial_coefs = None
-        reg_factor_channel = np.array([max(np.abs(bound)) for bound in self.merged_bounds])
-        self.reg_vector = reg_factor / (len(reg_factor_channel) * reg_factor_channel)
+        self.reg_factor = reg_factor
+        self.reg_vector = None
+        self.merged_bounds_off_channels = None
 
     @property
     def initial_guess_method(self):
@@ -58,7 +59,7 @@ class OptimizerUtils(Optimizer):
 
         self._initial_guess_method = method
 
-    def get_initial_guess(self):
+    def get_initial_guess(self, method):
         """ Calculates the initial guess according to the `self.initial_guess_method`
 
         Returns:
@@ -71,9 +72,9 @@ class OptimizerUtils(Optimizer):
             'set': self._initial_guess_set
         }
 
-        initial_guess = allowed_guess_method[self.initial_guess_method]()
+        initial_guess = allowed_guess_method[method]()
 
-        return initial_guess
+        return initial_guess[self.merged_onoff_channels]
 
     def _initial_guess_set(self):
         return self.initial_coefs
@@ -119,27 +120,71 @@ class OptimizerUtils(Optimizer):
 
         return current_0
 
-    def optimize(self, mask):
+    def set_reg_vector(self, opt_merged_bounds):
+        """
+
+        Args:
+            opt_merged_bounds (np.ndarray): 2D array (channel, 2) containing the lower and upper bounds for each
+                                            channel that are ON.
+        """
+        reg_factor_channel = np.array([max(np.abs(bound)) for bound in opt_merged_bounds])
+        self.reg_vector = self.reg_factor / (len(reg_factor_channel) * reg_factor_channel)
+
+    def optimize(self, mask, slice_idxs):
         """
         Optimize unshimmed volume by varying current to each channel
 
         Args:
             mask (np.ndarray): 3D integer mask used for the optimizer (only consider voxels with non-zero values).
+            slice_idxs = List of slice indices being optimized
 
         Returns:
             np.ndarray: Coefficients corresponding to the coil profiles that minimize the objective function.
                            The shape of the array returned has shape corresponding to the total number of channels
         """
         self.mask = mask
-        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
+        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask, slice_idxs)
+
+        self.merged_bounds_off_channels = [self.merged_bounds[i] for i, is_on in enumerate(self.merged_onoff_channels) if is_on]
+        self.set_reg_vector(self.merged_bounds_off_channels)
+
         # Set up output currents
-        currents_0 = self.get_initial_guess()
+        currents_0 = self.get_initial_guess(self._initial_guess_method)
         # If what to shim is already 0s
         if np.all(unshimmed_vec == 0):
-            return np.zeros(np.shape(currents_0))
-        currents = self._get_currents(unshimmed_vec, coil_mat, currents_0)
+            currents = np.zeros(np.shape(currents_0))
+        else:
+            currents = self._get_currents(unshimmed_vec, coil_mat, currents_0, slice_idxs)
+        currents_all = self.insert_off_channels_values(currents, slice_idxs)
 
-        return currents
+        return currents_all
+
+    def _calc_coef_sum_max_for_a_coil_and_slice_idxs(self, coil, slice_idxs):
+        """ Calculates the maximum sum of coefficients for a given coil and slice indices, taking into account the
+        fixed currents if there are any.
+
+        Args:
+            coil (Coil): The coil for which to calculate the maximum sum of coefficients.
+            slice_idxs (tuple): The slice indices for which to calculate the maximum sum of coefficients.
+
+        Returns:
+            float: The maximum sum of coefficients for the given coil and slice indices, taking into account the
+                   fixed currents if there are any.
+        """
+        # If some channels that are off have fixed current values, we remove the absolute value of those
+        # currents from the maximum current allowed for each coil. This way, the constraint is adapted to
+        # the channels that are actually optimized.
+        if coil.channels_off_values is not None:
+            self._verify_all_channels_off_values_same(slice_idxs)
+            currents_fixed = np.sum(np.abs(coil.channels_off_values[slice_idxs[0]]))
+            if currents_fixed > coil.coef_sum_max:
+                raise ValueError(f"Coil {coil.name} has a coef_sum_max of {coil.coef_sum_max}, but the sum "
+                                 f"of the fixed currents is {currents_fixed}. Please change the coef_sum_max or"
+                                 f" the fixed currents to make sure that the optimization can be done.")
+        else:
+            currents_fixed = 0
+
+        return coil.coef_sum_max - currents_fixed
 
     def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
         """
@@ -180,7 +225,7 @@ class OptimizerUtils(Optimizer):
         return a, b, c
 
     @abstractmethod
-    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0, slice_idxs):
         """
         Abstract method for the _get_currents method used in the child classes
         """

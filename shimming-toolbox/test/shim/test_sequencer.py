@@ -95,13 +95,19 @@ def create_constraints(max_coef, min_coef, sum_coef, n_channels=8):
     return constraints
 
 
-def create_coil(n_x, n_y, n_z, constraints, coil_affine, n_channel=8):
+def create_coil(n_x, n_y, n_z, constraints, coil_affine, n_channel=8, off_channels=None, off_channels_values=None):
     # Set up spherical harmonics coil profile
     mesh_x, mesh_y, mesh_z = generate_meshgrid((n_x, n_y, n_z), coil_affine)
     profiles = siemens_basis(mesh_x, mesh_y, mesh_z)
 
+    if off_channels is not None:
+        onoff_channels = [False if i in off_channels else True for i in range(n_channel)]
+    else:
+        onoff_channels = None
+
     # Define coil
-    coil = Coil(profiles[..., :n_channel], coil_affine, constraints)
+    coil = Coil(profiles[..., :n_channel], coil_affine, constraints, channels_onoff=onoff_channels,
+                channels_off_values=off_channels_values)
     return coil
 
 nz = 3
@@ -135,18 +141,42 @@ nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=ni
 nib.save(nii_mask, os.path.join(__dir_testing__, 'mask.nii.gz'))
 # Load the mask
 nif_mask = NiftiMask(os.path.join(__dir_testing__, 'mask.nii.gz'))
+off_channels = [0, 7]
+off_channel_values_expected = np.array([[0.1, 0.2]] * nif_target.shape[2])
+
 
 @pytest.mark.parametrize(
-    "nif_fieldmap,nif_target,nif_mask,sph_coil,sph_coil2", [(
+    "nif_fieldmap,nif_target,nif_mask,sph_coil,sph_coil2",
+    [
+        (
             nif_to_shim,
             nif_target,
             nif_mask,
             coil1,
             coil2,
-    )]
+    ),
+        (
+            nif_to_shim,
+            nif_target,
+            nif_mask,
+            create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
+                        unshimmed_affine, off_channels=off_channels),
+            create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine),
+        ),
+        (
+                nif_to_shim,
+                nif_target,
+                nif_mask,
+                create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
+                            unshimmed_affine, off_channels=off_channels,
+                            off_channels_values=off_channel_values_expected),
+                create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine,
+                            off_channels=off_channels)
+        )
+    ]
 )
 class TestSequencer(object):
-    """Tests for shim_sequencer"""
+    """ Tests for shim_sequencer"""
 
     def test_shim_sequencer_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         # Optimize
@@ -198,6 +228,15 @@ class TestSequencer(object):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
                                        method='least_squares', opt_criteria='mae')
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
+
+    def test_shim_sequencer_rmse(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+        # Optimize
+        slices = define_slices(nif_target.shape[2], 1)
+        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
+                                       method='least_squares', opt_criteria='rmse')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices)
@@ -329,6 +368,22 @@ def assert_results(nif_fieldmap, nif_target, nif_mask, coil, currents, slices):
     # Calculate theoretical shimmed map
     unshimmed = nif_fieldmap.data
     opt = Optimizer(coil, unshimmed, nif_fieldmap.affine)
+
+    idx_start = 0
+    idx_end = 0
+    for a_coil in coil:
+        idx_end += a_coil.profile.shape[3]
+        if a_coil.channels_onoff is not None and np.sum(a_coil.channels_onoff) != len(a_coil.channels_onoff):
+            if a_coil.channels_off_values is None:
+                expected = np.array([[0] * len(a_coil.channels_onoff)] * len(slices))
+                channels = [idx_start + i for i in off_channels]
+                for i_slice in range(len(slices)):
+                    assert np.allclose(currents[i_slice, channels], expected[i_slice, off_channels])
+            else:
+                channels = [idx_start + i for i in off_channels]
+                for i_slice in range(len(slices)):
+                    assert np.allclose(currents[i_slice, channels], off_channel_values_expected[i_slice])
+        idx_start = idx_end
 
     if DEBUG:
         # Save fieldmap

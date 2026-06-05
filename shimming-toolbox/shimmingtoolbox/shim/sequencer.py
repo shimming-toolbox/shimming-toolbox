@@ -110,19 +110,24 @@ class Sequencer(object):
                 np.ndarray: Coefficients of the coil profiles to shim (len(slices) x n_channels)
         """
 
-        n_shims = len(self.slices)
         coefs = []
 
-        for i in range(n_shims):
+        for i_shim, shim_slices in enumerate(self.slices):
             # If there is nothing to shim in this shim group
-            if np.all(masks_fmap[..., i] == 0):
-                coefs.append(np.zeros(self.optimizer.merged_coils.shape[-1]))
-                self.index_not_shimmed.append(i)
+            if np.all(masks_fmap[..., i_shim] == 0):
+                # If values were fixed, put those values instead of 0s.
+                currents_0s_on_channels = np.zeros([np.sum(self.optimizer.merged_onoff_channels)])
+                currents_all_channels = self.optimizer.insert_off_channels_values(currents_0s_on_channels, shim_slices)
+                coefs.append(currents_all_channels)
+                self.index_not_shimmed.append(i_shim)
+                if not np.allclose(currents_all_channels, np.zeros(self.optimizer.merged_coils.shape[-1])):
+                    logger.warning(f"Fixing some shim values for slices {shim_slices}, but there was nothing to shim, "
+                                   f"verify if this is the wanted behaviour.")
 
             # Otherwise optimize
             else:
-                coefs.append(self.optimizer.optimize(masks_fmap[..., i]))
-                self.index_shimmed.append(i)
+                coefs.append(self.optimizer.optimize(masks_fmap[..., i_shim], shim_slices))
+                self.index_shimmed.append(i_shim)
 
         return np.array(coefs)
 
@@ -313,7 +318,7 @@ class ShimSequencer(Sequencer):
 
         # If the fieldmap was changed (i.e. only 1 slice) we want to evaluate the output on the original fieldmap
         if self.nif_fieldmap.extended:
-            merged_coils, _ = self.optimizer.merge_coils(unshimmed, self.nif_fieldmap.affine)
+            merged_coils, _, _ = self.optimizer.merge_coils(unshimmed, self.nif_fieldmap.affine)
         else:
             merged_coils = self.optimizer.merged_coils
 
@@ -1439,11 +1444,10 @@ class RealTimeSequencer(Sequencer):
             Riro coefficients of the coil profiles to shim (len(slices) x channels) [Hz/unit_pressure]
         """
         # It's faster to use local arguments for the optimization
-        n_shims = len(self.slices)
         optimizer = self.optimizer_riro
         shimwise_bounds = self.bounds
         coefs_riro = []
-        for i in range(n_shims):
+        for i, slice_idx in enumerate(self.slices):
             # Change bounds
             if shimwise_bounds is not None:
                 optimizer.set_merged_bounds(shimwise_bounds[i])
@@ -1452,7 +1456,7 @@ class RealTimeSequencer(Sequencer):
                 coefs_riro.append(np.zeros(optimizer.merged_coils.shape[-1]))
             # Optimize
             else:
-                coefs_riro.append(optimizer.optimize(mask_target[..., i]))
+                coefs_riro.append(optimizer.optimize(mask_target[..., i], slice_idx))
 
         return np.array(coefs_riro)
 
