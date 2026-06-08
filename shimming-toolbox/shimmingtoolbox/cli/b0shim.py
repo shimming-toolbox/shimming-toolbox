@@ -399,14 +399,16 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
     """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
 
     logger.info(f"Saving to text file with format: {o_format}")
+    is_outputting_fatsat_file = options['fatsat'] and o_format in ['chronological-ch', 'chronological-coil']
+
     n_channels = coil.dim[3]
     list_fname_output = []
     if o_format[-5:] == '-coil':
 
         fname_output = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}.txt")
-        if options['fatsat']:
-            fname_output_no_fatsat = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}_no_fatsat.txt")
-            f_no_fatsat = open(fname_output_no_fatsat, 'w', encoding='utf-8')
+        if is_outputting_fatsat_file:
+            fname_output_fatsat = os.path.join(path_output, f"coefs_coil{coil_number}_{coil.name}_fatsat_lines.txt")
+            f_fatsat = open(fname_output_fatsat, 'w', encoding='utf-8')
 
         # Print the average shim coefficients without considering slices with 0s
         logger.info(f"Average shim coefficients for coil {coil.name} without considering slices with 0s: "
@@ -419,24 +421,24 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                 # Output per shim (chronological), output all channels for a particular shim, then repeat
                 for i_shim in range(len(list_slices)):
                     # If fatsat pulse, set shim coefs to 0
-                    if options['fatsat']:
+                    if is_outputting_fatsat_file:
                         for i_channel in range(n_channels):
                             if default_coefs is None:
                                 # Output 0 (delta)
-                                f.write(f"{0:.1f}, ")
+                                f_fatsat.write(f"{0:.1f}, ")
                             else:
                                 # Output initial coefs (absolute)
-                                f.write(f"{default_coefs[i_channel]:.6f}, ")
-                        f.write("\n")
+                                f_fatsat.write(f"{default_coefs[i_channel]:.6f}, ")
+                        f_fatsat.write("\n")
 
                     for i_channel in range(n_channels):
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
-                        if options['fatsat']:
-                            f_no_fatsat.write(f"{coefs[i_shim, i_channel]:.6f}, ")
+                        if is_outputting_fatsat_file:
+                            f_fatsat.write(f"{coefs[i_shim, i_channel]:.6f}, ")
 
                     f.write("\n")
-                    if options['fatsat']:
-                        f_no_fatsat.write("\n")
+                    if is_outputting_fatsat_file:
+                        f_fatsat.write("\n")
 
             elif o_format == 'slicewise-coil':
                 # Output per slice, output all channels for a particular slice, then repeat
@@ -449,8 +451,8 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                         f.write(f"{coefs[i_shim, i_channel]:.6f}, ")
                     f.write("\n")
 
-        if options['fatsat']:
-            f_no_fatsat.close()
+        if is_outputting_fatsat_file:
+            f_fatsat.close()
         list_fname_output.append(os.path.abspath(fname_output))
 
     elif o_format[-3:] == '-ch':
@@ -461,18 +463,27 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                                                         f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}.txt"))
 
             if o_format == 'chronological-ch':
+                if is_outputting_fatsat_file:
+                    fname_output_fatsat = os.path.join(path_output,
+                                                       f"coefs_coil{coil_number}_ch{i_channel}_{coil.name}_fatsat.txt")
+                    f_fatsat = open(fname_output_fatsat, 'w', encoding='utf-8')
+
                 with open(fname_output, 'w', encoding='utf-8') as f:
                     # Each row will have one coef representing the shim in chronological order
                     for i_shim in range(len(list_slices)):
                         # If fatsat pulse, set shim coefs to 0
-                        if options['fatsat']:
+                        if is_outputting_fatsat_file:
                             if default_coefs is None:
                                 # Output 0 (delta)
-                                f.write(f"{0:.1f},\n")
+                                f_fatsat.write(f"{0:.1f},\n")
                             else:
                                 # Output initial coefs (absolute)
-                                f.write(f"{default_coefs[i_channel]:.6f},\n")
+                                f_fatsat.write(f"{default_coefs[i_channel]:.6f},\n")
+                            f_fatsat.write(f"{coefs[i_shim, i_channel]:.6f},\n")
                         f.write(f"{coefs[i_shim, i_channel]:.6f},\n")
+
+                if is_outputting_fatsat_file:
+                    f_fatsat.close()
 
             if o_format == 'slicewise-ch':
                 with open(fname_output, 'w', encoding='utf-8') as f:
