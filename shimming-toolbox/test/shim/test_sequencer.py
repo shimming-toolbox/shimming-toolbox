@@ -33,6 +33,30 @@ set_all_loggers('info')
 DEBUG = False
 
 
+@pytest.fixture(scope="module")
+def clean_up_test_files():
+    """Fixture to clean up test files after tests are run."""
+    yield
+    # Execute after tests
+    files = [
+        os.path.join(os.path.dirname(__dir_testing__), 'mask_static.nii.gz'),
+        os.path.join(os.path.dirname(__dir_testing__), 'fieldmap_instance0.nii.gz'),
+        os.path.join(os.path.dirname(__dir_testing__), 'fieldmap_instance1.nii.gz'),
+        fname_target1,
+        fname_target2,
+        fname_mask1,
+        fname_mask2
+    ]
+    for file in files:
+        try:
+            os.remove(file)
+        except FileNotFoundError:
+            pass
+
+
+pytestmark = pytest.mark.usefixtures("clean_up_test_files")
+
+
 def create_fieldmap(n_slices=3, is_realtime=False, instance=0):
     # Set up 2-dimensional unshimmed fieldmaps
     num_vox = 100
@@ -62,7 +86,7 @@ def create_fieldmap(n_slices=3, is_realtime=False, instance=0):
     nii_fmap = nib.Nifti1Image(unshimmed, create_unshimmed_affine())
 
     # Save in tmp directory
-    fname_fmap = os.path.join(__dir_testing__, f'fieldmap_instance{instance}.nii.gz')
+    fname_fmap = os.path.join(os.path.dirname(__dir_testing__), f'fieldmap_instance{instance}.nii.gz')
     nib.save(nii_fmap, fname_fmap)
     # save a fake json file
     json_fmap = {'SliceThickness': 3}
@@ -110,6 +134,7 @@ def create_coil(n_x, n_y, n_z, constraints, coil_affine, n_channel=8, off_channe
                 channels_off_values=off_channels_values)
     return coil
 
+
 nz = 3
 nif_to_shim = create_fieldmap(nz, instance=0)
 
@@ -125,7 +150,7 @@ target = np.ones((50, 50, nz))
 nii_target = nib.Nifti1Image(target, affine=affine)
 json_target = {'SliceThickness': 3}
 # Save in tmp directory
-fname_target1 = os.path.join(__dir_testing__, 'target_instance0.nii.gz')
+fname_target1 = os.path.join(os.path.dirname(__dir_testing__), 'target_instance0.nii.gz')
 nib.save(nii_target, fname_target1)
 # Load the target image
 nif_target = NiftiTarget(fname_target1, json=json_target)
@@ -134,7 +159,7 @@ nif_target = NiftiTarget(fname_target1, json=json_target)
 static_mask = shapes(target, 'cube', len_dim1=10, len_dim2=10, len_dim3=nz)
 nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=nii_target.header)
 # Save in tmp directory
-fname_mask1 = os.path.join(__dir_testing__, 'mask_instance0.nii.gz')
+fname_mask1 = os.path.join(os.path.dirname(__dir_testing__), 'mask_instance0.nii.gz')
 nib.save(nii_mask, fname_mask1)
 # Load the mask
 nif_mask = NiftiMask(fname_mask1)
@@ -151,7 +176,7 @@ off_channel_values_expected = np.array([[0.1, 0.2]] * nif_target.shape[2])
             nif_mask,
             create_coil(100, 100, nz, create_constraints(1000, -1000, 2000), unshimmed_affine),
             create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine)
-    ),
+        ),
         (
             nif_to_shim,
             nif_target,
@@ -161,24 +186,19 @@ off_channel_values_expected = np.array([[0.1, 0.2]] * nif_target.shape[2])
             create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine)
         ),
         (
-                nif_to_shim,
-                nif_target,
-                nif_mask,
-                create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
-                            unshimmed_affine, off_channels=off_channels,
-                            off_channels_values=off_channel_values_expected),
-                create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine,
-                            off_channels=off_channels)
+            nif_to_shim,
+            nif_target,
+            nif_mask,
+            create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
+                        unshimmed_affine, off_channels=off_channels,
+                        off_channels_values=off_channel_values_expected),
+            create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine,
+                        off_channels=off_channels)
         )
     ]
 )
 class TestSequencer(object):
     """ Tests for shim_sequencer"""
-    def teardown_class(self):
-        os.remove(fname_mask1)
-        os.remove(fname_target1)
-        os.remove(os.path.join(__dir_testing__, 'fieldmap_instance0.nii.gz'))
-
     def test_shim_sequencer_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
@@ -350,7 +370,7 @@ target = np.ones((50, 50, nz))
 nii_target = nib.Nifti1Image(target, affine=affine)
 json_target = {'SliceThickness': 3}
 # Save in tmp directory
-fname_target2 = os.path.join(__dir_testing__, 'target_instance1.nii.gz')
+fname_target2 = os.path.join(os.path.dirname(__dir_testing__), 'target_instance1.nii.gz')
 nib.save(nii_target, fname_target2)
 # Load the target image
 nif_target2 = NiftiTarget(fname_target2, json=json_target)
@@ -359,7 +379,7 @@ nif_target2 = NiftiTarget(fname_target2, json=json_target)
 static_mask = shapes(target, 'cube', len_dim1=10, len_dim2=10, len_dim3=nz)
 nii_mask = nib.Nifti1Image(static_mask.astype(int), nii_target.affine, header=nii_target.header)
 # Save in tmp directory
-fname_mask2 = os.path.join(__dir_testing__, 'mask_instance1.nii.gz')
+fname_mask2 = os.path.join(os.path.dirname(__dir_testing__), 'mask_instance1.nii.gz')
 nib.save(nii_mask, fname_mask2)
 # Load the mask
 nif_mask2 = NiftiMask(fname_mask2)
@@ -386,19 +406,18 @@ off_channel_values_expected2 = np.array([[0.1, 0.2]] * nif_target2.shape[2])
             create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine)
         ),
         (
-                nif_to_shim2,
-                nif_target2,
-                nif_mask2,
-                create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
-                            unshimmed_affine, off_channels=off_channels,
-                            off_channels_values=off_channel_values_expected2),
-                create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine,
-                            off_channels=off_channels)
+            nif_to_shim2,
+            nif_target2,
+            nif_mask2,
+            create_coil(100, 100, nz, create_constraints(1000, -1000, 2000),
+                        unshimmed_affine, off_channels=off_channels,
+                        off_channels_values=off_channel_values_expected2),
+            create_coil(150, 120, nz + 10, create_constraints(500, -500, 1500), affine,
+                        off_channels=off_channels)
         )
     ]
 )
 class TestShimSequencerSigRec:
-    @pytest.fixture(scope="class")
     def test_shim_sequencer_mse_sig_rec(self, nif_fieldmap2, nif_target2, nif_mask2, sph_coil3, sph_coil4):
         slices = define_slices(nif_target2.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap2, nif_target2, nif_mask2, slices, [sph_coil3],
@@ -510,9 +529,9 @@ def define_rt_sim_inputs():
 
     nii_mask_static = nib.Nifti1Image(static_mask.astype(int), nif_target.affine, header=nif_target.header)
     # Save mask
-    nib.save(nii_mask_static, os.path.join(__dir_testing__, 'mask_static.nii.gz'))
+    nib.save(nii_mask_static, os.path.join(os.path.dirname(__dir_testing__), 'mask_static.nii.gz'))
     # Load the mask
-    nif_mask_static = NiftiMask(os.path.join(__dir_testing__, 'mask_static.nii.gz'), nif_target)
+    nif_mask_static = NiftiMask(os.path.join(os.path.dirname(__dir_testing__), 'mask_static.nii.gz'), nif_target)
 
     nif_mask_riro = copy.deepcopy(nif_mask_static)
 
@@ -541,24 +560,13 @@ def define_rt_sim_inputs():
     return nif_fieldmap, nif_target, nif_mask_static, nif_mask_riro, slices, pmu, coil
 
 
-nif_rt_fieldmap, nif_rt_target, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
-    define_rt_sim_inputs()
-
-
 @pytest.mark.parametrize(
     "nif_fieldmap,nif_target,nif_mask_static,nif_mask_riro,slices,pmu,coil", [(
-            nif_rt_fieldmap,
-            nif_rt_target,
-            nif_mask_rt_static,
-            nif_mask_rt_riro,
-            slices_rt,
-            pmu_rt,
-            coil_rt
+        define_rt_sim_inputs()
     )]
 )
 class TestShimRTpmuSimData(object):
     """Tests for realtime Sequencer with simulated data"""
-
     def test_shim_realtime_pmu_sequencer_fake_data(self, nif_fieldmap, nif_target, nif_mask_static,
                                                    nif_mask_riro, slices, pmu, coil):
         """Test on the shim_realtime_pmu_sequencer using simulated data"""
