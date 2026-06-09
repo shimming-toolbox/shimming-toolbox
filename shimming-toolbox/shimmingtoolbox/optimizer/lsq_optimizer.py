@@ -73,12 +73,16 @@ class LsqOptimizer(OptimizerUtils):
         else:
             raise ValueError("Optimization criteria not supported")
 
-    def _prepare_signal_recovery_data(self, mask):
+    def _prepare_signal_recovery_data(self, mask, slice_idxs):
         """ Prepares the data for the optimization.
         """
         self.counter += 1
         # Define coil profiles
-        n_channels = self.merged_coils.shape[3]
+        n_channels = np.sum(self.merged_onoff_channels)
+
+        # Remove channels not used in the optimization
+        merged_coil_opt, unshimmed_opt = self._get_coil_mat_and_unshimmed_on_channels(slice_idxs)
+
         # Erode mask
         bin_mask = (mask != 0).astype(int)
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
@@ -88,7 +92,7 @@ class LsqOptimizer(OptimizerUtils):
         self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
 
         # Define merged coils
-        temp = np.transpose(self.merged_coils, axes=(3, 0, 1, 2))
+        temp = np.transpose(merged_coil_opt, axes=(3, 0, 1, 2))
         merged_coils_Gx = np.zeros(np.shape(temp))
         merged_coils_Gy = np.zeros(np.shape(temp))
         merged_coils_Gz = np.zeros(np.shape(temp))
@@ -106,16 +110,16 @@ class LsqOptimizer(OptimizerUtils):
                                       (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
 
         # Define unshimmed vector for each gradient
-        self.unshimmed_vec = np.reshape(self.unshimmed, (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gx_vec = np.reshape(np.gradient(self.unshimmed, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gy_vec = np.reshape(np.gradient(self.unshimmed, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gz_vec = np.reshape(np.gradient(self.unshimmed, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_vec = np.reshape(unshimmed_opt, (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(unshimmed_opt, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(unshimmed_opt, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(unshimmed_opt, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
 
         if len(self.unshimmed_Gz_vec) == 0:
             raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
                                 'Make sure to include at least 3 voxels in the slice direction.')
 
-    def optimize(self, mask):
+    def optimize(self, mask, slice_idxs):
         """
         Wrapper for the optimization function. This function prepares the data and calls the optimizer.
         Optimize unshimmed volume by varying current to each channel
@@ -128,18 +132,9 @@ class LsqOptimizer(OptimizerUtils):
                             The shape of the array returned has shape corresponding to the total number of channels
         """
         if 'signal_recovery' in self.opt_criteria:
-            self._prepare_signal_recovery_data(mask)
+            self._prepare_signal_recovery_data(mask, slice_idxs)
 
-        self.mask = mask
-        coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed(mask)
-        # Set up output currents
-        currents_0 = self.get_initial_guess()
-        # If what to shim is already 0s
-        if np.all(unshimmed_vec == 0):
-            return np.zeros(np.shape(currents_0))
-        currents = self._get_currents(unshimmed_vec, coil_mat, currents_0)
-
-        return currents
+        return super().optimize(mask, slice_idxs)
 
     def _residuals_mae(self, coef, unshimmed_vec, coil_mat, factor):
         """ Objective function to minimize the mean absolute error (MAE)
@@ -295,10 +290,10 @@ class LsqOptimizer(OptimizerUtils):
         # The new version uses the quadratic terms implemented with PR#451
         return 2 * a @ coef + b
 
-    def _define_scipy_constraints(self):
-        return self._define_scipy_coef_sum_max_constraint()
+    def _define_scipy_constraints(self, slice_idxs):
+        return self._define_scipy_coef_sum_max_constraint(slice_idxs)
 
-    def _define_scipy_coef_sum_max_constraint(self):
+    def _define_scipy_coef_sum_max_constraint(self, slice_idxs):
         """Constraint on each coil about the maximum current of all channels"""
 
         def _apply_sum_constraint(inputs, indexes, coef_sum_max):
@@ -310,10 +305,11 @@ class LsqOptimizer(OptimizerUtils):
         start_index = 0
         for i_coil in range(len(self.coils)):
             coil = self.coils[i_coil]
-            end_index = start_index + coil.dim[3]
+            end_index = start_index + np.sum(coil.channels_onoff)
             if coil.coef_sum_max != np.inf:
+                coef_sum_max = self._calc_coef_sum_max_for_a_coil_and_slice_idxs(coil, slice_idxs)
                 constraints.append({'type': 'ineq', "fun": _apply_sum_constraint,
-                                    'args': (range(start_index, end_index), coil.coef_sum_max)})
+                                    'args': (range(start_index, end_index), coef_sum_max)})
             start_index = end_index
         return constraints
 
@@ -323,7 +319,7 @@ class LsqOptimizer(OptimizerUtils):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='SLSQP',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
@@ -334,7 +330,7 @@ class LsqOptimizer(OptimizerUtils):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='SLSQP',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        constraints=tuple(scipy_constraints),
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
@@ -343,15 +339,15 @@ class LsqOptimizer(OptimizerUtils):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='SLSQP',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        constraints=tuple(scipy_constraints),
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
         return currents_sp
 
-    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0, slice_idxs):
 
-        scipy_constraints = self._define_scipy_constraints()
+        scipy_constraints = self._define_scipy_constraints(slice_idxs)
         # Optimize
         # When clipping to bounds, scipy raises a warning. Since this can be frequent for our purposes, we ignore that
         # warning
@@ -364,11 +360,11 @@ class LsqOptimizer(OptimizerUtils):
             # --> aiming for 1 then optimizing will lower that. We are using an initial guess of 0s so that the
             # regularization on the currents has no effect on the output stability factor.
             if self.opt_criteria in ['mse', 'mse_signal_recovery']:
-                stability_factor = self._initial_guess_mse(self._initial_guess_zeros(), unshimmed_vec,
+                stability_factor = self._initial_guess_mse(self.get_initial_guess('zeros'), unshimmed_vec,
                                                            np.zeros_like(coil_mat),
                                                            factor=1)
             else:
-                stability_factor = self._criteria_func(self._initial_guess_zeros(), unshimmed_vec,
+                stability_factor = self._criteria_func(self.get_initial_guess('zeros'), unshimmed_vec,
                                                        np.zeros_like(coil_mat),
                                                        factor=1)
             # Reset delta for pseudo huber function
@@ -476,7 +472,7 @@ class PmuLsqOptimizer(LsqOptimizer):
         self.pressure_mean = mean_p
         self.rt_bounds = None
 
-    def _define_scipy_constraints(self):
+    def _define_scipy_constraints(self, slice_idxs):
         """Redefined from super()"""
         scipy_constraints = self._define_scipy_coef_sum_max_constraint()
         self.rt_bounds = self.define_rt_bounds()

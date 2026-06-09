@@ -114,9 +114,10 @@ class Coil(object):
         coef_channel_minmax (dict): Dict of ``(min, max)`` pairs for each coil channels. (None, None) is
                                     used to specify no bounds.
         name (str): Name of the coil.
+        channels_onoff (list): List of bool specifying if channels are on or off.
     """
 
-    def __init__(self, profile, affine, constraints):
+    def __init__(self, profile, affine, constraints, channels_onoff=None, channels_off_values=None):
         """ Initialize Coil
 
         Args:
@@ -131,6 +132,11 @@ class Coil(object):
                   used to specify no bounds. (Required)
                 * coefs_used (list): List of the coefficients that are currently being used. Defaults to 0 if not
                   set. (Optional)
+
+            channels_onoff (list): List of bool specifying if channels are on or off. If not specified, all channels
+                                   are on. (Optional)
+            channels_off_values (np.array): (n_slices x n_off_channels) array of values to set for the channels that are
+                                            off.
 
         Examples:
 
@@ -178,6 +184,21 @@ class Coil(object):
 
         self.dim = (np.nan,) * 4
         self.profile = profile
+
+        if channels_onoff is None:
+            channels_onoff = [True] * self.profile.shape[3]
+        else:
+            if len(channels_onoff) != self.profile.shape[3]:
+                raise ValueError(f"Length of channels_on must be the same as the number of "
+                                 f"channels: {self.profile.shape[3]}, currently: {len(channels_onoff)}")
+        self.channels_onoff = channels_onoff
+
+        if channels_off_values is not None:
+            if channels_off_values.shape[1] != sum([not on for on in channels_onoff]):
+                raise ValueError(f"Number of columns in channels_off_values must be the same as the number of "
+                                 f"channels that are off: {sum([not on for on in channels_onoff])}, currently: "
+                                 f"{channels_off_values.shape[1]}")
+        self.channels_off_values = channels_off_values
 
         if affine.shape != (4, 4):
             raise ValueError("Shape of affine matrix should be 4x4")
@@ -285,7 +306,7 @@ class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
 
     def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None,
-                 isocenter=np.array([0, 0, 0])):
+                 isocenter=np.array([0, 0, 0]), channels_onoff=None, channels_off_values=None):
         """
         Args:
             dim_volume (tuple): x, y and z dimensions.
@@ -304,6 +325,10 @@ class ScannerCoil(Coil):
             shim_cs (str): Coordinate system of the shims. Letter 1 'R' or 'L', letter 2 'A' or 'P', letter 3 'S' or
                            'I'. Only relevant if the manufacturer is unknown. Default: 'RAS'.
             isocenter (np.ndarray): Position of the isocenter in the image. Default: [0, 0, 0]
+            channels_onoff (list): List of bool specifying if channels are on or off.
+                                   If not specified, all channels are on. (Optional)
+            channels_off_values (np.ndarray): (n_slices x n_off_channels) array of values to set for the channels that are
+                                             off.
         """
         self.orders = orders
 
@@ -328,7 +353,7 @@ class ScannerCoil(Coil):
                                                                           self.orders)
         if 'coefs_used' in constraints.keys():
             constraints['coefs_used'] = restrict_to_orders(constraints['coefs_used'], self.orders)
-        super().__init__(sph_coil_profile, affine, constraints)
+        super().__init__(sph_coil_profile, affine, constraints, channels_onoff, channels_off_values)
 
     def _create_coil_profile(self, dim, manufacturer=None):
         # Create spherical harmonics coil profiles
