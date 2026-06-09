@@ -1112,8 +1112,21 @@
             }
         },
         {
-            "datatype": "fmap",
-            "suffix": "magnitude1",
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-sum",
+            "criteria": {
+                "Manufacturer": "Philips",
+                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|B0_MAP|B0MAP|B0 MAP|B0-MAP|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
+                "EchoNumber": "",
+                "PulseSequenceName": "FFE",
+                "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
+            }
+        },
+        {
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-1",
             "criteria": {
                 "Manufacturer": "Philips",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|B0_MAP|B0MAP|B0 MAP|B0-MAP|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
@@ -1123,36 +1136,15 @@
             }
         },
         {
-            "datatype": "fmap",
-            "suffix": "magnitude2",
+            "datatype": "anat",
+            "suffix": "FFE",
+            "custom_entities": "echo-2",
             "criteria": {
                 "Manufacturer": "Philips",
                 "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|B0_MAP|B0MAP|B0 MAP|B0-MAP|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
                 "EchoNumber": "2",
                 "PulseSequenceName": "FFE",
                 "ImageType": [".*", ".*", "M", "FFE", "M", "FFE", "MAGNITUDE"]
-            }
-        },
-        {
-            "datatype": "fmap",
-            "suffix": "phase1",
-            "criteria": {
-                "Manufacturer": "Philips",
-                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|B0_MAP|B0MAP|B0 MAP|B0-MAP|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
-                "EchoNumber": "1",
-                "PulseSequenceName": "FFE",
-                "ImageType": [".*", ".*", "PHASE MAP", "P", "FFE", "PHASE"]
-            }
-        },
-        {
-            "datatype": "fmap",
-            "suffix": "phase2",
-            "criteria": {
-                "Manufacturer": "Philips",
-                "ProtocolName": "^((?!field_map|fmap|fieldmap|field map|field-map|b0map|B0map|B0_MAP|B0MAP|B0 MAP|B0-MAP|b0_map|B0_map|b0 map|B0 map|b0-map|B0-map|_fm_|-fm-|fm2d|fm3d).)+$",
-                "EchoNumber": "2",
-                "PulseSequenceName": "FFE",
-                "ImageType": [".*", ".*", "PHASE MAP", "P", "FFE", "PHASE"]
             }
         },
         {
