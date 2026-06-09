@@ -210,14 +210,13 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     if off_channels and fname_off_channels_values is None:
         off_channels_values = np.zeros((n_slices, len(off_channels)))
     elif off_channels and fname_off_channels_values is not None:
-        with open(fname_off_channels_values, 'r') as f:
-            off_channels_values = np.loadtxt(f, delimiter=',')
-            if off_channels_values.shape[0] != n_slices:
-                raise ValueError(f"The number of rows in the off channels values file ({off_channels_values.shape[0]}) "
-                                 f"must match the number of slices in the target image ({n_slices}).")
-            if off_channels_values.shape[1] != len(off_channels):
-                raise ValueError(f"The number of columns in the off channels values file ({off_channels_values.shape[1]}) "
-                                 f"must match the number of channels turned off ({len(off_channels)}).")
+        off_channels_values = read_txt_file(fname_off_channels_values)
+        if off_channels_values.shape[0] != n_slices:
+            raise ValueError(f"The number of rows in the off channels values file ({off_channels_values.shape[0]}) "
+                             f"must match the number of slices in the target image ({n_slices}).")
+        if off_channels_values.shape[1] != len(off_channels):
+            raise ValueError(f"The number of columns in the off channels values file ({off_channels_values.shape[1]}) "
+                             f"must match the number of channels turned off ({len(off_channels)}).")
     elif not off_channels and fname_off_channels_values is not None:
         raise ValueError("You have provided a file with values for channels to turn off but you have not specified any "
                          "channels to turn off with the '--off-channels' option.")
@@ -1555,7 +1554,7 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
 @click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
               help="Reverse the order of the slices. Only relevant for 'custom-cl'", required=False)
 @click.option('--add-channels', 'to_add_channels',
-              help="Add channels to the text file that are 0s. ", type=click.STRING, default='', required=False)
+              help="Add channels to the text file that are 0s.", type=click.STRING, default='', required=False)
 @click.option('-o', '--output', 'fname_output', type=click.Path(),
               default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
               show_default=True, help="Filename to output shim text file.")
@@ -1673,6 +1672,7 @@ def add_channels(coefs: np.array, channels: list):
 def read_txt_file(fname_input):
     """
     Read the text file containing the shim coefficients
+
     Args:
         fname_input (str): Filename of the text file
 

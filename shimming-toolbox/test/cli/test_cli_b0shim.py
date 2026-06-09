@@ -14,7 +14,7 @@ import re
 import tempfile
 
 from shimmingtoolbox import __config_custom_coil_constraints__, __config_scanner_constraints__
-from shimmingtoolbox.cli.b0shim import define_slices_cli
+from shimmingtoolbox.cli.b0shim import define_slices_cli, read_txt_file
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.masking.softmasks import create_linear_softmask
@@ -671,7 +671,6 @@ class TestCliDynamic(object):
             data_fixed = np.zeros((3, 20))
             for i_1 in range(data_fixed.shape[0]):
                 for i_2 in range(data_fixed.shape[1]):
-                    # Todo: Fix fatsat always being output
                     if i_1 == 0:
                         if i_2 < 5:
                             data_fixed[i_1, i_2] = 0
@@ -2454,3 +2453,17 @@ class TestConvertShimCoefsFormat:
                 assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
                 assert f.readline() == "    0.000187     0.000205     0.000185   -16.000000\n"
                 assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"
+
+
+def test_read_text_file():
+    """Test the function to read text files with shim coefs"""
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_input = os.path.join(tmp, 'shim_coefs.txt')
+        with open(fname_input, 'w', encoding='utf-8') as f:
+            f.write("1,2,3,4\n")
+            f.write("5,6,7,8,\n")
+
+        data = read_txt_file(fname_input)
+        assert data.shape == (2, 4)
+        assert np.array_equal(data[0], np.array([1, 2, 3, 4]))
+        assert np.array_equal(data[1], np.array([5, 6, 7, 8]))
