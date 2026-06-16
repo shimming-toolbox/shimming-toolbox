@@ -79,7 +79,7 @@ class TestDilateBinaryMask(object):
 
         dilated = modify_binary_mask(input_mask, shape='None', operation='dilate')
 
-        assert np.all(input_mask[0] == dilated)
+        assert np.all(input_mask == dilated)
 
     def test_modify_binary_mask_wrong_size(self, input_mask):
 
