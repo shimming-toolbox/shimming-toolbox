@@ -64,7 +64,8 @@ def b0shim_cli():
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
-@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
+@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
+              required=False,
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
               required=False,
@@ -568,7 +569,8 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
                    "The 0th order is the f0 frequency.")
-@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(), default="",
+@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
+              required=False,
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']),
               required=False,
@@ -1081,7 +1083,6 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
     list_coils = []
 
     # Load custom coils
-    # TODO: Change coil profiles to NiftiCoilProfile objects
     for coil in coils:
         nii_coil_profiles = nib.load(coil[0])
         coil_data = nii_coil_profiles.get_fdata()
@@ -1099,7 +1100,7 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
-        if os.path.isfile(fname_constraints):
+        if fname_constraints is not None and os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 external_contraints = json.load(json_file)
         else:
