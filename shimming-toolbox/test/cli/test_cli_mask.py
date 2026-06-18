@@ -377,7 +377,7 @@ def test_cli_softmask_gaussian():
 
 
 @pytest.mark.bet
-def test_sli_mask_bet():
+def test_cli_mask_bet():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
@@ -395,7 +395,7 @@ def test_sli_mask_bet():
 
 
 @pytest.mark.bet
-def test_sli_mask_bet_4d():
+def test_cli_mask_bet_4d():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
 
