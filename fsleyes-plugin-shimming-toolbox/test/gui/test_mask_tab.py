@@ -23,33 +23,33 @@ def test_st_plugin_mask_threshold():
     options = {
         'threshold': '0.1',
     }
-    
+
     def _test_st_plugin_mask_threshold(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_mask_threshold)
-    
-    
+
+
 def test_st_plugin_mask_rectangle():
     options = {
         'size': '3',
         'center': '0',
     }
-    
+
     def _test_st_plugin_mask_rectangle(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_shape(view, overlayList, displayCtx, options=options, shape='Rectangle')
     run_with_orthopanel(_test_st_plugin_mask_rectangle)
-    
+
 
 def test_st_plugin_mask_box():
     options = {
         'size': '3',
         'center': '0',
     }
-    
+
     def _test_st_plugin_mask_box(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_shape(view, overlayList, displayCtx, options=options, shape='Box')
     run_with_orthopanel(_test_st_plugin_mask_box)
-    
+
 
 def test_st_plugin_mask_sphere():
     options = {
@@ -57,7 +57,7 @@ def test_st_plugin_mask_sphere():
         'center': '0',
         'size': None,
     }
-    
+
     def _test_st_plugin_mask_sphere(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_shape(view, overlayList, displayCtx, options=options, shape='Sphere')
     run_with_orthopanel(_test_st_plugin_mask_sphere)
@@ -69,19 +69,19 @@ def test_st_plugin_mask_bet():
         'f_param': '1',
         'g_param': '0.2',
     }
-    
+
     def _test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_bet(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_mask_bet)
 
-   
+
 def test_st_plugin_mask_erode():
     options = {
         'operation': 'Erode',
         'shape': 'Cube',
         'size': '3',
     }
-    
+
     def _test_st_plugin_mask_modify(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_modify(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_mask_modify)
@@ -93,30 +93,30 @@ def test_st_plugin_mask_dilate():
         'shape': 'Sphere',
         'size': '3',
     }
-    
+
     def _test_st_plugin_mask_modify(view, overlayList, displayCtx, options=options):
         __test_st_plugin_mask_modify(view, overlayList, displayCtx, options=options)
     run_with_orthopanel(_test_st_plugin_mask_modify)
 
-   
+
 def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
     """
     Test the Mask tab with the threshold option.
     """
     nb_terminal = get_notebook(view)
-    
+
     # Select the mask tab
     assert set_notebook_page(nb_terminal, "Mask")
-    
+
     # Get the mask tab
     mask_tab = get_tab(nb_terminal, MaskTab)
     assert mask_tab is not None
-    
+
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # fname for target
         fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         nii_target = nib.load(fname_target)
-        
+
         # Fill the widgets with the Mask tab options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -124,7 +124,7 @@ def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
             if isinstance(widget, wx.Choice) and widget.IsShown():
                 if widget.GetName() == 'mask_algorithms':
                     assert set_dropdown_selection(widget, 'Threshold')
-        
+
         # Fill the widgets with the BET options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -135,10 +135,10 @@ def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
                 widget.SetValue(options['threshold'])
             elif widget.GetName() == 'output':
                 widget.SetValue(os.path.join(tmp, 'mask.nii.gz'))
-                
+
         # Run the mask
         mask_tab.run_component_thr.run()
-        
+
         # Search for the output for a maximum of 20 seconds
         for _ in range(20):
             realYield()
@@ -146,7 +146,7 @@ def __test_st_plugin_mask_threshold(view, overlayList, displayCtx, options):
             time.sleep(1)
             if ovrlay_file:
                 break
-        
+
         # Make sure the output is correct
         assert ovrlay_file is not None
         assert os.path.exists(ovrlay_file.dataSource)
@@ -157,19 +157,19 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
     Test the Mask tab with the rectangle/box option.
     """
     nb_terminal = get_notebook(view)
-    
+
     # Select the mask tab
     assert set_notebook_page(nb_terminal, "Mask")
-    
+
     # Get the mask tab
     mask_tab = get_tab(nb_terminal, MaskTab)
     assert mask_tab is not None
-    
+
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # fname for target
         fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         nii_target = nib.load(fname_target)
-        
+
         # Fill the widgets with the Mask tab options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -177,7 +177,7 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
             if isinstance(widget, wx.Choice) and widget.IsShown():
                 if widget.GetName() == 'mask_algorithms':
                     assert set_dropdown_selection(widget, shape)
-        
+
         # Fill the widgets with the BET options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -192,10 +192,10 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
                 widget.SetValue(options['radius'])
             elif widget.GetName() == 'output':
                 widget.SetValue(os.path.join(tmp, 'mask.nii.gz'))
-                
+
         # Run the mask
         mask_tab.run_component_thr.run()
-        
+
         # Search for the output for a maximum of 20 seconds
         for _ in range(20):
             realYield()
@@ -203,7 +203,7 @@ def __test_st_plugin_mask_shape(view, overlayList, displayCtx, options, shape):
             time.sleep(1)
             if ovrlay_file:
                 break
-        
+
         # Make sure the output is correct
         assert ovrlay_file is not None
         assert os.path.exists(ovrlay_file.dataSource)
@@ -214,19 +214,19 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
     Test the Mask tab with the BET option.
     """
     nb_terminal = get_notebook(view)
-    
+
     # Select the mask tab
     assert set_notebook_page(nb_terminal, "Mask")
-    
+
     # Get the mask tab
     mask_tab = get_tab(nb_terminal, MaskTab)
     assert mask_tab is not None
-    
+
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # fname for target
         fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         nii_target = nib.load(fname_target)
-        
+
         # Fill the widgets with the Mask tab options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -234,7 +234,7 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
             if isinstance(widget, wx.Choice) and widget.IsShown():
                 if widget.GetName() == 'mask_algorithms':
                     assert set_dropdown_selection(widget, 'BET')
-        
+
         # Fill the widgets with the BET options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -246,11 +246,11 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
             elif widget.GetName() == 'input':
                 widget.SetValue(fname_target)
             elif widget.GetName() == 'output':
-                widget.SetValue(os.path.join(tmp, 'bet'))
-                
+                widget.SetValue(os.path.join(tmp, 'bet_mask.nii.gz'))
+
         # Run the mask
         mask_tab.run_component_bet.run()
-        
+
         # Search for the output for a maximum of 20 seconds
         for _ in range(20):
             realYield()
@@ -258,36 +258,36 @@ def __test_st_plugin_mask_bet(view, overlayList, displayCtx, options):
             time.sleep(1)
             if ovrlay_file:
                 break
-        
+
         # Make sure the output is correct
         assert ovrlay_file is not None
         assert os.path.exists(ovrlay_file.dataSource)
-        
+
 
 def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
     """
     Test the Mask tab with the Erode option.
     """
     nb_terminal = get_notebook(view)
-    
+
     # Select the mask tab
     assert set_notebook_page(nb_terminal, "Mask")
-    
+
     # Get the mask tab
     mask_tab = get_tab(nb_terminal, MaskTab)
     assert mask_tab is not None
-    
+
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         # fname for target
         fname_target = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'anat', 'sub-realtime_unshimmed_e1.nii.gz')
         nii_target = nib.load(fname_target)
-        
+
         nx, ny, nz = nii_target.shape
         mask = shapes(nii_target, 'cube',
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
                   len_dim1=10, len_dim2=10, len_dim3=nz - 10)
-        
+
         fname_output_file = "mask_modified"
         output_path = os.path.join(tmp, fname_output_file + ".nii.gz")
         # Fill the widgets with the Mask tab options
@@ -297,7 +297,7 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
             if isinstance(widget, wx.Choice) and widget.IsShown():
                 if widget.GetName() == 'mask_algorithms':
                     assert set_dropdown_selection(widget, 'Erode/Dilate')
-        
+
         # Fill the widgets with the Erode options
         list_widgets = []
         get_all_children(mask_tab.sizer_run, list_widgets)
@@ -312,10 +312,10 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
                 widget.SetValue(options['size'])
             elif widget.GetName() == 'output':
                 widget.SetValue(output_path)
-                
+
         # Run the mask
         mask_tab.run_component_modify.run()
-        
+
         # Search for the output for a maximum of 20 seconds
         for _ in range(20):
             realYield()
@@ -323,8 +323,7 @@ def __test_st_plugin_mask_modify(view, overlayList, displayCtx, options):
             time.sleep(1)
             if ovrlay_file:
                 break
-        
+
         # Make sure the output is correct
         assert ovrlay_file is not None
         assert os.path.exists(ovrlay_file.dataSource)
-        
