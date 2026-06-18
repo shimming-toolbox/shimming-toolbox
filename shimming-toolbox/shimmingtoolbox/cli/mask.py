@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*
 
-import pathlib
 import click
 import logging
-import os
 import nibabel as nib
 import numpy as np
+import os
+import pathlib
+import tempfile
 
 from shimmingtoolbox.masking.shapes import shape_square, shape_cube, shape_sphere
 import shimmingtoolbox.masking.threshold
 from shimmingtoolbox.masking.mask_mrs import mask_mrs
-from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers
+from shimmingtoolbox.utils import run_subprocess, create_output_dir, set_all_loggers, splitext
 from shimmingtoolbox.masking.softmasks import save_softmask, create_softmask
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask as modify_binary_mask_api
 
@@ -294,10 +296,10 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
                     "Create a brain mask in the coordinates of the input file. The mask is stored by default "
                        "under the name 'mask.nii.gz' in the output folder.")
 @click.option('-i', '--input', 'fname_input', type=click.Path(exists=True), required=True,
-              help="Input path of the nifti file to mask. This nifti file must be 3D. Supported "
+              help="Input path of the nifti file to mask. This nifti file must be 3D or 4D (it will be averaged). Supported "
                    "extensions are .nii or .nii.gz.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask'),
-              show_default=True, help="Name of output mask. Do not add extension")
+@click.option('-o', '--output', 'fname_output', type=click.Path(), default=os.path.join(os.curdir, 'mask.nii.gz'),
+              show_default=True, help="Name of the output mask. Supported extensions are .nii.gz.")
 @click.option('-f', '--f_param', required=False, type=float, default=0.5,
               help="fractional intensity threshold (0->1); default=0.5; smaller values give larger brain outline estimates")
 @click.option('-g', '--g_param', type=float, required=False, default=0,
@@ -306,30 +308,42 @@ def sct(fname_input, fname_output, contrast, centerline, file_centerline, brain,
 def bet(fname_input, fname_output, f_param, g_param, verbose):
 
     set_all_loggers(verbose)
+
     # Prepare the output
     create_output_dir(fname_output, is_file=True)
+
+    if not fname_input.endswith('.nii.gz'):
+        raise ValueError("Input file must be a nifti file with extension .nii.gz")
 
     # Make sure input path exists
     if not os.path.exists(fname_input):
         raise RuntimeError("Input file does not exist")
 
-    # Get the number of dimensions
-    nii_input = nib.load(fname_input)
-    ndim = nii_input.ndim
-    # If 4d, last dimension is time, average last dim for better SNR
-    if ndim == 4:
-        input_3d = np.mean(nii_input.get_fdata(), 3)
-        nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
-        fname_mean = os.path.join(os.path.dirname(fname_output), 'mean_3d.nii.gz')
-        nib.save(nii_3d, fname_mean)
-        fname_process = fname_mean
-    # If not then only set the processing filename
-    else:
-        fname_process = fname_input
+    # Create tmp directory,run BET in that directory, rename the output mask to fname_output
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
 
-    # Run BET
-    # Create the mask
-    run_subprocess(['bet2', fname_process, fname_output, '-f', str(f_param), '-g', str(g_param), '-m'])
+        # Get the number of dimensions
+        nii_input = nib.load(fname_input)
+        ndim = nii_input.ndim
+        # If 4d, last dimension is time, average last dim for better SNR
+        if ndim == 4:
+            input_3d = np.mean(nii_input.get_fdata(), 3)
+            nii_3d = nib.Nifti1Image(input_3d, affine=nii_input.affine, header=nii_input.header)
+            fname_mean = os.path.join(tmp, 'mean_3d.nii.gz')
+            nib.save(nii_3d, fname_mean)
+            fname_process = fname_mean
+        # If not then only set the processing filename
+        else:
+            fname_process = fname_input
+
+        fname_bet_input = os.path.join(tmp, 'bet')
+        fname_bet_mask_output = os.path.join(tmp, 'bet_mask.nii.gz')
+
+        # Run BET
+        # Create the mask
+        run_subprocess(['bet2', fname_process, fname_bet_input, '-f', str(f_param), '-g', str(g_param), '-m'])
+
+        os.rename(fname_bet_mask_output, fname_output)
 
     return fname_output
 

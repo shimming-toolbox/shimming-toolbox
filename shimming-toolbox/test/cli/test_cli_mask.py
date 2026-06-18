@@ -374,3 +374,46 @@ def test_cli_softmask_gaussian():
                              [[1.0, val1], [1.0, val1], [1.0, val1]]])
 
         assert np.allclose(softmask[58:62, 28:31, 7:9], expected)
+
+
+@pytest.mark.bet
+def test_sli_mask_bet():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'bet.nii.gz')
+
+        result = runner.invoke(mask_cli, ["bet",
+                                          "--input", fname_input,
+                                          "--output",  fname_output],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        mask = nib.load(fname_output).get_fdata()
+        assert 0 <= mask.max() <= 1
+
+
+@pytest.mark.bet
+def test_sli_mask_bet_4d():
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        runner = CliRunner()
+
+        fname_output = os.path.join(tmp, 'bet.nii.gz')
+
+        nii = nib.load(fname_input)
+        nii_4d = nib.Nifti1Image(np.repeat(np.expand_dims(nii.get_fdata(), 3), 3, axis=-1),
+                                 nii.affine,
+                                 nii.header)
+        fname_4d = os.path.join(tmp, 'input_4d.nii.gz')
+        nib.save(nii_4d, fname_4d)
+
+        result = runner.invoke(mask_cli, ["bet",
+                                          "--input", fname_4d,
+                                          "--output",  fname_output],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(fname_output)
+        mask = nib.load(fname_output).get_fdata()
+        assert 0 <= mask.max() <= 1
