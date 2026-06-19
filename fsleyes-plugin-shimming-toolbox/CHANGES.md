@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4 (2026-07-01)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.3...1.4)
+
+**ENHANCEMENT**
+ - **st_mask**: Simplify BET mask output file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/654)
+
+**INSTALLATION**
+ - Upgrade to python 3.11. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/641)
+
 ## 1.3 (2025-07-29)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.2...1.3)
 

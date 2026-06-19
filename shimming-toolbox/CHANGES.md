@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.4 (2026-07-01)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.3...1.4)
+
+**ENHANCEMENT**
+ - **st_b0shim**: Real-time B0 weighted shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/617)
+ - **st_b0shim**: Unify regularization methods. Use L2 regularization in all optimization methods.. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/626)
+ - **st_b0shim**: Zoom onto the region being shimmed when displaying figures. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/644)
+ - **st_b0shim**: Make sure an error appears if the constraint file does not exist. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/653)
+ - **st_b0shim, st_mask**: Weighted B0 shimming. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/581)
+ - **st_dicom_to_nifti**: Add Philips TFE file in the dcm2bids JSON sidecar. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/645)
+ - **st_mask**: Add ability to create masks for single voxel MRS using .sdat/.spar files. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/638)
+ - **st_mask**: Simplify BET mask output file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/654)
+ - **st_prepare_fieldmap**: Add PHASE in scalable phase data in read_nii. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/630)
+
+**BUG**
+ - **st_b0shim**: Fix MSE jacobian regularization. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/627)
+ - **st_b0shim**: Output shim values for all slices in the case of SMS when using slicewise-hrd. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/631)
+ - **st_b0shim**: Fix bug where an empty 'no_fatsat' coefficient file would output. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/647)
+ - Add env executables to the PATH when necessary. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/643)
+ - Fix pytest.mark.parametrize string-based parameter list now handling single element tuples. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/652)
+
+**INSTALLATION**
+ - Upgrade to python 3.11. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/641)
+
 ## 1.3 (2025-07-29)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.2...1.3)
 
