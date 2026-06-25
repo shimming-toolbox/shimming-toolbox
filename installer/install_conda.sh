@@ -17,9 +17,9 @@ cd "$ST_DIR"
 set -e
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    CONDA_INSTALLER=Mambaforge-Linux-x86_64.sh
+    CONDA_INSTALLER=Miniforge3-Linux-x86_64.sh
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-    CONDA_INSTALLER=Mambaforge-Darwin-x86_64.sh
+    CONDA_INSTALLER=Miniforge3-Darwin-x86_64.sh
 elif [[ "$OSTYPE" == "cygwin" ]]; then
     # POSIX compatibility layer and Linux environment emulation for Windows
     echo "Invalid operating system"
@@ -39,7 +39,7 @@ else
     exit 1
 fi
 
-CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/download/24.5.0-0/"$CONDA_INSTALLER"
+CONDA_INSTALLER_URL=https://github.com/conda-forge/miniforge/releases/latest/download/"$CONDA_INSTALLER"
 
 installConda() {
     curl -L --url $CONDA_INSTALLER_URL --output $TMP_DIR/$CONDA_INSTALLER
