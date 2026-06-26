@@ -246,7 +246,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     if slices == 'auto':
         list_slices = parse_slices(fname_target)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions', required=False))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
@@ -739,7 +739,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     if slices == 'auto':
         list_slices = parse_slices(fname_target)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions'))
+        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions', required=False))
 
     logger.info(f"The slices to shim are: {list_slices}")
 
