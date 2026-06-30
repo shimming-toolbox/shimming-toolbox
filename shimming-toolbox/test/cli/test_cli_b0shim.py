@@ -2194,7 +2194,7 @@ class TestAddShimCoefs:
 
 
 class TestConvertShimCoefsFormat:
-    def test_convert_shim_coefs_vol_sl(self):
+    def test_convert_shim_coefs_vol_sl_add_channels(self):
         """Test the combine shim coefs function"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             fname_input = os.path.join(tmp, 'shim_coefs.txt')
@@ -2232,6 +2232,31 @@ class TestConvertShimCoefsFormat:
                                         "0.000000, 0.000000, 0.000000,\n")
                 assert f.readline() == ("0.000000, 1.000000, 2.000000, 3.000000, 0.000000, 4.000000, 0.000000, "
                                         "0.000000, 0.000000, 0.000000,\n")
+
+    def test_convert_shim_coefs_sl_sl_remove_channels(self):
+        """Test the combine shim coefs function"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,2,3,4,\n")
+                f.write("2,3,4,5,\n")
+                f.write("3,4,5,6,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--input', fname_input,
+                                             '--input-file-format', 'slicewise',
+                                             '--output-file-format', 'slicewise',
+                                             '--remove-channels', '0,3',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "2.000000, 3.000000,\n"
+                assert f.readline() == "3.000000, 4.000000,\n"
+                assert f.readline() == "4.000000, 5.000000,\n"
 
     def test_convert_shim_coefs_ch_vol(self):
         """Test the combine shim coefs function"""

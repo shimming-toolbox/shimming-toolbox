@@ -9,6 +9,8 @@ the gradient method in a st_shim CLI with the argument being:
 """
 
 import click
+from cloup import command, option, option_group, group
+from cloup.constraints import RequireAtLeast, mutually_exclusive, all_or_none, constraint
 import copy
 import json
 import nibabel as nib
@@ -36,7 +38,7 @@ logger = logging.getLogger(__name__)
 AVAILABLE_ORDERS = [-1, 0, 1, 2, 3]
 
 
-@click.group(context_settings=CONTEXT_SETTINGS,
+@group(context_settings=CONTEXT_SETTINGS,
              help="Shim according to the specified algorithm as an argument e.g. st_b0shim xxxxx")
 def b0shim_cli():
     pass
@@ -1421,40 +1423,47 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
     write_coefs_to_text_file(coefs, fname_output, 'slicewise')
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
-              help="Text file containing the shim coefficients. Supported formats: .txt")
-@click.option('--input-file-format', 'i_format',
-              type=click.Choice(['volume', 'slicewise', 'chronological']), required=True,
-              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
-                   "Use 'slicewise' if the inputs in row 1, 2, 3, etc. are the shim coefficients for slice "
-                   "1, 2, 3, etc. Use 'chronological' if the inputs in row 1, 2, 3, etc. are the shim value "
-                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. Use volume if the intput is a single set of shim "
-                   "coefficients.")
-@click.option('--output-file-format', 'o_format',
-              type=click.Choice(['volume', 'slicewise', 'chronological', 'custom-cl']), required=True,
-              help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
-                   "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                   "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                   "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                   "captured by the controller of the shim amplifier. 'custom-cl' is a custom format for a "
-                   "collaborator. Use volume to output a single set of shim coefficients.")
-@click.option('--target', 'fname_target', nargs=1, type=click.Path(exists=True), required=False,
-              help="Target image the text file is based on. This is used to infer slice timing information when "
-                   "converting between 'slicewise' and 'chronological'. It is also used to infer the number of slices "
-                   "when converting from volume to any other format. Supported formats: .nii, .nii.gz")
+@command(context_settings=CONTEXT_SETTINGS)
+@option_group("Input/output files",
+              option('-i', '--input', 'fname_input', nargs=1, type=click.Path(exists=True), required=True,
+                     help="Text file containing the shim coefficients. Supported formats: .txt"),
+              option('-o', '--output', 'fname_output', type=click.Path(),
+                     default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'), show_default=True,
+                     help="Filename to output shim text file."),
+              option('--target', 'fname_target', nargs=1, type=click.Path(exists=True), required=False,
+                     help="Target image the text file is based on. This is used to infer slice timing information when "
+                          "converting between 'slicewise' and 'chronological'. It is also used to infer the number of "
+                          "slices when converting from volume to any other format. Supported formats: .nii, .nii.gz"))
+@option_group("File formats",
+              option('--input-file-format', 'i_format',
+                     type=click.Choice(['volume', 'slicewise', 'chronological']), required=True,
+                     help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                          "Use 'slicewise' if the inputs in row 1, 2, 3, etc. are the shim coefficients for slice "
+                          "1, 2, 3, etc. Use 'chronological' if the inputs in row 1, 2, 3, etc. are the shim value "
+                          "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                          "captured by the controller of the shim amplifier. Use volume if the intput is a single set "
+                          "of shim coefficients."),
+              option('--output-file-format', 'o_format',
+                     type=click.Choice(['volume', 'slicewise', 'chronological', 'custom-cl']), required=True,
+                     help="Syntax used to describe the sequence of shim events for a coil or coil channel. "
+                          "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                          "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                          "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                          "captured by the controller of the shim amplifier. 'custom-cl' is a custom format for a "
+                          "collaborator. Use volume to output a single set of shim coefficients."))
+@option_group("Add/remove channels (mutually exclusive)",
+              option('--add-channels', 'to_add_channels', type=click.STRING, required=False,
+                     help="Add channels to the text file that are 0s. Use comma separated vales (e.g.: 0,3,4)."),
+              option('--remove-channels', 'to_remove_channels', type=click.STRING,
+                     required=False,
+                     help="Remove channels from the text file. Use comma separated vales (e.g.: 0,3,4)."))
+@constraint(mutually_exclusive, ['to_add_channels', 'to_remove_channels'])
 @click.option('--reverse-slice-order', 'rev_slice_order', is_flag=True, default=False,
               help="Reverse the order of the slices. Only relevant for 'custom-cl'", required=False)
-@click.option('--add-channels', 'to_add_channels',
-              help="Add channels to the text file that are 0s. ", type=click.STRING, default='', required=False)
-@click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(os.path.abspath(os.curdir), 'shim_coefs.txt'),
-              show_default=True, help="Filename to output shim text file.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
 def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev_slice_order, fname_output,
-                              to_add_channels, verbose):
+                              to_add_channels, to_remove_channels, verbose):
     """ Convert the shim coefficients from one format to another."""
 
     # Set logger level
@@ -1471,9 +1480,18 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
         nii_target = nib.load(fname_target)
 
     coefs = read_txt_file(fname_input)
+    n_channels = coefs.shape[1]
 
-    to_add_channels = parse_add_channels(to_add_channels, 9)
-    coefs = add_channels(coefs, to_add_channels)
+    if to_add_channels is not None:
+        logger.debug("Adding channels")
+        to_add_channels = parse_add_channels(to_add_channels, n_channels)
+        coefs = add_channels(coefs, to_add_channels)
+    elif to_remove_channels is not None:
+        logger.debug("Removing channels")
+        to_remove_channels = parse_remove_channels(to_remove_channels, n_channels)
+        coefs = np.delete(coefs, to_remove_channels, axis=1)
+    else:
+        pass
 
     # convert coefs
     if i_format == 'volume':
@@ -1522,8 +1540,8 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
 
 
 def parse_add_channels(channels: str, n_channels: int):
-    """
-    Parse the channels to add to the shim coefficients
+    """ Parse the channels to add to the shim coefficients
+
     Args:
         channels (str): String containing the channels to add
         n_channels (int): Number of channels that there currently is
@@ -1536,6 +1554,10 @@ def parse_add_channels(channels: str, n_channels: int):
         if channels == ['']:
             return []
         channels = [int(channel) for channel in channels]
+        if any(channel < 0 for channel in channels):
+            raise ValueError("The provided channels to add must be positive integers")
+        if len(set(channels)) != len(channels):
+            raise ValueError("The provided channels to add must be unique")
         channels.sort()
         if len(channels) + n_channels <= max(channels):
             raise ValueError("The provided channels to add would leave gaps in the channels")
@@ -1544,9 +1566,37 @@ def parse_add_channels(channels: str, n_channels: int):
         raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")
 
 
+def parse_remove_channels(channels: str, n_channels: int):
+    """ Parse the channels to remove to the shim coefficients
+
+    Args:
+        channels (str): String containing the channels to remove
+        n_channels (int): Number of channels that there currently is
+
+    Returns:
+        list: List of channels to remove
+    """
+    channels = channels.split(',')
+    try:
+        if channels == ['']:
+            return []
+        channels = [int(channel) for channel in channels]
+        if any(channel < 0 for channel in channels):
+            raise ValueError("The provided channels to add must be positive integers")
+        if len(set(channels)) != len(channels):
+            raise ValueError("The provided channels to add must be unique")
+        channels.sort()
+        if any(channel >= n_channels for channel in channels):
+            raise ValueError("The provided channels to remove are higher than the number of channels in the text file")
+        return channels
+    except ValueError:
+        raise ValueError(f"Invalid channels: {channels}\n Channels must be integers ")
+
+
 def add_channels(coefs: np.array, channels: list):
     """
     Add channels to the shim coefficients
+
     Args:
         coefs (np.array): Shim coefficients (n_shims x n_channels)
         channels (list): List of channels to add
