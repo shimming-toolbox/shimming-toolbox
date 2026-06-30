@@ -2198,6 +2198,7 @@ def define_slices(n_slices: int, factor=1, method='ascending', software_version=
         factor (int): Number of slices per shim.
         method (str): Defines how the slices should be sorted, supported methods include: 'interleaved', 'ascending',
                       'descending', 'volume'. See Examples for more details.
+        software_version (str): Software version of the scanner.
 
     Returns:
         list: 1D list containing tuples of dim3 slices to shim. (dim1, dim2, dim3)
@@ -2240,7 +2241,7 @@ def define_slices(n_slices: int, factor=1, method='ascending', software_version=
             leftover = n_slices % factor
 
         else:
-            if software_version != 'syngo MR E11':
+            if software_version is None or software_version != 'syngo MR E11':
                 logger.warning("SMS has only been tested with syngo MR E11. If you are using a different software "
                                "version, the slices might not be interleaved or grouped correctly.")
 

@@ -116,18 +116,7 @@ class RunComponent(Component):
                     self.panel.terminal_component.log_to_terminal(
                         "Could not fetch subject and/or path to load to overlay"
                     )
-                    
-            if self.st_function == "st_mask bet":
-                # Remove extension from output
-                fname_output = self.output
-                path = pathlib.Path(fname_output)
-                while path.suffix:
-                    path = path.with_suffix('')
 
-                mask = str(path) + '_mask.nii.gz'
-                self.output_paths.clear()
-                self.output_paths.append(mask)
-                
             self.send_output_to_overlay()
 
             self.output_paths.clear()

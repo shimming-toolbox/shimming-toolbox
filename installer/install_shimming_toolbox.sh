@@ -39,9 +39,6 @@ function edit_shellrc() {
 
 source "${ST_DIR}/${PYTHON_DIR}/bin/activate"
 
-print info "Installing python"
-"$ST_DIR"/"${PYTHON_DIR}"/bin/mamba install -y -c conda-forge python=3.11
-
 print info "Installing shimming-toolbox"
 cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/dcm2bids.json" "${ST_DIR}/dcm2bids.json"
 cp "${ST_PACKAGE_DIR}/shimmingtoolbox/config/custom_coil_constraints.json" "${ST_DIR}/custom_coil_constraints.json"
