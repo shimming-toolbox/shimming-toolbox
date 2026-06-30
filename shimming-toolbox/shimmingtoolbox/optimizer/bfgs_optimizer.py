@@ -20,7 +20,7 @@ class BFGSOpt(LsqOptimizer):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='L-BFGS-B',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
@@ -29,7 +29,7 @@ class BFGSOpt(LsqOptimizer):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(a, b, c),
                                        method='L-BFGS-B',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 
@@ -37,7 +37,7 @@ class BFGSOpt(LsqOptimizer):
             currents_sp = opt.minimize(self._criteria_func, currents_0,
                                        args=(unshimmed_vec, coil_mat, factor),
                                        method='L-BFGS-B',
-                                       bounds=self.merged_bounds,
+                                       bounds=self.merged_bounds_off_channels,
                                        jac=self._jacobian_func,
                                        options={'maxiter': 10000, 'ftol': 1e-9})
 

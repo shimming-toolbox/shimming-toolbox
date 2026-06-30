@@ -39,10 +39,13 @@ class QuadProgOpt(OptimizerUtils):
         self.opt_criteria = None
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
 
-    def _get_linear_inequality_matrices(self):
+    def _get_linear_inequality_matrices(self, slice_idxs):
         """
         This functions returns the linear inequality matrix and vector, that will be used in the optimization, such as
         g @ x < h, to see all details please see the PR 458
+
+        Args:
+            slice_idxs (tuple): Tuple of the slice indexes used for the optimization
 
         Returns:
             (tuple) : tuple containing:
@@ -60,9 +63,10 @@ class QuadProgOpt(OptimizerUtils):
         start_index = n
         for i_coil in range(n_coils):
             coil = self.coils[i_coil]
-            end_index = start_index + coil.dim[3]
+            end_index = start_index + np.sum(coil.channels_onoff)
             if coil.coef_sum_max != np.inf:
-                sum_constraints.append(coil.coef_sum_max)
+                coef_sum_max = self._calc_coef_sum_max_for_a_coil_and_slice_idxs(coil, slice_idxs)
+                sum_constraints.append(coef_sum_max)
                 tmp = np.zeros([2 * n])
                 tmp[start_index: end_index] = 1
                 g_bis.append(tmp)
@@ -72,9 +76,9 @@ class QuadProgOpt(OptimizerUtils):
 
         # Then we want to see if the currents are between a lower, and an upper bound
         lb = np.zeros([n, 1])
-        lb[:, 0] = np.array([x[0] for x in self.merged_bounds])
+        lb[:, 0] = np.array([x[0] for x in self.merged_bounds_off_channels])
         ub = np.zeros([n, 1])
-        ub[:, 0] = np.array([x[1] for x in self.merged_bounds])
+        ub[:, 0] = np.array([x[1] for x in self.merged_bounds_off_channels])
 
         # We create both arrays, but if there is no sum constraints, then there is no need to add this constraint
         if np.any(sum_constraints):
@@ -113,7 +117,7 @@ class QuadProgOpt(OptimizerUtils):
 
         return mse_coef + current_regularization_coef
 
-    def _get_currents(self, unshimmed_vec, coil_mat, currents_0):
+    def _get_currents(self, unshimmed_vec, coil_mat, currents_0, slice_idxs):
         """
         Returns the currents needed for the shimming, redefined from basic_optimizer because of the constraints
         Args:
@@ -121,19 +125,20 @@ class QuadProgOpt(OptimizerUtils):
             coil_mat (np.ndarray): 2D flattened array (point, channel) of masked coils
                                       (axis 0 must align with unshimmed_vec)
             currents_0 (np.ndarray) : Initial guess for the function
+            slice_idxs (tuple): Tuple of the slice indexes used for the optimization
 
         Returns:
             np.ndarray : Vector of currents that make the better shimming
 
         """
         # This allows to scale the output for the minimize function to avoid positive directional linesearch
-        stability_factor = self.get_stability_factor(self._initial_guess_zeros(), unshimmed_vec,
+        stability_factor = self.get_stability_factor(self.get_initial_guess('zeros'), unshimmed_vec,
                                                      np.zeros_like(coil_mat),
                                                      factor=1)
         # We want to minimize 1/2 x.T @ cost_matrix @ x - cost_vector.T @ x
         cost_matrix, cost_vector = self.get_cost_matrices(currents_0, unshimmed_vec, coil_mat, stability_factor)
         # We want to get the linear inequality matrix and vector, such as g @ x < h
-        ineq_matrix, ineq_vector = self._get_linear_inequality_matrices()
+        ineq_matrix, ineq_vector = self._get_linear_inequality_matrices(slice_idxs)
 
         # We use the quadprog solver to solve the quadratic optimization problem
         opt_result = quadprog.solve_qp(cost_matrix, -cost_vector, ineq_matrix.T, -ineq_vector[:, 0])
@@ -201,12 +206,15 @@ class PmuQuadProgOpt(QuadProgOpt):
         self.pressure_min = pmu.min
         self.pressure_max = pmu.max
 
-    def _get_linear_inequality_matrices(self):
+    def _get_linear_inequality_matrices(self, slice_idxs):
 
         """
         This functions returns the linear inequality matrix and vector that will be used in the optimization, such as
         g @ x < h. To see all details please see the PR 458
         Redefined from QuadProg to match the new bounds and constraints
+
+        Args:
+            slice_idxs (tuple): Tuple of the slice indexes used for the optimization
 
         Returns:
             (tuple) : tuple containing:
