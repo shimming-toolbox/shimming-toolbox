@@ -24,3 +24,9 @@ FAQ
 
     The mathematical foundations and equations used in the optimization algorithms are documented here:
     :doc:`Objective Function Equations for Magnetic Field Shimming Optimization <../miscellaneous/residuals_eq>`.
+
+6. **How can I make sure my constraints are respected when optimizing?**
+
+    The st_b0shim CLI includes options to set constraints on the coil currents. To find out more about how to fill the
+    constraint files (for custom coils or canner coils), refer to this document:
+    :doc:`All about constraint files <../miscellaneous/constraint_file>`.
