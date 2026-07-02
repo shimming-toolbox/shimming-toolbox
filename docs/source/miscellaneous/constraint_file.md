@@ -3,7 +3,7 @@ orphan: true
 ---
 
 # All about constraint files
-This page explains how Shimming Toolbox uses constraint files to respect the limits of your shim coil when optimizing the shim solution.
+This page explains how Shimming Toolbox uses constraint files to respect the limits of your shim coil when optimizing the shim coefficients.
 Both scanner coil and custom coil constraint files are discussed.
 
 ## What are constraint files?
@@ -32,7 +32,8 @@ Scanner's typically do not have a limit for this, you can write `null` to disreg
 This option is usually useful for custom constraint files, not scanner constraint files.
 - `coefs_used`: A dictionary to specify the shim value used when acquiring the B0 map. These values are specified in
 the same order as `coef_channel_minmax`. Use `null` instead of a list of values to let Shimming Toolbox read the
-metadata of the B0 map to figure out these values.
+metadata of the B0 map to figure out these values. See
+[Option 1: How can Shimming Toolbox know the current shim values and scanners constraints automatically (recommended)](#option-1-how-can-shimming-toolbox-know-the-current-shim-values-and-scanners-constraints-automatically-recommended) for more information.
 
 Here is an example of a scanner constraint file for a Siemens MAGNETOM Prisma Fit.:
 ```
@@ -111,7 +112,7 @@ For other manufacturers, please reach out to us so we can find how to read the c
 
 ### Option 2: How do I find the values to fill in the scanner constraint file?
 #### Siemens
-The order 0 (frequency) minimum and maximum value can be found in the manual frequency adjustment tab when a protocol is loaded on the scanner.
+The order 0 (frequency) minimum and maximum values can be found in the manual frequency adjustment tab when a protocol is loaded on the scanner.
 
 Orders 1 and 2 can be found by using the following command in the terminal on the scanner:
 
@@ -138,7 +139,7 @@ Shimming Toolbox's compatibility with Philips scanners. The patch automatically 
 #### Other manufacturers
 For other scanners, please reach out to us so we can help figure out the correct values to fill in.
 
-##Custom coil constraint files
+## Custom coil constraint files
 ### What are custom coil constraint files
 The coil constraint file is a JSON file that lists the different parameters used by Shimming Toolbox to respect the custom coils contraints.
 
@@ -185,5 +186,5 @@ The following algorithms support scanner constraints (--optimizer-method):
 - `quad_prog`: Minimum and maximum bounds (coef_channel_minmax), and maximum sum of absolute values (coef_sum_max)
 - `bfgs`: Minimum and maximum bounds (coef_channel_minmax)
 
-The following algorithms *do not* support scanner constraints:
+The following algorithms **do not** support scanner constraints:
 - `pseudo_inverse`
