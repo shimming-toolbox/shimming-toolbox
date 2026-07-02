@@ -14,7 +14,7 @@ import re
 import tempfile
 
 from shimmingtoolbox import __config_custom_coil_constraints__, __config_scanner_constraints__
-from shimmingtoolbox.cli.b0shim import define_slices_cli
+from shimmingtoolbox.cli.b0shim import define_slices_cli, read_txt_file
 from shimmingtoolbox.cli.b0shim import b0shim_cli
 from shimmingtoolbox.masking.shapes import shapes
 from shimmingtoolbox.masking.softmasks import create_linear_softmask
@@ -639,6 +639,86 @@ class TestCliDynamic(object):
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_167006.txt"))
+
+    def test_cli_dynamic_channels_off(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with input coil and scanner coil"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            # Dummy coil
+            nii_dummy_coil, dummy_coil_constraints = _create_dummy_coil(nii_fmap)
+            fname_dummy_coil = os.path.join(tmp, 'dummy_coil.nii.gz')
+            nib.save(nii_dummy_coil, fname_dummy_coil)
+
+            # Save json
+            fname_constraints = os.path.join(tmp, 'dummy_coil.json')
+            with open(fname_constraints, 'w', encoding='utf-8') as f:
+                json.dump(dummy_coil_constraints, f, indent=4)
+
+            # Create text file with values to fix in the optimization:
+            data_fixed = np.zeros((3, 20))
+            for i_1 in range(data_fixed.shape[0]):
+                for i_2 in range(data_fixed.shape[1]):
+                    if i_1 == 0:
+                        if i_2 < 5:
+                            data_fixed[i_1, i_2] = 0
+                        elif i_2 >= 15:
+                            data_fixed[i_1, i_2] = 0
+                        else:
+                            data_fixed[i_1, i_2] = 0.1
+                    elif i_1 == 1:
+                        if i_2 < 4:
+                            data_fixed[i_1, i_2] = 0.2
+                        elif i_2 >= 16:
+                            data_fixed[i_1, i_2] = 0.3
+                        else:
+                            data_fixed[i_1, i_2] = 0.4
+                    else:
+                        data_fixed[i_1, i_2] = 0
+
+            fname_fixed = os.path.join(tmp, 'fixed.txt')
+            np.savetxt(fname_fixed, data_fixed.T, delimiter=', ', fmt='%.2f')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--coil', fname_dummy_coil, fname_constraints,
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--optimizer-method', 'least_squares',
+                                             '--scanner-coil-order', '1',
+                                             '--off-channels', '0,8,9',
+                                             '--off-channels-values', fname_fixed,
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
+            coefs = np.zeros_like(data_fixed)
+            with open(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"), 'r') as file:
+                lines = file.readlines()
+                for i_line, line in enumerate(lines):
+                    line_coefs = line.strip().split(',')
+                    coefs[0:2, i_line] = [line_coefs[0], line_coefs[8]]
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil1_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil1_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                for i_line, line in enumerate(lines):
+                    line_coefs = line.strip().split(',')
+                    coefs[2, i_line] = line_coefs[0]
+            assert np.allclose(coefs, data_fixed)
 
     def test_cli_dynamic_format_chronological_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with chronological-coil o_format"""
@@ -2373,3 +2453,17 @@ class TestConvertShimCoefsFormat:
                 assert f.readline() == "(G/cm)     x            y            z      bo (Hz)\n"
                 assert f.readline() == "    0.000187     0.000205     0.000185   -16.000000\n"
                 assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"
+
+
+def test_read_text_file():
+    """Test the function to read text files with shim coefs"""
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        fname_input = os.path.join(tmp, 'shim_coefs.txt')
+        with open(fname_input, 'w', encoding='utf-8') as f:
+            f.write("1,2,3,4\n")
+            f.write("5,6,7,8,\n")
+
+        data = read_txt_file(fname_input)
+        assert data.shape == (2, 4)
+        assert np.array_equal(data[0], np.array([1, 2, 3, 4]))
+        assert np.array_equal(data[1], np.array([5, 6, 7, 8]))
