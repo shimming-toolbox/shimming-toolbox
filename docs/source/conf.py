@@ -41,6 +41,7 @@ extensions = ["sphinx.ext.githubpages",
 
 autosectionlabel_prefix_document = True
 autosectionlabel_maxdepth = 2
+myst_heading_anchors = 3
 
 # Autodoc configuration
 autodoc_mock_imports = [
