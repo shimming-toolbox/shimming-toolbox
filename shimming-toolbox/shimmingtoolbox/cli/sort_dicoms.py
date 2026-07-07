@@ -42,9 +42,15 @@ def sort_dicoms(path_input, is_recursive, recursive_depth, path_output, verbose)
     for fname_dcm in sorted(list_dicoms):
         # Create the file path
         ds = dcmread(fname_dcm)
-        series_number = ds["SeriesNumber"].value
-        series_description = ds["SeriesDescription"].value
-        folder_name = f"{series_number:02d}-" + series_description
+
+        if ds.get("SeriesNumber") is None or ds.get("SeriesDescription") is None:
+            logger.debug(f"{fname_dcm} has no SeriesNumber or SeriesDescription")
+            folder_name = ""
+        else:
+            series_number = ds["SeriesNumber"].value
+            series_description = ds["SeriesDescription"].value
+            folder_name = f"{series_number:02d}-" + series_description
+
         path_folder_output = os.path.join(path_output, folder_name)
 
         # Create output directory with the new name if it does not exist
@@ -96,5 +102,6 @@ def get_dicom_paths(path, is_recursive, subfolder_depth=0, max_depth=DEFAULT_REC
             continue
 
         list_dicoms.append(fname_tmp)
+        logger.debug(f"Found DICOM: {fname_tmp}")
 
     return list_dicoms
