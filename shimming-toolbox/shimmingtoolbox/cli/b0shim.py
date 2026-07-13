@@ -68,7 +68,7 @@ def b0shim_cli():
               help="Spherical harmonics orders to be used in optimization."
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
-                   "The 0th order is the f0 frequency. For a more optimal shim, use all available orders available "
+                   "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
                    "(e.g: 0,1 instead of only 1)")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               required=False,
@@ -100,7 +100,7 @@ def b0shim_cli():
                    "interleaved: Slice-wise shim with interleaved slices (0,2,4,...,1,3,5,...),"
                    "ascending: Slice-wise shim with ascending slices (0,1,2,...),"
                    "descending: Slice-wise shim with descending slices (...,2,1,0),"
-                   "auto, Slice-wise shim with automatic slice order parsing.")
+                   "auto: Slice-wise shim with automatic slice order parsing.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1,
               show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
@@ -624,7 +624,7 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
               help="Spherical harmonics orders to be used in optimization."
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
-                   "The 0th order is the f0 frequency. For a more optimal shim, use all available orders available "
+                   "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
                    "(e.g: 0,1 instead of only 1)")
 @click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.STRING, default=None,
               show_default=True,

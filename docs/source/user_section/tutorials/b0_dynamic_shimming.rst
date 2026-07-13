@@ -85,7 +85,7 @@ Dynamic shimming
 - Select the mask in the overlay and click the button *Input Mask*. CLI option: `--mask <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-mask>`__.
 - Select a *Slice Ordering* of Ascending. This option will perform slice-wise shimming and select an acquisition slice order of ascending. Selecting Volume with perform a volume shim. Selecting all other options will perform a slice-wise shim. For more details, see CLI option: `--slices <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-slices>`__.
 - Select a *Slice Factor* of 1 (should be the default). Relevant when using multi band acquisitions. CLI option: `--slice-factor <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-slice-factor>`__.
-- Check the 0 and 1 *Scanner Order* check boxes. It means that shimming will be
+- Select the 0 and 1 *Scanner Order* checkboxes. Shimming will be
   performed with the frequency and the linear gradients of the scanner. In typical scanners, order 2
   or higher is not compatible with dynamic shimming, due to the high inductance of the
   shim coils (they cannot be updated as rapidly as the gradient coils). CLI option: `--scanner-coil-order <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-scanner-coil-order>`__.
