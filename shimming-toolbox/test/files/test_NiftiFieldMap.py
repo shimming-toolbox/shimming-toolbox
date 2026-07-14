@@ -38,6 +38,17 @@ def test_niftifieldmap_init(temp_nifti_file):
     assert nifti.data.shape == (10, 10, 10)
 
 
+def test_niftifieldmap_static_4d_singleton(temp_nifti_file):
+    """Test NiftiFieldMap initialization with valid file."""
+    nifti = NiftiFieldMap(temp_nifti_file, 3)
+    new_data = np.ones((10, 10, 10, 1))
+    new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
+    nifti.set_nii(new_nii)
+    assert isinstance(nifti.nii, nib.Nifti1Image)
+    assert isinstance(nifti.data, np.ndarray)
+    assert nifti.data.shape == (10, 10, 10)
+
+
 def test_set_nii_wrong_dim(temp_nifti_file):
     """Test setting a new NIfTI image."""
     nifti = NiftiFieldMap(temp_nifti_file, 3)

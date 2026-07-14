@@ -49,18 +49,23 @@ class NiftiFieldMap(NiftiFile):
             numpy.array : The extended NIfTI image if the field map was extended, otherwise the original NIfTI image.
         """
         self.extended = False
+
+        # If realtime, fmap must be 4d
+        if self.is_realtime and self.ndim != 4:
+            raise ValueError("Fieldmap must be 4d for realtime processing")
+
+        # If not realtime, ndim should be 2 or 3 unless last dimension has 1 volume
+        if not self.is_realtime and self.ndim == 4 and self.shape[3] == 1:
+            super().set_nii(nib.Nifti1Image(self.data[..., 0], self.affine, header=self.header))
+
         if self.ndim != 3 and not self.is_realtime:
             if self.ndim == 2:
-                super().set_nii(nib.Nifti1Image(self.data[..., np.newaxis], self.affine,
-                                                header=self.header))
+                super().set_nii(nib.Nifti1Image(self.data[..., np.newaxis], self.affine, header=self.header))
                 extended_nii = self.extend_fmap_to_kernel_size(dilation_kernel_size)
                 self.extended = True
             else:
                 raise ValueError("Fieldmap must be 2d or 3d")
         else:
-            if self.is_realtime and self.ndim != 4:
-                raise ValueError("Fieldmap must be 4d for realtime processing")
-
             for i_axis in range(3):
                 if self.shape[i_axis] < dilation_kernel_size:
                     self.extended = True
