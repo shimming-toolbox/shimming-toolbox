@@ -206,7 +206,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     scanner_coil_order = parse_orders(scanner_coil_order)
     # Output a warning if not shimming with the optimal shim orders ("0", "0,1", "0,1,2")
     if scanner_coil_order not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]]:
-        logger.warning("You are not shimming with the optimal shim orders. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
+        logger.warning(f"You are not shimming with the optimal shim orders: {scanner_coil_order}. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
 
     # Parse the channels to turn off
     off_channels = parse_channels_off(off_channels)
@@ -744,7 +744,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     # Output a warning if not shimming with the optimal shim orders ("0", "0,1", "0,1,2")
     if (scanner_coil_order_static not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]] or
         scanner_coil_order_riro not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]]):
-        logger.warning("You are not shimming with the optimal shim orders. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
+        logger.warning(f"You are not shimming with the optimal shim orders, static: {scanner_coil_order_static}, riro: {scanner_coil_order_riro}. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
 
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, is_realtime=True)
