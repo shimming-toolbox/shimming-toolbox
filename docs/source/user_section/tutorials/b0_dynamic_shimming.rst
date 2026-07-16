@@ -55,6 +55,14 @@ Create a Fieldmap
 - Click *Run*.
 - The output fieldmap should load automatically.
 
+.. admonition:: Note
+
+  The command line interface (CLI) equivalent of the steps performed above can be done using `st_prepare_fieldmap <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#st-prepare-fieldmap>`__.
+  See that page for the list of the different arguments/options available and how to use them. For convenience, the CLI options corresponding to the some of the steps above are:
+  `--mag <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_prepare_fieldmap-mag>`__,
+  `--unwrapper <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_prepare_fieldmap-unwrapper>`__,
+  `--output <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_prepare_fieldmap-o>`__.
+
 Create a Mask
 ~~~~~~~~~~~~~
 
@@ -74,21 +82,43 @@ Create a Mask
 - Click *Run*.
 - The output mask should load automatically.
 
+.. admonition:: Note
+
+  The CLI equivalent of the steps performed above can be done using `st_mask box <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#st-mask-box>`__.
+  For convenience, the CLI options corresponding to some of the steps above are:
+  `--input <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_mask-box-i>`__,
+  `--center <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_mask-box-center>`__,
+  `--size <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_mask-box-size>`__,
+  `--output <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_mask-box-o>`__.
+
 Dynamic shimming
 ~~~~~~~~~~~~~~~~
 
 - Navigate to the *B0 Shim* Tab.
-- Select *Dynamic* in the dropdown menu (it should already be selected by default).
+- Select *Dynamic/volume* in the dropdown menu (it should already be selected by default).
 - Select the fieldmap in the overlay and click the button *Input Fieldmap*.
 - Select the target image in the overlay (**sub-spine_unshimmed_e1**), then click the button *Input target*.
+  The target image is used to know the slice geometry when using slice-wise shimming.
 - Select the mask in the overlay and click the button *Input Mask*.
-- Select a *Slice Ordering* of Ascending.
-- Select a *Slice Factor* of 1 (should be the default).
-- Select a *Scanner Order* of 1. It means that dynamic shimming will be
-  performed with the linear gradients of the scanner. In typical scanners, order 2
+- Select a *Slice Ordering* of Ascending. This option will perform slice-wise shimming and select an acquisition slice order of ascending. Selecting Volume with perform a volume shim. Selecting all other options will perform a slice-wise shim.
+- Select a *Slice Factor* of 1 (should be the default). Relevant when using multi band acquisitions.
+- Select the 0 and 1 *Scanner Order* checkboxes. Shimming will be
+  performed with the frequency and the linear gradients of the scanner. In typical scanners, order 2
   or higher is not compatible with dynamic shimming, due to the high inductance of the
   shim coils (they cannot be updated as rapidly as the gradient coils).
 - *(Optional)* Change the output folder by clicking the *Output Folder* button.
 - Click *Run*.
 - The output text files and figures should be in the *Output Folder*. You can
   then copy the text files onto the MRI console to be read by the pulse sequence.
+
+.. admonition:: Note
+
+  The CLI equivalent of the steps performed above can be done using `st_b0shim dynamic <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#st-b0shim-dynamic>`__.
+  For convenience, the CLI options corresponding to some of the steps above are:
+  `--fmap <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-fmap>`__,
+  `--target <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-target>`__,
+  `--mask <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-mask>`__,
+  `--slices <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-slices>`__,
+  `--slice-factor <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-slice-factor>`__,
+  `--scanner-coil-order <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-scanner-coil-order>`__,
+  `--output <https://shimming-toolbox.org/en/latest/cli_reference/cli.html#cmdoption-st_b0shim-dynamic-o>`__.

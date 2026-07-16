@@ -57,15 +57,19 @@ def b0shim_cli():
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Static B0 fieldmap.")
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
-              help="Target image to apply the correction onto.")
+              help="Target image to apply the correction onto. The target image is used for 2 things: "
+                   "1) to know the FOV of the acquisition to acquire "
+                   "(the mask ROI is restricted to the target's FOV) and "
+                   "2) to know the slice geometry in the case of slice-wise shimming.")
 @click.option('--mask', 'fname_mask_target', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1',
               show_default=True,
-              help="Spherical harmonics orders to be used in optimization. "
+              help="Spherical harmonics orders to be used in optimization."
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
-                   "The 0th order is the f0 frequency.")
+                   "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
+                   "(e.g: 0,1 instead of only 1)")
 @click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
               required=False,
               help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
@@ -91,7 +95,12 @@ def b0shim_cli():
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
               required=False,
               default='auto', show_default=True,
-              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
+              help="Defines if shimming is slice-wise or volume-wise and the slice ordering of the target image. "
+                   "volume: Volume shim, all other options are slice-wise shim,"
+                   "interleaved: Slice-wise shim with interleaved slices (0,2,4,...,1,3,5,...),"
+                   "ascending: Slice-wise shim with ascending slices (0,1,2,...),"
+                   "descending: Slice-wise shim with descending slices (...,2,1,0),"
+                   "auto: Slice-wise shim with automatic slice order parsing.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1,
               show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
@@ -195,6 +204,9 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
 
     # Parse scanner_coil_order
     scanner_coil_order = parse_orders(scanner_coil_order)
+    # Output a warning if not shimming with the optimal shim orders ("0", "0,1", "0,1,2")
+    if scanner_coil_order not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]]:
+        logger.warning(f"You are not shimming with the optimal shim orders: {scanner_coil_order}. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
 
     # Parse the channels to turn off
     off_channels = parse_channels_off(off_channels)
@@ -594,7 +606,10 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
               help="Timeseries of B0 fieldmap.")
 @click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
-              help="Target image to apply the correction onto.")
+              help="Target image to apply the correction onto. The target image is used for 2 things: "
+                   "1) to know the FOV of the acquisition to acquire "
+                   "(the mask ROI is restricted to the target's FOV) and "
+                   "2) to know the slice geometry in the case of slice-wise shimming.")
 @click.option('--resp', 'fname_resp', type=click.Path(exists=True), required=True,
               help="Siemens respiratory file containing pressure data.")
 @click.option('--time-offset', 'time_offset', type=click.STRING, required=False, default='0',
@@ -606,10 +621,11 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    "region to shim.")
 @click.option('--scanner-coil-order', 'scanner_coil_order_static', type=click.STRING, default='-1',
               show_default=True,
-              help="Spherical harmonics orders to be used in static optimization. "
+              help="Spherical harmonics orders to be used in optimization."
                    f"Available orders: {AVAILABLE_ORDERS}. "
                    "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
-                   "The 0th order is the f0 frequency.")
+                   "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
+                   "(e.g: 0,1 instead of only 1)")
 @click.option('--scanner-coil-order-riro', 'scanner_coil_order_riro', type=click.STRING, default=None,
               show_default=True,
               help="Spherical harmonics orders to be used in RIRO optimization. If not set, the same orders as "
@@ -623,7 +639,12 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
 @click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descdending', 'volume', 'auto']),
               required=False,
               default='auto', show_default=True,
-              help="Define the slice ordering. If set to 'auto', automatically parse the target image.")
+              help="Defines if shimming is slice-wise or volume-wise and the slice ordering of the target image. "
+                   "volume: Volume shim, all other options are slice-wise shim,"
+                   "interleaved: Slice-wise shim with interleaved slices (0,2,4,...,1,3,5,...),"
+                   "ascending: Slice-wise shim with ascending slices (0,1,2,...),"
+                   "descending: Slice-wise shim with descending slices (...,2,1,0),"
+                   "auto, Slice-wise shim with automatic slice order parsing.")
 @click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
               help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
                    "'--slice-factor' value is '3', then with the 'sequential' ('ascending' or 'descending') mode, "
@@ -720,6 +741,10 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     scanner_coil_order_static = parse_orders(scanner_coil_order_static)
     scanner_coil_order_riro = parse_orders(scanner_coil_order_riro)
+    # Output a warning if not shimming with the optimal shim orders ("0", "0,1", "0,1,2")
+    if (scanner_coil_order_static not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]] or
+        scanner_coil_order_riro not in [[-1], [0], [0, 1], [0, 1, 2], [0, 1, 2, 3]]):
+        logger.warning(f"You are not shimming with the optimal shim orders, static: {scanner_coil_order_static}, riro: {scanner_coil_order_riro}. Consider using '0', '0,1', '0,1,2' or '0,1,2,3'.")
 
     # Load the fieldmap
     nif_fmap = NiftiFieldMap(fname_fmap, dilation_kernel_size, path_output=path_output, is_realtime=True)
