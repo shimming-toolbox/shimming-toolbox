@@ -1,11 +1,17 @@
 #!usr/bin/env python3
 # -*- coding: utf-8
 
+import json
 import logging
+import nibabel as nib
 import numpy as np
+import os
 import pytest
 
-from shimmingtoolbox.shim.shim_utils import dac_to_shim_units, phys_to_shim_cs, shim_to_phys_cs, calculate_metric_within_mask, logger
+from shimmingtoolbox.shim.shim_utils import (dac_to_shim_units, phys_to_shim_cs, shim_to_phys_cs,
+                                             calculate_metric_within_mask, logger, phys_to_gradient_cs,
+                                             gradient_to_phys_cs)
+from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 
 class TestDacToShimUnits:
@@ -122,3 +128,76 @@ class TestCalculateMetricWithinMask:
 
         with pytest.raises(NotImplementedError, match="Metric 'invalid' not implemented. Available metrics:"):
             calculate_metric_within_mask(array, mask, metric='invalid')
+
+
+
+@pytest.mark.parametrize("input_coefs, orientation, phase_encode_dir, expected_coefs", [
+    ([1, 2, 3], "TRA", "-", [1, -2, 3]),  # PE: AP
+    ([1, 2, 3], "TRA", "", [-1, 2, 3]),  # PE: PA
+    ([1, 2, 3], "SAG", "", [3, -2, -1]),  # PE: AP
+    ([1, 2, 3], "SAG", "-", [-3, 2, -1]),  # PE: PA
+    ([1, 2, 3], "COR", "", [-3, -1, -2]),  # PE: RL
+    ([1, 2, 3], "COR", "-", [3, 1, -2])  # PE: LR
+])
+def test_phys_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
+    fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
+    output_coefs = phys_to_gradient_cs(*input_coefs, fname_target)
+    assert np.allclose(output_coefs, expected_coefs)
+
+
+@pytest.mark.parametrize("expected_coefs, orientation, phase_encode_dir, input_coefs", [
+    ([1, 2, 3], "TRA", "-", [1, -2, 3]),  # PE: AP
+    ([1, 2, 3], "TRA", "", [-1, 2, 3]),  # PE: PA
+    ([1, 2, 3], "SAG", "", [3, -2, -1]),  # PE: AP
+    ([1, 2, 3], "SAG", "-", [-3, 2, -1]),  # PE: PA
+    ([1, 2, 3], "COR", "", [-3, -1, -2]),  # PE: RL
+    ([1, 2, 3], "COR", "-", [3, 1, -2])  # PE: LR
+])
+def test_gradient_to_phys_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
+    fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
+    output_coefs = gradient_to_phys_cs(*input_coefs, fname_target)
+    assert np.allclose(output_coefs, expected_coefs)
+
+
+def create_nifti(orientation, phase_encode_dir, path_output):
+    if not os.path.exists(path_output):
+        os.makedirs(path_output)
+
+    data = np.zeros((5, 5, 5))
+    if orientation == "TRA":
+        affine = np.array([[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+        dim_info = (0, 1, 2)
+        pe_letter = "j"
+    elif orientation == "SAG":
+        affine = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        dim_info = (1, 0, 2)
+        pe_letter = "i"
+    elif orientation == "COR":
+        affine = np.array([[-1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+        dim_info = (1, 0, 2)
+        pe_letter = "i"
+    else:
+        raise ValueError(f"Unknown orientation: {orientation}")
+    nii = nib.Nifti1Image(data, affine)
+    nii.header.set_dim_info(*dim_info)
+    fname_nii = os.path.join(path_output, f"target_{orientation}_pe{phase_encode_dir}.nii.gz")
+    nii.to_filename(fname_nii)
+    nii2 = nib.as_closest_canonical(nii)  # Make sure the target is in canonical orientation (RAS)
+    nii2.to_filename(fname_nii.replace(".nii.gz", "canon.nii.gz"))
+
+    fname_json = fname_nii.replace(".nii.gz", ".json")
+    image_orientation = {
+        "TRA": [1, 0, 0, 0, 1, 0],
+        "SAG": [0, 1, 0, 0, 0, -1],
+        "COR": [1, 0, 0, 0, 0, -1]
+    }[orientation]
+    assert get_main_orientation(image_orientation) == orientation
+    data_json = {
+        "Manufacturer": "Siemens",
+        "PatientPosition": "HFS",
+        "ImageOrientationPatientDICOM": image_orientation,
+        "PhaseEncodingDirection": f"{pe_letter}{phase_encode_dir}"
+    }
+    with open(fname_json, "w") as f:
+        json.dump(data_json, f)
+    return fname_nii

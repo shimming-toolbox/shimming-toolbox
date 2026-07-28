@@ -10,7 +10,7 @@ import logging
 from nibabel.affines import apply_affine
 
 from shimmingtoolbox.coils.coil import SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
-from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, get_main_orientation
+from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, vox_to_phys_coefs, get_main_orientation
 from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS, channels_per_order
 
 logger = logging.getLogger(__name__)
@@ -56,12 +56,12 @@ def get_phase_encode_direction_sign(fname_nii):
 
 
 def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
-    """ Converts physical coefficients (x, y, z from RAS Coordinate System) to Siemens Gradient Coordinate System
+    """ Converts physical coefficients (x, y, z from RAS World Coordinate System) to Siemens Gradient Coordinate System (RO, PE, SL)
 
     Args:
-        coefs_x (numpy.ndarray): Array containing x coefficients in the physical coordinate system RAS
-        coefs_y (numpy.ndarray): Array containing y coefficients in the physical coordinate system RAS
-        coefs_z (numpy.ndarray): Array containing z coefficients in the physical coordinate system RAS
+        coefs_x (numpy.ndarray): Array containing x coefficients in the World coordinate system RAS
+        coefs_y (numpy.ndarray): Array containing y coefficients in the World coordinate system RAS
+        coefs_z (numpy.ndarray): Array containing z coefficients in the World coordinate system RAS
         fname_target (str): Filename of the NIfTI file to convert the data to that Gradient CS
 
     Returns:
@@ -70,26 +70,49 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
             * numpy.ndarray: Array containing the data in the gradient CS (phase)
             * numpy.ndarray: Array containing the data in the gradient CS (slice)
 
+    Notes:
+        This function transforms the affine to create an image coordinate system that is in line with the
+        Gradient coordinate system on Siemens.
+
+        The previous way to do this was flawed if the affine was different than what dcm2niix would output for the
+        different orientations (TRA: LAS, SAG: PSR, COR: LSP).
+
+        scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_target.affine)
+        # TRA: RAS -> LAS  # Assumption that voxel coordinate system is LAS
+        # SAG: RAS -> PSR
+        # COR: RAS -> LSP
+
+        # Convert from image to frequency, phase, slice encoding direction
+        dim_info = nii_target.header.get_dim_info()
+        coefs_freq, coefs_phase, coefs_slice = [scanner_coil_coef_vox[dim] for dim in dim_info]
+        # TRA: LAS -> LAS, # SAG: PSR -> SPR, # COR: LSP -> SLP
+
+        if orientation == 'SAG':
+            coefs_slice = -coefs_slice
+        elif orientation == 'COR':
+            coefs_freq = -coefs_freq
+        # TRA: LAS -> LAS, # SAG: SPR -> SPL, # COR: SLP -> ILP
+
+        if not phase_encode_is_positive:
+            coefs_freq = -coefs_freq
+            coefs_phase = -coefs_phase
+        # PE +: # TRA: LAS, # SAG: SPL, # COR: ILP
+        # PE -: # TRA: LAS -> RPS, # SAG: SPL -> IAL, # COR: ILP -> SRP
     """
-    # Load target
-    nii_target = nib.load(fname_target)
 
-    # Convert from patient coordinates to image coordinates
-    scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_target.affine)
-    # scanner_coil_coef_vox[0]  # NIfTI dim1, etc
-
-    # Convert from image to freq, phase, slice encoding direction
-    dim_info = nii_target.header.get_dim_info()
-    coefs_freq, coefs_phase, coefs_slice = [scanner_coil_coef_vox[dim] for dim in dim_info]
-
-    # To output to the gradient coord system, axes need some inversions. The gradient coordinate system is
-    # defined by the frequency, phase and slice encode directions.
-    # TODO: More tests, validated for TRA, SAG, COR, no-flip/flipped PE, no rotation
-
-    # Load target json
     fname_target_json = fname_target.rsplit('.nii', 1)[0] + '.json'
     with open(fname_target_json) as json_file:
         json_target_data = json.load(json_file)
+
+    if 'Manufacturer' not in json_target_data:
+        raise ValueError("Manufacturer not found in the json file.")
+    if json_target_data['Manufacturer'] != 'Siemens':
+        raise NotImplementedError(f"Manufacturer {json_target_data['Manufacturer']} not supported. Only Siemens supported.")
+
+    if 'PatientPosition' not in json_target_data:
+        raise ValueError("PatientPosition not found in json file.")
+    if json_target_data['PatientPosition'] != 'HFS':
+        raise NotImplementedError(f"PatientPosition {json_target_data['PatientPosition']} is not supported. Only HFS is implemented")
 
     if 'ImageOrientationText' in json_target_data:
         # Tag in private dicom header (0051,100E) indicates the slice orientation, if it exists, it will appear
@@ -101,20 +124,102 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
         # if there are 2 highest cosines. It will raise an exception if there is a problem
         orientation = get_main_orientation(json_target_data['ImageOrientationPatientDICOM'])
 
-    if orientation == 'SAG':
-        coefs_slice = -coefs_slice
+    phase_encode_is_positive = get_phase_encode_direction_sign(fname_target)
+
+    if orientation == 'TRA':
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('L', 'A', 'S'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('R', 'P', 'S'))
+    elif orientation == 'SAG':
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('S', 'P', 'L'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('I', 'A', 'L'))
     elif orientation == 'COR':
-        coefs_freq = -coefs_freq
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('I', 'L', 'P'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('S', 'R', 'P'))
     else:
-        # TRA
-        pass
+        raise RuntimeError(f"Unexpected value for orientation: {orientation}")
+
+    nii_target = nib.load(fname_target)
+    start_ornt = nib.orientations.axcodes2ornt(nib.aff2axcodes(nii_target.affine))
+    transform_ornt = nib.orientations.ornt_transform(start_ornt, target_ornt)
+    new_affine = nii_target.affine @ nib.orientations.inv_ornt_aff(transform_ornt, nii_target.shape)
+    coefs_freq, coefs_phase, coefs_slice = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, new_affine)
+    return coefs_freq, coefs_phase, coefs_slice
+
+
+def gradient_to_phys_cs(coefs_freq, coefs_phase, coefs_slice, fname_target):
+    """ Converts Siemens Gradient Coordinate System (RO, PE, SL) to physical coordinates (x, y, z from RAS World Coordinate System)
+    See phys_to_gradient_cs for more details. This is the inverse of that function
+
+    Args:
+        coefs_freq (numpy.ndarray): Array containing RO coefficients in the Siemens Gradient Coordinate System
+        coefs_phase (numpy.ndarray): Array containing PE coefficients in the Siemens Gradient Coordinate System
+        coefs_slice (numpy.ndarray): Array containing SL coefficients in the Siemens Gradient Coordinate System
+        fname_target (str): Filename of the NIfTI file to convert the data to RAS World Coordinate System
+
+    Returns:
+        (tuple): tuple containing:
+            * numpy.ndarray: Array containing the data in the x
+            * numpy.ndarray: Array containing the data in the y
+            * numpy.ndarray: Array containing the data in the z
+    """
+    fname_target_json = fname_target.rsplit('.nii', 1)[0] + '.json'
+    with open(fname_target_json) as json_file:
+        json_target_data = json.load(json_file)
+
+    if 'Manufacturer' not in json_target_data:
+        raise ValueError("Manufacturer not found in the json file.")
+    if json_target_data['Manufacturer'] != 'Siemens':
+        raise NotImplementedError(
+            f"Manufacturer {json_target_data['Manufacturer']} not supported. Only Siemens supported.")
+
+    if 'PatientPosition' not in json_target_data:
+        raise ValueError("PatientPosition not found in json file.")
+    if json_target_data['PatientPosition'] != 'HFS':
+        raise NotImplementedError(
+            f"PatientPosition {json_target_data['PatientPosition']} is not supported. Only HFS is implemented")
+
+    if 'ImageOrientationText' in json_target_data:
+        # Tag in private dicom header (0051,100E) indicates the slice orientation, if it exists, it will appear
+        # in the json under 'ImageOrientationText' tag
+        orientation_text = json_target_data['ImageOrientationText']
+        orientation = orientation_text[:3].upper()
+    else:
+        # Find orientation with the ImageOrientationPatientDICOM tag, this is less reliable since it can fail
+        # if there are 2 highest cosines. It will raise an exception if there is a problem
+        orientation = get_main_orientation(json_target_data['ImageOrientationPatientDICOM'])
 
     phase_encode_is_positive = get_phase_encode_direction_sign(fname_target)
-    if not phase_encode_is_positive:
-        coefs_freq = -coefs_freq
-        coefs_phase = -coefs_phase
 
-    return coefs_freq, coefs_phase, coefs_slice
+    if orientation == 'TRA':
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('L', 'A', 'S'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('R', 'P', 'S'))
+    elif orientation == 'SAG':
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('S', 'P', 'L'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('I', 'A', 'L'))
+    elif orientation == 'COR':
+        if phase_encode_is_positive:
+            target_ornt = nib.orientations.axcodes2ornt(('I', 'L', 'P'))
+        else:
+            target_ornt = nib.orientations.axcodes2ornt(('S', 'R', 'P'))
+    else:
+        raise RuntimeError(f"Unexpected value for orientation: {orientation}")
+
+    nii_target = nib.load(fname_target)
+    start_ornt = nib.orientations.axcodes2ornt(nib.aff2axcodes(nii_target.affine))
+    transform_ornt = nib.orientations.ornt_transform(start_ornt, target_ornt)
+    new_affine = nii_target.affine @ nib.orientations.inv_ornt_aff(transform_ornt, nii_target.shape)
+    coefs_x, coefs_y, coefs_z = vox_to_phys_coefs(coefs_freq, coefs_phase, coefs_slice, new_affine)
+    return coefs_x, coefs_y, coefs_z
 
 
 def calculate_metric_within_mask(array, mask, metric, axis=None):
