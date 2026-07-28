@@ -71,33 +71,35 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
             * numpy.ndarray: Array containing the data in the gradient CS (slice)
 
     Notes:
+
         This function transforms the affine to create an image coordinate system that is in line with the
         Gradient coordinate system on Siemens.
 
         The previous way to do this was flawed if the affine was different than what dcm2niix would output for the
         different orientations (TRA: LAS, SAG: PSR, COR: LSP).
+        ::
 
-        scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_target.affine)
-        # TRA: RAS -> LAS  # Assumption that voxel coordinate system is LAS
-        # SAG: RAS -> PSR
-        # COR: RAS -> LSP
+            scanner_coil_coef_vox = phys_to_vox_coefs(coefs_x, coefs_y, coefs_z, nii_target.affine)
+            # TRA: RAS -> LAS  # Assumption that voxel coordinate system is LAS
+            # SAG: RAS -> PSR
+            # COR: RAS -> LSP
 
-        # Convert from image to frequency, phase, slice encoding direction
-        dim_info = nii_target.header.get_dim_info()
-        coefs_freq, coefs_phase, coefs_slice = [scanner_coil_coef_vox[dim] for dim in dim_info]
-        # TRA: LAS -> LAS, # SAG: PSR -> SPR, # COR: LSP -> SLP
+            # Convert from image to frequency, phase, slice encoding direction
+            dim_info = nii_target.header.get_dim_info()
+            coefs_freq, coefs_phase, coefs_slice = [scanner_coil_coef_vox[dim] for dim in dim_info]
+            # TRA: LAS -> LAS, # SAG: PSR -> SPR, # COR: LSP -> SLP
 
-        if orientation == 'SAG':
-            coefs_slice = -coefs_slice
-        elif orientation == 'COR':
-            coefs_freq = -coefs_freq
-        # TRA: LAS -> LAS, # SAG: SPR -> SPL, # COR: SLP -> ILP
+            if orientation == 'SAG':
+                coefs_slice = -coefs_slice
+            elif orientation == 'COR':
+                coefs_freq = -coefs_freq
+            # TRA: LAS -> LAS, # SAG: SPR -> SPL, # COR: SLP -> ILP
 
-        if not phase_encode_is_positive:
-            coefs_freq = -coefs_freq
-            coefs_phase = -coefs_phase
-        # PE +: # TRA: LAS, # SAG: SPL, # COR: ILP
-        # PE -: # TRA: LAS -> RPS, # SAG: SPL -> IAL, # COR: ILP -> SRP
+            if not phase_encode_is_positive:
+                coefs_freq = -coefs_freq
+                coefs_phase = -coefs_phase
+            # PE +: # TRA: LAS, # SAG: SPL, # COR: ILP
+            # PE -: # TRA: LAS -> RPS, # SAG: SPL -> IAL, # COR: ILP -> SRP
     """
 
     fname_target_json = fname_target.rsplit('.nii', 1)[0] + '.json'
