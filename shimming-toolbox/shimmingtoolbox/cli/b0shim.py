@@ -352,12 +352,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
             if (fname_sph_constr is not None) and (slices == 'volume'):
                 write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_coil, coil, path_output)
 
-            # If outputting in the gradient CS, it must be specific orders, it must be in the delta CS and Siemens
-            # The check has already been done earlier in the program to avoid processing and throw an error afterwards.
-            # Therefore, we can only check for the o_format_sph.
             if 'hrd' in o_format_sph:
-                logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
-
                 coefs_coil = coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer)
 
             else:
@@ -410,7 +405,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
 
 def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options, coil_number,
                        default_coefs=None, mean_pressure=None):
-    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil', 'gradient'"""
+    """o_format can either be 'slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil'"""
 
     logger.info(f"Saving to text file with format: {o_format}")
     is_outputting_fatsat_file = options['fatsat'] and o_format in ['chronological-ch', 'chronological-coil']
@@ -770,8 +765,6 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
         # If no mask is provided, shim the whole target volume
         nif_mask_target_riro = copy.deepcopy(nif_mask_target_static)
 
-    # Error out for unsupported inputs. If file format is in gradient CS, it must be 1st order and the output format be
-    # delta.
     if 'hrd' in o_format_sph:
         if output_value_format == 'absolute':
             raise ValueError(f"Unsupported output value format: {output_value_format} for output file format: "
@@ -881,8 +874,6 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
         # If it's a scanner
         if type(coil) == ScannerCoil:
             if 'hrd' in o_format_sph:
-                logger.debug("Converting Siemens scanner coil from Shim CS (LAI) to Gradient CS")
-
                 coefs_coil_static = coefs_to_dict(coefs_static, scanner_coil_order_static,
                                                   nif_target.get_json_info('Manufacturer'))
                 coefs_coil_riro = coefs_to_dict(coefs_riro, scanner_coil_order_riro,
@@ -990,7 +981,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
 def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_slices, path_output, o_format,
                           options, coil_number, channel_start, default_st_coefs=None):
-    """o_format can either be 'chronological-ch', 'chronological-coil', 'gradient'"""
+    """o_format can either be 'chronological-ch', 'chronological-coil'. gradient is implemented but deprecated. Use -hrd instead"""
 
     list_fname_output = []
     if currents_riro is not None:
