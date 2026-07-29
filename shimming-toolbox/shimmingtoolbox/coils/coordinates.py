@@ -99,9 +99,9 @@ def phys_to_vox_coefs(x_coefs, y_coefs, z_coefs, affine):
     e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from RAS to LSP image coordinates.
 
     Args:
-        x_coefs (numpy.ndarray): matrix containing the coefs along the x direction in the patient coordinate system
-        y_coefs (numpy.ndarray): matrix containing the coefs along the y direction in the patient coordinate system
-        z_coefs (numpy.ndarray): matrix containing the coefs along the z direction in the patient coordinate system
+        x_coefs (numpy.ndarray): matrix containing the coefs along the x direction in the world coordinate system
+        y_coefs (numpy.ndarray): matrix containing the coefs along the y direction in the world coordinate system
+        z_coefs (numpy.ndarray): matrix containing the coefs along the z direction in the world coordinate system
         affine (numpy.ndarray): 4x4 array containing affine transformation
 
     Returns:
@@ -140,9 +140,9 @@ def vox_to_phys_coefs(ax1_coefs, ax2_coefs, ax3_coefs, affine):
     e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from LSP to RAS world coordinates.
 
     Args:
-        ax1_coefs (numpy.ndarray): matrix containing the coefs along the 1st axis direction in the patient coordinate system
-        ax2_coefs (numpy.ndarray): matrix containing the coefs along the 2nd axis direction in the patient coordinate system
-        ax3_coefs (numpy.ndarray): matrix containing the coefs along the 3rd axis direction in the patient coordinate system
+        ax1_coefs (numpy.ndarray): matrix containing the coefs along the 1st axis direction in the image coordinate system
+        ax2_coefs (numpy.ndarray): matrix containing the coefs along the 2nd axis direction in the image coordinate system
+        ax3_coefs (numpy.ndarray): matrix containing the coefs along the 3rd axis direction in the image coordinate system
         affine (numpy.ndarray): 4x4 array containing affine transformation
 
     Returns:
