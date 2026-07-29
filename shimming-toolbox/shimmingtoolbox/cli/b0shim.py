@@ -19,7 +19,7 @@ import logging
 import os
 from matplotlib.figure import Figure
 
-from coils.spher_harm_basis import get_flip_matrix
+from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, OPT_CS, SHIM_CS
 from shimmingtoolbox.coils.scanner_shim_settings import ScannerShimSettings, concatenate_shim_settings
@@ -454,7 +454,8 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
     is_outputting_fatsat_file = options['fatsat'] and o_format in ['chronological-ch', 'chronological-coil']
 
     # Convert -0 coefficients to 0.0
-    coefs += 0.0
+    if isinstance(coefs, np.ndarray):
+        coefs += 0.0
 
     n_channels = coil.dim[3]
     list_fname_output = []
@@ -1029,8 +1030,10 @@ def _save_to_text_file_rt(coil, currents_static, currents_riro, mean_p, list_sli
                           options, coil_number, channel_start, default_st_coefs=None):
     """o_format can either be 'chronological-ch', 'chronological-coil'. gradient is implemented but deprecated. Use -hrd instead"""
     # Convert -0 coefficients to 0.0
-    currents_static += 0.0
-    currents_riro += 0.0
+    if isinstance(currents_static, np.ndarray):
+        currents_static += 0.0
+    if isinstance(currents_riro, np.ndarray):
+        currents_riro += 0.0
 
     list_fname_output = []
     if currents_riro is not None:

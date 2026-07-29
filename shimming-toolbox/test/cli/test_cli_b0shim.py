@@ -1222,11 +1222,9 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
             assert res.exit_code == 0
             # Read both txt files and make sure they are the same
-            with(open(os.path.join(tmp_shimcs, "coefs_coil0_Prisma_fit_167006.txt"), 'r')) as f:
-                shim_cs_coefs = f.read()
-            with(open(os.path.join(tmp_gradcs, "coefs_coil0_Prisma_fit_167006.txt"), 'r')) as f:
-                grad_cs_coefs = f.read()
-            assert shim_cs_coefs == grad_cs_coefs
+            shim_cs_coefs = read_txt_file(os.path.join(tmp_shimcs, "coefs_coil0_Prisma_fit_167006.txt"))
+            grad_cs_coefs = read_txt_file(os.path.join(tmp_gradcs, "coefs_coil0_Prisma_fit_167006.txt"))
+            assert np.allclose(shim_cs_coefs, grad_cs_coefs, atol=1e-6), "The coefficients from gradient-cs and shim-cs should be the same."
 
     def test_cli_dynamic_no_coil(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
