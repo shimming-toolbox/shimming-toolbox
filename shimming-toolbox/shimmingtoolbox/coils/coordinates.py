@@ -93,21 +93,21 @@ def phys_gradient(data, affine):
     return x_gradient, y_gradient, z_gradient
 
 
-def phys_to_vox_coefs(gx, gy, gz, affine):
+def phys_to_vox_coefs(x_coefs, y_coefs, z_coefs, affine):
     """
-    Calculate the vector sum along the image coordinates defined by ``affine`` with coefficients in the patient
-    coordinate system.
+    Compute the coefficients from world coordinate to image orientation defined by the axis codes of the affine.
+    e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from RAS to LSP image coordinates.
 
     Args:
-        gx (numpy.ndarray): 3D matrix containing the coefs along the x direction in the patient coordinate system
-        gy (numpy.ndarray): 3D matrix containing the coefs along the y direction in the patient coordinate system
-        gz (numpy.ndarray): 3D matrix containing the coefs along the z direction in the patient coordinate system
+        x_coefs (numpy.ndarray): matrix containing the coefs along the x direction in the world coordinate system
+        y_coefs (numpy.ndarray): matrix containing the coefs along the y direction in the world coordinate system
+        z_coefs (numpy.ndarray): matrix containing the coefs along the z direction in the world coordinate system
         affine (numpy.ndarray): 4x4 array containing affine transformation
 
     Returns:
-        numpy.ndarray: 3D matrix containing the coefs along the x direction in the image coordinate system
-        numpy.ndarray: 3D matrix containing the coefs along the y direction in the image coordinate system
-        numpy.ndarray: 3D matrix containing the coefs along the z direction in the image coordinate system
+        numpy.ndarray: matrix containing the coefs along the x direction in the image coordinate system
+        numpy.ndarray: matrix containing the coefs along the y direction in the image coordinate system
+        numpy.ndarray: matrix containing the coefs along the z direction in the image coordinate system
     """
 
     x_vox = 0
@@ -121,17 +121,57 @@ def phys_to_vox_coefs(gx, gy, gz, affine):
 
     inv_affine = np.linalg.inv(affine[:3, :3])
 
-    gx_vox = (gx * inv_affine[0, x_vox] * x_vox_spacing) + \
-             (gy * inv_affine[0, y_vox] * x_vox_spacing) + \
-             (gz * inv_affine[0, z_vox] * x_vox_spacing)
-    gy_vox = (gx * inv_affine[1, x_vox] * y_vox_spacing) + \
-             (gy * inv_affine[1, y_vox] * y_vox_spacing) + \
-             (gz * inv_affine[1, z_vox] * y_vox_spacing)
-    gz_vox = (gx * inv_affine[2, x_vox] * z_vox_spacing) + \
-             (gy * inv_affine[2, y_vox] * z_vox_spacing) + \
-             (gz * inv_affine[2, z_vox] * z_vox_spacing)
+    ax1_coefs = (x_coefs * inv_affine[0, x_vox] * x_vox_spacing) + \
+               (y_coefs * inv_affine[0, y_vox] * x_vox_spacing) + \
+               (z_coefs * inv_affine[0, z_vox] * x_vox_spacing)
+    ax2_coefs = (x_coefs * inv_affine[1, x_vox] * y_vox_spacing) + \
+               (y_coefs * inv_affine[1, y_vox] * y_vox_spacing) + \
+               (z_coefs * inv_affine[1, z_vox] * y_vox_spacing)
+    ax3_coefs = (x_coefs * inv_affine[2, x_vox] * z_vox_spacing) + \
+               (y_coefs * inv_affine[2, y_vox] * z_vox_spacing) + \
+               (z_coefs * inv_affine[2, z_vox] * z_vox_spacing)
 
-    return gx_vox, gy_vox, gz_vox
+    return ax1_coefs, ax2_coefs, ax3_coefs
+
+
+def vox_to_phys_coefs(ax1_coefs, ax2_coefs, ax3_coefs, affine):
+    """
+    Compute the coefficients from image coordinates orientation to world orientation defined by the axis codes of the affine.
+    e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from LSP to RAS world coordinates.
+
+    Args:
+        ax1_coefs (numpy.ndarray): matrix containing the coefs along the 1st axis direction in the image coordinate system
+        ax2_coefs (numpy.ndarray): matrix containing the coefs along the 2nd axis direction in the image coordinate system
+        ax3_coefs (numpy.ndarray): matrix containing the coefs along the 3rd axis direction in the image coordinate system
+        affine (numpy.ndarray): 4x4 array containing affine transformation
+
+    Returns:
+        numpy.ndarray: matrix containing the coefs along the x direction in the world coordinate system
+        numpy.ndarray: matrix containing the coefs along the y direction in the world coordinate system
+        numpy.ndarray: matrix containing the coefs along the z direction in the world coordinate system
+    """
+
+    x_vox = 0
+    y_vox = 1
+    z_vox = 2
+
+    # Calculate the spacing along the different voxel axis
+    x_vox_spacing = math.sqrt((affine[0, x_vox] ** 2) + (affine[1, x_vox] ** 2) + (affine[2, x_vox] ** 2))
+    y_vox_spacing = math.sqrt((affine[0, y_vox] ** 2) + (affine[1, y_vox] ** 2) + (affine[2, y_vox] ** 2))
+    z_vox_spacing = math.sqrt((affine[0, z_vox] ** 2) + (affine[1, z_vox] ** 2) + (affine[2, z_vox] ** 2))
+
+    x_coefs = (ax1_coefs * affine[0, x_vox] * x_vox_spacing) + \
+             (ax2_coefs * affine[0, y_vox] * x_vox_spacing) + \
+             (ax3_coefs * affine[0, z_vox] * x_vox_spacing)
+    y_coefs = (ax1_coefs * affine[1, x_vox] * y_vox_spacing) + \
+             (ax2_coefs * affine[1, y_vox] * y_vox_spacing) + \
+             (ax3_coefs * affine[1, z_vox] * y_vox_spacing)
+    z_coefs = (ax1_coefs * affine[2, x_vox] * z_vox_spacing) + \
+             (ax2_coefs * affine[2, y_vox] * z_vox_spacing) + \
+             (ax3_coefs * affine[2, z_vox] * z_vox_spacing)
+
+    return x_coefs, y_coefs, z_coefs
+
 
 
 def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval=0., out_class=nib.Nifti1Image):
