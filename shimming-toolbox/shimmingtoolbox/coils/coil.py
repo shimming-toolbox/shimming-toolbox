@@ -9,6 +9,7 @@ from typing import Tuple
 from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
                                                     channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
 from shimmingtoolbox import __config_scanner_constraints__
 
 logger = logging.getLogger(__name__)
@@ -99,6 +100,7 @@ SCANNER_CONSTRAINTS_DAC = {
     }
 }
 
+OPT_CS = ['shim-cs', 'gradient-cs']
 
 class Coil(object):
     """
@@ -306,7 +308,7 @@ class ScannerCoil(Coil):
     """Coil class for scanner coils as they require extra arguments"""
 
     def __init__(self, dim_volume, affine, constraints, orders, manufacturer="", shim_cs=None,
-                 isocenter=np.array([0, 0, 0]), channels_onoff=None, channels_off_values=None):
+                 isocenter=np.array([0, 0, 0]), channels_onoff=None, channels_off_values=None, opt_cs="shim-cs", fname_target=None):
         """
         Args:
             dim_volume (tuple): x, y and z dimensions.
@@ -329,6 +331,9 @@ class ScannerCoil(Coil):
                                    If not specified, all channels are on. (Optional)
             channels_off_values (np.ndarray): (n_slices x n_off_channels) array of values to set for the channels that are
                                              off.
+            opt_cs (str): Coordinate system of the coil profiles. If gradient-cs, only order 1 is supported.
+            fname_target (str): Filename of the target NIfTI file.
+
         """
         self.orders = orders
 
@@ -344,9 +349,13 @@ class ScannerCoil(Coil):
 
         self.affine = affine
         self.isocenter = isocenter
+        self.opt_cs = opt_cs
+        if opt_cs not in OPT_CS:
+            raise ValueError(f"Unknown option {opt_cs}. Available options are: {OPT_CS}")
+        self.fname_target = fname_target
 
         # Create the spherical harmonics with the correct order, dim and affine
-        sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer)
+        sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer, opt_cs)
         # Restricts the constraints to the specified order
         if 'coef_channel_minmax' in constraints.keys():
             constraints['coef_channel_minmax'] = restrict_to_orders(constraints['coef_channel_minmax'],
@@ -355,14 +364,26 @@ class ScannerCoil(Coil):
             constraints['coefs_used'] = restrict_to_orders(constraints['coefs_used'], self.orders)
         super().__init__(sph_coil_profile, affine, constraints, channels_onoff, channels_off_values)
 
-    def _create_coil_profile(self, dim, manufacturer=None):
+    def _create_coil_profile(self, dim, manufacturer=None, opt_cs='shim-cs'):
         # Create spherical harmonics coil profiles
+
+        if opt_cs == "gradient-cs" and self.fname_target is None:
+            raise ValueError("fname_target cannot be None for gradient-cs")
+        if opt_cs == "shim-cs" and manufacturer is not "SIEMENS":
+            raise ValueError("gradient-cs not implemented for manufacturer {manufacturer}. Only implemented for SIEMENS.")
+
         # Change the affine offset so that the origin is at isocenter
         affine_origin_iso = copy.deepcopy(self.affine)
         affine_origin_iso[:3, 3] -= self.isocenter
         mesh1, mesh2, mesh3 = generate_meshgrid(dim, affine_origin_iso)
         if manufacturer == 'SIEMENS':
-            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
+            if opt_cs == 'shim-cs':
+                sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
+            elif opt_cs == 'gradient-cs':
+                mesh1_freq, mesh2_phase, mesh3_slice = phys_to_gradient_cs(mesh1, mesh2, mesh3, self.fname_target)
+                sph_coil_profile = siemens_basis(mesh1_freq, mesh2_phase, mesh3_slice, orders=tuple(self.orders), shim_cs='RAS')
+            else:
+                raise ValueError(f"Unknown opt_cs: {opt_cs}")
         elif manufacturer == 'GE':
             sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         elif manufacturer == 'PHILIPS':

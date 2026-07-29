@@ -71,7 +71,7 @@ def sh_basis(x, y, z, orders=(1, 2), shim_cs="RAS"):
     return output
 
 
-def siemens_basis(x, y, z, orders=(1, 2)):
+def siemens_basis(x, y, z, orders=(1, 2), shim_cs=SHIM_CS['SIEMENS']):
     """
     The function first wraps ``shimmingtoolbox.coils.spherical_harmonics`` to generate the specified order
     spherical harmonic ``basis`` fields at the grid positions given by arrays ``x,y,z``. *Following Siemens convention*,
@@ -109,7 +109,7 @@ def siemens_basis(x, y, z, orders=(1, 2)):
     _check_basis_inputs(x, y, z, orders)
 
     # Create spherical harmonics
-    flip = get_flip_matrix(SHIM_CS['SIEMENS'], manufacturer='SIEMENS', orders=[1, ])
+    flip = get_flip_matrix(shim_cs, manufacturer='SIEMENS', orders=[1, ])
     spher_harm = scaled_spher_harm(x * flip[0], y * flip[1], z * flip[2], orders)
 
     # Reorder according to siemens convention: X, Y, Z, Z2, ZX, ZY, X2-Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2)
@@ -605,7 +605,7 @@ def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
     Args:
         shim_cs (str): Coordinate system of the shim basis set. Default is RAS.
         orders (list): List of orders of the spherical harmonics. Default to None (all orders)
-        manufacturer (str): Manufacturer of the scanner. The flipping matrix is different for each manufacturer.
+        manufacturer (str): Manufacturer of the scanner. The flipping matrix order is different for each manufacturer.
                             If None is selected, it will output according to
                             ``shimmingtoolbox.coils.spherical_harmonics``. Possible values: {MANUFACTURERS}.
 
