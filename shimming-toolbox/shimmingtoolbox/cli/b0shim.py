@@ -44,146 +44,151 @@ def b0shim_cli():
     pass
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True),
-                                                               click.Path(exists=True)),
-              help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
-                   "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
-                   "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
-                   "profiles must be in Hz/unit_shim). If using the scanner's gradient/shim coils, the coil profiles "
-                   "must be in Hz/unit_shim and fieldmaps must be in Hz. If you want to shim using the scanner's "
-                   "gradient/shim coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
-                   f"see: {__config_custom_coil_constraints__}")
-@click.option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
-              help="Static B0 fieldmap.")
-@click.option('--target', 'fname_target', type=click.Path(exists=True), required=True,
-              help="Target image to apply the correction onto. The target image is used for 2 things: "
-                   "1) to know the FOV of the acquisition to acquire "
-                   "(the mask ROI is restricted to the target's FOV) and "
-                   "2) to know the slice geometry in the case of slice-wise shimming.")
-@click.option('--mask', 'fname_mask_target', type=click.Path(exists=True), required=False,
-              help="Mask defining the spatial region to shim.")
-@click.option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1',
-              show_default=True,
-              help="Spherical harmonics orders to be used in optimization."
-                   f"Available orders: {AVAILABLE_ORDERS}. "
-                   "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
-                   "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
-                   "(e.g: 0,1 instead of only 1)")
-@click.option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
-              required=False,
-              help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}")
-@click.option('--off-channels', 'off_channels', type=click.STRING, default='',
-              show_default=True,
-              help="Turn off the corresponding channels during the optimization. By default, all channels are active. "
-                   "The channel number to turn off can be found using the following rules. 1) Channels should be "
-                   "writen with a coma separating the values (i.e.: 0,2,7). 2) Active coil channels are concatenated "
-                   "and indexed to 0. 3) When using custom and scanner coils, the custom coils are indexed first."
-                   "For example: a 10 channel custom coil and orders 1 (3 channels) and 2 (5 channels) scanner coil "
-                   "(--scanner-coil-order 1,2): To turn off the 6th channel of the custom coil and the 3rd "
-                   "channel of the scanner coil (Z), use --off-channels 5,12.")
-@click.option('--off-channels-values', 'fname_off_channels_values', type=click.Path(exists=True),
-              show_default=False, required=False,
-              help="Specify the values to set for the channels turned off with '--off-channels'. By default, the "
-                   "channels turned off are set to 0. This option allows to specify a text file with the values to "
-                   "set for the channels turned off. Concatenate all coil channels that are off and start with custom "
-                   "coils first. The input text file should be formatted using "
-                   "'--output-file-format-scanner/--output-file-format-coil slicewise-coil' and "
-                   "'--output-value-format delta'. For example, if you have 2 channels turned off, "
-                   "the text file should have 2 columns (one for each channel) and the # of slices (NIfTI indexed) as "
-                   "rows.")
-@click.option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
-              required=False,
-              default='auto', show_default=True,
-              help="Defines if shimming is slice-wise or volume-wise and the slice ordering of the target image. "
-                   "volume: Volume shim, all other options are slice-wise shim,"
-                   "interleaved: Slice-wise shim with interleaved slices (0,2,4,...,1,3,5,...),"
-                   "ascending: Slice-wise shim with ascending slices (0,1,2,...),"
-                   "descending: Slice-wise shim with descending slices (...,2,1,0),"
-                   "auto: Slice-wise shim with automatic slice order parsing.")
-@click.option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1,
-              show_default=True,
-              help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
-                   "'--slice-factor' value is '3', then with the 'sequential' mode ('ascending' or 'descending'), "
-                   "shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. With the "
-                   "mode 'interleaved', "
-                   "it will be: {0,2,4}, {1,3,5}, etc.")
-@click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
-              type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
-              help="Method used by the optimizer. LS and QP will respect the constraints, "
-                   "BFGS method only accepts constraints for each channel (not constraints on the total current), "
-                   "PI will not respect any constraints")
-@click.option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
-              show_default=True,
-              help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
-                   "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
-                   "optimizer_method.")
-@click.option('--optimizer-criteria', 'opt_criteria',
-              type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
-              default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
-                   "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
-                   "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method.")
-@click.option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
-              show_default=True,
-              help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                   " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
-                   "weights to recover the signal loss over the B0 inhomogeneity."
-                   " This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
-                   "The optimal value for mse is around 0.01\n"
-                   "The optimal value for rmse is around 10")
-@click.option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False,
-              default=None, show_default=True,
-              help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a "
-                   "compromise between B0 inhomogeneity"
-                   " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery)"
-                   ", a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
-@click.option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False,
-              default='3', show_default=True,
-              help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
-                   "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
-                   "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
-                   "linear term. When using 2nd order or more, more dilation is necessary.")
-@click.option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
-              help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
-                   "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
-                   "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
-@click.option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
-              show_default=True, help="Directory to output coil text file(s).")
-@click.option('--output-file-format-coil', 'o_format_coil',
-              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
-              default='slicewise-coil',
-              show_default=True, help="Syntax used to describe the sequence of shim events for custom coils. "
-                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. Use 'ch' to output one "
-                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
-                                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                                      "all coil channels are encoded across multiple columns in the text file.")
-@click.option('--output-file-format-scanner', 'o_format_sph',
-              type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
+@command(context_settings=CONTEXT_SETTINGS)
+@option_group("Input/Output",
+    option('--fmap', 'fname_fmap', required=True, type=click.Path(exists=True),
+           help="Static B0 fieldmap."),
+    option('--target', 'fname_target', type=click.Path(exists=True), required=True,
+           help="Target image to apply the correction onto. The target image is used for 2 things: "
+                "1) to know the FOV of the acquisition to acquire "
+                "(the mask ROI is restricted to the target's FOV) and "
+                "2) to know the slice geometry in the case of slice-wise shimming."),
+    option('--mask', 'fname_mask_target', type=click.Path(exists=True), required=False,
+           help="Mask defining the spatial region to shim."),
+    option('-o', '--output', 'path_output', type=click.Path(), default=os.path.abspath(os.curdir),
+           show_default=True, help="Directory to output coil text file(s).")
+)
+@option_group("Scanner shim coil options",
+    "If you are not shimming with the scanner's shim coils, do not specify any of these options",
+    option('--scanner-coil-order', 'scanner_coil_order', type=click.STRING, default='-1', show_default=True,
+           help="Spherical harmonics orders to be used in optimization."
+                f"Available orders: {AVAILABLE_ORDERS}. "
+                "Orders should be writen with a coma separating the values. (i.e. 0,1,2)"
+                "The 0th order is the f0 frequency. For a more optimal shim, use all orders available "
+                "(e.g: 0,1 instead of only 1)"),
+    option('--scanner-coil-constraints', 'fname_sph_constr', type=click.Path(exists=True),
+           required=False,
+           help=f"Constraints for the scanner coil. Example file located: {__config_scanner_constraints__}"),
+    option('--off-channels', 'off_channels', type=click.STRING, default='', show_default=True,
+           help="Turn off the corresponding channels during the optimization. By default, all channels are active. "
+                "The channel number to turn off can be found using the following rules. 1) Channels should be "
+                "writen with a coma separating the values (i.e.: 0,2,7). 2) Active coil channels are concatenated "
+                "and indexed to 0. 3) When using custom and scanner coils, the custom coils are indexed first."
+                "For example: a 10 channel custom coil and orders 1 (3 channels) and 2 (5 channels) scanner coil "
+                "(--scanner-coil-order 1,2): To turn off the 6th channel of the custom coil and the 3rd "
+                "channel of the scanner coil (Z), use --off-channels 5,12."),
+    option('--off-channels-values', 'fname_off_channels_values', type=click.Path(exists=True),
+           show_default=False, required=False,
+           help="Specify the values to set for the channels turned off with '--off-channels'. By default, the "
+                "channels turned off are set to 0. This option allows to specify a text file with the values to "
+                "set for the channels turned off. Concatenate all coil channels that are off and start with custom "
+                "coils first. The input text file should be formatted using "
+                "'--output-file-format-scanner/--output-file-format-coil slicewise-coil' and "
+                "'--output-value-format delta'. For example, if you have 2 channels turned off, "
+                "the text file should have 2 columns (one for each channel) and the # of slices (NIfTI indexed) as "
+                "rows."),
+    option('--output-file-format-scanner', 'o_format_sph',
+           type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil',
                                  'slicewise-hrd', 'chronological-hrd']),
-              default='slicewise-coil',
-              show_default=True, help="Syntax used to describe the sequence of shim events for scanner coils. "
-                                      "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
-                                      "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
-                                      "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
-                                      "captured by the controller of the shim amplifier. If there is a fat saturation "
-                                      "pulse in the target sequence, shim weights of 0s are included in the output "
-                                      "text file before each slice coefficients. Use 'ch' to output one "
-                                      "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
-                                      "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
-                                      "all coil channels are encoded across multiple columns in the text file. Use "
-                                      "'-hrd' to output a human readable file.")
-@click.option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
-              show_default=True,
-              help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
-                   "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
-                   "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
-                   "system unless the option --output-file-format is set to gradient. The delta value format should be "
-                   "used in that case.")
-@click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
+           default='slicewise-coil', show_default=True,
+           help="Syntax used to describe the sequence of shim events for scanner coils. "
+                "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                "captured by the controller of the shim amplifier. If there is a fat saturation "
+                "pulse in the target sequence, shim weights of 0s are included in the output "
+                "text file before each slice coefficients. Use 'ch' to output one "
+                "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
+                "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
+                "all coil channels are encoded across multiple columns in the text file. Use "
+                "'-hrd' to output a human readable file."),
+    option('--output-value-format', 'output_value_format', type=click.Choice(['delta', 'absolute']), default='delta',
+           show_default=True,
+           help="Coefficient values for the scanner coil. delta: Outputs the change of shim coefficients. "
+                "absolute: Outputs the absolute coefficient by taking into account the current shim settings. "
+                "This is effectively initial + shim. Scanner coil coefficients will be in the Shim coordinate "
+                "system unless the option --output-file-format is set to gradient. The delta value format should be "
+                "used in that case.")
+)
+@option_group("Custom coil options",
+    "If you are not using a custom coil, do not specify any of these options.",
+    option('--coil', 'coils', nargs=2, multiple=True, type=(click.Path(exists=True), click.Path(exists=True)),
+           help="Pair of filenames containing the coil profiles followed by the filename to the constraints "
+                "e.g. --coil a.nii cons.json. If you have more than one coil, use this option more than once. "
+                "The coil profiles and the fieldmaps (--fmap) must have matching units (if fmap is in Hz, the coil "
+                "profiles must be in Hz/unit_shim). If using the scanner's gradient/shim coils, the coil profiles "
+                "must be in Hz/unit_shim and fieldmaps must be in Hz. If you want to shim using the scanner's "
+                "gradient/shim coils, use the `--scanner-coil-order` option. For an example of a constraint file, "
+                f"see: {__config_custom_coil_constraints__}"),
+    option('--output-file-format-coil', 'o_format_coil',
+           type=click.Choice(['slicewise-ch', 'slicewise-coil', 'chronological-ch', 'chronological-coil']),
+           default='slicewise-coil',
+           show_default=True,
+           help="Syntax used to describe the sequence of shim events for custom coils. "
+                "Use 'slicewise' to output in row 1, 2, 3, etc. the shim coefficients for slice "
+                "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
+                "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
+                "captured by the controller of the shim amplifier. Use 'ch' to output one "
+                "file per coil channel (coil1_ch1.txt, coil1_ch2.txt, etc.). Use 'coil' to "
+                "output one file per coil system (coil1.txt, coil2.txt). In the latter case, "
+                "all coil channels are encoded across multiple columns in the text file."),
+    option('--fatsat', type=click.Choice(['auto', 'yes', 'no']), default='auto', show_default=True,
+           help="Describe what to do with a fat saturation pulse. 'auto': It will parse the NIfTI file "
+                "for a fat-sat pulse and add shim coefficients of 0s before every shim group when using "
+                "'chronological-...' output-file-format-coil. 'no': It will not add 0s. 'yes': It will add 0s.")
+)
+@option_group("Shim options",
+    option('--slices', type=click.Choice(['interleaved', 'ascending', 'descending', 'volume', 'auto']),
+           required=False, default='auto', show_default=True,
+           help="Defines if shimming is slice-wise or volume-wise and the slice ordering of the target image. "
+                "volume: Volume shim, all other options are slice-wise shim,"
+                "interleaved: Slice-wise shim with interleaved slices (0,2,4,...,1,3,5,...),"
+                "ascending: Slice-wise shim with ascending slices (0,1,2,...),"
+                "descending: Slice-wise shim with descending slices (...,2,1,0),"
+                "auto: Slice-wise shim with automatic slice order parsing."),
+    option('--slice-factor', 'slice_factor', type=click.INT, required=False, default=1, show_default=True,
+           help="Number of slices per shimmed group. Used when '--slices' is not set to 'auto'. For example, if the "
+                "'--slice-factor' value is '3', then with the 'sequential' mode ('ascending' or 'descending'), "
+                "shimming will be performed independently on the following groups: {0,1,2}, {3,4,5}, etc. With the "
+                "mode 'interleaved', it will be: {0,2,4}, {1,3,5}, etc."),
+    option('--mask-dilation-kernel-size', 'dilation_kernel_size', type=click.INT, required=False,
+         default='3', show_default=True,
+         help="Number of voxels to consider outside of the masked area. For example, when doing dynamic shimming "
+              "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
+              "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
+              "linear term. When using 2nd order or more, more dilation is necessary."),
+    option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
+           type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
+           help="Method used by the optimizer. LS and QP will respect the constraints, "
+                "BFGS method only accepts constraints for each channel (not constraints on the total current), "
+                "PI will not respect any constraints"),
+    option('--optimizer-criteria', 'opt_criteria',
+         type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
+         default='mse', show_default=True,
+         help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
+              "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
+              "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method."),
+    option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
+           show_default=True,
+           help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
+                "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
+                "optimizer_method."),
+    option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
+           show_default=True,
+           help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
+                " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
+                "weights to recover the signal loss over the B0 inhomogeneity. "
+                "This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                "The optimal value for mse is around 0.01\n"
+                "The optimal value for rmse is around 10"),
+    option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False,
+           default=None, show_default=True,
+           help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a "
+                "compromise between B0 inhomogeneity"
+                " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery)"
+                ", a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
+)
+@option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
 @timeit
 def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, slices, slice_factor, coils,
