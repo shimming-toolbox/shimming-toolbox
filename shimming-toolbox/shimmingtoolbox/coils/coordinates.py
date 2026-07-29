@@ -95,7 +95,7 @@ def phys_gradient(data, affine):
 
 def phys_to_vox_coefs(x_coefs, y_coefs, z_coefs, affine):
     """
-    Compute the coefficient from world coordinate to image orientation defined by the axis codes of the affine.
+    Compute the coefficients from world coordinate to image orientation defined by the axis codes of the affine.
     e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from RAS to LSP image coordinates.
 
     Args:
@@ -136,7 +136,7 @@ def phys_to_vox_coefs(x_coefs, y_coefs, z_coefs, affine):
 
 def vox_to_phys_coefs(ax1_coefs, ax2_coefs, ax3_coefs, affine):
     """
-    Compute the coefficient from image coordinates orientation to world orientation defined by the axis codes of the affine.
+    Compute the coefficients from image coordinates orientation to world orientation defined by the axis codes of the affine.
     e.g: If world coordinates are RAS and voxel coordinates are LSP, then transform from LSP to RAS world coordinates.
 
     Args:
