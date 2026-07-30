@@ -6,9 +6,8 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from coils.spher_harm_basis import get_flip_matrix
 from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
-                                                    channels_per_order)
+                                                    channels_per_order, get_flip_matrix)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
 from shimmingtoolbox import __config_scanner_constraints__
