@@ -1148,6 +1148,7 @@ class TestCliDynamic(object):
                                              '--output', tmp],
                                 catch_exceptions=False)
             assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
 
     def test_cli_dynamic_opt_cs_gradient_offchannels(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """ Test the gradient-cs --opt-cs. When using pseudo inverse, the results should be the same as shim-cs. """
@@ -1179,6 +1180,44 @@ class TestCliDynamic(object):
                                              '--output', tmp],
                                 catch_exceptions=False)
             assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+
+    def test_cli_dynamic_opt_cs_gradient_volume(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """ Test the gradient-cs --opt-cs. When using pseudo inverse, the results should be the same as shim-cs. """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            nii_fmap = nib.Nifti1Image(nii_fmap.get_fdata()[..., 0], nii_fmap.affine, header=nii_fmap.header)
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--mask', fname_mask,
+                                             '--target', fname_target,
+                                             '--optimizer-method', 'pseudo_inverse',
+                                             '--slices', 'volume',
+                                             '--scanner-coil-order', '0,1',
+                                             '--opt-cs', 'gradient-cs',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            # Read json sidecar and look at the calues
+            with open(os.path.join(tmp, 'fieldmap_calculated_shim.json'), 'r') as f:
+                data = json.load(f)
+            assert data['ImagingFrequency'] == 123.258971
+            assert np.allclose(data['ShimSetting'], [665.0, -7442.95, -9991.09], atol=1e-6)
 
     def test_cli_dynamic_opt_cs_gradient_same_shim_cs(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """ Test the gradient-cs --opt-cs. When using pseudo inverse, the results should be the same as shim-cs. """

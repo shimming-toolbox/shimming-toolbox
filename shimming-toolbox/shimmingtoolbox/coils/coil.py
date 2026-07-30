@@ -6,6 +6,7 @@ import logging
 import numpy as np
 from typing import Tuple
 
+from coils.spher_harm_basis import get_flip_matrix
 from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
                                                     channels_per_order)
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
@@ -347,6 +348,7 @@ class ScannerCoil(Coil):
             else:
                 self.coord_system = shim_cs
 
+        self.manufacturer = manufacturer
         self.affine = affine
         self.isocenter = isocenter
         self.opt_cs = opt_cs
@@ -355,28 +357,28 @@ class ScannerCoil(Coil):
         self.fname_target = fname_target
 
         # Create the spherical harmonics with the correct order, dim and affine
-        sph_coil_profile = self._create_coil_profile(dim_volume, manufacturer, opt_cs)
+        sph_coil_profile = self._create_coil_profile(dim_volume, opt_cs)
         # Restricts the constraints to the specified order
         if 'coef_channel_minmax' in constraints.keys():
-            constraints['coef_channel_minmax'] = restrict_to_orders(constraints['coef_channel_minmax'],
-                                                                          self.orders)
+            constraints['coef_channel_minmax'] = restrict_to_orders(constraints['coef_channel_minmax'], self.orders)
         if 'coefs_used' in constraints.keys():
             constraints['coefs_used'] = restrict_to_orders(constraints['coefs_used'], self.orders)
         super().__init__(sph_coil_profile, affine, constraints, channels_onoff, channels_off_values)
+        self._update_constraints_to_cs()
 
-    def _create_coil_profile(self, dim, manufacturer=None, opt_cs='shim-cs'):
+    def _create_coil_profile(self, dim, opt_cs='shim-cs'):
         # Create spherical harmonics coil profiles
 
         if opt_cs == "gradient-cs" and self.fname_target is None:
             raise ValueError("fname_target cannot be None for gradient-cs")
-        if opt_cs == "gradient-cs" and manufacturer != "SIEMENS":
-            raise ValueError(f"gradient-cs not implemented for manufacturer {manufacturer}. Only implemented for SIEMENS.")
+        if opt_cs == "gradient-cs" and self.manufacturer != "SIEMENS":
+            raise ValueError(f"gradient-cs not implemented for manufacturer {self.manufacturer}. Only implemented for SIEMENS.")
 
         # Change the affine offset so that the origin is at isocenter
         affine_origin_iso = copy.deepcopy(self.affine)
         affine_origin_iso[:3, 3] -= self.isocenter
         mesh1, mesh2, mesh3 = generate_meshgrid(dim, affine_origin_iso)
-        if manufacturer == 'SIEMENS':
+        if self.manufacturer == 'SIEMENS':
             if opt_cs == 'shim-cs':
                 sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
             elif opt_cs == 'gradient-cs':
@@ -384,16 +386,71 @@ class ScannerCoil(Coil):
                 sph_coil_profile = siemens_basis(mesh1_freq, mesh2_phase, mesh3_slice, orders=tuple(self.orders), shim_cs='RAS')
             else:
                 raise ValueError(f"Unknown opt_cs: {opt_cs}")
-        elif manufacturer == 'GE':
+        elif self.manufacturer == 'GE':
             sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
-        elif manufacturer == 'PHILIPS':
+        elif self.manufacturer == 'PHILIPS':
             sph_coil_profile = philips_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         else:
-            logger.warning(f"{manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
+            logger.warning(f"{self.manufacturer} manufacturer not implemented. Outputting in Hz, uT/m, uT/m^2, uT/m^3 for "
                            "order 0, 1, 2 and 3 respectively")
             sph_coil_profile = sh_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders), shim_cs=self.coord_system)
 
         return sph_coil_profile
+
+    def _update_constraints_to_cs(self):
+        # Constraints are in the shim cs
+        if self.opt_cs == 'gradient-cs':
+            if 1 not in self.orders:
+                raise ValueError("Order 1 needs to be selected to update to gradient-cs")
+            # Convert from shim coordinate system to RAS
+            flip = get_flip_matrix(self.coord_system, self.manufacturer, [1, ])
+            if flip[0] < 0:
+                min_x = -self.coef_channel_minmax['1'][0][1]
+                max_x = -self.coef_channel_minmax['1'][0][0]
+            else:
+                min_x = self.coef_channel_minmax['1'][0][0]
+                max_x = self.coef_channel_minmax['1'][0][1]
+            if flip[1] < 0:
+                min_y = -self.coef_channel_minmax['1'][1][1]
+                max_y = -self.coef_channel_minmax['1'][1][0]
+            else:
+                min_y = self.coef_channel_minmax['1'][1][0]
+                max_y = self.coef_channel_minmax['1'][1][1]
+            if flip[2] < 0:
+                min_z = -self.coef_channel_minmax['1'][2][1]
+                max_z = -self.coef_channel_minmax['1'][2][0]
+            else:
+                min_z = self.coef_channel_minmax['1'][2][0]
+                max_z = self.coef_channel_minmax['1'][2][1]
+
+            # Find bounds for freq, phase and slice encoding direction
+            min_freq = np.inf
+            max_freq = -np.inf
+            min_phase = np.inf
+            max_phase = -np.inf
+            min_slice = np.inf
+            max_slice = -np.inf
+
+            for x_coef in [min_x, max_x]:
+                for y_coef in [min_y, max_y]:
+                    for z_coef in [min_z, max_z]:
+                        # Convert from World RAS to gradient CS
+                        freq, phase, slice = phys_to_gradient_cs(x_coef, y_coef, z_coef, self.fname_target)
+                        if freq < min_freq:
+                            min_freq = freq
+                        if freq > max_freq:
+                            max_freq = freq
+                        if phase < min_phase:
+                            min_phase = phase
+                        if phase > max_phase:
+                            max_phase = phase
+                        if slice < min_slice:
+                            min_slice = slice
+                        if slice > max_slice:
+                            max_slice = slice
+
+                        logger.debug(f"Freq, phase, slice: {freq}, {phase}, {slice}")
+            self.coef_channel_minmax['1'] = [[min_freq, max_freq], [min_phase, max_phase], [min_slice, max_slice]]
 
     def __hash__(self):
         return hash(self.name)

@@ -310,16 +310,11 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
-    # Read the current shim settings from the scanner
-    scanner_shim_settings = ScannerShimSettings(nif_fmap, orders=scanner_coil_order)
-    options = {'scanner_shim': scanner_shim_settings.shim_settings}
-
     # Load the coils
     list_coils = load_coils(coils,
                             scanner_coil_order,
                             fname_sph_constr,
                             nif_fmap,
-                            options['scanner_shim'],
                             off_channels=off_channels,
                             off_channels_values=off_channels_values,
                             opt_cs=opt_cs,
@@ -329,7 +324,8 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     if slices == 'auto':
         list_slices = parse_slices(fname_target)
     else:
-        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions', required=False))
+        list_slices = define_slices(n_slices, slice_factor, slices, nif_fmap.get_json_info('SoftwareVersions',
+                                                                                           required=False))
     logger.info(f"The slices to shim are:\n{list_slices}")
     # Get shimming coefficients
     # 1 ) Create the Shimming sequencer object
@@ -351,7 +347,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     coefs = sequencer.shim()
     # Output
     # Load output options
-    options['fatsat'] = nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
+    options = {'fatsat': nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'}
 
     list_fname_output = []
     end_channel = 0
@@ -373,12 +369,13 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                 logger.debug(f"Shim coefficients in gradient coordinate system: {coefs_coil}")
                 # Convert shim coefficients from gradients back to xyz
                 if 1 not in scanner_coil_order:
-                    raise ValueError(f"Cannot convert shim coefficients from gradient to xyz coordinate system if 1st order is not used. ")
+                    raise ValueError(f"Cannot convert shim coefficients from gradient to xyz coordinate "
+                                     f"system if 1st order is not used. ")
                 coefs_coil_dict = coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer)
                 coefs_order1_phys = gradient_to_phys_cs(coefs_coil_dict[1][:, 0],
-                                                      coefs_coil_dict[1][:, 1],
-                                                      coefs_coil_dict[1][:, 2],
-                                                      fname_target)
+                                                        coefs_coil_dict[1][:, 1],
+                                                        coefs_coil_dict[1][:, 2],
+                                                        fname_target)
                 coefs_phys = copy.deepcopy(coefs_coil)
                 offset_channel = 1 if 0 in scanner_coil_order else 0
                 # Convert from physical RAS to the manufacturer's shim CS (eg: Siemens is LAI)
@@ -388,6 +385,10 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                 coefs_phys[:, 2 + offset_channel] = flip[2] * coefs_order1_phys[2]
 
                 coefs_coil = coefs_phys
+
+            # Save the field map's JSON file with the potentially updated coefficients
+            if sequencer.path_output is not None:
+                sequencer.save_calc_fmap_json(coefs_coil)
 
             # If it's a volume shim, we can update the input constraints
             # There is a check if fname_sph_constr is provided because if it is not, we can write the updated shim
@@ -831,16 +832,9 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     if not np.all(np.isclose(nif_fmap.get_isocenter(), nif_target.get_isocenter())):
         raise ValueError("Table position in the field map and target image are not the same.")
 
-    # Read the current shim settings from the scanner
-    all_scanner_orders = set(scanner_coil_order_static).union(set(scanner_coil_order_riro))
-    scanner_shim_settings = ScannerShimSettings(nif_fmap, orders=all_scanner_orders)
-    options = {'scanner_shim': scanner_shim_settings.shim_settings}
-
     # Load the coils
-    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nif_fmap,
-                                   options['scanner_shim'])
-    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nif_fmap,
-                                 options['scanner_shim'])
+    list_coils_static = load_coils(coils_static, scanner_coil_order_static, fname_sph_constr, nif_fmap)
+    list_coils_riro = load_coils(coils_riro, scanner_coil_order_riro, fname_sph_constr, nif_fmap)
 
     if logger.level <= getattr(logging, 'DEBUG'):
         # Save inputs
@@ -881,7 +875,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
 
     # Output
     # Load output options
-    options['fatsat'] = nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'
+    options = {'fatsat': nif_target.get_fat_sat_option() if fatsat == 'auto' else fatsat == 'yes'}
 
     # Get common coils between static and riro // Comparison based on coil name
     coil_static_only = [coil for coil in list_coils_static if coil not in list_coils_riro]
@@ -1198,7 +1192,7 @@ def parse_channels_off(opt_channels: str) -> list[int]:
         return [int(ch) for ch in opt_channels.split(',')]
 
 
-def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings, off_channels=(),
+def load_coils(coils, orders, fname_constraints, nif_fmap, off_channels=(),
                off_channels_values=None, opt_cs="shim-cs", fname_target=None):
     """ Loads the Coil objects from filenames
 
@@ -1207,7 +1201,6 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         orders (list): Orders of the scanner coils (0 or 1 or 2)
         fname_constraints (str): Filename of the constraints of the scanner coils
         nif_fmap (NiftiFieldMap): Field map
-        scanner_shim_settings (dict): Dictionary containing the shim settings of the scanner ('0', '1', '2')
         json_fm_data (dict): BIDS JSON sidecar as a dictionary
         off_channels (tuple): Tuple of channels to turn off.
         off_channels_values (np.array): (n_slices x n_off_channels) array of values to set for the channels that are
@@ -1271,17 +1264,20 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
 
     # Create the spherical harmonic coil profiles of the scanner
     if -1 not in orders:
+        # Read the current shim settings from the scanner
+        scanner_shim_settings = ScannerShimSettings(nif_fmap, orders=orders)
+
         if fname_constraints is not None and os.path.isfile(fname_constraints):
             with open(fname_constraints) as json_file:
                 external_contraints = json.load(json_file)
         else:
             external_contraints = None
 
-        scanner_contraints = get_scanner_constraints(manufacturers_model_name,
+        scanner_constraints = get_scanner_constraints(manufacturers_model_name,
                                                      orders,
                                                      manufacturer,
                                                      device_serial_number,
-                                                     scanner_shim_settings,
+                                                     scanner_shim_settings.shim_settings,
                                                      external_contraints)
 
         n_channels = np.array([channels_per_order(order, manufacturer) for order in orders]).sum()
@@ -1291,7 +1287,7 @@ def load_coils(coils, orders, fname_constraints, nif_fmap, scanner_shim_settings
         isocenter = nif_fmap.get_isocenter()
         scanner_coil = ScannerCoil(nif_fmap.extended_shape[:3],
                                    nif_fmap.extended_affine,
-                                   scanner_contraints,
+                                   scanner_constraints,
                                    orders,
                                    manufacturer=manufacturer,
                                    isocenter=isocenter,
