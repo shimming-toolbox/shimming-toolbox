@@ -372,7 +372,7 @@ class ScannerCoil(Coil):
         if opt_cs == "gradient-cs" and self.manufacturer != "SIEMENS":
             raise ValueError(f"gradient-cs not implemented for manufacturer {self.manufacturer}. Only implemented for SIEMENS.")
         if opt_cs == "gradient-cs" and self.orders not in [[1,], [0, 1]]:
-            raise ValueError("Order 1 is required for gradient-cs")
+            raise ValueError("Accepted orders for gradient-cs: [1,], [0, 1]")
 
         # Change the affine offset so that the origin is at isocenter
         affine_origin_iso = copy.deepcopy(self.affine)
