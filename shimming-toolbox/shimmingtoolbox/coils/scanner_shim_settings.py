@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file includes functions a classes useful to extract scanner's shim settings
+This file includes functions and classes useful to extract scanner's shim settings
 """
 import copy
 import logging

@@ -1,13 +1,14 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import copy
 
-import numpy as np
+import copy
 import json
+import numpy as np
+import os
 
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, SCANNER_CONSTRAINTS
 from shimmingtoolbox.coils.spher_harm_basis import siemens_basis
-from shimmingtoolbox import __config_scanner_constraints__
+from shimmingtoolbox import __config_scanner_constraints__, __dir_testing__
 
 shim_settings = {
     '0': [1],
@@ -133,7 +134,7 @@ def test_create_scanner_coil_not_isocenter():
     scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1, 2], 'SIEMENS',
                                isocenter=np.array([3, 4, 5]))
 
-    # assert np.all(scanner_coil.isocenter == [3, 4, 5])
+    assert np.allclose(scanner_coil.isocenter, [3, 4, 5])
     assert np.allclose(scanner_coil.profile[0, 0, 1, :], [-1,  1.70309914e-01, -2.12887393e-01,
                                                           2.12887393e-01, 1.91598653e-04,  1.70309914e-03,
                                                           -2.12887393e-03, -3.83197307e-04, -1.70309914e-03])
@@ -143,6 +144,34 @@ def test_create_scanner_coil_not_isocenter():
     assert np.allclose(scanner_coil.profile[1, 0, 0, :], [-1,  1.27732436e-01, -2.12887393e-01,
                                                           2.55464871e-01, 8.08972092e-04, 1.53278923e-03,
                                                           -2.55464871e-03, -6.81239656e-04, -1.27732436e-03])
+
+
+def test_create_scanner_coil_gradient_cs():
+    sph_contraints = json.load(open(__config_scanner_constraints__))
+    affine = np.array([[1, 0, 0, -1], [0, 1, 0, -1], [0, 0, 1, -1], [0, 0, 0, 1]])
+    fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.nii.gz")
+    scanner_coil = ScannerCoil((3, 3, 3), affine, sph_contraints, [0, 1], 'SIEMENS',
+                               isocenter=np.array([3, 4, 5]), opt_cs="gradient-cs", fname_target=fname_target)
+
+    assert np.allclose(scanner_coil.coef_channel_minmax['1'], [[-2300.0, 2300.0],
+                                                               [-2542.0446737374277, 2542.0446737374277],
+                                                               [-2542.0451880969194, 2542.0451880969194]])
+    assert np.allclose(scanner_coil.coef_channel_minmax['0'], [[123100100, 123265000]])
+    assert np.allclose(scanner_coil.profile[0, 0, 1, :], [-1, -0.17030991, 0.23529098, -0.18783028])
+    assert np.allclose(scanner_coil.profile[0, 1, 0, :], [-1, -0.17030991, 0.19772492, -0.23488849])
+    assert np.allclose(scanner_coil.profile[1, 0, 0, :], [-1, -0.12773244, 0.24003705, -0.23014241])
+    assert np.allclose(scanner_coil.profile[:, 0, 0, 0], [-1., -1., -1.])
+    # fname_target is not perfectly axial, field map is perfectly axial, therefore gradient axes x, y, z are in
+    # freq, phase, slice respectively
+    assert np.allclose(scanner_coil.profile[:, 0, 0, 1], [-0.17030991, -0.12773244, -0.08515496])
+    assert np.allclose(scanner_coil.profile[0, :, 0, 1], [-0.17030991, -0.17030991, -0.17030991])
+    assert np.allclose(scanner_coil.profile[0, 0, :, 1], [-0.17030991, -0.17030991, -0.17030991])
+    assert np.allclose(scanner_coil.profile[:, 0, 0, 2], [[0.24003705, 0.24003705, 0.24003705]])
+    assert np.allclose(scanner_coil.profile[0, :, 0, 2], [[0.24003705, 0.19772492, 0.15541278]])
+    assert np.allclose(scanner_coil.profile[0, 0, :, 2], [[0.24003705, 0.23529098, 0.23054492]])
+    assert np.allclose(scanner_coil.profile[:, 0, 0, 3], [[-0.23014241, -0.23014241, -0.23014241]])
+    assert np.allclose(scanner_coil.profile[0, :, 0, 3], [[-0.23014241, -0.23488849, -0.23963456]])
+    assert np.allclose(scanner_coil.profile[0, 0, :, 3], [[-0.23014241, -0.18783028, -0.14551815]])
 
 
 def test_create_scanner_coil_philips():

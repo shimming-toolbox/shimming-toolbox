@@ -9,10 +9,13 @@ import logging
 from nibabel.affines import apply_affine
 
 from shimmingtoolbox.coils.coordinates import phys_to_vox_coefs, vox_to_phys_coefs, get_main_orientation
-from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix, SHIM_CS
 
 logger = logging.getLogger(__name__)
 
+MANUFACTURERS = ('SIEMENS', 'GE', 'PHILIPS')
+SHIM_CS = {'SIEMENS': 'LAI',
+           'GE': 'LPI',
+           'PHILIPS': 'RPI'}
 
 def get_phase_encode_direction_sign(fname_nii):
     """ Returns the phase encode direction sign
@@ -471,3 +474,140 @@ def update_affine_for_ap_slices(affine, n_slices=1, axis=2):
     new_affine[:3, 3] = affine[:3, 3] - spacing
 
     return new_affine
+
+
+def get_flip_matrix(shim_cs='RAS', manufacturer=None, orders=None):
+    f"""
+    Return a matrix to flip the spherical harmonics basis set from RAS to the desired coordinate system.
+
+    Args:
+        shim_cs (str): Coordinate system of the shim basis set. Default is RAS.
+        orders (list): List of orders of the spherical harmonics. Default to None (all orders)
+        manufacturer (str): Manufacturer of the scanner. The flipping matrix order is different for each manufacturer.
+                            If None is selected, it will output according to
+                            ``shimmingtoolbox.coils.spherical_harmonics``. Possible values: {MANUFACTURERS}.
+
+    Returns:
+        numpy.ndarray: Matrix (len: 8) to flip the spherical harmonics basis set from ras to the desired coordinate
+                       system. Output is a 1D vector of ``flip_matrix`` for the following:
+                       Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, YZ2, Z3, XZ^2, Z(X2 - Y2), X(X2 - Y2).
+                       If xyz is True, output X, Y, Z only in this order.
+    """
+    if orders is None:
+        orders = [1, 2, 3]
+
+    xyz_cs = [1, 1, 1]
+
+    shim_cs = shim_cs.upper()
+    if (len(shim_cs) != 3) or \
+            (shim_cs[0] not in ['R', 'L']) or (shim_cs[1] not in ['A', 'P']) or (shim_cs[2] not in ['S', 'I']):
+        raise ValueError(f"Unknown coordinate system: {shim_cs}")
+
+    if shim_cs[0] == 'L':
+        xyz_cs[0] = -1
+    if shim_cs[1] == 'P':
+        xyz_cs[1] = -1
+    if shim_cs[2] == 'I':
+        xyz_cs[2] = -1
+
+    # Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
+    out_dict = {}
+    for order in orders:
+        if order == 1:
+            out_dict[1] = np.array([xyz_cs[1], xyz_cs[2], xyz_cs[0]])
+        if order == 2:
+            out_dict[2] = np.array([xyz_cs[0] * xyz_cs[1], xyz_cs[2] * xyz_cs[1], 1, xyz_cs[2] * xyz_cs[0], 1])
+        if order == 3:
+            out_dict[3] = np.array([xyz_cs[1], xyz_cs[0] * xyz_cs[1] * xyz_cs[2], xyz_cs[1], xyz_cs[2], xyz_cs[0],
+                                    xyz_cs[2], xyz_cs[0]])
+
+    if manufacturer is not None:
+        manufacturer = manufacturer.upper()
+
+    out_dict = reorder_to_manufacturer(out_dict, manufacturer)
+
+    out_list = []
+    for i_order in sorted(orders):
+        out_list += out_dict[i_order].tolist()
+
+    # None: Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
+    # GE: x, y, z, xy, zy, zx, X2 - Y2, z2, 3rd order not implemented
+    # Siemens: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3,  XZ2, YZ2, Z(X2 - Y2)
+    # Philips: X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, 3rd order not implemented
+    return out_list
+
+
+def reorder_to_manufacturer(spher_harm, manufacturer):
+    """
+    Reorder 1st - 2nd - 3rd order coefficients, if specified. From
+
+    Y, Z, X, XY, ZY, Z2, ZX, X2 - Y2, Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
+    (output by shimmingtoolbox.coils.spherical_harmonics.spherical_harmonics), to
+
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2) (in line with Siemens shims) or
+
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY (in line with GE shims) or
+
+    X, Y, Z, Z2, ZX, ZY, X2 - Y2, XY, Z3, Z2X, Z2Y, Z(X2 - Y2), XYZ, X(X2 - Y2), Y(X2 - Y2) (in line with Philips shims)
+
+    Args:
+        spher_harm (dict): 3D array of spherical harmonics coefficients with key corresponding to the order
+        manufacturer (str): Manufacturer of the scanner
+
+    Returns:
+        dict: Coefficients ordered following the manufacturer's convention
+    """
+    if manufacturer not in MANUFACTURERS:
+        # Do not reorder if the manufacturer is not in the implemented manufacturers
+        return spher_harm
+
+    def _reorder_order0(sph, manuf):
+        if sph.shape[-1] != 1:
+            raise ValueError("Input arrays should have 4th dimension's shape equal to 1")
+        return sph[..., [0]]
+
+    def _reorder_order1(sph, manuf):
+        if sph.shape[-1] != 3:
+            raise ValueError("Input arrays should have 4th dimension's shape equal to 3")
+        if manuf in ['SIEMENS', 'GE', 'PHILIPS']:
+            return sph[..., [2, 0, 1]]
+        else:
+            logger.warning(f"1st order spherical harmonics not implemented for: {manuf}")
+            return sph
+
+    def _reorder_order2(sph, manuf):
+        if sph.shape[-1] != 5:
+            raise ValueError("Input arrays should have 4th dimension's shape equal to 5")
+
+        if manuf in ['SIEMENS', 'PHILIPS', 'GE']:
+            return sph[..., [2, 3, 1, 4, 0]]
+        else:
+            logger.warning(f"2nd order spherical harmonics not implemented for: {manuf}")
+            return sph
+
+    def _reorder_order3(sph, manuf):
+        if sph.shape[-1] != 7:
+            raise ValueError("Input arrays should have 4th dimension's shape equal to 7")
+        if manufacturer == 'SIEMENS':
+            return sph[..., [3, 4, 2, 5]]
+        elif manufacturer == 'PHILIPS':
+            # Y(X2 - Y2), XYZ, Z2Y, Z3, Z2X, Z(X2 - Y2), X(X2 - Y2)
+            # Z3, Z2X, Z2Y, Z(X2 - Y2), XYZ, X(X2 - Y2), Y(X2 - Y2)
+            return sph[..., [3, 4, 2, 5, 1, 6, 0]]
+
+        else:
+            logger.warning(f"3rd order spherical harmonics not implemented for: {manuf}")
+            return sph
+
+    reorder = {0: _reorder_order0,
+               1: _reorder_order1,
+               2: _reorder_order2,
+               3: _reorder_order3}
+
+    reordered = {}
+    for order in spher_harm.keys():
+        if order not in reorder.keys():
+            logger.warning(f"Ordering for order {order} spherical harmonics not implemented")
+        reordered[order] = reorder[order](spher_harm[order], manuf=manufacturer)
+
+    return reordered

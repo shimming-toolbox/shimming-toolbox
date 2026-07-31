@@ -19,9 +19,8 @@ import logging
 import os
 from matplotlib.figure import Figure
 
-from shimmingtoolbox.coils.spher_harm_basis import get_flip_matrix
 from shimmingtoolbox import __config_scanner_constraints__, __config_custom_coil_constraints__
-from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, OPT_CS, SHIM_CS
+from shimmingtoolbox.coils.coil import Coil, ScannerCoil, get_scanner_constraints, OPT_CS
 from shimmingtoolbox.coils.scanner_shim_settings import ScannerShimSettings, concatenate_shim_settings
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order, reorder_shim_to_scaling_ge
 from shimmingtoolbox.pmu import PmuResp
@@ -29,7 +28,7 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import gradient_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import gradient_to_phys_cs, SHIM_CS, get_flip_matrix
 
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap

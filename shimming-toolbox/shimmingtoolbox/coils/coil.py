@@ -6,10 +6,9 @@ import logging
 import numpy as np
 from typing import Tuple
 
-from shimmingtoolbox.coils.spher_harm_basis import (sh_basis, siemens_basis, ge_basis, philips_basis, SHIM_CS,
-                                                    channels_per_order, get_flip_matrix)
+from shimmingtoolbox.coils.spher_harm_basis import sh_basis, siemens_basis, ge_basis, philips_basis, channels_per_order
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
-from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs
+from shimmingtoolbox.shim.shim_utils import phys_to_gradient_cs, SHIM_CS, get_flip_matrix
 from shimmingtoolbox import __config_scanner_constraints__
 
 logger = logging.getLogger(__name__)
@@ -372,19 +371,15 @@ class ScannerCoil(Coil):
             raise ValueError("fname_target cannot be None for gradient-cs")
         if opt_cs == "gradient-cs" and self.manufacturer != "SIEMENS":
             raise ValueError(f"gradient-cs not implemented for manufacturer {self.manufacturer}. Only implemented for SIEMENS.")
+        if opt_cs == "gradient-cs" and self.orders not in [[1,], [0, 1]]:
+            raise ValueError("Order 1 is required for gradient-cs")
 
         # Change the affine offset so that the origin is at isocenter
         affine_origin_iso = copy.deepcopy(self.affine)
         affine_origin_iso[:3, 3] -= self.isocenter
         mesh1, mesh2, mesh3 = generate_meshgrid(dim, affine_origin_iso)
         if self.manufacturer == 'SIEMENS':
-            if opt_cs == 'shim-cs':
-                sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
-            elif opt_cs == 'gradient-cs':
-                mesh1_freq, mesh2_phase, mesh3_slice = phys_to_gradient_cs(mesh1, mesh2, mesh3, self.fname_target)
-                sph_coil_profile = siemens_basis(mesh1_freq, mesh2_phase, mesh3_slice, orders=tuple(self.orders), shim_cs='RAS')
-            else:
-                raise ValueError(f"Unknown opt_cs: {opt_cs}")
+            sph_coil_profile = siemens_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders), cs=opt_cs, fname_target=self.fname_target)
         elif self.manufacturer == 'GE':
             sph_coil_profile = ge_basis(mesh1, mesh2, mesh3, orders=tuple(self.orders))
         elif self.manufacturer == 'PHILIPS':
@@ -403,24 +398,9 @@ class ScannerCoil(Coil):
                 raise ValueError("Order 1 needs to be selected to update to gradient-cs")
             # Convert from shim coordinate system to RAS
             flip = get_flip_matrix(self.coord_system, self.manufacturer, [1, ])
-            if flip[0] < 0:
-                min_x = -self.coef_channel_minmax['1'][0][1]
-                max_x = -self.coef_channel_minmax['1'][0][0]
-            else:
-                min_x = self.coef_channel_minmax['1'][0][0]
-                max_x = self.coef_channel_minmax['1'][0][1]
-            if flip[1] < 0:
-                min_y = -self.coef_channel_minmax['1'][1][1]
-                max_y = -self.coef_channel_minmax['1'][1][0]
-            else:
-                min_y = self.coef_channel_minmax['1'][1][0]
-                max_y = self.coef_channel_minmax['1'][1][1]
-            if flip[2] < 0:
-                min_z = -self.coef_channel_minmax['1'][2][1]
-                max_z = -self.coef_channel_minmax['1'][2][0]
-            else:
-                min_z = self.coef_channel_minmax['1'][2][0]
-                max_z = self.coef_channel_minmax['1'][2][1]
+            min_x, max_x = sorted([flip[0] * coef for coef in self.coef_channel_minmax['1'][0]])
+            min_y, max_y = sorted([flip[1] * coef for coef in self.coef_channel_minmax['1'][1]])
+            min_z, max_z = sorted([flip[2] * coef for coef in self.coef_channel_minmax['1'][2]])
 
             # Find bounds for freq, phase and slice encoding direction
             min_freq = np.inf

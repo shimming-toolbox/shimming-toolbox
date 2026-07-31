@@ -9,7 +9,7 @@ import pytest
 
 from shimmingtoolbox.shim.shim_utils import (phys_to_shim_cs, shim_to_phys_cs,
                                              calculate_metric_within_mask, phys_to_gradient_cs,
-                                             gradient_to_phys_cs)
+                                             gradient_to_phys_cs, get_flip_matrix)
 from shimmingtoolbox.coils.coordinates import get_main_orientation
 
 
@@ -153,3 +153,38 @@ def create_nifti(orientation, phase_encode_dir, path_output):
     with open(fname_json, "w") as f:
         json.dump(data_json, f)
     return fname_nii
+
+
+class TestGetFlipMatrix:
+    def test_flip_cs(self):
+        out = get_flip_matrix('RAS', orders=[1, ])
+        assert np.all(out == [1, 1, 1])
+
+    def test_flip_cs_lpi(self):
+        out = get_flip_matrix('LPI', orders=[1, ])
+        assert np.all(out == [-1, -1, -1])
+
+    def test_flip_cs_order2(self):
+        out = get_flip_matrix('LAI', orders=[1, 2])
+        assert np.all(out == [1, -1, -1, -1, -1, 1, 1, 1])
+
+    def test_flip_cs_len4(self):
+        with pytest.raises(ValueError, match="Unknown coordinate system"):
+            get_flip_matrix('LAIS')
+
+    def test_flip_cs_lap(self):
+        with pytest.raises(ValueError, match="Unknown coordinate system"):
+            get_flip_matrix('LAP')
+
+    def test_flip_siemens(self):
+        out = get_flip_matrix('LAI', orders=[1, 2, 3], manufacturer='Siemens')
+        # TODO: Verify 3rd order
+        assert np.all(out == [-1, 1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1])
+
+    def test_flip_ge(self):
+        out = get_flip_matrix('LPI', orders=[1, 2], manufacturer='GE')
+        assert np.all(out == [-1, -1, -1, 1, 1, 1, 1, 1])
+
+    def test_flip_philips(self):
+        out = get_flip_matrix('RPI', orders=[1, 2], manufacturer='PHILIPS')
+        assert np.all(out == [1, -1, -1, 1, -1, 1, 1, -1])
