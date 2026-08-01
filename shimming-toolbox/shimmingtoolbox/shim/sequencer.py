@@ -652,6 +652,11 @@ class ShimSequencer(Sequencer):
         Args:
             static (np.ndarray): Array with the static coefficients
         """
+
+        # Cannot see the evolution of the currents through shims if there is only one
+        if len(self.slices) == 1:
+            return
+
         fig = Figure(figsize=(10, 10))
         ax = fig.add_subplot(111)
         n_channels = static.shape[1]
