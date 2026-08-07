@@ -160,7 +160,7 @@ def create_output_dir(path_output, is_file=False, output_folder_name="output"):
     """Given a path, create the directory if it doesn't exist.
 
     Args:
-        path_output (str): Path, preferably a full path to either a folder or a file. Relative paths will be expanded using current working directory.
+        path_output (str): Path to either a folder or a file. Relative paths will be expanded using current working directory.
         is_file (bool): True if the ``path_output`` is for a file, else False.
         output_folder_name (str): Name of sub-folder.
     """
