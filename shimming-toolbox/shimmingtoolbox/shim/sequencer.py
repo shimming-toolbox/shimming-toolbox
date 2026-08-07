@@ -26,7 +26,7 @@ from shimmingtoolbox.load_nifti import get_acquisition_times
 from shimmingtoolbox.pmu import PmuResp
 from shimmingtoolbox.masking.mask_utils import resample_mask
 from shimmingtoolbox.coils.coordinates import resample_from_to
-from shimmingtoolbox.utils import create_output_dir, montage
+from shimmingtoolbox.utils import create_output_dir, montage, JOBLIB_BACKEND
 from shimmingtoolbox.shim.shim_utils import calculate_metric_within_mask, extend_slice
 
 ListCoil = List[Coil]
@@ -232,15 +232,19 @@ class ShimSequencer(Sequencer):
         nii_unshimmed = nib.Nifti1Image(optimizer.unshimmed, optimizer.unshimmed_affine)
         if self.nif_fieldmap.extended:
             # Joblib multiprocessing to resampled the mask
-            dilated_mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i], dilation_kernel,
-                                       dilation_kernel_size, path_output)
-                for i in range(n_shims))
+            with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+                dilated_mask = parallel(delayed(resample_mask)(nii_mask_target,
+                                                               nii_unshimmed,
+                                                               slices[i],
+                                                               dilation_kernel,
+                                                               dilation_kernel_size,
+                                                               path_output) for i in range(n_shims))
 
             nii_unshimmed = self.nif_fieldmap.nii
-            mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i])
-                for i in range(n_shims))
+            with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+                mask = parallel(delayed(resample_mask)(nii_mask_target,
+                                                       nii_unshimmed,
+                                                       slices[i]) for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
             masks_fmap_dilated = np.array([dilated_mask[it].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3, 0)
@@ -248,10 +252,13 @@ class ShimSequencer(Sequencer):
 
         else:
             # Joblib multiprocessing to resampled the mask
-            results_mask = Parallel(-1, backend='loky')(
-                delayed(resample_mask)(nii_mask_target, nii_unshimmed, slices[i], dilation_kernel,
-                                       dilation_kernel_size, path_output, return_non_dil_mask=True)
-                for i in range(n_shims))
+            with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+                results_mask = parallel(delayed(resample_mask)(nii_mask_target,
+                                                               nii_unshimmed,
+                                                               slices[i],
+                                                               dilation_kernel,
+                                                               dilation_kernel_size,
+                                                               path_output, return_non_dil_mask=True) for i in range(n_shims))
 
             # We need to transpose the mask to have the good dimensions
             masks_fmap_dilated = np.array([results_mask[it][1].get_fdata() for it in range(n_shims)]).transpose(1, 2, 3,
@@ -1383,17 +1390,21 @@ class RealTimeSequencer(Sequencer):
 
         nii_fmap_cs = nib.Nifti1Image(nii_fmap.get_fdata()[..., 0], nii_fmap.affine)
 
-        r = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(self.nif_static_mask.nii, nii_fmap_cs, self.slices[i],
-                                   self.mask_dilation_kernel, self.mask_dilation_kernel_size,
-                                   self.path_output, return_non_dil_mask=True)
-            for i in range(n_shims))
+        with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+            r = parallel(delayed(resample_mask)(self.nif_static_mask.nii,
+                                                nii_fmap_cs,
+                                                self.slices[i],
+                                                self.mask_dilation_kernel,
+                                                self.mask_dilation_kernel_size,
+                                                self.path_output, return_non_dil_mask=True) for i in range(n_shims))
         static_mask, static_mask_dil = zip(*r)
-        r = Parallel(-1, backend='loky')(
-            delayed(resample_mask)(self.nif_riro_mask.nii, nii_fmap_cs, self.slices[i],
-                                   self.mask_dilation_kernel,
-                                   self.mask_dilation_kernel_size, self.path_output, return_non_dil_mask=True)
-            for i in range(n_shims))
+        with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+            r = parallel(delayed(resample_mask)(self.nif_riro_mask.nii,
+                                                nii_fmap_cs,
+                                                self.slices[i],
+                                                self.mask_dilation_kernel,
+                                                self.mask_dilation_kernel_size,
+                                                self.path_output, return_non_dil_mask=True) for i in range(n_shims))
         riro_mask, riro_mask_dil = zip(*r)
 
         static_mask_fmap_cs_per_shim = np.array(
