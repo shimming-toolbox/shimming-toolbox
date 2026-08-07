@@ -120,7 +120,6 @@ def test_cli_mask_rel_path():
         assert os.path.isfile(os.path.join(path_cwd, fname_out))
 
 
-
 def test_cli_mask_threshold_scaled():
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
         runner = CliRunner()
