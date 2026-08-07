@@ -2,7 +2,6 @@
 # -*- coding: utf-8
 # Misc functions
 
-from pathlib import Path
 import platform
 import numpy as np
 import os
@@ -19,6 +18,8 @@ import shutil
 import sys
 
 logger = logging.getLogger(__name__)
+
+JOBLIB_BACKEND = "threading"
 
 
 def run_subprocess(cmd):
