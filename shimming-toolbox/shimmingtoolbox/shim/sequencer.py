@@ -353,8 +353,8 @@ class ShimSequencer(Sequencer):
                 fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
                 nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
-            # Output JSON file
-            self.save_calc_fmap_json(coefs)
+            # We don't save the field maps' JSON file here because the coefficients might not be in the correct CS
+            # The function save_calc_fmap_json should be called separately to save the JSON file (in b0shim).
 
             # TODO: Add units if possible
             # TODO: Add in target space?
@@ -704,19 +704,26 @@ class ShimSequencer(Sequencer):
         nib.save(nii_shimmed_target_orient, fname_shimmed_target_orient)
 
     def save_calc_fmap_json(self, coefs):
+        """ Save the shim coefficients for the scanner in the JSON sidecar. coefs must only include the Scanner coefs
+        in the shim CS. Only writes the coefficents if it's volume shim.
+
+        Args:
+            coefs (np.ndarray): Array with the shim coefficients:
+        """
+        if self.path_output is None:
+            raise RuntimeError("Path output is None")
+
         json_shimmed = copy.deepcopy(self.nif_fieldmap.json)
         # If volume shim
         if len(self.slices) == 1:
-            # i keeps track of the index of the concatenated shim coefficients
-            i = 0
             for coil in self.coils:
-                # j keeps track of the index of the order
-                j = 0
                 if isinstance(coil, ScannerCoil):
                     # If its volume shim (len(slices == 1)) and a scanner coil
+                    # j keeps track of the index of the order
+                    j = 0
                     # Dump the shim coefficients as ShimSettingsCurrent + calculated shimmed coefs
                     if 0 in coil.orders:
-                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'][0] + coefs[0, i]) / 1e6
+                        json_shimmed['ImagingFrequency'] = int(coil.coefs_used['0'][0] + coefs[0, 0]) / 1e6
                         j += 1
                     shim_settings_output = []
                     for order in (1, 2, 3):
@@ -725,8 +732,7 @@ class ShimSequencer(Sequencer):
                             n_channels = channels_per_order(order, manufacturer)
                             for i_channel in range(n_channels):
                                 if coil.coefs_used[str(order)] is not None and coil.coefs_used[str(order)][i_channel] is not None:
-                                    shim_settings_tmp = (coil.coefs_used[str(order)][i_channel] +
-                                                         coefs[0, i + j + i_channel])
+                                    shim_settings_tmp = coil.coefs_used[str(order)][i_channel] + coefs[0, j + i_channel]
                                     manufacturers_model_name = self.nif_fieldmap.get_manufacturers_model_name()
                                     device_serial_number = self.nif_fieldmap.get_json_info('DeviceSerialNumber')
                                     scanner_id = f"{manufacturers_model_name}_{device_serial_number}"
@@ -768,8 +774,7 @@ class ShimSequencer(Sequencer):
                         else:
                             formatted_shim_settings.append(None)
                     json_shimmed['ShimSetting'] = formatted_shim_settings
-
-                i += coil.dim[3]
+                    break
 
         with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)

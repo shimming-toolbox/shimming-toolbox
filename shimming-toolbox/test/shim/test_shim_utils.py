@@ -2,63 +2,15 @@
 # -*- coding: utf-8
 
 import json
-import logging
 import nibabel as nib
 import numpy as np
 import os
 import pytest
 
-from shimmingtoolbox.shim.shim_utils import (dac_to_shim_units, phys_to_shim_cs, shim_to_phys_cs,
-                                             calculate_metric_within_mask, logger, phys_to_gradient_cs,
-                                             gradient_to_phys_cs)
+from shimmingtoolbox.shim.shim_utils import (phys_to_shim_cs, shim_to_phys_cs,
+                                             calculate_metric_within_mask, phys_to_gradient_cs,
+                                             gradient_to_phys_cs, get_flip_matrix)
 from shimmingtoolbox.coils.coordinates import get_main_orientation
-
-
-class TestDacToShimUnits:
-
-    def test_dac_to_shim_units_prisma_fit(self):
-        dac_units = {'1': [14436, 14265, 14045], '2': [9998, 9998, 9998, 9998, 9998],
-                     'order1_is_valid': True, 'order2_is_valid': True}
-        ui_units = dac_to_shim_units('Siemens', 'Prisma_fit', '167006', dac_units)
-        assert np.all(np.isclose(ui_units['1'], [2300, 2300, 2300]))
-        assert np.all(np.isclose(ui_units['2'], [4959.01, 3551.29, 3503.299, 3551.29, 3487.302]))
-
-    def test_dac_to_shim_units_investigational_device_7t(self):
-        dac_units = {'1': [62479, 62264, 54082], '2': [18000, 18000, 18000, 18000, 18000],
-                     'order1_is_valid': True, 'order2_is_valid': True}
-        ui_units = dac_to_shim_units('Siemens', 'Investigational_Device_7T', '18923', dac_units)
-        assert np.all(np.isclose(ui_units['1'], [4999.976, 4999.980, 4999.957]))
-        assert np.all(np.isclose(ui_units['2'], [6163.200, 2592.000, 2592.000, 2476.800, 2476.800]))
-
-    def test_dac_to_shim_units_terra(self):
-        dac_units = {'1': [17729, 18009, 17872], '2': [12500.0] * 5,
-                     'order1_is_valid': True, 'order2_is_valid': True}
-        ui_units = dac_to_shim_units('Siemens', 'Terra', '79121', dac_units)
-        assert np.all(np.isclose(ui_units['1'], [3000] * 3))
-        assert np.all(np.isclose(ui_units['2'], [9360.0, 4680.0, 4620.0, 4620.0, 4560.0]))
-
-    def test_dac_to_shim_units_0(self):
-        dac_units = {'1': [0, 0, 0], '2': [0, 0, 0, 0, 0],
-                     'order1_is_valid': True, 'order2_is_valid': True}
-        ui_units = dac_to_shim_units('Siemens', 'Prisma_fit', '167006', dac_units)
-        assert np.all(np.isclose(ui_units['1'], [0, 0, 0]))
-        assert np.all(np.isclose(ui_units['2'], [0, 0, 0, 0, 0]))
-
-    def test_dac_to_shim_units_unknown_scanner(self, caplog):
-        dac_units = {'1': [14436, 14265, 14045], '2': [9998, 9998, 9998, 9998, 9998],
-                     'order1_is_valid': True, 'order2_is_valid': True}
-
-        with caplog.at_level(logging.DEBUG, logger.name):
-            dac_to_shim_units('Unknown', 'Unknown', '167006', dac_units)
-
-        assert "Unknown not implemented or does not include enough metadata information" in caplog.text
-
-    def test_dac_to_shim_units_outside_bounds(self):
-        dac_units = {'1': [20000, 14265, 14045], '2': [9998, 9998, 9998, 9998, 9998],
-                     'order1_is_valid': True, 'order2_is_valid': True}
-
-        with pytest.raises(ValueError, match="Current shim settings exceed known system limits."):
-            dac_to_shim_units('Siemens', 'Prisma_fit', '167006', dac_units)
 
 
 def test_phys_to_shim_cs():
@@ -201,3 +153,38 @@ def create_nifti(orientation, phase_encode_dir, path_output):
     with open(fname_json, "w") as f:
         json.dump(data_json, f)
     return fname_nii
+
+
+class TestGetFlipMatrix:
+    def test_flip_cs(self):
+        out = get_flip_matrix('RAS', orders=[1, ])
+        assert np.all(out == [1, 1, 1])
+
+    def test_flip_cs_lpi(self):
+        out = get_flip_matrix('LPI', orders=[1, ])
+        assert np.all(out == [-1, -1, -1])
+
+    def test_flip_cs_order2(self):
+        out = get_flip_matrix('LAI', orders=[1, 2])
+        assert np.all(out == [1, -1, -1, -1, -1, 1, 1, 1])
+
+    def test_flip_cs_len4(self):
+        with pytest.raises(ValueError, match="Unknown coordinate system"):
+            get_flip_matrix('LAIS')
+
+    def test_flip_cs_lap(self):
+        with pytest.raises(ValueError, match="Unknown coordinate system"):
+            get_flip_matrix('LAP')
+
+    def test_flip_siemens(self):
+        out = get_flip_matrix('LAI', orders=[1, 2, 3], manufacturer='Siemens')
+        # TODO: Verify 3rd order
+        assert np.all(out == [-1, 1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1])
+
+    def test_flip_ge(self):
+        out = get_flip_matrix('LPI', orders=[1, 2], manufacturer='GE')
+        assert np.all(out == [-1, -1, -1, 1, 1, 1, 1, 1])
+
+    def test_flip_philips(self):
+        out = get_flip_matrix('RPI', orders=[1, 2], manufacturer='PHILIPS')
+        assert np.all(out == [1, -1, -1, 1, -1, 1, 1, -1])
