@@ -6,10 +6,10 @@ import tempfile
 import os
 import nibabel as nib
 import pytest
+import shutil
 
 from click.testing import CliRunner
 from shimmingtoolbox.cli.mask import mask_cli
-from shimmingtoolbox.utils import run_subprocess
 from shimmingtoolbox import __dir_testing__
 
 inp = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
@@ -103,6 +103,21 @@ def test_cli_mask_threshold():
 
         assert result.exit_code == 0
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
+
+
+def test_cli_mask_rel_path():
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        path_cwd = os.getcwd()
+        shutil.copy(os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz'), path_cwd)
+        fname_input = 'sub-fieldmap_magnitude1.nii.gz'
+        fname_out = 'mask.nii.gz'
+        thr = 780
+        result = runner.invoke(mask_cli, ['threshold', '--input', fname_input, '--output', fname_out, '--thr', thr],
+                               catch_exceptions=False)
+
+        assert result.exit_code == 0
+        assert os.path.isfile(os.path.join(path_cwd, fname_out))
 
 
 def test_cli_mask_threshold_scaled():
