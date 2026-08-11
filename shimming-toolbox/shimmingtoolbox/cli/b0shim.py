@@ -158,7 +158,7 @@ def b0shim_cli():
               "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
               "linear term. When using 2nd order or more, more dilation is necessary."),
     option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
-           type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
+           type=click.Choice(['lin_lsq', 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
            help="Method used by the optimizer. LS and QP will respect the constraints, "
                 "BFGS method only accepts constraints for each channel (not constraints on the total current), "
                 "PI will not respect any constraints"),
@@ -171,12 +171,11 @@ def b0shim_cli():
     option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
            show_default=True,
            help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
-                "current values while 0 provides no regularization. Not relevant for 'pseudo-inverse' "
-                "optimizer_method."),
+                "current values while 0 provides no regularization. Bounds need to be present to have an effect."),
     option('--weighting-signal-loss', 'w_signal_loss', type=click.FLOAT, required=False, default=None,
            show_default=True,
-           help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity"
-                " and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
+           help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity "
+                "and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
                 "weights to recover the signal loss over the B0 inhomogeneity. "
                 "This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
                 "The optimal value for mse is around 0.01\n"

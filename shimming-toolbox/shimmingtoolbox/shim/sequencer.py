@@ -19,6 +19,7 @@ from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
+from shimmingtoolbox.optimizer.linear_lsq import LinearLsqOptimizer
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
@@ -41,6 +42,7 @@ supported_optimizers = {
     'bfgs': BFGSOpt,
     'bfgs_rt': PmuBFGSOpt,
     'pseudo_inverse': Optimizer,
+    'lin_lsq': LinearLsqOptimizer
 }
 
 GAMMA = 42.576E6  # in Hz/Tesla
@@ -177,10 +179,10 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+            method (str): Supported optimizer: 'least_squares', 'lin_lsq', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported:'mse': mean squared error,
                                 'mae': mean absolute error, 'rmse': root mean squared error,
                                 'ps_huber': pseudo huber cost function, 'mse_signal_recovery',
                                 'rmse_signal_recovery'.
@@ -210,7 +212,6 @@ class ShimSequencer(Sequencer):
         self.w_signal_loss = w_signal_loss
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
-
 
     def get_resampled_masks(self):
         """
@@ -296,7 +297,8 @@ class ShimSequencer(Sequencer):
         if self.method in supported_optimizers:
             if self.method in ['least_squares', 'bfgs']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nif_fieldmap.extended_data,
-                                                              self.nif_fieldmap.extended_affine, self.opt_criteria,
+                                                              self.nif_fieldmap.extended_affine,
+                                                              self.opt_criteria,
                                                               reg_factor=self.reg_factor,
                                                               w_signal_loss=self.w_signal_loss,
                                                               w_signal_loss_xy=self.w_signal_loss_xy,
@@ -306,7 +308,11 @@ class ShimSequencer(Sequencer):
                                                               self.nif_fieldmap.extended_affine, reg_factor=self.reg_factor)
             else:
                 optimizer = supported_optimizers[self.method](self.coils, self.nif_fieldmap.extended_data,
-                                                              self.nif_fieldmap.extended_affine)
+                                                              self.nif_fieldmap.extended_affine,
+                                                              reg_factor=self.reg_factor,
+                                                              w_signal_loss=self.w_signal_loss,
+                                                              w_signal_loss_xy=self.w_signal_loss_xy,
+                                                              epi_te=self.epi_te)
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
 
@@ -365,11 +371,9 @@ class ShimSequencer(Sequencer):
 
             # TODO: Add units if possible
             # TODO: Add in target space?
-            if 'signal_recovery' in self.opt_criteria:
+            if self.w_signal_loss is not None or self.w_signal_loss_xy is not None:
 
                 full_Gz = np.zeros(corrections.shape)
-                full_Gx = np.zeros(corrections.shape)
-                full_Gy = np.zeros(corrections.shape)
                 shimmed_temp = corrections + unshimmed[..., np.newaxis]
 
                 # Can't calculate signal recovery in the through slice direction if there is only one slice

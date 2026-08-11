@@ -223,6 +223,14 @@ class TestSequencer(object):
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
+    def test_shim_sequencer_pseudo_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+        slices = define_slices(nif_target.shape[2], 1)
+        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
+                                       method='pseudo_inverse', reg_factor=0.1)
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
+
     def test_shim_sequencer_bfgs(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
@@ -433,6 +441,17 @@ class TestShimSequencerSigRec:
         slices = define_slices(nif_target2.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap2, nif_target2, nif_mask2, slices, [sph_coil3],
                                        method='least_squares', opt_criteria='rmse_signal_recovery',
+                                       w_signal_loss=10,
+                                       w_signal_loss_xy=10,
+                                       epi_te=30)
+        currents = sequencer_test.shim()
+        sequencer_test.eval(currents)
+        assert_results(nif_fieldmap2, nif_target2, nif_mask2, [sph_coil3], currents, slices, off_channel_values_expected2)
+
+    def test_shim_sequencer_pseudo_inverse_sig_rec(self, nif_fieldmap2, nif_target2, nif_mask2, sph_coil3, sph_coil4):
+        slices = define_slices(nif_target2.shape[2], 1)
+        sequencer_test = ShimSequencer(nif_fieldmap2, nif_target2, nif_mask2, slices, [sph_coil3],
+                                       method='pseudo_inverse',
                                        w_signal_loss=10,
                                        w_signal_loss_xy=10,
                                        epi_te=30)

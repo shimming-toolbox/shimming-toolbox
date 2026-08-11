@@ -3,13 +3,10 @@
 
 import logging
 import numpy as np
-from numpy.linalg import norm
 import scipy.optimize as opt
 from scipy.special import pseudo_huber
 from typing import List
 import warnings
-from shimmingtoolbox.masking.mask_utils import modify_binary_mask
-from scipy.ndimage import map_coordinates
 
 from shimmingtoolbox.optimizer.optimizer_utils import OptimizerUtils
 from shimmingtoolbox.pmu import PmuResp
@@ -39,15 +36,9 @@ class LsqOptimizer(OptimizerUtils):
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
         """
-        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor)
+        super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te)
 
         self._delta = None  # Initialize delta for pseudo huber function
-
-        # Initialization of grad parameters
-        self.w_signal_loss = w_signal_loss
-        self.w_signal_loss_xy = w_signal_loss_xy
-        self.epi_te = epi_te
-        self.counter = 0
 
         lsq_residual_dict = {
             allowed_opt_criteria[0]: self._residuals_mse,
@@ -72,52 +63,6 @@ class LsqOptimizer(OptimizerUtils):
             self.opt_criteria = opt_criteria
         else:
             raise ValueError("Optimization criteria not supported")
-
-    def _prepare_signal_recovery_data(self, mask, slice_idxs):
-        """ Prepares the data for the optimization.
-        """
-        self.counter += 1
-        # Define coil profiles
-        n_channels = np.sum(self.merged_onoff_channels)
-
-        # Remove channels not used in the optimization
-        merged_coil_opt, unshimmed_opt = self._get_coil_mat_and_unshimmed_on_channels(slice_idxs)
-
-        # Erode mask
-        bin_mask = (mask != 0).astype(int)
-        bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
-        mask_erode = np.zeros_like(mask, dtype=float)
-        mask_erode[bin_mask_erode != 0] = mask[bin_mask_erode != 0]
-        mask_erode_vec = mask_erode.reshape((-1,))
-        self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
-
-        # Define merged coils
-        temp = np.transpose(merged_coil_opt, axes=(3, 0, 1, 2))
-        merged_coils_Gx = np.zeros(np.shape(temp))
-        merged_coils_Gy = np.zeros(np.shape(temp))
-        merged_coils_Gz = np.zeros(np.shape(temp))
-        for ch in range(n_channels):
-            merged_coils_Gx[ch] = np.gradient(temp[ch], axis=0)
-            merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
-            merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
-
-        # Define coil matrices for each gradient
-        self.coil_Gz_mat = np.reshape(merged_coils_Gz,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
-        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
-        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
-                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
-
-        # Define unshimmed vector for each gradient
-        self.unshimmed_vec = np.reshape(unshimmed_opt, (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gx_vec = np.reshape(np.gradient(unshimmed_opt, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gy_vec = np.reshape(np.gradient(unshimmed_opt, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-        self.unshimmed_Gz_vec = np.reshape(np.gradient(unshimmed_opt, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
-
-        if len(self.unshimmed_Gz_vec) == 0:
-            raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
-                                'Make sure to include at least 3 voxels in the slice direction.')
 
     def optimize(self, mask, slice_idxs):
         """

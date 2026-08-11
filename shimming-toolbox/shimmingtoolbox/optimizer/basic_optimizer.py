@@ -10,6 +10,7 @@ from typing import List
 
 from shimmingtoolbox.coils.coil import Coil
 from shimmingtoolbox.coils.coordinates import resample_from_to
+from shimmingtoolbox.masking.mask_utils import modify_binary_mask
 
 ListCoil = List[Coil]
 logger = logging.getLogger(__name__)
@@ -31,9 +32,12 @@ class Optimizer(object):
                               bound for merged_coils[..., 3]
         merged_onoff_channels (list): list of off channels for all channels in merged_coils
         mask_coefficients (np.ndarray): 1d array of coefficients corresponding to the mask used for optimization
+        w_signal_loss (np.ndarray): 3d array of weights for signal loss
+        w_signal_loss_xy (np.ndarray): 3d array of weights for signal loss in the x and y directions
+        epi_te (float): Echo time for EPI sequence
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine):
+    def __init__(self, coils: ListCoil, unshimmed, affine, reg_factor=0, w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
@@ -52,8 +56,22 @@ class Optimizer(object):
         self.merged_coils = []
         self.merged_bounds = []
         self.merged_onoff_channels = []
+        self.merged_bounds_off_channels = []
         self.mask_coefficients = None
         self.set_unshimmed(unshimmed, affine)
+        self.reg_factor = reg_factor
+
+        # Initialization of signal loss parameters
+        self.w_signal_loss = w_signal_loss
+        self.w_signal_loss_xy = w_signal_loss_xy
+        self.epi_te = epi_te
+
+        self.coil_Gx_mat = None
+        self.coil_Gy_mat = None
+        self.coil_Gz_mat = None
+        self.unshimmed_Gx_vec = None
+        self.unshimmed_Gy_vec = None
+        self.unshimmed_Gz_vec = None
 
     def set_unshimmed(self, unshimmed, affine):
         """
@@ -75,6 +93,8 @@ class Optimizer(object):
         if (self.unshimmed.shape != unshimmed.shape) or not np.all(self.unshimmed_affine == affine):
             self.merged_coils, self.merged_bounds, self.merged_onoff_channels = self.merge_coils(unshimmed, affine)
 
+        self.merged_bounds_off_channels = [self.merged_bounds[i] for i, is_on in enumerate(self.merged_onoff_channels) if is_on]
+
         self.unshimmed = unshimmed
         self.unshimmed_affine = affine
 
@@ -83,7 +103,7 @@ class Optimizer(object):
         Changes the default bounds set in the coil profile
 
         Args:
-            merged_bounds: Concatenated coil profile bounds
+            merged_bounds: Concatenated coil profile bounds. Input all bounds even if some channels are off
         """
         if len(self.merged_bounds) != len(merged_bounds):
             raise ValueError(f"Size of merged bounds: must match the number of total "
@@ -91,6 +111,7 @@ class Optimizer(object):
 
         logger.debug(f"Merged bounds: {merged_bounds}")
         self.merged_bounds = merged_bounds
+        self.merged_bounds_off_channels = [self.merged_bounds[i] for i, is_on in enumerate(self.merged_onoff_channels) if is_on]
 
     def optimize(self, mask, slice_idxs):
         """
@@ -112,12 +133,67 @@ class Optimizer(object):
         coil_mat_w = np.sqrt(self.mask_coefficients)[:, np.newaxis] * coil_mat
         unshimmed_vec_w = np.sqrt(self.mask_coefficients) * unshimmed_vec
 
-        # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
-        # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
-        currents = -1 * scipy.linalg.pinv(coil_mat_w) @ unshimmed_vec_w
+        # Scale such that residuals for 0 coefficients gives 1. This is required so that the reg_factor is appropriate
+        # for all solves
+        # Technically, the factor is: np.linalg.norm(unshimmed_vec_w, ord=2) ** 2, but to apply it, we sqrt().
+        factor_fmap = np.linalg.norm(unshimmed_vec_w, ord=2)
+        coil_mat_w = coil_mat_w / factor_fmap
+        unshimmed_vec_w = unshimmed_vec_w / factor_fmap
+
+        if self.w_signal_loss is not None:
+            self._prepare_signal_recovery_data(mask, slice_idxs)
+            # Scale such that residuals for 0 coefficients gives 1. This is required so that the reg_factor is appropriate
+            # for all solves
+            weights_mask = np.sqrt(self.mask_erode_coefficients)
+            factor_signal_loss = np.linalg.norm(weights_mask * self.unshimmed_Gz_vec, ord=2)
+            coil_mat_w, unshimmed_vec_w = add_signal_recovery(coil_mat_w,
+                                                              unshimmed_vec_w,
+                                                              self.w_signal_loss,
+                                                              self.coil_Gz_mat * weights_mask[..., np.newaxis] / factor_signal_loss,
+                                                              self.unshimmed_Gz_vec * weights_mask / factor_signal_loss)
+
+        if self.reg_factor > 0:
+            reg_factor_channel = get_reg_factor_channel(self.merged_bounds_off_channels)
+            factor_reg_factor = np.linalg.norm(1 / reg_factor_channel, ord=2)
+            coil_mat_w, unshimmed_vec_w = add_regularization(coil_mat_w, unshimmed_vec_w, self.reg_factor / reg_factor_channel / factor_reg_factor)
+
+        currents = self._get_currents(unshimmed_vec_w, coil_mat_w)
+
+        if logger.level <= getattr(logging, 'INFO'):
+            # Compute the different obj functions
+            # Field
+            currents0 = [0,] * len(currents)
+            n_values = len(self.mask_coefficients)
+            obj_field = np.linalg.norm(coil_mat_w[:n_values, :] @ currents + unshimmed_vec_w[:n_values], ord=2)
+            obj_field0 = np.linalg.norm(coil_mat_w[:n_values, :] @ currents0 + unshimmed_vec_w[:n_values], ord=2)
+            obj_str = f"RMSE field: {obj_field}"
+            obj_str0 = f"RMSE field (before optimization): {obj_field0}"
+            start_values = n_values
+            if self.w_signal_loss is not None:
+                # Signal loss
+                n_values = len(self.mask_erode_coefficients)
+                obj_sig_loss = np.linalg.norm(coil_mat_w[start_values:start_values+n_values, :] @ currents + unshimmed_vec_w[start_values:start_values+n_values], ord=2)
+                obj_sig_loss0 = np.linalg.norm(coil_mat_w[start_values:start_values + n_values, :] @ currents0 + unshimmed_vec_w[start_values:start_values + n_values], ord=2)
+                obj_str += f", signal loss: {obj_sig_loss}"
+                obj_str0 += f", signal loss (zero): {obj_sig_loss0}"
+                start_values += n_values
+            if self.reg_factor > 0:
+                obj_reg = np.linalg.norm(coil_mat_w[start_values:, :] @ currents, ord=2)
+                obj_reg0 = np.linalg.norm(coil_mat_w[start_values:, :] @ currents0, ord=2)
+                obj_str += f", regularization factor: {obj_reg}"
+                obj_str0 += f", regularization factor (zero): {obj_reg0}"
+            logger.info(obj_str0)
+            logger.info(obj_str)
+
         currents_all = self.insert_off_channels_values(currents, slice_idxs)
 
         return currents_all
+
+    def _get_currents(self, unshimmed_vec, coil_mat):
+        # Compute the pseudo-inverse of the coil matrix to get the desired coil profiles
+        # dimensions : (n_channels, masked_values) @ (masked_values,) --> (n_channels,)
+        currents = -1 * scipy.linalg.pinv(coil_mat) @ unshimmed_vec
+        return currents
 
     def get_coil_mat_and_unshimmed_masked(self, mask, slice_idxs):
         """
@@ -314,3 +390,74 @@ class Optimizer(object):
         if mask.shape != self.unshimmed.shape:
             raise ValueError(f"Mask with shape: {mask.shape} expected to have the same shape as the unshimmed image"
                              f" with shape: {self.unshimmed.shape}")
+
+    def _prepare_signal_recovery_data(self, mask, slice_idxs):
+        """ Prepares the data for the optimization.
+        """
+        # Define coil profiles
+        n_channels = np.sum(self.merged_onoff_channels)
+
+        # Remove channels not used in the optimization
+        merged_coil_opt, unshimmed_opt = self._get_coil_mat_and_unshimmed_on_channels(slice_idxs)
+
+        # Erode mask
+        bin_mask = (mask != 0).astype(int)
+        bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
+        mask_erode = np.zeros_like(mask, dtype=float)
+        mask_erode[bin_mask_erode != 0] = mask[bin_mask_erode != 0]
+        mask_erode_vec = mask_erode.reshape((-1,))
+        self.mask_erode_coefficients = mask_erode_vec[mask_erode_vec != 0]
+
+        # Define merged coils
+        temp = np.transpose(merged_coil_opt, axes=(3, 0, 1, 2))
+        merged_coils_Gx = np.zeros(np.shape(temp))
+        merged_coils_Gy = np.zeros(np.shape(temp))
+        merged_coils_Gz = np.zeros(np.shape(temp))
+        for ch in range(n_channels):
+            merged_coils_Gx[ch] = np.gradient(temp[ch], axis=0)
+            merged_coils_Gy[ch] = np.gradient(temp[ch], axis=1)
+            merged_coils_Gz[ch] = np.gradient(temp[ch], axis=2)
+
+        # Define coil matrices for each gradient
+        self.coil_Gz_mat = np.reshape(merged_coils_Gz,
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
+        self.coil_Gx_mat = np.reshape(merged_coils_Gx,
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
+        self.coil_Gy_mat = np.reshape(merged_coils_Gy,
+                                      (n_channels, -1)).T[mask_erode_vec != 0, :]  # (masked_values, n_channels)
+
+        # Define unshimmed vector for each gradient
+        self.unshimmed_vec = np.reshape(unshimmed_opt, (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gx_vec = np.reshape(np.gradient(unshimmed_opt, axis=0), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gy_vec = np.reshape(np.gradient(unshimmed_opt, axis=1), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+        self.unshimmed_Gz_vec = np.reshape(np.gradient(unshimmed_opt, axis=2), (-1,))[mask_erode_vec != 0]  # (masked_values,)
+
+        if len(self.unshimmed_Gz_vec) == 0:
+            raise ValueError('The mask or the field map is too small to perform the signal recovery optimization. '
+                                'Make sure to include at least 3 voxels in the slice direction.')
+
+
+def get_reg_factor_channel(opt_merged_bounds):
+    """
+    Sets the regularization factor for each channel based on the bounds of the optimization.
+
+    Args:
+        opt_merged_bounds (np.ndarray): 2D array (channel, 2) containing the lower and upper bounds for each
+    channel that are ON."""
+
+    reg_factor_channel = np.array([np.abs(bound[1] - bound[0]) for bound in opt_merged_bounds])
+    return reg_factor_channel
+
+
+def add_signal_recovery(coil_mat_w, unshimmed_vec_w, w_signal_loss, coil_G_mat, unshimmed_G_vec):
+    # Add signal recovery terms to the optimization
+    coil_G_mat_w = coil_G_mat * np.sqrt(w_signal_loss)
+    unshimmed_G_vec_w = unshimmed_G_vec * np.sqrt(w_signal_loss)
+    return np.vstack([coil_mat_w, coil_G_mat_w]), np.hstack([unshimmed_vec_w, unshimmed_G_vec_w])
+
+
+def add_regularization(coil_mat_w, unshimmed_vec_w, reg_factor_channel):
+    n_channels = coil_mat_w.shape[1]
+    l_mat = np.eye(n_channels) * reg_factor_channel
+    b_ins = np.zeros(n_channels)
+    return np.vstack([coil_mat_w, l_mat]), np.hstack([unshimmed_vec_w, b_ins])
