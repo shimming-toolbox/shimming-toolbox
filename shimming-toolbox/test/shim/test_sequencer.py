@@ -3,6 +3,7 @@
 
 import json
 import logging
+import matplotlib.pyplot as plt
 import nibabel as nib
 import numpy as np
 import os
@@ -223,6 +224,16 @@ class TestSequencer(object):
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
+    def test_shim_sequencer_lin_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+        slices = define_slices(nif_target.shape[2], 1)
+        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method='lin_lsq')
+        currents_linlsq = sequencer_test.shim()
+        sequencer_test.eval(currents_linlsq)
+        assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents_linlsq, slices, off_channel_values_expected)
+        sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method='pseudo_inverse')
+        currents_pi = sequencer_test.shim()
+        assert np.allclose(currents_pi, currents_linlsq)
+
     def test_shim_sequencer_pseudo_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
@@ -270,6 +281,32 @@ class TestSequencer(object):
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
+
+    def test_shim_sequencer_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+        slices = define_slices(nif_target.shape[2], 1)
+        for opt in ['least_squares', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+            sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method=opt,
+                                           reg_factor=0.01)
+            currents1 = sequencer_test.shim()
+            sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method=opt,
+                                           reg_factor=0.1)
+            currents2 = sequencer_test.shim()
+            assert np.sum(np.abs(currents1)) > np.sum(np.abs(currents2))
+
+    # def test_effect_of_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2, tmpdir):
+    #     slices = define_slices(nif_target.shape[2], 1, method='volume')
+    #     for opt in ['least_squares', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+    #         currents_list = []
+    #         for reg_factor in np.linspace(0, 1, 200):
+    #             logger.info(f"Testing {opt} with reg factor: {reg_factor}")
+    #             sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method=opt,
+    #                                            reg_factor=reg_factor)
+    #             currents = sequencer_test.shim()
+    #             currents_list.append(np.sum(np.abs(currents)))
+    #         # Plot currents
+    #         plt.plot(np.linspace(0, 1, 200), currents_list)
+    #         plt.savefig(os.path.join(tmpdir, f"effect_of_reg_{opt}.png"))
+    #         plt.close()
 
     def test_shim_sequencer_2_coils_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)

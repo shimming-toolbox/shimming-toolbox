@@ -160,14 +160,14 @@ def b0shim_cli():
     option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
            type=click.Choice(['lin_lsq', 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
            help="Method used by the optimizer. LS and QP will respect the constraints, "
-                "BFGS method only accepts constraints for each channel (not constraints on the total current), "
+                "BFGS and lin_lsq method only accepts constraints for each channel (not constraints on the total current), "
                 "PI will not respect any constraints"),
     option('--optimizer-criteria', 'opt_criteria',
          type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
          default='mse', show_default=True,
          help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
               "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
-              "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' --optimizer-method."),
+              "rmse: Root Mean Squared Error."),
     option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
            show_default=True,
            help="Regularization factor for the current when optimizing. A higher coefficient will penalize higher "
@@ -177,7 +177,8 @@ def b0shim_cli():
            help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity "
                 "and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
                 "weights to recover the signal loss over the B0 inhomogeneity. "
-                "This parameter can be used with the Least Squares optimization and the mse or rmse criteria.\n"
+                "This parameter can be used with pseudo_inverse, and lim_lsq. Optimal weith has not been tested. "
+                "least_squares optimization can also be used with the mse or rmse criteria.\n"
                 "The optimal value for mse is around 0.01\n"
                 "The optimal value for rmse is around 10"),
     option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False,

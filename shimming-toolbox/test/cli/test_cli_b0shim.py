@@ -118,7 +118,7 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [0.002985, -14.587414, -57.016499, -2.745062, -0.401786, -3.580623, 0.668977, -0.105560]
+            assert values == [0.488119, -13.89421, -57.953364, -3.361091, -0.53713, -4.91873, 0.914727, -0.138443]
 
     def test_cli_dynamic_bfgs(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""
@@ -157,7 +157,46 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [1.716835, -11.083139, -61.813942, -3.325865, -0.440464, -4.319224, 0.832832, -0.092054]
+            assert values == [3.518923, -10.063043, -63.272396, -4.55201, -0.673669, -6.892853, 1.39502, -0.15042]
+
+    def test_cli_dynamic_lin_lsq(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil profiles of order 1 with default constraints"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '1,2',
+                                             '--regularization-factor', '0.1',
+                                             '--optimizer-method', 'lin_lsq',
+                                             '--slices', 'ascending',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            with open(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"), 'r') as file:
+                lines = file.readlines()
+                line = lines[8].strip().split(',')
+                values = [float(val) for val in line if val.strip()]
+
+            assert values == [-0.83238, -6.068353, -5.354913, -0.19625, -0.092198, -0.654135, 0.38834, -0.100746]
 
     def test_cli_dynamic_external_scanner_constraint(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil profiles of order 1 with default constraints"""

@@ -135,7 +135,6 @@ class Optimizer(object):
 
         # Scale such that residuals for 0 coefficients gives 1. This is required so that the reg_factor is appropriate
         # for all solves
-        # Technically, the factor is: np.linalg.norm(unshimmed_vec_w, ord=2) ** 2, but to apply it, we sqrt().
         factor_fmap = np.linalg.norm(unshimmed_vec_w, ord=2)
         coil_mat_w = coil_mat_w / factor_fmap
         unshimmed_vec_w = unshimmed_vec_w / factor_fmap
@@ -155,11 +154,11 @@ class Optimizer(object):
         if self.reg_factor > 0:
             reg_factor_channel = get_reg_factor_channel(self.merged_bounds_off_channels)
             factor_reg_factor = np.linalg.norm(1 / reg_factor_channel, ord=2)
-            coil_mat_w, unshimmed_vec_w = add_regularization(coil_mat_w, unshimmed_vec_w, self.reg_factor / reg_factor_channel / factor_reg_factor)
+            coil_mat_w, unshimmed_vec_w = add_regularization(coil_mat_w, unshimmed_vec_w, np.square(self.reg_factor) / reg_factor_channel / factor_reg_factor)
 
         currents = self._get_currents(unshimmed_vec_w, coil_mat_w)
 
-        if logger.level <= getattr(logging, 'INFO'):
+        if logger.level <= getattr(logging, 'DEBUG'):
             # Compute the different obj functions
             # Field
             currents0 = [0,] * len(currents)
@@ -182,8 +181,8 @@ class Optimizer(object):
                 obj_reg0 = np.linalg.norm(coil_mat_w[start_values:, :] @ currents0, ord=2)
                 obj_str += f", regularization factor: {obj_reg}"
                 obj_str0 += f", regularization factor (zero): {obj_reg0}"
-            logger.info(obj_str0)
-            logger.info(obj_str)
+            logger.debug(obj_str0)
+            logger.debug(obj_str)
 
         currents_all = self.insert_off_channels_values(currents, slice_idxs)
 
