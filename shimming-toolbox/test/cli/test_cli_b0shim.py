@@ -328,7 +328,6 @@ class TestCliDynamic(object):
                                              '--target', fname_target,
                                              '--mask', fname_mask,
                                              '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.1',
                                              '--slices', 'ascending',
                                              '--optimizer-method', 'pseudo_inverse',
                                              '--output', tmp,
