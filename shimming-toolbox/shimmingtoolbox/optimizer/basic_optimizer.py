@@ -140,6 +140,8 @@ class Optimizer(object):
         # Scale such that residuals for 0 coefficients gives 1. This is required so that the reg_factor is appropriate
         # for all solves
         factor_fmap = np.linalg.norm(unshimmed_vec_w, ord=2)
+        if factor_fmap == 0:
+            factor_fmap = 1
         coil_mat_w = coil_mat_w / factor_fmap
         unshimmed_vec_w = unshimmed_vec_w / factor_fmap
 
@@ -149,6 +151,8 @@ class Optimizer(object):
             # for all solves
             weights_mask = np.sqrt(self.mask_erode_coefficients)
             factor_signal_loss = np.linalg.norm(weights_mask * self.unshimmed_Gz_vec, ord=2)
+            if factor_signal_loss == 0:
+                factor_signal_loss = 1
             coil_mat_w, unshimmed_vec_w = add_signal_recovery(coil_mat_w,
                                                               unshimmed_vec_w,
                                                               self.w_signal_loss,
@@ -158,7 +162,9 @@ class Optimizer(object):
         if self.reg_factor > 0:
             reg_factor_channel = get_reg_factor_channel(self.merged_bounds_off_channels)
             factor_reg_factor = np.linalg.norm(1 / reg_factor_channel, ord=2)
-            coil_mat_w, unshimmed_vec_w = add_regularization(coil_mat_w, unshimmed_vec_w, np.square(self.reg_factor) / reg_factor_channel / factor_reg_factor)
+            if factor_reg_factor == 0:
+                factor_reg_factor = 1
+            coil_mat_w, unshimmed_vec_w = add_regularization(coil_mat_w, unshimmed_vec_w, self.reg_factor / reg_factor_channel / factor_reg_factor)
 
         currents = self._get_currents(unshimmed_vec_w, coil_mat_w)
 

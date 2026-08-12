@@ -192,7 +192,7 @@ class OptimizerUtils(Optimizer):
 
     def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
         """
-        Returns all the quadratic terms used in the MSE objective function used in the least squares,
+        Returns all the quadratic terms used in the MSE objective function used in the slsqp,
         quadprog and BFGS optimization methods. For more details, see PR#451.
 
         Args:
@@ -206,7 +206,7 @@ class OptimizerUtils(Optimizer):
             (tuple) : tuple containing:
                 * np.ndarray: 2D array using for the optimization
                 * np.ndarray: 1D flattened array used for the optimization
-                * float : Float used for the least squares optimizer
+                * float : Float used for the slsqp optimizer
 
         """
         # Apply weights to the coil matrix and unshimmed vector

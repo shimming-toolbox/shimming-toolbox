@@ -10,7 +10,7 @@ the gradient method in a st_shim CLI with the argument being:
 
 import click
 from cloup import command, option, option_group, group
-from cloup.constraints import RequireAtLeast, mutually_exclusive, all_or_none, constraint
+from cloup.constraints import mutually_exclusive, constraint
 import copy
 import json
 import nibabel as nib
@@ -158,14 +158,14 @@ def b0shim_cli():
               "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
               "linear term. When using 2nd order or more, more dilation is necessary."),
     option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
-           type=click.Choice(['lin_lsq', 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
+           type=click.Choice(['lin_lsq', 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs']),
            help="Method used by the optimizer. LS and QP will respect the constraints, "
                 "BFGS and lin_lsq method only accepts constraints for each channel (not constraints on the total current), "
                 "PI will not respect any constraints"),
     option('--optimizer-criteria', 'opt_criteria',
          type=click.Choice(['mse', 'mae', 'rmse', 'grad', 'ps_huber']), required=False,
          default='mse', show_default=True,
-         help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
+         help="Criteria of optimization for the optimizer 'slsqp' and 'bfgs'. "
               "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
               "rmse: Root Mean Squared Error."),
     option('--regularization-factor', 'reg_factor', type=click.FLOAT, required=False, default=0.0,
@@ -177,13 +177,13 @@ def b0shim_cli():
            help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity "
                 "and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
                 "weights to recover the signal loss over the B0 inhomogeneity. "
-                "This parameter can be used with pseudo_inverse, and lim_lsq. Optimal weith has not been tested. "
-                "least_squares optimization can also be used with the mse or rmse criteria.\n"
+                "This parameter can be used with pseudo_inverse, and lim_lsq. Optimal weight has not been tested. "
+                "slsqp optimization can also be used with the mse or rmse criteria.\n"
                 "The optimal value for mse is around 0.01\n"
                 "The optimal value for rmse is around 10"),
     option('--weighting-signal-loss-xy', 'w_signal_loss_xy', type=click.FLOAT, required=False,
            default=None, show_default=True,
-           help="weighting for signal loss recovery for the X and Y gradients. Since there is generally a "
+           help="Weighting for signal loss recovery for the X and Y gradients. Since there is generally a "
                 "compromise between B0 inhomogeneity"
                 " and Gradient in z (through slice), x, y (phase and readout) direction (i.e., signal loss recovery)"
                 ", a higher coefficient will put more weights to recover the signal loss over the B0 inhomogeneity.")
@@ -199,7 +199,7 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
     optimize. Use the options --slices and --slice-factor to change the shimming order/size of the slices.
 
     Example of use: st_b0shim dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
-    --fmap fmap.nii --target target.nii --mask mask.nii --optimizer-method least_squares
+    --fmap fmap.nii --target target.nii --mask mask.nii --optimizer-method lin_lsq
     """
 
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")
@@ -652,13 +652,13 @@ def _save_to_text_file(coil, coefs, list_slices, path_output, o_format, options,
                    "mode 'interleaved', "
                    "it will be: {0,2,4}, {1,3,5}, etc.")
 @click.option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
-              type=click.Choice(['least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs']),
+              type=click.Choice(['slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs']),
               help="Method used by the optimizer. LS and QP will respect the constraints, "
                    "BFGS method only accepts constraints for each channel (not constraints on the total current), "
                    "PI will not respect any constraints")
 @click.option('--optimizer-criteria', 'opt_criteria', type=click.Choice(['mse', 'mae', 'grad', 'rmse']), required=False,
               default='mse', show_default=True,
-              help="Criteria of optimization for the optimizer 'least_squares' and 'bfgs'. "
+              help="Criteria of optimization for the optimizer 'slsqp' and 'bfgs'. "
                    "mse: Mean Squared Error, mae: Mean Absolute Error, ps_huber: pseudo huber cost function, "
                    "rmse: Root Mean Squared Error. Not relevant for 'pseudo_inverse' or 'quad_prog' "
                    "--optimizer-method.")
@@ -724,7 +724,7 @@ def realtime_dynamic(fname_fmap, fname_target, fname_mask_target_static, fname_m
     order/size of the slices.
 
     Example of use: st_b0shim realtime-dynamic --coil coil1.nii coil1_constraints.json --coil coil2.nii coil2_constraints.json
-    --fmap fmap.nii --target target.nii --mask-static mask.nii --resp trace.resp --optimizer-method least_squares
+    --fmap fmap.nii --target target.nii --mask-static mask.nii --resp trace.resp --optimizer-method slsqp
     """
 
     logger.info(f"Output value format: {output_value_format}, o_format_coil: {o_format_coil}")

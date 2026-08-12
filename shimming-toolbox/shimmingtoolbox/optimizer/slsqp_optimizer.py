@@ -16,7 +16,7 @@ ListCoil = List[Coil]
 allowed_opt_criteria = ['mse', 'mae', 'mse_signal_recovery', 'rmse', 'rmse_signal_recovery', 'ps_huber']
 logger = logging.getLogger(__name__)
 
-class LsqOptimizer(OptimizerUtils):
+class SlsqpOptimizer(OptimizerUtils):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize(args) to optimize a given mask. The algorithm uses a least squares solver to find the best shim.
         It supports bounds for each channel as well as a bound for the absolute sum of the channels.
@@ -31,7 +31,7 @@ class LsqOptimizer(OptimizerUtils):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (np.ndarray): 3d array of unshimmed volume
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. {allowed_opt_criteria}.
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. {allowed_opt_criteria}.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
@@ -96,7 +96,7 @@ class LsqOptimizer(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for optimization
         """
         mae = np.average(np.abs(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         mae_coef = mae / factor  # MAE regularized to minimize currents
@@ -118,7 +118,7 @@ class LsqOptimizer(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for optimization
         """
         shimmed_vec = unshimmed_vec + coil_mat @ coef
         # Define delta with the 90th percentile of the absolute shimmed vector
@@ -141,7 +141,7 @@ class LsqOptimizer(OptimizerUtils):
             c (float) : Float used for the optimization
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for optimization
         """
         # The first version was :
         # np.mean((unshimmed_vec + np.sum(coil_mat * coef, axis=1, keepdims=False))**2) / factor + \ (
@@ -170,7 +170,7 @@ class LsqOptimizer(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for optimization
         """
         mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         mse_coef = mse / factor  # MSE regularized to minimize currents
@@ -190,7 +190,7 @@ class LsqOptimizer(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization
+            float: Residuals for optimization
         """
         mse = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         rmse_coef = np.sqrt(mse) / factor  # RMSE regularized to minimize currents
@@ -211,7 +211,7 @@ class LsqOptimizer(OptimizerUtils):
                             avoid positive directional linesearch
 
         Returns:
-            float: Residuals for least squares optimization with through-slice gradient minimization
+            float: Residuals for optimization with through-slice gradient minimization
         """
         mse_b0 = np.average(np.square(unshimmed_vec + coil_mat @ coef), weights=self.mask_coefficients)
         rmse_b0_coef = np.sqrt(mse_b0) / factor # RMSE regularized to minimize currents
@@ -329,7 +329,7 @@ class LsqOptimizer(OptimizerUtils):
     def get_quadratic_term_grad(self, unshimmed_vec, coil_mat, factor):
         """
         Returns all the quadratic terms used in the MSE signal recovery objective function used in the
-        least squares and BFGS optimization methods.
+        slsqp and BFGS optimization methods.
 
         Args:
             unshimmed_vec (np.ndarray): 1D flattened array (point) of the masked unshimmed map
@@ -342,7 +342,7 @@ class LsqOptimizer(OptimizerUtils):
             (tuple) : tuple containing:
                 * np.ndarray: 2D array using for the optimization
                 * np.ndarray: 1D flattened array used for the optimization
-                * float : Float used for the least squares optimizer
+                * float : Float used for the optimization
 
         """
         # Apply weights to the coil matrices and unshimmed vectors
@@ -392,7 +392,7 @@ class LsqOptimizer(OptimizerUtils):
 
         return a, b, c
 
-class PmuLsqOptimizer(LsqOptimizer):
+class PmuSlsqpOptimizer(SlsqpOptimizer):
     """ Optimizer for the realtime component (riro) for this optimization:
         field(i_vox) = riro(i_vox) * (acq_pressures - mean_p) + static(i_vox)
         Unshimmed must be in units: [unit_shim/unit_pressure], ex: [Hz/unit_pressure]
@@ -409,7 +409,7 @@ class PmuLsqOptimizer(LsqOptimizer):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (np.ndarray): 3d array of unshimmed volume
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. {allowed_opt_criteria}.
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. {allowed_opt_criteria}.
             pmu (PmuResp): PmuResp object containing the respiratory trace information.
             mean_p (float): Mean pressure value during the acquisition.
         """

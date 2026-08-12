@@ -416,7 +416,7 @@ class TestCliDynamic(object):
                                              '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.3',
                                              '--slices', 'ascending',
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--optimizer-criteria', 'mse',
                                              '--weighting-signal-loss', '0.01',
                                              '--mask-dilation-kernel-size', '5',
@@ -457,7 +457,7 @@ class TestCliDynamic(object):
                                              '--scanner-coil-order', '1,2',
                                              '--regularization-factor', '0.3',
                                              '--slices', 'ascending',
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--optimizer-criteria', 'rmse',
                                              '--weighting-signal-loss', '10',
                                              '--mask-dilation-kernel-size', '5',
@@ -519,9 +519,8 @@ class TestCliDynamic(object):
                                              '--target', fname_target,
                                              '--mask', fname_softmask,
                                              '--scanner-coil-order', '1,2',
-                                             '--regularization-factor', '0.3',
                                              '--slices', 'ascending',
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--optimizer-criteria', 'mse',
                                              '--mask-dilation-kernel-size', '5',
                                              '--output', tmp],
@@ -534,7 +533,7 @@ class TestCliDynamic(object):
                 line = lines[8].strip().split(',')
                 values = [float(val) for val in line if val.strip()]
 
-            assert values == [1.324215, -20.422662, -40.513364, -1.456946, 0.127875, -1.26732, -0.566027, 0.032394]
+            assert values == [-1.58534, -16.132173, -47.703388, -2.668067, 0.007057, -1.687108, -2.457967, -0.171326]
 
     def test_cli_dynamic_coils(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with input coil"""
@@ -571,7 +570,7 @@ class TestCliDynamic(object):
                                              '--target', fname_target,
                                              '--mask', fname_mask,
                                              '--output', tmp,
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--optimizer-criteria', 'mse'],
                                 catch_exceptions=False)
 
@@ -735,7 +734,7 @@ class TestCliDynamic(object):
                                              '--fmap', fname_fmap,
                                              '--target', fname_target,
                                              '--mask', fname_mask,
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--scanner-coil-order', '1',
                                              '--off-channels', '0,8,9',
                                              '--off-channels-values', fname_fixed,
@@ -1722,7 +1721,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--optimizer-criteria', 'mse',
                                              '--output', tmp],
                                 catch_exceptions=False)
@@ -1984,7 +1983,7 @@ class TestCLIRealtime(object):
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch2_Prisma_fit_167006.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_ch3_Prisma_fit_167006.txt"))
 
-    def test_cli_rt_lsq(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+    def test_cli_rt_slsqp(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             # Save the inputs to the new directory
             fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
@@ -2013,7 +2012,7 @@ class TestCLIRealtime(object):
                                              '--resp', fname_resp,
                                              '--slice-factor', '2',
                                              '--scanner-coil-order', '0,1',
-                                             '--optimizer-method', 'least_squares',
+                                             '--optimizer-method', 'slsqp',
                                              '--output', tmp],
                                 catch_exceptions=False)
 

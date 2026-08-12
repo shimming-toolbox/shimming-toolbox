@@ -182,7 +182,8 @@ This file gets populated with the correct values when running `st_create_coil_pr
 
 ## Which shim algorithms support constraints?
 The following algorithms support scanner constraints (--optimizer-method):
-- `least_squares`: Minimum and maximum bounds (coef_channel_minmax), and maximum sum of absolute values (coef_sum_max)
+- `lin_lsq`: Minimum and maximum bounds (coef_channel_minmax)
+- `slsqp`: Minimum and maximum bounds (coef_channel_minmax), and maximum sum of absolute values (coef_sum_max)
 - `quad_prog`: Minimum and maximum bounds (coef_channel_minmax), and maximum sum of absolute values (coef_sum_max)
 - `bfgs`: Minimum and maximum bounds (coef_channel_minmax)
 

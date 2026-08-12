@@ -284,8 +284,11 @@ class B0ShimTab(Tab):
                 "name": 'regularization-factor',
             }
         ]
-        component_reg_factor_lsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_slsqp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_bfgs = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
         component_reg_factor_qp = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_linlsq = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
+        component_reg_factor_pi = InputComponent(self, reg_factor_metadata, cli=dynamic_cli)
 
         weighting_signal_loss_metadata_mse = [
             {
@@ -294,7 +297,15 @@ class B0ShimTab(Tab):
                 "default_text": "0.01",
             },
         ]
-        
+
+        weighting_signal_loss_metadata_default0 = [
+            {
+                "button_label": "Weighting signal loss",
+                "name": "weighting-signal-loss",
+                "default_text": "0.0",
+            },
+        ]
+
         weighting_signal_loss_metadata_rmse = [
             {
                 "button_label": "Weighting signal loss",
@@ -302,9 +313,13 @@ class B0ShimTab(Tab):
                 "default_text": "10",
             },
         ]
-        
-        component_slice_w_sig_loss_mse = InputComponent(self, weighting_signal_loss_metadata_mse, cli=dynamic_cli)
-        component_slice_w_sig_loss_rmse = InputComponent(self, weighting_signal_loss_metadata_rmse, cli=dynamic_cli)
+
+        component_slice_w_sig_loss_linlsq = InputComponent(self, weighting_signal_loss_metadata_default0, cli=dynamic_cli)
+        component_slice_w_sig_loss_pi = InputComponent(self, weighting_signal_loss_metadata_default0, cli=dynamic_cli)
+        component_slice_w_sig_loss_slsqp_mse = InputComponent(self, weighting_signal_loss_metadata_mse, cli=dynamic_cli)
+        component_slice_w_sig_loss_slsqp_rmse = InputComponent(self, weighting_signal_loss_metadata_rmse, cli=dynamic_cli)
+        component_slice_w_sig_loss_bfgs_mse = InputComponent(self, weighting_signal_loss_metadata_mse, cli=dynamic_cli)
+        component_slice_w_sig_loss_bfgs_rmse = InputComponent(self, weighting_signal_loss_metadata_rmse, cli=dynamic_cli)
 
         criteria_dropdown_metadata = [
             {
@@ -329,7 +344,7 @@ class B0ShimTab(Tab):
             }
         ]
 
-        dropdown_crit = DropdownComponent(
+        dropdown_crit_slsqp = DropdownComponent(
             panel=self,
             dropdown_metadata=criteria_dropdown_metadata,
             label="Optimizer Criteria",
@@ -337,15 +352,36 @@ class B0ShimTab(Tab):
             cli=dynamic_cli,
             list_components=[self.create_empty_component(),
                             self.create_empty_component(),
-                            component_slice_w_sig_loss_mse,
+                            component_slice_w_sig_loss_slsqp_mse,
                             self.create_empty_component(),
-                            component_slice_w_sig_loss_rmse],
+                            component_slice_w_sig_loss_slsqp_rmse],
+        )
+
+        dropdown_crit_bfgs = DropdownComponent(
+            panel=self,
+            dropdown_metadata=criteria_dropdown_metadata,
+            label="Optimizer Criteria",
+            option_name='optimizer-criteria',
+            cli=dynamic_cli,
+            list_components=[self.create_empty_component(),
+                            self.create_empty_component(),
+                            component_slice_w_sig_loss_bfgs_mse,
+                            self.create_empty_component(),
+                            component_slice_w_sig_loss_bfgs_rmse],
         )
 
         dropdown_opt_metadata = [
             {
-                "label": "Least Squares",
-                "option_value": "least_squares"
+                "label": "Linear Least Squares",
+                "option_value": "lin_lsq"
+            },
+            {
+                "label": "SLSQP",
+                "option_value": "slsqp"
+            },
+            {
+                "label": "BFGS",
+                "option_value": "bfgs"
             },
             {
                 "label": "Pseudo Inverse",
@@ -362,13 +398,17 @@ class B0ShimTab(Tab):
             dropdown_metadata=dropdown_opt_metadata,
             label="Optimizer",
             option_name='optimizer-method',
-            list_components=[dropdown_crit, component_reg_factor_lsq,
-                             self.create_empty_component(), component_reg_factor_qp],
-            component_to_dropdown_choice=[0, 0, 1, 2],
+            list_components=[component_slice_w_sig_loss_linlsq, component_reg_factor_linlsq,
+                             dropdown_crit_slsqp, component_reg_factor_slsqp,
+                             dropdown_crit_bfgs, component_reg_factor_bfgs,
+                             component_slice_w_sig_loss_pi, component_reg_factor_pi,
+                             component_reg_factor_qp],
+            component_to_dropdown_choice=[0, 0, 1, 1, 2, 2, 3, 3, 4],
             cli=dynamic_cli
         )
 
-        dropdown_crit.add_dropdown_parent(self.dropdown_opt_dyn)
+        dropdown_crit_slsqp.add_dropdown_parent(self.dropdown_opt_dyn)
+        dropdown_crit_bfgs.add_dropdown_parent(self.dropdown_opt_dyn)
 
         dropdown_slice_metadata = [
             {
@@ -677,8 +717,8 @@ class B0ShimTab(Tab):
 
         dropdown_opt_metadata = [
             {
-                "label": "Least Squares",
-                "option_value": "least_squares"
+                "label": "SLSQP",
+                "option_value": "slsqp"
             },
             {
                 "label": "Pseudo Inverse",

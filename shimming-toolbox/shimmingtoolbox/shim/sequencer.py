@@ -16,7 +16,7 @@ import json
 from scipy.signal import find_peaks, savgol_filter
 
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
+from shimmingtoolbox.optimizer.slsqp_optimizer import SlsqpOptimizer, PmuSlsqpOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
 from shimmingtoolbox.optimizer.linear_lsq import LinearLsqOptimizer
@@ -35,8 +35,8 @@ ListCoil = List[Coil]
 logger = logging.getLogger(__name__)
 
 supported_optimizers = {
-    'least_squares_rt': PmuLsqOptimizer,
-    'least_squares': LsqOptimizer,
+    'slsqp_rt': PmuSlsqpOptimizer,
+    'slsqp': SlsqpOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
     'bfgs': BFGSOpt,
@@ -62,8 +62,7 @@ class Sequencer(object):
                                          For example, a kernel of size 3 will dilate the mask by 1 pixel.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                             penalize higher current values while a lower factor will lower the effect of the
-                            regularization. A negative value will favour high currents (not preferred). Only relevant
-                            for 'least_squares' opt_method.
+                            regularization.
         path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
         index_shimmed: Indexes of ``slices`` that have been shimmed
         index_not_shimmed: Indexes of ``slices`` that have not been shimmed
@@ -85,8 +84,7 @@ class Sequencer(object):
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
+                                regularization. A negative value will favor high currents (not preferred).
             w_signal_loss (float): Weight for the through-slice gradient minimization.
             w_signal_loss_xy (float): Weight for the in-plane gradient minimization.
             epi_te (float): Echo time for the EPI sequence. (ms)
@@ -153,17 +151,17 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+        method (str): Supported optimizer: 'lin_lsq', 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
-        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+        opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
     def __init__(self, nif_fieldmap, nif_target, nif_mask_target, slices, coils,
-                 method='least_squares', opt_criteria='mse',
+                 method='lin_lsq', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
@@ -182,10 +180,10 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'lin_lsq', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+            method (str): Supported optimizer: 'slsqp', 'lin_lsq', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported:'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported:'mse': mean squared error,
                                 'mae': mean absolute error, 'rmse': root mean squared error,
                                 'ps_huber': pseudo huber cost function, 'mse_signal_recovery',
                                 'rmse_signal_recovery'.
@@ -197,7 +195,6 @@ class ShimSequencer(Sequencer):
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
                                 artefacts.
         """
@@ -298,7 +295,7 @@ class ShimSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method in ['least_squares', 'bfgs']:
+            if self.method in ['slsqp', 'bfgs']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nif_fieldmap.extended_data,
                                                               self.nif_fieldmap.extended_affine,
                                                               self.opt_criteria,
@@ -966,15 +963,14 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'slsqp', 'pseudo_inverse', 'quad_prog', 'lin_lsq'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
+                                regularization. A negative value will favor high currents (not preferred).
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
@@ -993,7 +989,7 @@ class RealTimeSequencer(Sequencer):
     """
 
     def __init__(self, nif_fieldmap, nif_target, nif_static_mask, nif_riro_mask, slices, pmu: PmuResp,
-                 coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
+                 coils_static, coils_riro, method='slsqp', opt_criteria='mse', mask_dilation_kernel='sphere',
                  mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
         """
         Initialization of the RealTimeSequencer class
@@ -1018,15 +1014,14 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+            method (str): Supported optimizer: 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
@@ -1316,8 +1311,8 @@ class RealTimeSequencer(Sequencer):
 
         # Create both optimizer object
         self.select_optimizer(static, affine_fieldmap)
-        if self.method == 'least_squares':
-            self.method = 'least_squares_rt'
+        if self.method == 'slsqp':
+            self.method = 'slsqp_rt'
         if self.method == 'quad_prog':
             self.method = 'quad_prog_rt'
         if self.method == 'bfgs':
@@ -1351,14 +1346,14 @@ class RealTimeSequencer(Sequencer):
             unshimmed (np.ndarray): 3D B0 map
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
-                           'least_squares_rt'.
+                           'slsqp_rt'.
             mean_p (float): Mean pressure of the respiratory trace. Required for methods 'XXX_rt'.
 
         """
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method in ['least_squares', 'bfgs']:
+            if self.method in ['slsqp', 'bfgs']:
                 self.optimizer = supported_optimizers[self.method](
                     self.coils_static, unshimmed, affine,
                                                                    self.opt_criteria, reg_factor=self.reg_factor)
@@ -1366,7 +1361,7 @@ class RealTimeSequencer(Sequencer):
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
-            elif self.method in ['least_squares_rt', 'bfgs_rt']:
+            elif self.method in ['slsqp_rt', 'bfgs_rt']:
                 # Make sure pmu is defined
                 if pmu is None:
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")

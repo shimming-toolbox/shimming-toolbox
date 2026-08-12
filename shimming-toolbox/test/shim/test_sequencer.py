@@ -200,10 +200,10 @@ off_channel_values_expected = np.array([[0.1, 0.2]] * nif_target.shape[2])
 )
 class TestSequencer(object):
     """ Tests for shim_sequencer"""
-    def test_shim_sequencer_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+    def test_shim_sequencer_slsqp(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares')
+                                       method='slsqp')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
@@ -224,7 +224,7 @@ class TestSequencer(object):
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
-    def test_shim_sequencer_lin_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+    def test_shim_sequencer_lin_lsq_eq_pi(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method='lin_lsq')
         currents_linlsq = sequencer_test.shim()
@@ -261,7 +261,7 @@ class TestSequencer(object):
     def test_shim_sequencer_mae(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares', opt_criteria='mae')
+                                       method='slsqp', opt_criteria='mae')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
@@ -269,22 +269,22 @@ class TestSequencer(object):
     def test_shim_sequencer_rmse(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares', opt_criteria='rmse')
+                                       method='slsqp', opt_criteria='rmse')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
-    def test_shim_sequencer_ps_huber_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
+    def test_shim_sequencer_ps_huber_slsqp(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil],
-                                       method='least_squares', opt_criteria='ps_huber')
+                                       method='slsqp', opt_criteria='ps_huber')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
     def test_shim_sequencer_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
-        for opt in ['least_squares', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+        for opt in ['slsqp', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
             sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method=opt,
                                            reg_factor=0.01)
             currents1 = sequencer_test.shim()
@@ -295,7 +295,7 @@ class TestSequencer(object):
 
     # def test_effect_of_reg(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2, tmpdir):
     #     slices = define_slices(nif_target.shape[2], 1, method='volume')
-    #     for opt in ['least_squares', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+    #     for opt in ['slsqp', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
     #         currents_list = []
     #         for reg_factor in np.linspace(0, 1, 200):
     #             logger.info(f"Testing {opt} with reg factor: {reg_factor}")
@@ -312,7 +312,7 @@ class TestSequencer(object):
     #     from shimmingtoolbox.masking.mask_utils import modify_binary_mask
     #
     #     slices = define_slices(nif_target.shape[2], 1, method='volume')
-    #     for opt in ['lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+    #     for opt in ['slsqp', 'lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
     #         sig_list = []
     #         for sig_loss in np.linspace(0, 2, 200):
     #             logger.info(f"Testing {opt} with sig loss: {sig_loss}")
@@ -338,7 +338,7 @@ class TestSequencer(object):
     def test_shim_sequencer_2_coils_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices,
-                                       [sph_coil, sph_coil2], method='least_squares')
+                                       [sph_coil, sph_coil2], method='slsqp')
         currents = sequencer_test.shim()
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_mask, [sph_coil, sph_coil2], currents, slices, off_channel_values_expected)
@@ -493,7 +493,7 @@ class TestShimSequencerSigRec:
     def test_shim_sequencer_mse_sig_rec(self, nif_fieldmap2, nif_target2, nif_mask2, sph_coil3, sph_coil4):
         slices = define_slices(nif_target2.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap2, nif_target2, nif_mask2, slices, [sph_coil3],
-                                       method='least_squares', opt_criteria='mse_signal_recovery',
+                                       method='slsqp', opt_criteria='mse_signal_recovery',
                                        w_signal_loss=0.01,
                                        w_signal_loss_xy=0.01,
                                        epi_te=30)
@@ -504,7 +504,7 @@ class TestShimSequencerSigRec:
     def test_shim_sequencer_rmse_sig_rec(self, nif_fieldmap2, nif_target2, nif_mask2, sph_coil3, sph_coil4):
         slices = define_slices(nif_target2.shape[2], 1)
         sequencer_test = ShimSequencer(nif_fieldmap2, nif_target2, nif_mask2, slices, [sph_coil3],
-                                       method='least_squares', opt_criteria='rmse_signal_recovery',
+                                       method='slsqp', opt_criteria='rmse_signal_recovery',
                                        w_signal_loss=10,
                                        w_signal_loss_xy=10,
                                        epi_te=30)
@@ -837,7 +837,7 @@ def test_shim_realtime_pmu_sequencer_rt_zshim_data():
 
     # Find optimal currents
     output = RealTimeSequencer(nif_fieldmap, nif_target, nif_static_mask, nif_riro_mask, slices, pmu,
-                               [coil], [coil], method='least_squares').shim()
+                               [coil], [coil], method='slsqp').shim()
     currents_static, currents_riro, mean_p, p_rms = output
 
     # Scale according to rms

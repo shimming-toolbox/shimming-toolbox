@@ -11,7 +11,7 @@ the currents in a set of shim coils. Each optimization method minimizes a residu
 remaining inhomogeneity) according to a specific objective function.
 
 The variables and notation used in the equations will first be defined, then the residual formulations for each
-optimization method (pseudo-inverse, quadratic programming, least squares, BFGS, etc.) will be detailed.
+optimization method (pseudo-inverse, quadratic programming, SLSQP, BFGS, etc.) will be detailed.
 
 Definitions of symbols
 ----------------------
@@ -55,9 +55,10 @@ inhomogeneities present in the field :math:`-u`.
 Optimization methods and their objective functions
 --------------------------------------------------
 
-1. **Pseudo-inverse method** – No explicit objective function; direct linear algebra solution.
-2. **Quadprog method** – Mean squared error (MSE) objective with quadratic programming.
-3. **Least squares** and **BFGS** methods – Several possible objective functions:
+1. **Pseudo-inverse method** – Implicit Mean squared error (MSE) objective; direct linear algebra.
+2. **Linear Least Squares** - Implicit Mean squared error (MSE) objective.
+3. **Quadprog method** – Mean squared error (MSE) objective with quadratic programming.
+4. **SLSQP** and **BFGS** methods – Several possible objective functions:
     1. Mean absolute error (MAE)
     2. Mean squared error (MSE)
     3. MSE with signal recovery
@@ -76,7 +77,22 @@ This method solves the system directly:
 
 Where :math:`A^+` is the pseudo-inverse of :math:`A` and :math:`\sqrt{m}` is the element-wise square root of :math:`m`.
 
-2. Quadprog
+When using regularization to penalize large currents or signal loss, the A and b matrices are modified accordingly.
+
+2. Linear Least Squares
+-----------------------
+
+Uses `Scipy's lsq_linear solver <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.lsq_linear.html>`_. This seeks to minimize the L2 norm ** 2 (MSE):
+
+.. math::
+
+    \text{min}\ 0.5 * \left\lVert A x - b \right\rVert _2 ^2
+
+    \text{lb <= x <= ub}
+
+When using regularization to penalize large currents or signal loss, the A and b matrices are modified accordingly.
+
+3. Quadprog
 -----------
 
 The objective function is the following :
@@ -89,7 +105,7 @@ The objective function is the following :
 The first term is the weighted MSE, scaled by the stability factor :math:`f`, and the second term penalizes large currents. The resulting residual is passed to the
 `quadprog <https://github.com/quadprog/quadprog>`_ package to obtain the currents.
 
-3. Least squares and BFGS
+4. SLSQP and BFGS
 -------------------------
 
 These methods share the same objective function formulations, solved using:
@@ -97,7 +113,7 @@ These methods share the same objective function formulations, solved using:
 - `SciPy's Sequential Least SQuares Programming (SLSQP) <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-slsqp.html#optimize-minimize-slsqp>`_
 - `SciPy's Broyden-Fletcher-Goldfarb-Shanno algorithm (L-BFGS-B) <https://docs.scipy.org/doc/scipy/reference/optimize.minimize-lbfgsb.html#optimize-minimize-lbfgsb>`_
 
-3.1. Mean absolute error (MAE)
+4.1. Mean absolute error (MAE)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The objective function is the following :
@@ -107,7 +123,7 @@ The objective function is the following :
    r = \frac{\sum^v_{i=1} m_i \cdot |a^T_i x + u_i|}{f \cdot \sum^v_{i=1} m_i}
        + (x^2)^T \lambda
 
-3.2. Mean squared error (MSE)
+4.2. Mean squared error (MSE)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A different formulation is used with this objective function to accelerate the compute time. The objective function is the following :
@@ -126,7 +142,7 @@ where:
 
    c = \frac{(\sqrt{m}^T u)(\sqrt{m}^T u)}{f \cdot \sum^v_{i=1} m_i}
 
-3.3. MSE with signal recovery
+4.3. MSE with signal recovery
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To enhance signal recovery with slice-wise shimming, it is possible to consider the gradients (x-wise, y-wise and z-wise) in the optimization
@@ -171,7 +187,7 @@ Here:
 - :math:`A_i` is the coil matrix derived for the field gradient in direction :math:`i`,
 - :math:`u_i` is the unshimmed field gradient in direction :math:`i`,
 
-3.4. Root mean squared error (RMSE)
+4.4. Root mean squared error (RMSE)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The RMSE objective function measures the square root of the weighted MSE, plus a regularization term:
@@ -181,7 +197,7 @@ The RMSE objective function measures the square root of the weighted MSE, plus a
    r = \sqrt{\frac{\sum^v_{i=1} m_i (a^T_i x + u_i)^2}{f \cdot \sum^v_{i=1} m_i}}
        + (x^2)^T \lambda
 
-3.5. RMSE with signal recovery
+4.5. RMSE with signal recovery
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This variant extends the RMSE objective by incorporating an additional RMSE term for the through-slice (z-direction) gradient :
@@ -197,7 +213,7 @@ Here:
 - :math:`w_z` controls the contribution from the z-gradient recovery term,
 - :math:`A_z` and :math:`u_z` are the z-gradient coil matrix and unshimmed field gradient, respectively.
 
-3.6. Mean pseudo-Huber (MPSH)
+4.6. Mean pseudo-Huber (MPSH)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In this method, a parameter :math:`\delta` determines the threshold between quadratic and linear loss. The objective function behaves quadratically
