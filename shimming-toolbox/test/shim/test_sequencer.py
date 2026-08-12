@@ -307,6 +307,33 @@ class TestSequencer(object):
     #         plt.plot(np.linspace(0, 1, 200), currents_list)
     #         plt.savefig(os.path.join(tmpdir, f"effect_of_reg_{opt}.png"))
     #         plt.close()
+    #
+    # def test_effect_of_sig_loss(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2, tmpdir):
+    #     from shimmingtoolbox.masking.mask_utils import modify_binary_mask
+    #
+    #     slices = define_slices(nif_target.shape[2], 1, method='volume')
+    #     for opt in ['lin_lsq', 'quad_prog', 'pseudo_inverse', 'bfgs']:
+    #         sig_list = []
+    #         for sig_loss in np.linspace(0, 2, 200):
+    #             logger.info(f"Testing {opt} with sig loss: {sig_loss}")
+    #             sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_mask, slices, [sph_coil], method=opt,
+    #                                            w_signal_loss=sig_loss, epi_te=30)
+    #             currents = sequencer_test.shim()
+    #             sequencer_test.eval(currents)
+    #             unshimmed = sequencer_test.nif_fieldmap.data
+    #             merged_coils = sequencer_test.optimizer.merged_coils
+    #             shimmed, corrections, _ = sequencer_test.evaluate_shimming(unshimmed, currents, merged_coils)
+    #             shimmed_masked, mask_full = sequencer_test.calc_shimmed_full_mask(unshimmed, corrections)
+    #
+    #             bin_mask = (mask_full != 0).astype(int)
+    #             bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
+    #             mask_erode = mask_full * bin_mask_erode
+    #             sig_list.append(sequencer_test.get_signal_recovery_metrics(np.gradient(shimmed_masked, axis=2), mask_erode)['absmean'])
+    #
+    #         # Plot currents
+    #         plt.plot(np.linspace(0, 2, 200), sig_list)
+    #         plt.savefig(os.path.join(tmpdir, f"effect_of_sigloss_{opt}.png"))
+    #         plt.close()
 
     def test_shim_sequencer_2_coils_lsq(self, nif_fieldmap, nif_target, nif_mask, sph_coil, sph_coil2):
         slices = define_slices(nif_target.shape[2], 1)

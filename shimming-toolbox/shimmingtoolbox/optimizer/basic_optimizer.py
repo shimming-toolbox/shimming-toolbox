@@ -45,6 +45,10 @@ class Optimizer(object):
             coils (ListCoil): List of Coil objects containing the coil profiles and related constraints
             unshimmed (np.ndarray): 3d array of unshimmed volume
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
+            reg_factor (float): Regularization factor for the optimization.
+            w_signal_loss (float): Weight for the through-slice gradient minimization.
+            w_signal_loss_xy (float): Weight for the in-plane gradient minimization.
+            epi_te (float): Echo time for the EPI sequence. (ms)
         """
         # Logging
         self.logger = logging.getLogger()

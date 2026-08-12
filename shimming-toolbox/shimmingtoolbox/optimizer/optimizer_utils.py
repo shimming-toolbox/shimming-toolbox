@@ -39,7 +39,7 @@ class OptimizerUtils(Optimizer):
                                 regularization. A negative value will favour high currents (not preferred).
             w_signal_loss (np.ndarray): Weighting for the signal loss in the optimization
             w_signal_loss_xy (np.ndarray): Weighting for the signal loss in the x and y directions
-            epi_te (float): Echo time for the EPI sequence
+            epi_te (float): Echo time for the EPI sequence (ms).
         """
         super().__init__(coils, unshimmed, affine, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te)
         self.initial_guess_method = initial_guess_method

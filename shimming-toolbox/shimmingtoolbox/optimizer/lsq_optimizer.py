@@ -35,6 +35,9 @@ class LsqOptimizer(OptimizerUtils):
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
+            w_signal_loss (float): Weight for the through-slice gradient minimization.
+            w_signal_loss_xy (float): Weight for the in-plane gradient minimization.
+            epi_te (float): Echo time for the EPI sequence. (ms)
         """
         super().__init__(coils, unshimmed, affine, initial_guess_method, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te)
 

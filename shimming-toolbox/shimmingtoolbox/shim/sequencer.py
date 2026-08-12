@@ -87,6 +87,9 @@ class Sequencer(object):
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
                                 Only relevant for 'least_squares' opt_method.
+            w_signal_loss (float): Weight for the through-slice gradient minimization.
+            w_signal_loss_xy (float): Weight for the in-plane gradient minimization.
+            epi_te (float): Echo time for the EPI sequence. (ms)
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
         """
         self.slices = slices
@@ -785,24 +788,52 @@ class ShimSequencer(Sequencer):
         with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
 
+    def get_signal_recovery_metrics(self, gradient, mask_erode):
+        # Calculate signal recovery metrics
+        slice_thickness = self.nif_target.get_json_info('SliceThickness')
+        B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+
+        signal_loss = calculate_signal_loss(gradient,
+                                                    slice_thickness,
+                                                    B0_map_thickness,
+                                                    self.epi_te)
+
+        temp_signal_loss = signal_loss.copy()
+
+        std = calculate_metric_within_mask(temp_signal_loss, mask_erode, metric='std')
+        mean = calculate_metric_within_mask(temp_signal_loss, mask_erode, metric='mean')
+        absmean = calculate_metric_within_mask(np.abs(temp_signal_loss), mask_erode, metric='mean')
+
+        metrics = {
+            'std': std,
+            'mean': mean,
+            'absmean': absmean,
+        }
+        return metrics
+
+
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
-        def calculate_signal_loss(gradient):
-            slice_thickness = self.nif_target.get_json_info('SliceThickness')
-            B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
-            phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
-            # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
-            signal_map = abs(np.sinc(phi / (2 * math.pi)))
-            signal_loss_map = 1 - signal_map
-            return signal_loss_map
-
-        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis=2))
-        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
 
         # Convert soft mask into binary mask
         bin_mask = (mask != 0).astype(int)
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
+
+        unshimmed_metrics = self.get_signal_recovery_metrics(np.gradient(unshimmed, axis=2), mask_erode)
+        shimmed_metrics = self.get_signal_recovery_metrics(shimmed_Gz, mask_erode)
+
+        slice_thickness = self.nif_target.get_json_info('SliceThickness')
+        B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+
+        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis=2),
+                                                      slice_thickness,
+                                                      B0_map_thickness,
+                                                      self.epi_te)
+        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz,
+                                                    slice_thickness,
+                                                    B0_map_thickness,
+                                                    self.epi_te)
 
         x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(bin_mask_erode, margin=3)
         unshimmed_signal_loss_zoom = unshimmed_signal_loss[x_min:x_max, y_min:y_max, :]
@@ -821,18 +852,6 @@ class ShimSequencer(Sequencer):
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
                  os.path.join(self.path_output, 'mask_erode.nii.gz'))
 
-        temp_unshimmed_signal_loss = unshimmed_signal_loss.copy()
-        temp_unshimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan
-        temp_shimmed_signal_loss = shimmed_signal_loss.copy()
-        temp_shimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan
-
-        metric_unshimmed_std = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(temp_unshimmed_signal_loss), mask_erode, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(temp_shimmed_signal_loss), mask_erode, metric='mean')
-
         fig = Figure(figsize=(15, 9))
         fig.suptitle("Signal Percentage Loss Map\nFieldmap Coordinate System")
 
@@ -840,8 +859,8 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
 
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
-        ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                     f"abs mean: {metric_unshimmed_absmean:.3}")
+        ax.set_title(f"Before shimming signal loss \nSTD: {unshimmed_metrics['std']:.3}, mean: {unshimmed_metrics['mean']:.3}, "
+                     f"abs mean: {unshimmed_metrics['absmean']:.3}")
 
         # Change title font size
         ax.get_xaxis().set_visible(False)
@@ -853,8 +872,8 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=0, vmax=1, cmap='hot')
-        ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                     f"abs mean: {metric_shimmed_absmean:.3}")
+        ax.set_title(f"After shimming signal loss \nSTD: {shimmed_metrics['std']:.3}, mean: {shimmed_metrics['mean']:.3}, "
+                     f"abs mean: {shimmed_metrics['absmean']:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -1952,6 +1971,16 @@ class RealTimeSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def calculate_signal_loss(gradient, target_slice_thickness, fmap_slice_thickness, target_te):
+    # slice_thickness = self.nif_target.get_json_info('SliceThickness')
+    # B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+    phi = 2 * math.pi * gradient / fmap_slice_thickness * target_te * target_slice_thickness
+    # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
+    signal_map = abs(np.sinc(phi / (2 * math.pi)))
+    signal_loss_map = 1 - signal_map
+    return signal_loss_map
 
 
 def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):
