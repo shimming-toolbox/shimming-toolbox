@@ -157,7 +157,7 @@ def b0shim_cli():
               "with a linear gradient, the coefficient corresponding to the gradient orthogonal to a single "
               "slice cannot be estimated: there must be at least 2 (ideally 3) points to properly estimate the "
               "linear term. When using 2nd order or more, more dilation is necessary."),
-    option('--optimizer-method', 'method', required=False, default='quad_prog', show_default=True,
+    option('--optimizer-method', 'method', required=False, default='lin_lsq', show_default=True,
            type=click.Choice(['lin_lsq', 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs']),
            help="Method used by the optimizer. LS and QP will respect the constraints, "
                 "BFGS and lin_lsq method only accepts constraints for each channel (not constraints on the total current), "
