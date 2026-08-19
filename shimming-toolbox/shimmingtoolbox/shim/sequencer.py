@@ -351,20 +351,10 @@ class ShimSequencer(Sequencer):
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
         shimmed_masked, mask_full = self.calc_shimmed_full_mask(unshimmed, corrections)
         if self.path_output is not None:
-            # fmap space
-            if len(self.slices) == 1:
-                # Output the resulting fieldmap since it can be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nif_fieldmap.affine,
-                                                   header=self.nif_fieldmap.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
-                nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-
-            else:
-                # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nif_fieldmap.affine,
-                                                   header=self.nif_fieldmap.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
-                nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+            # Output the resulting masked fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
             # Output JSON file
             self.save_calc_fmap_json(coefs)
@@ -533,6 +523,18 @@ class ShimSequencer(Sequencer):
                         logger.warning("Evaluating the mse, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
+    def get_mask_full_epi_slices_on_fmap(self):
+        masks_full_epi_slices = np.zeros(self.nif_fieldmap.shape + (len(self.slices),))
+        for i_somes_slices, some_slices in enumerate(self.slices):
+            target_slices = np.zeros_like(self.nif_mask_target.nii.get_fdata())
+            for a_slice in some_slices:
+                target_slices[:, :, a_slice] = 1
+
+            nii_tmp = nib.Nifti1Image(target_slices, self.nif_mask_target.nii.affine, header=self.nif_mask_target.header)
+            masks_full_epi_slices[..., i_somes_slices] = np.clip(resample_from_to(nii_tmp, self.nif_fieldmap.nii, order=1, mode='grid-constant', cval=0).get_fdata(), 0, 1)
+
+        return masks_full_epi_slices
+
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
         Calculate the shimmed full mask
@@ -562,6 +564,20 @@ class ShimSequencer(Sequencer):
 
         # Apply the correction to the unshimmed image
         shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
+
+        if logger.level <= getattr(logging, 'DEBUG'):
+            masks_fmap_full_epi_slice = self.get_mask_full_epi_slices_on_fmap() > 0.001
+            # nib.Nifti1Image(self.masks_fmap, self.nif_fieldmap.affine, header=self.nif_fieldmap.header).to_filename(os.path.join(self.path_output, 'masks_fmap.nii.gz'))
+            # nib.Nifti1Image(masks_fmap_full_epi_slice, self.nif_fieldmap.affine, header=self.nif_fieldmap.header).to_filename(os.path.join(self.path_output, 'masks_fmap_full_epi_slice.nii.gz'))
+            full_correction = np.einsum('ijkl,ijkl->ijk', masks_fmap_full_epi_slice, correction, optimize='optimizer')
+            # Calculate the weighted whole mask
+            mask_weight = np.sum(masks_fmap_full_epi_slice, axis=3)
+            # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
+            full_correction_scaled = np.divide(full_correction, mask_weight, out=None)
+            # Apply the correction to the unshimmed image
+            shimmed_with_full_correction = full_correction_scaled + unshimmed
+            nii_shimmed = nib.Nifti1Image(shimmed_with_full_correction, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            nib.save(nii_shimmed, os.path.join(self.path_output, 'fieldmap_calculated_shim_not_masked.nii.gz'))
 
         return shimmed_masked, mask_full
 
@@ -782,8 +798,11 @@ class ShimSequencer(Sequencer):
 
                 i += coil.dim[3]
 
-        with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+        with open(os.path.join(self.path_output, "fieldmap_calculated_shim_masked.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
+        if logger.level <= getattr(logging, 'DEBUG'):
+            with open(os.path.join(self.path_output, "fieldmap_calculated_shim_not_masked.json"), "w") as outfile:
+                json.dump(json_shimmed, outfile, indent=4)
 
     def get_signal_recovery_metrics(self, gradient, mask_erode):
         # Calculate signal recovery metrics
