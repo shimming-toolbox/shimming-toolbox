@@ -251,7 +251,7 @@ class TestCliDynamic(object):
             expected_values = [-16.417611, 1.283857, -14.424815, -84.402628, -6.60401, -0.653534, -6.75787,
                               0.955701, -0.168711, -0.139256, -0.094325,  -0.798893, 0.322054]
             assert values == expected_values
-            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim.json")
+            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim_masked.json")
             assert os.path.isfile(fname_bids_sidecar_fmap_output)
             with open(fname_bids_sidecar_fmap_output) as f:
                 bids_sidecar_fmap_output_data = json.load(f)
@@ -324,7 +324,7 @@ class TestCliDynamic(object):
             expected_values = [123101083.581176, 1001.284052, 985.575163, 915.594228, 993.39577, 999.346443, 993.241762,
                                1000.95573, 999.83129]
             assert values == expected_values
-            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim.json")
+            fname_bids_sidecar_fmap_output = os.path.join(tmp, "fieldmap_calculated_shim_masked.json")
             assert os.path.isfile(fname_bids_sidecar_fmap_output)
             with open(fname_bids_sidecar_fmap_output) as f:
                 bids_sidecar_fmap_output_data = json.load(f)
