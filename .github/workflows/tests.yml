@@ -126,9 +126,13 @@ jobs:
 
       - name: Run unit tests for the plugin
         if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          GALLIUM_DRIVER: "llvmpipe"
         run: |
           source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
-          xvfb-run -a -s "-screen 0 1920x1200x24" py.test ./fsleyes-plugin-shimming-toolbox -v
+          xvfb-run -a -s "-screen 0 1920x1200x24 +extension GLX" glxinfo | grep -i "OpenGL renderer" || true
+          xvfb-run -a -s "-screen 0 1920x1200x24 +extension GLX" py.test ./fsleyes-plugin-shimming-toolbox -v
 
       - name: macOS Shellcheck
         if: contains(matrix.os, 'macos')
