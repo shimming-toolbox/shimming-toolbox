@@ -177,7 +177,7 @@ def b0shim_cli():
            help="Weighting for signal loss recovery. Since there is generally a compromise between B0 inhomogeneity "
                 "and gradient in z direction (i.e., signal loss recovery), a higher coefficient will put more "
                 "weights to recover the signal loss over the B0 inhomogeneity. "
-                "This parameter can be used with pseudo_inverse, and lim_lsq. Optimal weight has not been tested. "
+                "This parameter can be used with pseudo_inverse, and lin_lsq. Optimal weight has not been tested. "
                 "slsqp optimization can also be used with the mse or rmse criteria.\n"
                 "The optimal value for mse is around 0.01\n"
                 "The optimal value for rmse is around 10"),

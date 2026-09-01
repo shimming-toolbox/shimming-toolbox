@@ -77,20 +77,20 @@ This method solves the system directly:
 
 Where :math:`A^+` is the pseudo-inverse of :math:`A` and :math:`\sqrt{m}` is the element-wise square root of :math:`m`.
 
-When using regularization to penalize large currents or signal loss, the A and b matrices are modified accordingly.
+When using regularization to penalize large currents or when using signal loss, the A and u matrices are modified accordingly.
 
 2. Linear Least Squares
 -----------------------
 
-Uses `Scipy's lsq_linear solver <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.lsq_linear.html>`_. This seeks to minimize the L2 norm ** 2 (MSE):
+Uses `Scipy's lsq_linear solver <https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.lsq_linear.html>`_. This seeks to minimize the L2 norm squared (MSE):
 
 .. math::
 
-    \text{min}\ 0.5 * \left\lVert A x - b \right\rVert _2 ^2
+    \text{min}\ 0.5 * \left\lVert A x - u \right\rVert _2 ^2
 
     \text{lb <= x <= ub}
 
-When using regularization to penalize large currents or signal loss, the A and b matrices are modified accordingly.
+The A and u matrices are modified when using regularization to penalize large currents or when using signal loss.
 
 3. Quadprog
 -----------
