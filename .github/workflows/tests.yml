@@ -124,6 +124,12 @@ jobs:
           source ~/shimming-toolbox/python/bin/activate  # to be able to call conda
           py.test ./shimming-toolbox -v --cov ./shimming-toolbox/shimmingtoolbox/ --cov-report term-missing
 
+      - name: Install Mesa software GL
+        if: contains(matrix.os, 'ubuntu') && matrix.tests == 'fsleyes-plugin-shimming-toolbox'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dri libglx-mesa0 libegl1 mesa-utils
+
       - name: Run unit tests for the plugin
         if: matrix.tests == 'fsleyes-plugin-shimming-toolbox'
         env:
