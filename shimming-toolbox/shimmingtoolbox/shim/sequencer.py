@@ -117,9 +117,10 @@ class Sequencer(object):
 
         for i_shim, shim_slices in enumerate(self.slices):
             # If there is nothing to shim in this shim group
-            if np.all(masks_fmap[..., i_shim] == 0):
+            n_channels_on = np.sum(self.optimizer.merged_onoff_channels)
+            if np.all(masks_fmap[..., i_shim] == 0) or n_channels_on == 0:
                 # If values were fixed, put those values instead of 0s.
-                currents_0s_on_channels = np.zeros([np.sum(self.optimizer.merged_onoff_channels)])
+                currents_0s_on_channels = np.zeros([n_channels_on])
                 currents_all_channels = self.optimizer.insert_off_channels_values(currents_0s_on_channels, shim_slices)
                 coefs.append(currents_all_channels)
                 self.index_not_shimmed.append(i_shim)
@@ -573,7 +574,7 @@ class ShimSequencer(Sequencer):
             # Calculate the weighted whole mask
             mask_weight = np.sum(masks_fmap_full_epi_slice, axis=3)
             # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
-            full_correction_scaled = np.divide(full_correction, mask_weight, out=None)
+            full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_weight.astype(bool), out=None)
             # Apply the correction to the unshimmed image
             shimmed_with_full_correction = full_correction_scaled + unshimmed
             nii_shimmed = nib.Nifti1Image(shimmed_with_full_correction, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
@@ -638,8 +639,13 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked = montage(nan_unshimmed_masked_zoom[:, :, slice, :].filled())
         mt_shimmed_masked = montage(nan_shimmed_masked_zoom[:, :, slice, :].filled() * np.ceil(masks_fmap_zoom[:, :, slice, :]))
 
-        min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
-        max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
+        if np.isnan(mt_unshimmed_masked).all() and np.isnan(mt_shimmed_masked).all():
+            # Arbitrary, nothing will be displayed (all nans)
+            min_masked_value = 0
+            max_masked_value = 1
+        else:
+            min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
+            max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
         min_fmap_value = np.nanmin([mt_unshimmed, mt_shimmed])
         max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
