@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5 (2026-09-02)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.4...1.5)
+
+**FEATURE**
+ - **st_b0shim**: Refactor and add optimizers. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/677)
+
+**INSTALLATION**
+ - Update conda installer, FSLeyes and python versions. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/659)
+
 ## 1.4 (2026-06-19)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.3...1.4)
 
