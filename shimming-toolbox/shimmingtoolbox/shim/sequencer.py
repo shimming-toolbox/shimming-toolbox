@@ -16,9 +16,10 @@ import json
 from scipy.signal import find_peaks, savgol_filter
 
 from shimmingtoolbox.masking.mask_utils import modify_binary_mask
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer, allowed_opt_criteria
+from shimmingtoolbox.optimizer.slsqp_optimizer import SlsqpOptimizer, PmuSlsqpOptimizer, allowed_opt_criteria
 from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
 from shimmingtoolbox.optimizer.quadprog_optimizer import QuadProgOpt, PmuQuadProgOpt
+from shimmingtoolbox.optimizer.linear_lsq import LinearLsqOptimizer
 from shimmingtoolbox.coils.coil import Coil, ScannerCoil, SCANNER_CONSTRAINTS, SCANNER_CONSTRAINTS_DAC
 from shimmingtoolbox.coils.spher_harm_basis import channels_per_order
 from shimmingtoolbox.optimizer.bfgs_optimizer import BFGSOpt, PmuBFGSOpt
@@ -34,13 +35,14 @@ ListCoil = List[Coil]
 logger = logging.getLogger(__name__)
 
 supported_optimizers = {
-    'least_squares_rt': PmuLsqOptimizer,
-    'least_squares': LsqOptimizer,
+    'slsqp_rt': PmuSlsqpOptimizer,
+    'slsqp': SlsqpOptimizer,
     'quad_prog': QuadProgOpt,
     'quad_prog_rt': PmuQuadProgOpt,
     'bfgs': BFGSOpt,
     'bfgs_rt': PmuBFGSOpt,
     'pseudo_inverse': Optimizer,
+    'lin_lsq': LinearLsqOptimizer
 }
 
 GAMMA = 42.576E6  # in Hz/Tesla
@@ -60,8 +62,7 @@ class Sequencer(object):
                                          For example, a kernel of size 3 will dilate the mask by 1 pixel.
         reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                             penalize higher current values while a lower factor will lower the effect of the
-                            regularization. A negative value will favour high currents (not preferred). Only relevant
-                            for 'least_squares' opt_method.
+                            regularization.
         path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
         index_shimmed: Indexes of ``slices`` that have been shimmed
         index_not_shimmed: Indexes of ``slices`` that have not been shimmed
@@ -83,8 +84,10 @@ class Sequencer(object):
                                              For example, a kernel of size 3 will dilate the mask by 1 pixel.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
+                                regularization. A negative value will favor high currents (not preferred).
+            w_signal_loss (float): Weight for the through-slice gradient minimization.
+            w_signal_loss_xy (float): Weight for the in-plane gradient minimization.
+            epi_te (float): Echo time for the EPI sequence. (ms)
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
         """
         self.slices = slices
@@ -114,9 +117,10 @@ class Sequencer(object):
 
         for i_shim, shim_slices in enumerate(self.slices):
             # If there is nothing to shim in this shim group
-            if np.all(masks_fmap[..., i_shim] == 0):
+            n_channels_on = np.sum(self.optimizer.merged_onoff_channels)
+            if np.all(masks_fmap[..., i_shim] == 0) or n_channels_on == 0:
                 # If values were fixed, put those values instead of 0s.
-                currents_0s_on_channels = np.zeros([np.sum(self.optimizer.merged_onoff_channels)])
+                currents_0s_on_channels = np.zeros([n_channels_on])
                 currents_all_channels = self.optimizer.insert_off_channels_values(currents_0s_on_channels, shim_slices)
                 coefs.append(currents_all_channels)
                 self.index_not_shimmed.append(i_shim)
@@ -148,17 +152,17 @@ class ShimSequencer(Sequencer):
                           are larger than the extent of the fieldmap. This is especially true for dimensions with only
                           1 voxel(e.g. (50x50x1). Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                           :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-        method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+        method (str): Supported optimizer: 'lin_lsq', 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                       Note: refer to their specific implementation to know limits of the methods
                       in: :mod:`shimmingtoolbox.optimizer`
-        opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+        opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                             'mae': mean absolute error, 'std': standard deviation, 'ps_huber': pseudo huber cost function.
         optimizer (Optimizer) : Object that contains everything needed for the optimization.
         masks_fmap (np.ndarray) : Resampled mask on the original fieldmap
     """
 
     def __init__(self, nif_fieldmap, nif_target, nif_mask_target, slices, coils,
-                 method='least_squares', opt_criteria='mse',
+                 method='lin_lsq', opt_criteria='mse',
                  mask_dilation_kernel='sphere', mask_dilation_kernel_size=3, reg_factor=0, w_signal_loss=None,
                  w_signal_loss_xy=None, epi_te=None, path_output=None):
         """
@@ -177,10 +181,10 @@ class ShimSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+            method (str): Supported optimizer: 'slsqp', 'lin_lsq', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported:'mse': mean squared error,
                                 'mae': mean absolute error, 'rmse': root mean squared error,
                                 'ps_huber': pseudo huber cost function, 'mse_signal_recovery',
                                 'rmse_signal_recovery'.
@@ -192,7 +196,6 @@ class ShimSequencer(Sequencer):
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
             path_output (str): Path to the directory to output figures. Set logging level to debug to output debug
                                 artefacts.
         """
@@ -210,7 +213,6 @@ class ShimSequencer(Sequencer):
         self.w_signal_loss = w_signal_loss
         self.w_signal_loss_xy = w_signal_loss_xy
         self.epi_te = epi_te
-
 
     def get_resampled_masks(self):
         """
@@ -294,9 +296,10 @@ class ShimSequencer(Sequencer):
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method in ['least_squares', 'bfgs']:
+            if self.method in ['slsqp', 'bfgs']:
                 optimizer = supported_optimizers[self.method](self.coils, self.nif_fieldmap.extended_data,
-                                                              self.nif_fieldmap.extended_affine, self.opt_criteria,
+                                                              self.nif_fieldmap.extended_affine,
+                                                              self.opt_criteria,
                                                               reg_factor=self.reg_factor,
                                                               w_signal_loss=self.w_signal_loss,
                                                               w_signal_loss_xy=self.w_signal_loss_xy,
@@ -306,7 +309,11 @@ class ShimSequencer(Sequencer):
                                                               self.nif_fieldmap.extended_affine, reg_factor=self.reg_factor)
             else:
                 optimizer = supported_optimizers[self.method](self.coils, self.nif_fieldmap.extended_data,
-                                                              self.nif_fieldmap.extended_affine)
+                                                              self.nif_fieldmap.extended_affine,
+                                                              reg_factor=self.reg_factor,
+                                                              w_signal_loss=self.w_signal_loss,
+                                                              w_signal_loss_xy=self.w_signal_loss_xy,
+                                                              epi_te=self.epi_te)
         else:
             raise KeyError(f"Method: {self.method} is not part of the supported optimizers")
 
@@ -345,31 +352,19 @@ class ShimSequencer(Sequencer):
         shimmed, corrections, list_shim_slice = self.evaluate_shimming(unshimmed, coefs, merged_coils)
         shimmed_masked, mask_full = self.calc_shimmed_full_mask(unshimmed, corrections)
         if self.path_output is not None:
-            # fmap space
-            if len(self.slices) == 1:
-                # Output the resulting fieldmap since it can be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed[..., 0], self.nif_fieldmap.affine,
-                                                   header=self.nif_fieldmap.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
-                nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
-
-            else:
-                # Output the resulting masked fieldmap since it cannot be calculated over the entire fieldmap
-                nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nif_fieldmap.affine,
-                                                   header=self.nif_fieldmap.header)
-                fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim.nii.gz')
-                nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
+            # Output the resulting masked fieldmap
+            nii_shimmed_fmap = nib.Nifti1Image(shimmed_masked, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            fname_shimmed_fmap = os.path.join(self.path_output, 'fieldmap_calculated_shim_masked.nii.gz')
+            nib.save(nii_shimmed_fmap, fname_shimmed_fmap)
 
             # Output JSON file
             self.save_calc_fmap_json(coefs)
 
             # TODO: Add units if possible
             # TODO: Add in target space?
-            if 'signal_recovery' in self.opt_criteria:
+            if self.w_signal_loss is not None or self.w_signal_loss_xy is not None:
 
                 full_Gz = np.zeros(corrections.shape)
-                full_Gx = np.zeros(corrections.shape)
-                full_Gy = np.zeros(corrections.shape)
                 shimmed_temp = corrections + unshimmed[..., np.newaxis]
 
                 # Can't calculate signal recovery in the through slice direction if there is only one slice
@@ -529,6 +524,18 @@ class ShimSequencer(Sequencer):
                         logger.warning("Evaluating the mse, verify the shim parameters."
                                        " Some give worse results than no shim.\n " f"i_shim: {i_shim}")
 
+    def get_mask_full_epi_slices_on_fmap(self):
+        masks_full_epi_slices = np.zeros(self.nif_fieldmap.shape + (len(self.slices),))
+        for i_somes_slices, some_slices in enumerate(self.slices):
+            target_slices = np.zeros_like(self.nif_mask_target.nii.get_fdata())
+            for a_slice in some_slices:
+                target_slices[:, :, a_slice] = 1
+
+            nii_tmp = nib.Nifti1Image(target_slices, self.nif_mask_target.nii.affine, header=self.nif_mask_target.header)
+            masks_full_epi_slices[..., i_somes_slices] = np.clip(resample_from_to(nii_tmp, self.nif_fieldmap.nii, order=1, mode='grid-constant', cval=0).get_fdata(), 0, 1)
+
+        return masks_full_epi_slices
+
     def calc_shimmed_full_mask(self, unshimmed, correction):
         """
         Calculate the shimmed full mask
@@ -558,6 +565,20 @@ class ShimSequencer(Sequencer):
 
         # Apply the correction to the unshimmed image
         shimmed_masked = (full_correction_scaled + unshimmed) * mask_full_binary
+
+        if logger.level <= getattr(logging, 'DEBUG'):
+            masks_fmap_full_epi_slice = self.get_mask_full_epi_slices_on_fmap() > 0.001
+            # nib.Nifti1Image(self.masks_fmap, self.nif_fieldmap.affine, header=self.nif_fieldmap.header).to_filename(os.path.join(self.path_output, 'masks_fmap.nii.gz'))
+            # nib.Nifti1Image(masks_fmap_full_epi_slice, self.nif_fieldmap.affine, header=self.nif_fieldmap.header).to_filename(os.path.join(self.path_output, 'masks_fmap_full_epi_slice.nii.gz'))
+            full_correction = np.einsum('ijkl,ijkl->ijk', masks_fmap_full_epi_slice, correction, optimize='optimizer')
+            # Calculate the weighted whole mask
+            mask_weight = np.sum(masks_fmap_full_epi_slice, axis=3)
+            # Divide by the weighted mask. This is done so that the edges of the soft mask can be shimmed appropriately
+            full_correction_scaled = np.divide(full_correction, mask_weight, where=mask_weight.astype(bool), out=None)
+            # Apply the correction to the unshimmed image
+            shimmed_with_full_correction = full_correction_scaled + unshimmed
+            nii_shimmed = nib.Nifti1Image(shimmed_with_full_correction, self.nif_fieldmap.affine, header=self.nif_fieldmap.header)
+            nib.save(nii_shimmed, os.path.join(self.path_output, 'fieldmap_calculated_shim_not_masked.nii.gz'))
 
         return shimmed_masked, mask_full
 
@@ -618,8 +639,13 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked = montage(nan_unshimmed_masked_zoom[:, :, slice, :].filled())
         mt_shimmed_masked = montage(nan_shimmed_masked_zoom[:, :, slice, :].filled() * np.ceil(masks_fmap_zoom[:, :, slice, :]))
 
-        min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
-        max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
+        if np.isnan(mt_unshimmed_masked).all() and np.isnan(mt_shimmed_masked).all():
+            # Arbitrary, nothing will be displayed (all nans)
+            min_masked_value = 0
+            max_masked_value = 1
+        else:
+            min_masked_value = np.nanmin([mt_unshimmed_masked, mt_shimmed_masked])
+            max_masked_value = np.nanmax([mt_unshimmed_masked, mt_shimmed_masked])
         min_fmap_value = np.nanmin([mt_unshimmed, mt_shimmed])
         max_fmap_value = np.nanmax([mt_unshimmed, mt_shimmed])
 
@@ -778,27 +804,58 @@ class ShimSequencer(Sequencer):
 
                 i += coil.dim[3]
 
-        with open(os.path.join(self.path_output, "fieldmap_calculated_shim.json"), "w") as outfile:
+        with open(os.path.join(self.path_output, "fieldmap_calculated_shim_masked.json"), "w") as outfile:
             json.dump(json_shimmed, outfile, indent=4)
+        if logger.level <= getattr(logging, 'DEBUG'):
+            with open(os.path.join(self.path_output, "fieldmap_calculated_shim_not_masked.json"), "w") as outfile:
+                json.dump(json_shimmed, outfile, indent=4)
+
+    def get_signal_recovery_metrics(self, gradient, mask_erode):
+        # Calculate signal recovery metrics
+        slice_thickness = self.nif_target.get_json_info('SliceThickness')
+        B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+
+        signal_loss = calculate_signal_loss(gradient,
+                                                    slice_thickness,
+                                                    B0_map_thickness,
+                                                    self.epi_te)
+
+        temp_signal_loss = signal_loss.copy()
+
+        std = calculate_metric_within_mask(temp_signal_loss, mask_erode, metric='std')
+        mean = calculate_metric_within_mask(temp_signal_loss, mask_erode, metric='mean')
+        absmean = calculate_metric_within_mask(np.abs(temp_signal_loss), mask_erode, metric='mean')
+
+        metrics = {
+            'std': std,
+            'mean': mean,
+            'absmean': absmean,
+        }
+        return metrics
+
 
     def _plot_static_signal_recovery_mask(self, unshimmed, shimmed_Gz, mask):
         # Plot signal loss maps
-        def calculate_signal_loss(gradient):
-            slice_thickness = self.nif_target.get_json_info('SliceThickness')
-            B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
-            phi = 2 * math.pi * gradient / B0_map_thickness * self.epi_te * slice_thickness
-            # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
-            signal_map = abs(np.sinc(phi / (2 * math.pi)))
-            signal_loss_map = 1 - signal_map
-            return signal_loss_map
-
-        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis=2))
-        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz)
 
         # Convert soft mask into binary mask
         bin_mask = (mask != 0).astype(int)
         bin_mask_erode = modify_binary_mask(bin_mask, shape='sphere', size=3, operation='erode')
         mask_erode = mask * bin_mask_erode
+
+        unshimmed_metrics = self.get_signal_recovery_metrics(np.gradient(unshimmed, axis=2), mask_erode)
+        shimmed_metrics = self.get_signal_recovery_metrics(shimmed_Gz, mask_erode)
+
+        slice_thickness = self.nif_target.get_json_info('SliceThickness')
+        B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+
+        unshimmed_signal_loss = calculate_signal_loss(np.gradient(unshimmed, axis=2),
+                                                      slice_thickness,
+                                                      B0_map_thickness,
+                                                      self.epi_te)
+        shimmed_signal_loss = calculate_signal_loss(shimmed_Gz,
+                                                    slice_thickness,
+                                                    B0_map_thickness,
+                                                    self.epi_te)
 
         x_min, x_max, y_min, y_max = get_bounds_to_zoom_in(bin_mask_erode, margin=3)
         unshimmed_signal_loss_zoom = unshimmed_signal_loss[x_min:x_max, y_min:y_max, :]
@@ -817,18 +874,6 @@ class ShimSequencer(Sequencer):
         nib.save(nib.Nifti1Image(mask_erode, affine=self.nif_fieldmap.extended_affine, header=self.nif_fieldmap.header),
                  os.path.join(self.path_output, 'mask_erode.nii.gz'))
 
-        temp_unshimmed_signal_loss = unshimmed_signal_loss.copy()
-        temp_unshimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan
-        temp_shimmed_signal_loss = shimmed_signal_loss.copy()
-        temp_shimmed_signal_loss[unshimmed_signal_loss < 0.1] = np.nan
-
-        metric_unshimmed_std = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='std')
-        metric_shimmed_std = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='std')
-        metric_unshimmed_mean = calculate_metric_within_mask(temp_unshimmed_signal_loss, mask_erode, metric='mean')
-        metric_shimmed_mean = calculate_metric_within_mask(temp_shimmed_signal_loss, mask_erode, metric='mean')
-        metric_unshimmed_absmean = calculate_metric_within_mask(np.abs(temp_unshimmed_signal_loss), mask_erode, metric='mean')
-        metric_shimmed_absmean = calculate_metric_within_mask(np.abs(temp_shimmed_signal_loss), mask_erode, metric='mean')
-
         fig = Figure(figsize=(15, 9))
         fig.suptitle("Signal Percentage Loss Map\nFieldmap Coordinate System")
 
@@ -836,8 +881,8 @@ class ShimSequencer(Sequencer):
         mt_unshimmed_masked[mt_shimmed_masked == 0] = np.nan
 
         im = ax.imshow(mt_unshimmed_masked, vmin=0, vmax=1, cmap='hot')
-        ax.set_title(f"Before shimming signal loss \nSTD: {metric_unshimmed_std:.3}, mean: {metric_unshimmed_mean:.3}, "
-                     f"abs mean: {metric_unshimmed_absmean:.3}")
+        ax.set_title(f"Before shimming signal loss \nSTD: {unshimmed_metrics['std']:.3}, mean: {unshimmed_metrics['mean']:.3}, "
+                     f"abs mean: {unshimmed_metrics['absmean']:.3}")
 
         # Change title font size
         ax.get_xaxis().set_visible(False)
@@ -849,8 +894,8 @@ class ShimSequencer(Sequencer):
         ax = fig.add_subplot(1, 2, 2)
         mt_shimmed_masked[mt_shimmed_masked == 0] = np.nan
         im = ax.imshow(mt_shimmed_masked, vmin=0, vmax=1, cmap='hot')
-        ax.set_title(f"After shimming signal loss \nSTD: {metric_shimmed_std:.3}, mean: {metric_shimmed_mean:.3}, "
-                     f"abs mean: {metric_shimmed_absmean:.3}")
+        ax.set_title(f"After shimming signal loss \nSTD: {shimmed_metrics['std']:.3}, mean: {shimmed_metrics['mean']:.3}, "
+                     f"abs mean: {shimmed_metrics['absmean']:.3}")
         ax.get_xaxis().set_visible(False)
         ax.get_yaxis().set_visible(False)
         divider = make_axes_locatable(ax)
@@ -943,15 +988,14 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog.
+            method (str): Supported optimizer: 'slsqp', 'pseudo_inverse', 'quad_prog', 'lin_lsq'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation, 'rmse': root mean squared error.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
-                                regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
+                                regularization. A negative value will favor high currents (not preferred).
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
@@ -970,7 +1014,7 @@ class RealTimeSequencer(Sequencer):
     """
 
     def __init__(self, nif_fieldmap, nif_target, nif_static_mask, nif_riro_mask, slices, pmu: PmuResp,
-                 coils_static, coils_riro, method='least_squares', opt_criteria='mse', mask_dilation_kernel='sphere',
+                 coils_static, coils_riro, method='slsqp', opt_criteria='mse', mask_dilation_kernel='sphere',
                  mask_dilation_kernel_size=3, reg_factor=0, path_output=None, is_pmu_time_offset_auto=False):
         """
         Initialization of the RealTimeSequencer class
@@ -995,15 +1039,14 @@ class RealTimeSequencer(Sequencer):
                               dimensions with only 1 voxel(e.g. (50x50x1x10).
                               Refer to :func:`shimmingtoolbox.shim.sequencer.extend_slice`/
                               :func:`shimmingtoolbox.shim.shim_utils.update_affine_for_ap_slices`
-            method (str): Supported optimizer: 'least_squares', 'pseudo_inverse', 'quad_prog', 'bfgs'.
+            method (str): Supported optimizer: 'slsqp', 'pseudo_inverse', 'quad_prog', 'bfgs'.
                           Note: refer to their specific implementation to know limits of the methods
                           in: :mod:`shimmingtoolbox.optimizer`
-            opt_criteria (str): Criteria for the optimizer 'least_squares'. Supported: 'mse': mean squared error,
+            opt_criteria (str): Criteria for the optimizer 'slsqp' and 'bfgs'. Supported: 'mse': mean squared error,
                                 'mae': mean absolute error, 'std': standard deviation.
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
-                                Only relevant for 'least_squares' opt_method.
             mask_dilation_kernel (str): Kernel used to dilate the mask. Allowed shapes are: 'sphere', 'cross', 'line'
                                         'cube'. See :func:`shimmingtoolbox.masking.mask_utils.modify_binary_mask` for
                                         more details.
@@ -1293,8 +1336,8 @@ class RealTimeSequencer(Sequencer):
 
         # Create both optimizer object
         self.select_optimizer(static, affine_fieldmap)
-        if self.method == 'least_squares':
-            self.method = 'least_squares_rt'
+        if self.method == 'slsqp':
+            self.method = 'slsqp_rt'
         if self.method == 'quad_prog':
             self.method = 'quad_prog_rt'
         if self.method == 'bfgs':
@@ -1328,14 +1371,14 @@ class RealTimeSequencer(Sequencer):
             unshimmed (np.ndarray): 3D B0 map
             affine (np.ndarray): 4x4 array containing the affine transformation for the unshimmed array
             pmu (PmuResp): PmuResp object containing the respiratory trace information. Required for method
-                           'least_squares_rt'.
+                           'slsqp_rt'.
             mean_p (float): Mean pressure of the respiratory trace. Required for methods 'XXX_rt'.
 
         """
 
         # global supported_optimizers
         if self.method in supported_optimizers:
-            if self.method in ['least_squares', 'bfgs']:
+            if self.method in ['slsqp', 'bfgs']:
                 self.optimizer = supported_optimizers[self.method](
                     self.coils_static, unshimmed, affine,
                                                                    self.opt_criteria, reg_factor=self.reg_factor)
@@ -1343,7 +1386,7 @@ class RealTimeSequencer(Sequencer):
                 self.optimizer = supported_optimizers[self.method](self.coils_static, unshimmed, affine,
                                                                    reg_factor=self.reg_factor)
 
-            elif self.method in ['least_squares_rt', 'bfgs_rt']:
+            elif self.method in ['slsqp_rt', 'bfgs_rt']:
                 # Make sure pmu is defined
                 if pmu is None:
                     raise ValueError(f"pmu parameter is required if using the optimization method: {self.method}")
@@ -1948,6 +1991,16 @@ class RealTimeSequencer(Sequencer):
         # Save
         fname_figure = os.path.join(self.path_output, 'fig_shimmed_vs_unshimmed_real-time_variation.png')
         fig.savefig(fname_figure, bbox_inches='tight')
+
+
+def calculate_signal_loss(gradient, target_slice_thickness, fmap_slice_thickness, target_te):
+    # slice_thickness = self.nif_target.get_json_info('SliceThickness')
+    # B0_map_thickness = self.nif_fieldmap.header['pixdim'][3]
+    phi = 2 * math.pi * gradient / fmap_slice_thickness * target_te * target_slice_thickness
+    # The /pi is because the sinc function in numpy is sinc(x) = sin(pi*x)/(pi*x)
+    signal_map = abs(np.sinc(phi / (2 * math.pi)))
+    signal_loss_map = 1 - signal_map
+    return signal_loss_map
 
 
 def plot_full_mask(unshimmed, shimmed_masked, mask, path_output):

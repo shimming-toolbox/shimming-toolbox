@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from scipy.special import pseudo_huber
 
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
+from shimmingtoolbox.optimizer.slsqp_optimizer import SlsqpOptimizer, PmuSlsqpOptimizer
 from ..shim.test_sequencer import define_rt_sim_inputs, create_constraints, create_coil
 
 nif_rt_fieldmap, nif_rt_target, nif_mask_rt_static, nif_mask_rt_riro, slices_rt, pmu_rt, coil_rt = \
@@ -60,7 +60,7 @@ class TestResiduals:
         self.delta = None
 
     def test_res_mae(self):
-        opt = LsqOptimizer(opt_criteria='mae',
+        opt = SlsqpOptimizer(opt_criteria='mae',
                            coils=[self.coil],
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
@@ -75,7 +75,7 @@ class TestResiduals:
         assert np.isclose(res, ref, atol=1e-12)
 
     def test_res_initial_guess_mse(self):
-        opt = LsqOptimizer(opt_criteria='mse',
+        opt = SlsqpOptimizer(opt_criteria='mse',
                            coils=[self.coil],
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
@@ -90,7 +90,7 @@ class TestResiduals:
         assert np.isclose(res, ref, atol=1e-12)
 
     def test_res_mse(self):
-        opt = LsqOptimizer(opt_criteria='mse',
+        opt = SlsqpOptimizer(opt_criteria='mse',
                            coils=[self.coil],
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
@@ -106,7 +106,7 @@ class TestResiduals:
         assert np.isclose(res, ref, atol=1e-12)
 
     def test_res_rmse(self):
-        opt = LsqOptimizer(opt_criteria='rmse',
+        opt = SlsqpOptimizer(opt_criteria='rmse',
                            coils=[self.coil],
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
@@ -121,7 +121,7 @@ class TestResiduals:
         assert np.isclose(res, ref, atol=1e-12)
 
     def test_res_ps_huber(self):
-        opt = LsqOptimizer(opt_criteria='ps_huber',
+        opt = SlsqpOptimizer(opt_criteria='ps_huber',
                            coils=[self.coil],
                            unshimmed=self.unshimmed,
                            affine=np.eye(4))
@@ -149,14 +149,14 @@ class TestResiduals:
             coil_rt
     )]
 )
-class TestPmuLsqOptimizer:
+class TestPmuSlsqpOptimizer:
     def test_define_rt_bounds(self, nif_fieldmap, nif_target, nif_mask_static, nif_mask_riro, slices, pmu,
                               coil):
 
         constraints = create_constraints(300, -700, 2000, 3)
         new_coil = create_coil(nif_fieldmap.shape[0], nif_fieldmap.shape[1], 3, constraints, nif_fieldmap.affine, 3)
 
-        pmu_lsq_opt = PmuLsqOptimizer([new_coil], nif_fieldmap.data.mean(axis=3), nif_fieldmap.affine, 'ps_huber', pmu)
+        pmu_lsq_opt = PmuSlsqpOptimizer([new_coil], nif_fieldmap.data.mean(axis=3), nif_fieldmap.affine, 'ps_huber', pmu)
         pmu_lsq_opt.pressure_min = 0
         pmu_lsq_opt.pressure_max = 4095
         pmu_lsq_opt.pressure_mean = 3000

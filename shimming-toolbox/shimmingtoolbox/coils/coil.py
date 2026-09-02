@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-
 import copy
 import logging
 import numpy as np
@@ -29,8 +28,14 @@ SIEMENS_PRISMA_CONSTRAINTS_167006 = {
 
 SCANNER_CONSTRAINTS = {
     "Siemens": {
+        # Order 0: Hz, order 1: uT/m, order 2: uT/m^2, order 3: uT/m^3
+        # Orders 2 and up can be calculated from:
+        # SCANNER_CONSTRAINTS = (SCANNER_CONSTRAINTS_DAC / 1000) * SHIMSensitivity / (ShimRefRadius ** order)
+        # SHIMSensitivity: uT/A
+        # ShimRefRadius is typically 0.25 m
         "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
         "Prisma_fit_167006": SIEMENS_PRISMA_CONSTRAINTS_167006,
+        # With 3rd order off
         "Investigational_Device_7T_79017": {
             "0": [[296490000, 297490000]],
             "1": [[-2999.899, 2999.399], [-2999.886, 2999.886], [-2999.910, 2999.910]],
@@ -38,6 +43,13 @@ SCANNER_CONSTRAINTS = {
                   [-3647.270, 3647.270]],
             "3": []
         },
+        # With 3rd order on
+        # "Investigational_Device_7T_79017": {
+        #     "0": [[296490000, 297490000]],
+        #     "1": [[-2999.899, 2999.399], [-2999.886, 2999.886], [-2999.910, 2999.910]],
+        #     "2": [[-9360.0, 9360.0], [-4680.0, 4680.0], [-4620.0, 4620.0], [-4620.0, 4620.0], [-4560.0, 4560.0]],
+        #     "3": [[-15232.0, 15232.0], [-14016.0, 14016.0], [-14016.0, 14016.0], [-14016.0, 14016.0]]
+        # },
         "Investigational_Device_7T_18923": {
             "0": [[296490000, 297490000]],
             "1": [[-4999.976, 4999.976], [-4999.980, 4999.980], [-4999.957, 4999.957]],
@@ -79,13 +91,21 @@ SIEMENS_PRISMA_DAC_CONSTRAINTS_167006 = {
 # One can use the Siemens commandline AdjValidate tool to get all the values below
 SCANNER_CONSTRAINTS_DAC = {
     "Siemens": {
+        # Order 1: DAC, orders >= 2: mA
         "MAGNETOM_Prisma_Fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
         "Prisma_fit_167006": SIEMENS_PRISMA_DAC_CONSTRAINTS_167006,
+        # With 3rd order off
         "Investigational_Device_7T_79017": {
-            "1": [62479.0, 62264.0, 54082.0],
-            "2": [18000.0] * 5,
+            "1": [17556.0, 17716.0, 17687.0],
+            "2": [9998.0] * 5,
             "3": []
         },
+        # With 3rd order on
+        # "Investigational_Device_7T_79017": {
+        #     "1": [17556.0, 17716.0, 17687.0],
+        #     "2": [12500.0] * 5,
+        #     "3": [10000] * 4
+        # },
         "Investigational_Device_7T_18923": {
             "1": [62479.0, 62264.0, 54082.0],
             "2": [18000.0] * 5,
