@@ -162,15 +162,15 @@ def vox_to_phys_coefs(ax1_coefs, ax2_coefs, ax3_coefs, affine):
     y_vox_spacing = math.sqrt((affine[0, y_vox] ** 2) + (affine[1, y_vox] ** 2) + (affine[2, y_vox] ** 2))
     z_vox_spacing = math.sqrt((affine[0, z_vox] ** 2) + (affine[1, z_vox] ** 2) + (affine[2, z_vox] ** 2))
 
-    x_coefs = (ax1_coefs * affine[0, x_vox] * x_vox_spacing) + \
-             (ax2_coefs * affine[0, y_vox] * x_vox_spacing) + \
-             (ax3_coefs * affine[0, z_vox] * x_vox_spacing)
-    y_coefs = (ax1_coefs * affine[1, x_vox] * y_vox_spacing) + \
-             (ax2_coefs * affine[1, y_vox] * y_vox_spacing) + \
-             (ax3_coefs * affine[1, z_vox] * y_vox_spacing)
-    z_coefs = (ax1_coefs * affine[2, x_vox] * z_vox_spacing) + \
-             (ax2_coefs * affine[2, y_vox] * z_vox_spacing) + \
-             (ax3_coefs * affine[2, z_vox] * z_vox_spacing)
+    x_coefs = (ax1_coefs * affine[0, x_vox] / x_vox_spacing) + \
+             (ax2_coefs * affine[0, y_vox] / y_vox_spacing) + \
+             (ax3_coefs * affine[0, z_vox] / z_vox_spacing)
+    y_coefs = (ax1_coefs * affine[1, x_vox] / x_vox_spacing) + \
+             (ax2_coefs * affine[1, y_vox] / y_vox_spacing) + \
+             (ax3_coefs * affine[1, z_vox] / z_vox_spacing)
+    z_coefs = (ax1_coefs * affine[2, x_vox] / x_vox_spacing) + \
+             (ax2_coefs * affine[2, y_vox] / y_vox_spacing) + \
+             (ax3_coefs * affine[2, z_vox] / z_vox_spacing)
 
     return x_coefs, y_coefs, z_coefs
 
