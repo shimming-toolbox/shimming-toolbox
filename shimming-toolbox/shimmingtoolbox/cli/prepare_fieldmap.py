@@ -39,7 +39,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
                    "than the threshold are set to 0.")
 @click.option('--savemask', 'fname_save_mask', type=click.Path(),
               help="Filename of the mask calculated by the unwrapper")
-@click.option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True, help="Gaussian filter for B0 map")
+@click.option('--gaussian-filter', 'gaussian_filter', type=bool, default=False, show_default=True, help="Gaussian filter for B0 map")
 @click.option('--sigma', type=float, default=1, help="Standard deviation of gaussian filter. Used for: gaussian_filter")
 @click.option('--2d', 'process_in_2d', type=bool, show_default=True, default=False,
               help="Unwrap and filter slice by slice. Defaults to False, which unwraps the whole 3D volume at once.")
