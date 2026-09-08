@@ -2328,54 +2328,136 @@ def _create_dummy_coil(nii_fmap):
     return nii_dummy_coil, constraints
 
 
-def test_b0_max_intensity():
-    """ We use a 4d fieldmap not intended for this application for testing """
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
-        fname_mask = os.path.join(tmp, 'mask.nii.gz')
-        fname_output = os.path.join(tmp, 'output.txt')
+class TestMaxIntensity:
+    def test_b0_max_intensity(self):
+        """ We use a 4d fieldmap not intended for this application for testing """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            path_output = tmp
+            fname_shim_index = os.path.join(path_output, 'shim_index.txt')
 
-        nii = nib.load(fname_input)
-        # Set up mask: Cube
-        nx, ny, nz = nii.shape[:3]
-        mask = shapes(nii.get_fdata()[..., 0], 'cube',
-                      center_dim1=32,
-                      center_dim2=36,
-                      len_dim1=10, len_dim2=10, len_dim3=nz)
-        nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii.affine)
-        nib.save(nii_mask, fname_mask)
+            nii = nib.load(fname_input)
+            # Set up mask: Cube
+            nx, ny, nz = nii.shape[:3]
+            mask = shapes(nii.get_fdata()[..., 0], 'cube',
+                          center_dim1=32,
+                          center_dim2=36,
+                          len_dim1=10, len_dim2=10, len_dim3=nz)
+            nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii.affine)
+            nib.save(nii_mask, fname_mask)
 
-        runner = CliRunner()
-        res = runner.invoke(b0shim_cli, ['max-intensity',
-                                         '--input', fname_input,
-                                         '--mask', fname_mask,
-                                         '-o', fname_output],
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['max-intensity',
+                                             '--input', fname_input,
+                                             '--mask', fname_mask,
+                                             '-o', path_output],
 
-                            catch_exceptions=False)
+                                catch_exceptions=False)
 
-        assert res.exit_code == 0
-        with open(fname_output, 'r', encoding='utf-8') as f:
-            assert f.readline().strip() == "1"
-            assert f.readline().strip() == "9"
+            assert res.exit_code == 0
+            with open(fname_shim_index, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "1"
+                assert f.readline().strip() == "8"
 
+    def test_b0_max_intensity_no_mask(self):
+        """ We use a 4d fieldmap not intended for this application for testing """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+            path_output = tmp
+            fname_shim_index = os.path.join(path_output, 'shim_index.txt')
 
-def test_b0_max_intensity_no_mask():
-    """ We use a 4d fieldmap not intended for this application for testing """
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
-        fname_output = os.path.join(tmp, 'output.txt')
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['max-intensity',
+                                             '--input', fname_input,
+                                             '-o', path_output],
 
-        runner = CliRunner()
-        res = runner.invoke(b0shim_cli, ['max-intensity',
-                                         '--input', fname_input,
-                                         '-o', fname_output],
+                                catch_exceptions=False)
 
-                            catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_shim_index, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "1"
+                assert f.readline().strip() == "0"
 
-        assert res.exit_code == 0
-        with open(fname_output, 'r', encoding='utf-8') as f:
-            assert f.readline().strip() == "1"
-            assert f.readline().strip() == "1"
+    def test_b0_max_intensity_output_coefs_comma(self):
+        """ We use a 4d fieldmap not intended for this application for testing """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            path_output = tmp
+            fname_shim_index = os.path.join(path_output, 'shim_index.txt')
+
+            nii = nib.load(fname_input)
+            # Set up mask: Cube
+            nx, ny, nz = nii.shape[:3]
+            mask = shapes(nii.get_fdata()[..., 0], 'cube',
+                          center_dim1=32,
+                          center_dim2=36,
+                          len_dim1=10, len_dim2=10, len_dim3=nz)
+            nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii.affine)
+            nib.save(nii_mask, fname_mask)
+
+            fname_coefs = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_coefs, 'w', encoding='utf-8') as f:
+                for i in range(10):
+                    f.write(f"{i * 1}, {i * 2},{i * 3}, {i * 4},\n")
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['max-intensity',
+                                             '--input', fname_input,
+                                             '--mask', fname_mask,
+                                             '--coefs', fname_coefs,
+                                             '-o', path_output],
+
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            with open(fname_shim_index, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "1"
+                assert f.readline().strip() == "8"
+            fname_shimmed = os.path.join(path_output, 'scanner_shim.txt')
+            with open(fname_shimmed, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "8.000000, 16.000000, 24.000000, 32.000000,"
+
+    def test_b0_max_intensity_output_coefs_bar(self):
+        """ We use a 4d fieldmap not intended for this application for testing """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            path_output = tmp
+            fname_shim_index = os.path.join(path_output, 'shim_index.txt')
+
+            nii = nib.load(fname_input)
+            # Set up mask: Cube
+            nx, ny, nz = nii.shape[:3]
+            mask = shapes(nii.get_fdata()[..., 0], 'cube',
+                          center_dim1=32,
+                          center_dim2=36,
+                          len_dim1=10, len_dim2=10, len_dim3=nz)
+            nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii.affine)
+            nib.save(nii_mask, fname_mask)
+
+            fname_coefs = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_coefs, 'w', encoding='utf-8') as f:
+                for i in range(10):
+                    f.write(f"{i * 1} | {i * 2} | {i * 3} | {i * 4}\n")
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['max-intensity',
+                                             '--input', fname_input,
+                                             '--mask', fname_mask,
+                                             '--coefs', fname_coefs,
+                                             '-o', path_output],
+
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            with open(fname_shim_index, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "1"
+                assert f.readline().strip() == "8"
+            fname_shimmed = os.path.join(path_output, 'scanner_shim.txt')
+            with open(fname_shimmed, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "8.000000 | 16.000000 | 24.000000 | 32.000000"
 
 
 class TestAddShimCoefs:

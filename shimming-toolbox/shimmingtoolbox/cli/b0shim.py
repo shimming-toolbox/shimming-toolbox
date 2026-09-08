@@ -1525,20 +1525,21 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
 @click.option('--mask', 'fname_mask', type=click.Path(exists=True), required=False,
               help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
                    "considered.")
-@click.option('-o', '--output', 'fname_output', type=click.Path(),
-              default=os.path.join(os.path.abspath(os.curdir), 'shim_index.txt'),
+@click.option('--coefs', 'fname_coefs', type=click.Path(exists=True), required=False,
+              help="Text file containing the shim coefficients. Supported formats: .txt")
+@click.option('-o', '--output', 'path_output', type=click.Path(),
+              default=os.path.abspath(os.curdir),
               show_default=True, help="Filename to output shim text file.")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
-def max_intensity(fname_input, fname_mask, fname_output, verbose):
+def max_intensity(fname_input, fname_mask, path_output, fname_coefs, verbose):
     """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
         Based on: https://onlinelibrary.wiley.com/doi/10.1002/hbm.26018
-
     """
     # Set logger level
     set_all_loggers(verbose)
 
     # Prepare the output
-    create_output_dir(fname_output, is_file=True)
+    create_output_dir(path_output, is_file=False)
 
     # Load the input file
     nii_input = nib.load(fname_input)
@@ -1549,22 +1550,39 @@ def max_intensity(fname_input, fname_mask, fname_output, verbose):
     else:
         nii_mask = nib.load(fname_mask)
 
-    # Shim
-    # Output with 1 index
-    index_per_slice = shim_max_intensity(nii_input, nii_mask) + 1
+    if fname_coefs is not None:
+        # Find the seperator: sep = "," or "|"
+        with open(fname_coefs, 'r') as f:
+            lines = f.readlines()
+            if "".join(lines).count(',') > 0 and ("".join(lines).count(',') > "".join(lines).count('|')):
+                sep = ','
+            elif "".join(lines).count('|') > 0 and ("".join(lines).count('|') > "".join(lines).count(',')):
+                sep = '|'
+            else:
+                # Possibly single channel so no separator necessary, we go to the default
+                sep = ","
+        coefs = read_txt_file(fname_coefs, sep=sep)
+    else:
+        coefs = None
 
-    # Log the output (1 index)
+    # Shim
+    index_per_slice, max_coefs = shim_max_intensity(nii_input, nii_mask, coefs)
     logger.info(f"Max intensity indexes: {index_per_slice}")
 
     # Write to a text file
     n_slices = len(index_per_slice)
-    with open(fname_output, 'w', encoding='utf-8') as f:
+    fname_shim_index = os.path.join(path_output, 'shim_index.txt')
+    with open(fname_shim_index, 'w', encoding='utf-8') as f:
         f.write(f"{n_slices}\n")
         for i_slice in range(n_slices - 1):
             f.write(f"{index_per_slice[i_slice]} ")
         f.write(f"{index_per_slice[n_slices - 1]}")
 
-    logger.info(f"Txt file is located here:\n{fname_output}")
+    logger.info(f"Txt file with best indexes is located here:\n{fname_shim_index}")
+
+    if fname_coefs is not None:
+        fname_best_coefs = os.path.join(path_output, 'scanner_shim.txt')
+        write_coefs_to_text_file(max_coefs, fname_best_coefs, 'slicewise', sep=sep)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -1850,46 +1868,61 @@ def add_channels(coefs: np.array, channels: list):
     return coefs
 
 
-def read_txt_file(fname_input):
+def read_txt_file(fname_input, sep=","):
     """
     Read the text file containing the shim coefficients
 
     Args:
         fname_input (str): Filename of the text file
+        sep (str): Separator between shim coefficients
 
     Returns:
         np.array: Array containing the shim coefficients
     """
+
     coefs = []
     with open(fname_input, 'r') as f:
         for i_line, line in enumerate(f):
-            list_line = line.strip('\n').split(',')
+            list_line = line.strip('\n').split(sep)
             temp = []
             for i, value in enumerate(list_line):
                 if value.strip(' ') != '':
+                    if i_line == 0:
+                        # Skips the first line if can't convert to float (hrd case)
+                        try:
+                            float(value.strip())
+                        except:
+                            continue
                     temp.append(float(value.strip()))
             coefs.append(temp)
-    n_lines = i_line + 1
     coefs = np.array(coefs)
-    logger.debug(f"Reading text file. Number of shim events: {n_lines}, number of channels: {coefs.shape[1]}")
+    logger.debug(f"Reading text file. Number of shim events: {coefs.shape[0]}, number of channels: {coefs.shape[1]}")
     return coefs
 
 
-def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=False):
+def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=False, sep=","):
+    omit_last_sep = False
+    if sep == "|":
+        sep = " |"
+        omit_last_sep = True
     if o_format == 'slicewise' or o_format == 'chronological':
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_shim in range(coefs.shape[0]):
                 for i_coef, coef in enumerate(coefs[i_shim]):
-                    f.write(f"{coef:.6f},")
+                    f.write(f"{coef:.6f}")
                     if i_coef != coefs.shape[1] - 1:
-                        f.write(" ")
+                        f.write(f"{sep} ")
+                    elif not omit_last_sep:
+                        f.write(f"{sep}")
                 f.write("\n")
     elif o_format == 'volume':
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_coef, coef in enumerate(coefs):
-                f.write(f"{coef:.6f},")
-                if i_coef != len(coefs) - 1:
-                    f.write(" ")
+                f.write(f"{coef:.6f}")
+                if i_coef != coefs.shape[1] - 1:
+                    f.write(f"{sep} ")
+                elif not omit_last_sep:
+                    f.write(f"{sep}")
     elif o_format == 'custom-cl':
         coefs[:, 0] *= -1
         if coefs.shape[1] != 9:
