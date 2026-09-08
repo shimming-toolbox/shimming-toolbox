@@ -5,7 +5,7 @@ from abc import abstractmethod
 import numpy as np
 from typing import List
 
-from shimmingtoolbox.optimizer.basic_optimizer import Optimizer
+from shimmingtoolbox.optimizer.basic_optimizer import Optimizer, get_reg_factor_channel
 from shimmingtoolbox.coils.coil import Coil
 
 ListCoil = List[Coil]
@@ -20,9 +20,13 @@ class OptimizerUtils(Optimizer):
             initial_coefs (np.ndarray): Initial guess that will be used in the optimization
             reg_vector (np.ndarray) : Vector used to make the regularization in the optimization
 
+            w_signal_loss (np.ndarray): Weighting for the signal loss in the optimization
+            w_signal_loss_xy (np.ndarray): Weighting for the signal loss in the x and y directions
+            epi_te (float): Echo time for the EPI sequence
     """
 
-    def __init__(self, coils: ListCoil, unshimmed, affine, initial_guess_method, reg_factor=0):
+    def __init__(self, coils: ListCoil, unshimmed, affine, initial_guess_method='zeros',
+                 reg_factor=0, w_signal_loss=None, w_signal_loss_xy=None, epi_te=None):
         """
         Initializes coils according to input list of Coil
 
@@ -33,13 +37,14 @@ class OptimizerUtils(Optimizer):
             reg_factor (float): Regularization factor for the current when optimizing. A higher coefficient will
                                 penalize higher current values while a lower factor will lower the effect of the
                                 regularization. A negative value will favour high currents (not preferred).
+            w_signal_loss (np.ndarray): Weighting for the signal loss in the optimization
+            w_signal_loss_xy (np.ndarray): Weighting for the signal loss in the x and y directions
+            epi_te (float): Echo time for the EPI sequence (ms).
         """
-        super().__init__(coils, unshimmed, affine)
+        super().__init__(coils, unshimmed, affine, reg_factor, w_signal_loss, w_signal_loss_xy, epi_te)
         self.initial_guess_method = initial_guess_method
         self.initial_coefs = None
-        self.reg_factor = reg_factor
         self.reg_vector = None
-        self.merged_bounds_off_channels = None
 
     @property
     def initial_guess_method(self):
@@ -127,7 +132,7 @@ class OptimizerUtils(Optimizer):
             opt_merged_bounds (np.ndarray): 2D array (channel, 2) containing the lower and upper bounds for each
                                             channel that are ON.
         """
-        reg_factor_channel = np.array([max(np.abs(bound)) for bound in opt_merged_bounds])
+        reg_factor_channel = get_reg_factor_channel(opt_merged_bounds)
         self.reg_vector = self.reg_factor / (len(reg_factor_channel) * reg_factor_channel)
 
     def optimize(self, mask, slice_idxs):
@@ -145,7 +150,6 @@ class OptimizerUtils(Optimizer):
         self.mask = mask
         coil_mat, unshimmed_vec = self.get_coil_mat_and_unshimmed_masked(mask, slice_idxs)
 
-        self.merged_bounds_off_channels = [self.merged_bounds[i] for i, is_on in enumerate(self.merged_onoff_channels) if is_on]
         self.set_reg_vector(self.merged_bounds_off_channels)
 
         # Set up output currents
@@ -188,7 +192,7 @@ class OptimizerUtils(Optimizer):
 
     def get_quadratic_term(self, unshimmed_vec, coil_mat, factor):
         """
-        Returns all the quadratic terms used in the MSE objective function used in the least squares,
+        Returns all the quadratic terms used in the MSE objective function used in the slsqp,
         quadprog and BFGS optimization methods. For more details, see PR#451.
 
         Args:
@@ -202,7 +206,7 @@ class OptimizerUtils(Optimizer):
             (tuple) : tuple containing:
                 * np.ndarray: 2D array using for the optimization
                 * np.ndarray: 1D flattened array used for the optimization
-                * float : Float used for the least squares optimizer
+                * float : Float used for the slsqp optimizer
 
         """
         # Apply weights to the coil matrix and unshimmed vector

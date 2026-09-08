@@ -1,5 +1,52 @@
 # Changelog
 
+## 1.5 (2026-09-02)
+[View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.4...1.5)
+
+### PACKAGE: SHIMMING TOOLBOX
+
+**FEATURE**
+ - **st_b0shim**: Allow to disable specific shim channels and to specify their shim values from a text file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/646)
+ - **st_b0shim**: Refactor and add optimizers. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/677)
+
+**BUG**
+ - **st_b0shim**: Don't display fig_currents if it's volume shim (only 1 set of currents). [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/673)
+ - **st_dicom_to_nifti**: Update config file for new dcm2niix version (v1.0.20260724). [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/669)
+ - **st_sort_dicoms**: Sort non acquisition related DICOM files. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/663)
+ - Allow using relative paths without ./. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/675)
+ - Use threading backend with joblib. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/676)
+
+**REFACTORING**
+ - **st_b0shim**: Refactor st_b0shim dynamic options. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/671)
+
+**ENHANCEMENT**
+ - **st_b0shim**: Allow to remove channels (columns) from a text file. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/650)
+ - **st_b0shim**: Remove hard requirement of SoftwareVersion tag the field map JSON sidecar. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/660)
+ - **st_b0shim**: Support 4d field maps with singleton in the last dimension in st_b0shim dynamic. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/666)
+ - Add and refactor functions to change coordinate systems. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/668)
+
+**DOCUMENTATION**
+ - **st_b0shim**: Update tutorial and update st_b0shim option description. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/665)
+
+**INSTALLATION**
+ - Update conda installer, FSLeyes and python versions. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/659)
+
+### PACKAGE: PLUGIN
+
+**FEATURE**
+ - **st_b0shim**: Refactor and add optimizers. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/677)
+
+**INSTALLATION**
+ - Update conda installer, FSLeyes and python versions. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/659)
+
+### REPO
+
+**BUG**
+ - Fix auto release workflow. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/658)
+
+**DOCUMENTATION**
+ - Add a constraint file section to the website. [View pull request](https://github.com/shimming-toolbox/shimming-toolbox/pull/651)
+
 ## 1.4 (2026-06-19)
 [View detailed changelog](https://github.com/shimming-toolbox/shimming-toolbox/compare/1.3...1.4)
 

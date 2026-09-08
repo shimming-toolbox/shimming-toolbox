@@ -3,10 +3,10 @@
 
 from scipy import optimize as opt
 
-from shimmingtoolbox.optimizer.lsq_optimizer import LsqOptimizer, PmuLsqOptimizer
+from shimmingtoolbox.optimizer.slsqp_optimizer import SlsqpOptimizer, PmuSlsqpOptimizer
 
 
-class BFGSOpt(LsqOptimizer):
+class BFGSOpt(SlsqpOptimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize (args) to optimize a given mask. The algorithm uses a gradient based solver (L-BFGS-B)
         to find the best shim. It supports bounds for each shim channel.
@@ -44,7 +44,7 @@ class BFGSOpt(LsqOptimizer):
         return currents_sp
 
 
-class PmuBFGSOpt(PmuLsqOptimizer):
+class PmuBFGSOpt(PmuSlsqpOptimizer):
     """ Optimizer object that stores coil profiles and optimizes an unshimmed volume given a mask.
         Use optimize (args) to optimize a given mask. The algorithm uses a gradient based solver (L-BFGS-B)
         to find the best shim. It supports bounds for each shim channel.

@@ -9,6 +9,8 @@ import nibabel as nib
 from nibabel.processing import resample_from_to as nib_resample_from_to
 from joblib import Parallel, delayed
 
+from shimmingtoolbox.utils import JOBLIB_BACKEND
+
 
 def generate_meshgrid(dim, affine):
     """
@@ -205,9 +207,14 @@ def resample_from_to(nii_from_img, nii_to_vox_map, order=2, mode='nearest', cval
 
     elif from_img.ndim == 4:
         nt = from_img.shape[3]
-        results = Parallel(-1, backend='loky')(
-            delayed(_resample_4d)(it, nii_from_img, nii_to_vox_map, order, mode, cval, out_class)
-            for it in range(nt))
+        with Parallel(n_jobs=-1, backend=JOBLIB_BACKEND) as parallel:
+            results = parallel(delayed(_resample_4d)(it,
+                                                     nii_from_img,
+                                                     nii_to_vox_map,
+                                                     order,
+                                                     mode,
+                                                     cval,
+                                                     out_class) for it in range(nt))
         resampled_4d = np.array([results[it] for it in range(nt)]).transpose(1, 2, 3, 0)
         nii_resampled = nib.Nifti1Image(resampled_4d, nii_to_vox_map.affine, header=nii_to_vox_map.header)
 

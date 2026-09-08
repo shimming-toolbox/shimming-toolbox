@@ -87,13 +87,19 @@ Optimizer
    :members:
    :special-members: __init__
 
+.. automodule:: shimmingtoolbox.optimizer.linear_lsq
+   :members:
+   :special-members: __init__
+   :show-inheritance:
+   :inherited-members:
+
 .. automodule:: shimmingtoolbox.optimizer.optimizer_utils
    :members:
    :special-members: __init__
    :show-inheritance:
    :inherited-members:
 
-.. automodule:: shimmingtoolbox.optimizer.lsq_optimizer
+.. automodule:: shimmingtoolbox.optimizer.slsqp_optimizer
    :members:
    :special-members: __init__
    :show-inheritance:

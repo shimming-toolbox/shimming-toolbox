@@ -18,8 +18,8 @@ from fsleyes_plugin_shimming_toolbox import __dir_testing__
 from fsleyes_plugin_shimming_toolbox.tabs.b0shim_tab import B0ShimTab
 
 
-def test_st_plugin_b0shim_dyn_lsq_mse():
-    options = {'optimizer-method': 'Least Squares',
+def test_st_plugin_b0shim_dyn_slsqp_mse():
+    options = {'optimizer-method': 'SLSQP',
                'optimizer-criteria': 'Mean Squared Error',
                'slices': 'Auto detect',
                'scanner-coil-order': 'f0',
@@ -34,8 +34,8 @@ def test_st_plugin_b0shim_dyn_lsq_mse():
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
-def test_st_plugin_b0shim_dyn_lsq_grad():
-    options = {'optimizer-method': 'Least Squares',
+def test_st_plugin_b0shim_dyn_slsqp_grad():
+    options = {'optimizer-method': 'SLSQP',
                'optimizer-criteria': 'Mean Squared Error + Z gradient',
                'weighting-signal-loss': '0.01',
                'slices': 'Auto detect',
@@ -50,8 +50,8 @@ def test_st_plugin_b0shim_dyn_lsq_grad():
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
-def test_st_plugin_b0shim_dyn_mae():
-    options = {'optimizer-method': 'Least Squares',
+def test_st_plugin_b0shim_dyn_slsqp_mae():
+    options = {'optimizer-method': 'SLSQP',
                'optimizer-criteria': 'Mean Absolute Error',
                'slices': 'Auto detect',
                'scanner-coil-order': '1',
@@ -65,8 +65,8 @@ def test_st_plugin_b0shim_dyn_mae():
     run_with_orthopanel(_test_st_plugin_b0shim_dyn)
 
 
-def test_st_plugin_b0shim_dyn_lsq_mse_coil_only():
-    options = {'optimizer-method': 'Least Squares',
+def test_st_plugin_b0shim_dyn_slsqp_mse_coil_only():
+    options = {'optimizer-method': 'SLSQP',
                'optimizer-criteria': 'Mean Absolute Error',
                'slices': 'Auto detect',
                'scanner-coil-order': '',
@@ -82,6 +82,7 @@ def test_st_plugin_b0shim_dyn_lsq_mse_coil_only():
 
 def test_st_plugin_b0shim_dyn_pi():
     options = {'optimizer-method': 'Pseudo Inverse',
+               'weighting-signal-loss': '0.01',
                'slices': 'Auto detect',
                'scanner-coil-order': '1',
                'output-file-format-scanner': 'Slicewise per Channel',
@@ -97,6 +98,21 @@ def test_st_plugin_b0shim_dyn_pi():
 def test_st_plugin_b0shim_dyn_qp():
     options = {'optimizer-method': 'Quad Prog',
                'optimizer-criteria': 'Mean Squared Error',
+               'slices': 'Auto detect',
+               'scanner-coil-order': '1',
+               'output-file-format-scanner': 'Slicewise per Channel',
+               'output-file-format-coil': 'Slicewise per Channel',
+               'output-value-format': 'delta'
+               }
+
+    def _test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options):
+        __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options=options)
+    run_with_orthopanel(_test_st_plugin_b0shim_dyn)
+
+
+def test_st_plugin_b0shim_dyn_linlsq():
+    options = {'optimizer-method': 'Linear Least Squares',
+               'weighting-signal-loss': '0.01',
                'slices': 'Auto detect',
                'scanner-coil-order': '1',
                'output-file-format-scanner': 'Slicewise per Channel',
@@ -240,7 +256,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
         time_limit = 20  # s
         for i in range(time_limit):
             realYield()
-            overlay_file = overlayList.find("fieldmap_calculated_shim")
+            overlay_file = overlayList.find("fieldmap_calculated_shim_masked")
             time.sleep(1)
             if overlay_file:
                 break
@@ -251,7 +267,7 @@ def __test_st_plugin_b0shim_dyn(view, overlayList, displayCtx, options):
 
 
 def test_st_plugin_b0shim_rt_lsq_mse_coil():
-    options = {'optimizer-method': 'Least Squares',
+    options = {'optimizer-method': 'SLSQP',
                'optimizer-criteria': 'Mean Squared Error',
                'slices': 'Volume',
                'scanner-coil-order': '1',
