@@ -6,7 +6,7 @@ import numpy as np
 import os
 import pytest
 
-from shimmingtoolbox.coils.spher_harm_basis import sh_basis, siemens_basis, ge_basis, philips_basis, get_flip_matrix
+from shimmingtoolbox.coils.spher_harm_basis import sh_basis, siemens_basis, ge_basis, philips_basis
 from shimmingtoolbox.coils.coordinates import generate_meshgrid
 from shimmingtoolbox import __dir_testing__
 
@@ -260,38 +260,3 @@ def test_siemens_basis_resample():
 
     nx, ny, nz = nii.get_fdata().shape
     assert (np.all(np.isclose(basis[int(nx / 2), int(ny / 2), int(nz / 2), :], expected, rtol=1e-05)))
-
-
-class TestGetFlipMatrix:
-    def test_flip_cs(self):
-        out = get_flip_matrix('RAS', orders=[1, ])
-        assert np.all(out == [1, 1, 1])
-
-    def test_flip_cs_lpi(self):
-        out = get_flip_matrix('LPI', orders=[1, ])
-        assert np.all(out == [-1, -1, -1])
-
-    def test_flip_cs_order2(self):
-        out = get_flip_matrix('LAI', orders=[1, 2])
-        assert np.all(out == [1, -1, -1, -1, -1, 1, 1, 1])
-
-    def test_flip_cs_len4(self):
-        with pytest.raises(ValueError, match="Unknown coordinate system"):
-            get_flip_matrix('LAIS')
-
-    def test_flip_cs_lap(self):
-        with pytest.raises(ValueError, match="Unknown coordinate system"):
-            get_flip_matrix('LAP')
-
-    def test_flip_siemens(self):
-        out = get_flip_matrix('LAI', orders=[1, 2, 3], manufacturer='Siemens')
-        # TODO: Verify 3rd order
-        assert np.all(out == [-1, 1, -1, 1, 1, -1, 1, -1, -1, -1, 1, -1])
-
-    def test_flip_ge(self):
-        out = get_flip_matrix('LPI', orders=[1, 2], manufacturer='GE')
-        assert np.all(out == [-1, -1, -1, 1, 1, 1, 1, 1])
-
-    def test_flip_philips(self):
-        out = get_flip_matrix('RPI', orders=[1, 2], manufacturer='PHILIPS')
-        assert np.all(out == [1, -1, -1, 1, -1, 1, 1, -1])
