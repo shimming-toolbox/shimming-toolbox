@@ -1258,8 +1258,8 @@ class TestCliDynamic(object):
                                 catch_exceptions=False)
             assert res.exit_code == 0
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
-            # Read json sidecar and look at the calues
-            with open(os.path.join(tmp, 'fieldmap_calculated_shim.json'), 'r') as f:
+            # Read json sidecar and look at the values
+            with open(os.path.join(tmp, 'fieldmap_calculated_shim_masked.json'), 'r') as f:
                 data = json.load(f)
             assert data['ImagingFrequency'] == 123.258971
             assert np.allclose(data['ShimSetting'], [665.0, -7442.95, -9991.09], atol=1e-6)
