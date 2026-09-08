@@ -2436,6 +2436,150 @@ class TestAddShimCoefs:
 
 
 class TestConvertShimCoefsFormat:
+    def test_convert_shim_coefs_shim_to_grad_order01(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,2,3,4,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_target)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--input-file-cs', 'shim-cs',
+                                             '--output-file-cs', 'gradient-cs',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "1.000000, -2.000000, -2.535428, -4.309479,\n"
+                assert f.readline() == "1.000000, -2.000000, -2.535428, -4.309479,\n"
+                assert f.readline() == "1.000000, -2.000000, -2.535428, -4.309479,\n"
+
+    def test_convert_shim_coefs_grad_to_shim_order01(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,-2,-2.535428,-4.309479,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_target)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--input-file-cs', 'gradient-cs',
+                                             '--output-file-cs', 'shim-cs',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "1.000000, 2.000000, 3.000000, 4.000000,\n"
+                assert f.readline() == "1.000000, 2.000000, 3.000000, 4.000000,\n"
+                assert f.readline() == "1.000000, 2.000000, 3.000000, 4.000000,\n"
+
+    def test_convert_shim_coefs_shim_to_grad_order1(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("2,3,4,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_target)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--input-file-cs', 'shim-cs',
+                                             '--output-file-cs', 'gradient-cs',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "-2.000000, -2.535428, -4.309479,\n"
+                assert f.readline() == "-2.000000, -2.535428, -4.309479,\n"
+                assert f.readline() == "-2.000000, -2.535428, -4.309479,\n"
+
+    def test_convert_shim_coefs_grad_to_shim_order1(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("-2,-2.535428,-4.309479,\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+            fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                      "sub-1_acq-gre_magnitude1.nii.gz")
+            fname_json = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap", "sub-1_acq-gre_magnitude1.json")
+            nii = nib.load(fname_target)
+            with open(fname_json) as f:
+                json_data = json.load(f)
+            json_data['SliceTiming'] = [1, 0, 2]
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            nib.save(nib.Nifti1Image(nii.get_fdata()[:, :, :3], nii.affine, nii.header), fname_target)
+            with open(os.path.join(tmp, 'target.json'), 'w') as f:
+                json.dump(json_data, f)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'volume',
+                                             '--output-file-format', 'slicewise',
+                                             '--input-file-cs', 'gradient-cs',
+                                             '--output-file-cs', 'shim-cs',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "2.000000, 3.000000, 4.000000,\n"
+                assert f.readline() == "2.000000, 3.000000, 4.000000,\n"
+                assert f.readline() == "2.000000, 3.000000, 4.000000,\n"
+
     def test_convert_shim_coefs_vol_sl_add_channels(self):
         """Test the combine shim coefs function"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
