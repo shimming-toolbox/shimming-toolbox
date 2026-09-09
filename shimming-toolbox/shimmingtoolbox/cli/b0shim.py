@@ -1720,8 +1720,10 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
                                                     fname_target)
             coefs_phys = copy.deepcopy(coefs)
             # Convert from physical RAS to the manufacturer's shim CS (eg: Siemens is LAI)
-            coefs_phys[:, offset_channel:] = phys_to_shim_cs(np.array(coefs_order1_phys).T.squeeze(),
-                                                             manufacturer, [1, ])
+            flip = get_flip_matrix(SHIM_CS[manufacturer.upper()], manufacturer, [1, ])
+            coefs_phys[:, 0 + offset_channel] = flip[0] * coefs_order1_phys[0]
+            coefs_phys[:, 1 + offset_channel] = flip[1] * coefs_order1_phys[1]
+            coefs_phys[:, 2 + offset_channel] = flip[2] * coefs_order1_phys[2]
             coefs = coefs_phys
         elif input_cs == "shim-cs":
             pass
