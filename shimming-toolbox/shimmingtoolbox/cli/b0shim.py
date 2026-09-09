@@ -1768,7 +1768,7 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
         for i_slice in range(coefs.shape[0]):
             if not np.all(coefs[i_slice] == coefs[0]):
                 raise ValueError("All slices must have the same shim coefficients to convert to volume format")
-        coefs = coefs[0]
+        coefs = coefs[:1]
 
     elif o_format == 'chronological':
         logger.debug("Convert from slice-wise to chronological")
@@ -1789,8 +1789,6 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
         for i_shim in range(coefs.shape[0]):
             if not np.all(np.isclose(coefs[i_shim][4:], coefs[0][4:])):
                 raise ValueError("The 2nd order shims must be the same for all slices to convert to 'custom-cl' format")
-
-        # Send to write_coefs_to_text_file in a slice-wise format, the formatting is handled in that function
 
     write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order)
 
@@ -1905,7 +1903,7 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
     if sep == "|":
         sep = " |"
         omit_last_sep = True
-    if o_format == 'slicewise' or o_format == 'chronological':
+    if o_format in  ['volume', 'slicewise', 'chronological']:
         with open(fname_output, 'w', encoding='utf-8') as f:
             for i_shim in range(coefs.shape[0]):
                 for i_coef, coef in enumerate(coefs[i_shim]):
@@ -1915,14 +1913,6 @@ def write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order=Fals
                     elif not omit_last_sep:
                         f.write(f"{sep}")
                 f.write("\n")
-    elif o_format == 'volume':
-        with open(fname_output, 'w', encoding='utf-8') as f:
-            for i_coef, coef in enumerate(coefs):
-                f.write(f"{coef:.6f}")
-                if i_coef != coefs.shape[1] - 1:
-                    f.write(f"{sep} ")
-                elif not omit_last_sep:
-                    f.write(f"{sep}")
     elif o_format == 'custom-cl':
         coefs[:, 0] *= -1
         if coefs.shape[1] != 9:

@@ -2759,7 +2759,7 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,"
+                assert f.readline() == "0.000000, 0.000000, 0.000000, 0.000000,\n"
 
     def test_convert_shim_coefs_ch_sl(self):
         """Test the combine shim coefs function"""
