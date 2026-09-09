@@ -2459,6 +2459,58 @@ class TestMaxIntensity:
             with open(fname_shimmed, 'r', encoding='utf-8') as f:
                 assert f.readline().strip() == "8.000000 | 16.000000 | 24.000000 | 32.000000"
 
+    def test_b0_max_intensity_output_coefs_bar_moreslices(self):
+        """ We use a 4d fieldmap not intended for this application for testing """
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_rt = os.path.join(__dir_testing__, 'ds_b0', 'sub-realtime', 'fmap', 'sub-realtime_magnitude1.nii.gz')
+            path_output = tmp
+            fname_input = os.path.join(path_output, "input.nii.gz")
+            fname_mask = os.path.join(path_output, 'mask.nii.gz')
+            fname_shim_index = os.path.join(path_output, 'shim_index.txt')
+
+            nii_rt = nib.load(fname_rt)
+            n_slices = 4
+            data = np.repeat(nii_rt.get_fdata(), n_slices, axis=-2)
+            nii_input = nib.Nifti1Image(data, nii_rt.affine, header=nii_rt.header)
+            nib.save(nii_input, fname_input)
+
+            # Set up mask: Cube
+            nx, ny, nz = nii_input.shape[:3]
+            mask = shapes(nii_input.get_fdata()[..., 0], 'cube',
+                          center_dim1=32,
+                          center_dim2=36,
+                          len_dim1=10, len_dim2=10, len_dim3=nz)
+            nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_input.affine)
+            nib.save(nii_mask, fname_mask)
+
+            fname_coefs = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_coefs, 'w', encoding='utf-8') as f:
+                f.write("f0 | Gx | Gy | Gz \n")
+                for i_slice in range(n_slices):
+                    i_slice_offset = 100 * i_slice
+                    for i in range(10):
+                        f.write(f"{i * 1 + i_slice_offset} | {i * 2 + i_slice_offset} | {i * 3 + i_slice_offset} | {i * 4 + i_slice_offset}\n")
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['max-intensity',
+                                             '--input', fname_input,
+                                             '--mask', fname_mask,
+                                             '--coefs', fname_coefs,
+                                             '-o', path_output],
+
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            with open(fname_shim_index, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "4"
+                assert f.readline().strip() == "8 8 8 8"
+            fname_shimmed = os.path.join(path_output, 'scanner_shim.txt')
+            with open(fname_shimmed, 'r', encoding='utf-8') as f:
+                assert f.readline().strip() == "302.000000 | 304.000000 | 306.000000 | 308.000000"
+                assert f.readline().strip() == "303.000000 | 306.000000 | 309.000000 | 312.000000"
+                assert f.readline().strip() == "304.000000 | 308.000000 | 312.000000 | 316.000000"
+                assert f.readline().strip() == "305.000000 | 310.000000 | 315.000000 | 320.000000"
+
 
 class TestAddShimCoefs:
     def test_add_shim_coefs(self):

@@ -1892,7 +1892,8 @@ def read_txt_file(fname_input, sep=","):
                         except:
                             continue
                     temp.append(float(value.strip()))
-            coefs.append(temp)
+            if temp:
+                coefs.append(temp)
     coefs = np.array(coefs)
     logger.debug(f"Reading text file. Number of shim events: {coefs.shape[0]}, number of channels: {coefs.shape[1]}")
     return coefs
