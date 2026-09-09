@@ -28,7 +28,8 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import gradient_to_phys_cs, phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs
+from shimmingtoolbox.shim.shim_utils import (gradient_to_phys_cs, phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs,
+    get_flip_matrix, SHIM_CS)
 
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
@@ -378,8 +379,10 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                 coefs_phys = copy.deepcopy(coefs_coil)
                 offset_channel = 1 if 0 in scanner_coil_order else 0
                 # Convert from physical RAS to the manufacturer's shim CS (eg: Siemens is LAI)
-                coefs_phys[:, offset_channel:] = phys_to_shim_cs(np.array(coefs_order1_phys).squeeze(), manufacturer, [1,])
-
+                flip = get_flip_matrix(SHIM_CS[manufacturer.upper()], manufacturer, [1, ])
+                coefs_phys[:, 0 + offset_channel] = flip[0] * coefs_order1_phys[0]
+                coefs_phys[:, 1 + offset_channel] = flip[1] * coefs_order1_phys[1]
+                coefs_phys[:, 2 + offset_channel] = flip[2] * coefs_order1_phys[2]
                 coefs_coil = coefs_phys
 
             # Save the field map's JSON file with the potentially updated coefficients
