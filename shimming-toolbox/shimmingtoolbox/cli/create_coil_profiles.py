@@ -60,9 +60,9 @@ def coil_profiles_cli():
               constraint=RequireExactly(1)
               )
 @option_group("Filtering",
-              option('--gaussian-filter', 'gaussian_filter', type=bool, show_default=True,
+              option('--gaussian-filter', 'gaussian_filter', type=bool, default=False, show_default=True,
                      help="Gaussian filter for B0 maps"),
-              option('--sigma', type=float, default=1,
+              option('--sigma', type=float, default=1,show_default=True,
                      help="Standard deviation of gaussian filter. Used for: gaussian_filter")
               )
 @option('--unwrapper', type=click.Choice(['prelude', 'skimage']), default='prelude', show_default=True,
