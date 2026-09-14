@@ -28,7 +28,8 @@ from shimmingtoolbox.shim.sequencer import ShimSequencer, RealTimeSequencer
 from shimmingtoolbox.shim.sequencer import shim_max_intensity, define_slices
 from shimmingtoolbox.shim.sequencer import parse_slices
 from shimmingtoolbox.utils import create_output_dir, set_all_loggers, timeit
-from shimmingtoolbox.shim.shim_utils import gradient_to_phys_cs, SHIM_CS, get_flip_matrix
+from shimmingtoolbox.shim.shim_utils import (gradient_to_phys_cs, phys_to_gradient_cs, phys_to_shim_cs, shim_to_phys_cs,
+    get_flip_matrix, SHIM_CS)
 
 from shimmingtoolbox.files.NiftiTarget import NiftiTarget
 from shimmingtoolbox.files.NiftiFieldMap import NiftiFieldMap
@@ -378,11 +379,10 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
                 coefs_phys = copy.deepcopy(coefs_coil)
                 offset_channel = 1 if 0 in scanner_coil_order else 0
                 # Convert from physical RAS to the manufacturer's shim CS (eg: Siemens is LAI)
-                flip = get_flip_matrix(SHIM_CS[manufacturer.upper()], manufacturer, [1,])
+                flip = get_flip_matrix(SHIM_CS[manufacturer.upper()], manufacturer, [1, ])
                 coefs_phys[:, 0 + offset_channel] = flip[0] * coefs_order1_phys[0]
                 coefs_phys[:, 1 + offset_channel] = flip[1] * coefs_order1_phys[1]
                 coefs_phys[:, 2 + offset_channel] = flip[2] * coefs_order1_phys[2]
-
                 coefs_coil = coefs_phys
 
             # Save the field map's JSON file with the potentially updated coefficients
@@ -1626,7 +1626,21 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
                           "1, 2, 3, etc. Use 'chronological' to output in row 1, 2, 3, etc. the shim value "
                           "for trigger 1, 2, 3, etc. The trigger is an event sent by the scanner and "
                           "captured by the controller of the shim amplifier. 'custom-cl' is a custom format for a "
-                          "collaborator. Use volume to output a single set of shim coefficients."))
+                          "collaborator. Use volume to output a single set of shim coefficients."),
+              option('--input-file-cs', 'input_cs',
+                     type=click.Choice(['shim-cs', 'gradient-cs']), required=True, default="shim-cs", show_default=True,
+                     help="Input coordinate system of the scanner coil. shim-cs: Use the physical x, y and z axes."
+                          "gradient-cs: Use the freq, phase and slice encoding directions."
+                          "gradient-cs has limitations: Only supports orders '1' or '0,1', "
+                          "(inferred from the number of coefficients [3 or 4]) and is only implemented "
+                          "for Siemens."),
+              option('--output-file-cs', 'output_cs',
+                     type=click.Choice(['shim-cs', 'gradient-cs']), required=True, default="shim-cs", show_default=True,
+                     help="Output coordinate system of the scanner coil. shim-cs: Use the physical x, y and z axes."
+                          "gradient-cs: Use the freq, phase and slice encoding directions."
+                          "gradient-cs has limitations: Only supports orders '1' or '0,1', "
+                          "(inferred from the number of coefficients [3 or 4]) and is only implemented "
+                          "for Siemens."))
 @option_group("Add/remove channels (mutually exclusive)",
               option('--add-channels', 'to_add_channels', type=click.STRING, required=False,
                      help="Add channels to the text file that are 0s. Use comma separated vales (e.g.: 0,3,4)."),
@@ -1639,7 +1653,7 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info',
               help="Be more verbose")
 def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev_slice_order, fname_output,
-                              to_add_channels, to_remove_channels, verbose):
+                              to_add_channels, to_remove_channels, input_cs, output_cs, verbose):
     """ Convert the shim coefficients from one format to another."""
 
     # Set logger level
@@ -1658,6 +1672,16 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
     coefs = read_txt_file(fname_input)
     n_channels = coefs.shape[1]
 
+    orders = []
+    if input_cs == 'gradient-cs' or output_cs == 'gradient-cs':
+        if n_channels not in [3, 4]:
+            raise ValueError("The number of channels should be 3 or 4 if using 'gradient-cs'.")
+        orders = [0, 1] if n_channels == 4 else [1,]
+
+    if input_cs != output_cs and (to_add_channels is not None or to_remove_channels is not None):
+        raise ValueError("Adding/removing channels is not supported when converting between coordinate systems."
+                         "Perform in 2 steps to avoid order issues.")
+
     if to_add_channels is not None:
         logger.debug("Adding channels")
         to_add_channels = parse_add_channels(to_add_channels, n_channels)
@@ -1669,12 +1693,12 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
     else:
         pass
 
-    # convert coefs
+    # Convert coefs to slicewise
     if i_format == 'volume':
-        # convert to slice_wise
+        logger.debug("Convert from volume to slice-wise")
         coefs = np.repeat(coefs, nii_target.shape[2], axis=0)
     elif i_format == 'chronological':
-        # convert to slice_wise
+        logger.debug("Convert from chronological to slice-wise")
         slices = parse_slices(fname_target)
         tmp = np.zeros((nii_target.shape[2], coefs.shape[1]))
         for i_slice, slice in enumerate(slices):
@@ -1682,17 +1706,54 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
         coefs = tmp
 
     # All coefficients should be in a slicewise format at this point
-    # Convert from slicewise to the desired format
+    if input_cs != output_cs:
+        nif_target = NiftiTarget(fname_target)
+        manufacturer = nif_target.get_json_info('Manufacturer')
+        offset_channel = 1 if 0 in orders else 0
+        # Convert from gradient to shim-cs
+        if input_cs == "gradient-cs":
+            logger.debug("Convert from gradient-cs to shim-cs")
+            coefs_dict = coefs_to_dict(coefs, orders, manufacturer)
+            coefs_order1_phys = gradient_to_phys_cs(coefs_dict[1][:, 0],
+                                                    coefs_dict[1][:, 1],
+                                                    coefs_dict[1][:, 2],
+                                                    fname_target)
+            coefs_phys = copy.deepcopy(coefs)
+            # Convert from physical RAS to the manufacturer's shim CS (eg: Siemens is LAI)
+            flip = get_flip_matrix(SHIM_CS[manufacturer.upper()], manufacturer, [1, ])
+            coefs_phys[:, 0 + offset_channel] = flip[0] * coefs_order1_phys[0]
+            coefs_phys[:, 1 + offset_channel] = flip[1] * coefs_order1_phys[1]
+            coefs_phys[:, 2 + offset_channel] = flip[2] * coefs_order1_phys[2]
+            coefs = coefs_phys
+        elif input_cs == "shim-cs":
+            pass
+        else:
+            raise ValueError("Invalid input format")
 
+        if output_cs == 'shim-cs':
+            pass
+        elif output_cs == 'gradient-cs':
+            logger.debug("Convert from shim-cs to gradient-cs")
+            coefs_order1_phys = shim_to_phys_cs(coefs[:, offset_channel:], manufacturer, [1, ])
+            coefs_gradient_cs = phys_to_gradient_cs(coefs_order1_phys[:, 0],
+                                                    coefs_order1_phys[:, 1],
+                                                    coefs_order1_phys[:, 2],
+                                                    fname_target)
+            for i in range(3):
+                coefs[:, offset_channel + i] = coefs_gradient_cs[i]
+        else:
+            raise ValueError("Invalid output format")
+
+    # Convert from slicewise to the desired format
     if o_format == 'volume':
-        # convert to volume
+        logger.debug("Convert from slice-wise to volume")
         for i_slice in range(coefs.shape[0]):
             if not np.all(coefs[i_slice] == coefs[0]):
                 raise ValueError("All slices must have the same shim coefficients to convert to volume format")
         coefs = coefs[0]
 
     elif o_format == 'chronological':
-        # convert to chronological
+        logger.debug("Convert from slice-wise to chronological")
         slices = parse_slices(fname_target)
         tmp = np.zeros((len(slices), coefs.shape[1]))
         for i_shim in range(len(slices)):
@@ -1701,6 +1762,7 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
                     tmp[i_shim] = coefs[slices[i_shim][0]]
         coefs = tmp
     elif o_format == 'custom_cl':
+        logger.debug("Convert from slice-wise to custom-cl")
         # Make sure there are 9 channels
         if coefs.shape[1] != 9:
             raise ValueError("The number of channels in one of the text files must be 9 for the custom-cl format")
