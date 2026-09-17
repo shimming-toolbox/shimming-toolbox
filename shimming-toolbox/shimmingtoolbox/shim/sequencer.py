@@ -2422,10 +2422,12 @@ def shim_max_intensity(nii_input, nii_mask=None, coefs=None):
     if coefs is not None:
         output_coefs = []
         if coefs.shape[0] == n_volumes:
+            # Coefficients are listed as 1 set per volume
             for i_slice in range(n_slices):
                 best_coefs = coefs[index_per_slice[i_slice], :]
                 output_coefs.append(best_coefs)
         elif coefs.shape[0] == n_volumes * n_slices:
+            # Coefficients are listed as 1 set per slice
             for i_slice in range(n_slices):
                 best_coefs = coefs[n_slices * index_per_slice[i_slice] + i_slice, :]
                 output_coefs.append(best_coefs)

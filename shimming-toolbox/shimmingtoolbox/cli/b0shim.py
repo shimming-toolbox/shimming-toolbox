@@ -1526,10 +1526,13 @@ def _add_sub_figure(fig, i_plot, n_plots, static_coefs, bounds, min_y, max_y, un
               help="Mask defining the spatial region to shim. If no mask is provided, all voxels of the input will be "
                    "considered.")
 @click.option('--coefs', 'fname_coefs', type=click.Path(exists=True), required=False,
-              help="Text file containing the shim coefficients. Supported formats: .txt")
+              help="Text file containing the shim coefficients. If supplied, a new text file will be created with the "
+                   "best coefficients for each slice in the 'slicewise' format ('scanner_shim.txt')."
+                   "Supported formats: .txt")
 @click.option('-o', '--output', 'path_output', type=click.Path(),
               default=os.path.abspath(os.curdir),
-              show_default=True, help="Filename to output shim text file.")
+              show_default=True, help="Directory to output the shim text files. 'shim_index.txt' will be created "
+                                      "containing the best volume index for each slice (index starts at 0).")
 @click.option('-v', '--verbose', type=click.Choice(['info', 'debug']), default='info', help="Be more verbose")
 def max_intensity(fname_input, fname_mask, path_output, fname_coefs, verbose):
     """ Find indexes of the 4th dimension of the input volume that has the highest signal intensity for each slice.
