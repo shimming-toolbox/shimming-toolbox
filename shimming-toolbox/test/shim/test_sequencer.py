@@ -1094,14 +1094,14 @@ class TestMaxintensity():
         self.nii_mask = nib.Nifti1Image(mask.astype(np.uint8), self.nii_input.affine)
 
     def test_default_max_intensity(self):
-        output = shim_max_intensity(self.nii_input, self.nii_mask)
+        output, _ = shim_max_intensity(self.nii_input, self.nii_mask)
         assert output == 8
 
     def test_max_intensity_res_mask(self):
         slice = self.nii_input.get_fdata()[:-3, :-3, 0, 0] > 100
         nii_diff_mask = nib.Nifti1Image(np.concatenate((slice[..., np.newaxis], slice[..., np.newaxis]), axis=2),
                                         self.nii_input.affine, header=self.nii_input.header)
-        output = shim_max_intensity(self.nii_input, nii_diff_mask)
+        output, _ = shim_max_intensity(self.nii_input, nii_diff_mask)
         assert output == 0
 
     def test_max_intensity_wrong_input_dim(self):
