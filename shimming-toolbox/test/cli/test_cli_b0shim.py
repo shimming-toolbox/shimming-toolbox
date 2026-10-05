@@ -2651,7 +2651,7 @@ class TestConvertShimCoefsFormat:
 
             with open(fname_input, 'w', encoding='utf-8') as f:
                 for i_shim in range(nii.shape[-1]):
-                    f.write(f"{i_shim},{i_shim + 100},{i_shim + 200},{i_shim + 300},\n")
+                    f.write(f"{i_shim}|{i_shim + 100}|{i_shim + 200}|{i_shim + 300}\n")
 
             fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
 
@@ -2668,9 +2668,9 @@ class TestConvertShimCoefsFormat:
                                 catch_exceptions=False)
             assert res.exit_code == 0
             with open(fname_output, 'r', encoding='utf-8') as f:
-                assert f.readline() == "0.000000, -100.000000, -165.312917, -320.424197,\n"
-                assert f.readline() == "1.000000, -101.000000, -166.195217, -321.529434,\n"
-                assert f.readline() == "2.000000, -102.000000, -167.077516, -322.634671,\n"
+                assert f.readline() == "0.000000 | -100.000000 | -165.312917 | -320.424197\n"
+                assert f.readline() == "1.000000 | -101.000000 | -166.195217 | -321.529434\n"
+                assert f.readline() == "2.000000 | -102.000000 | -167.077516 | -322.634671\n"
 
     def test_convert_shim_coefs_shim_to_grad_order1(self):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
