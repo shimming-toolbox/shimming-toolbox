@@ -1554,16 +1554,7 @@ def max_intensity(fname_input, fname_mask, path_output, fname_coefs, verbose):
         nii_mask = nib.load(fname_mask)
 
     if fname_coefs is not None:
-        # Find the seperator: sep = "," or "|"
-        with open(fname_coefs, 'r') as f:
-            lines = f.readlines()
-            if "".join(lines).count(',') > 0 and ("".join(lines).count(',') > "".join(lines).count('|')):
-                sep = ','
-            elif "".join(lines).count('|') > 0 and ("".join(lines).count('|') > "".join(lines).count(',')):
-                sep = '|'
-            else:
-                # Possibly single channel so no separator necessary, we go to the default
-                sep = ","
+        sep = find_text_file_separator(fname_coefs)
         coefs = read_txt_file(fname_coefs, sep=sep)
     else:
         coefs = None
@@ -1690,7 +1681,8 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
             raise ValueError("The target image is required for the specified input/output formats")
         nii_target = nib.load(fname_target)
 
-    coefs = read_txt_file(fname_input)
+    sep = find_text_file_separator(fname_input)
+    coefs = read_txt_file(fname_input, sep=sep)
     n_channels = coefs.shape[1]
 
     orders = []
@@ -1755,13 +1747,13 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
             pass
         elif output_cs == 'gradient-cs':
             logger.debug("Convert from shim-cs to gradient-cs")
-            coefs_order1_phys = shim_to_phys_cs(coefs[:, offset_channel:], manufacturer, [1, ])
-            coefs_gradient_cs = phys_to_gradient_cs(coefs_order1_phys[:, 0],
-                                                    coefs_order1_phys[:, 1],
-                                                    coefs_order1_phys[:, 2],
-                                                    fname_target)
-            for i in range(3):
-                coefs[:, offset_channel + i] = coefs_gradient_cs[i]
+            for i_shim in range(coefs.shape[0]):
+                coefs_order1_phys = shim_to_phys_cs(coefs[i_shim, offset_channel:], manufacturer, [1, ])
+                coefs_gradient_cs = phys_to_gradient_cs(coefs_order1_phys[0],
+                                                        coefs_order1_phys[1],
+                                                        coefs_order1_phys[2],
+                                                        fname_target)
+                coefs[i_shim, offset_channel:] = coefs_gradient_cs
         else:
             raise ValueError("Invalid output format")
 
@@ -1793,7 +1785,7 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
             if not np.all(np.isclose(coefs[i_shim][4:], coefs[0][4:])):
                 raise ValueError("The 2nd order shims must be the same for all slices to convert to 'custom-cl' format")
 
-    write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order)
+    write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order, sep)
 
 
 def parse_add_channels(channels: str, n_channels: int):
@@ -2013,6 +2005,34 @@ def write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_co
     fname_output_json_constraints = os.path.join(path_output, "calculated_scanner_constraints.json")
     with open(fname_output_json_constraints, "w") as outfile:
         json.dump(data_calculated_constraints, outfile, indent=4)
+
+
+def find_text_file_separator(fname):
+    """ Extract the separator used between coefficients in a text file.
+
+    Args:
+        fname (str): File name of the file to read
+
+    Returns:
+        str: Separator used in the text file, can be "," or "|"
+
+    """
+
+    if fname is None:
+        return None
+
+    # Find the seperator: sep = "," or "|"
+    with open(fname, 'r') as f:
+        lines = f.readlines()
+        if "".join(lines).count(',') > 0 and ("".join(lines).count(',') > "".join(lines).count('|')):
+            sep = ','
+        elif "".join(lines).count('|') > 0 and ("".join(lines).count('|') > "".join(lines).count(',')):
+            sep = '|'
+        else:
+            # Possibly single channel so no separator necessary, we go to the default
+            sep = ","
+
+    return sep
 
 
 b0shim_cli.add_command(dynamic)
