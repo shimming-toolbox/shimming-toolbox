@@ -1352,6 +1352,7 @@ class RealTimeSequencer(Sequencer):
         # Static shim
         logger.info("Static optimization")
         coef_static = self.optimize(self.mask_static_fmcs_per_shim_dil)
+        logger.debug(f"Static coefficients: {coef_static}")
 
         # RIRO optimization
         # Use the currents to define a list of new coil bounds for the riro optimization
@@ -1360,6 +1361,7 @@ class RealTimeSequencer(Sequencer):
 
         logger.info("Realtime optimization")
         coef_riro = self.optimize_riro(self.mask_riro_fmcs_per_shim_dil)
+        logger.debug(f"Riro coefficients: {coef_riro}")
 
         # Multiplying by the RMS of the pressure allows to make abstraction of the tightness of the bellow
         # between scans. This allows to compare results between scans.
