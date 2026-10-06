@@ -2642,6 +2642,36 @@ class TestConvertShimCoefsFormat:
                 assert f.readline() == "1.000000, 2.000000, 3.000000, 4.000000,\n"
                 assert f.readline() == "1.000000, 2.000000, 3.000000, 4.000000,\n"
 
+    def test_convert_shim_coefs_grad_to_shim_order01_sli(self):
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            fname_target = os.path.join(__dir_testing__, "ds_b0", "sub-fieldmap", "fmap",
+                                        "sub-1_acq-gre_magnitude1.nii.gz")
+            nii = nib.load(fname_target)
+
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                for i_shim in range(nii.shape[-1]):
+                    f.write(f"{i_shim}|{i_shim + 100}|{i_shim + 200}|{i_shim + 300}\n")
+
+            fname_output = os.path.join(tmp, 'shim_coefs_output.txt')
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['convert-shim-coefs-format',
+                                             '--target', fname_target,
+                                             '--input', fname_input,
+                                             '--input-file-format', 'slicewise',
+                                             '--output-file-format', 'slicewise',
+                                             '--input-file-cs', 'shim-cs',
+                                             '--output-file-cs', 'gradient-cs',
+                                             '-o', fname_output,
+                                             '-v', 'debug'],
+                                catch_exceptions=False)
+            assert res.exit_code == 0
+            with open(fname_output, 'r', encoding='utf-8') as f:
+                assert f.readline() == "0.000000 | -100.000000 | -165.312917 | -320.424197\n"
+                assert f.readline() == "1.000000 | -101.000000 | -166.195217 | -321.529434\n"
+                assert f.readline() == "2.000000 | -102.000000 | -167.077516 | -322.634671\n"
+
     def test_convert_shim_coefs_shim_to_grad_order1(self):
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
             fname_input = os.path.join(tmp, 'shim_coefs.txt')
@@ -2920,15 +2950,30 @@ class TestConvertShimCoefsFormat:
                 assert f.readline() == "    0.000145     0.000164     0.000185   -12.000000\n"
 
 
-def test_read_text_file():
-    """Test the function to read text files with shim coefs"""
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        fname_input = os.path.join(tmp, 'shim_coefs.txt')
-        with open(fname_input, 'w', encoding='utf-8') as f:
-            f.write("1,2,3,4\n")
-            f.write("5,6,7,8,\n")
+class TestReadTextFile():
+    def test_read_text_file_comma(self):
+        """Test the function to read text files with shim coefs"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("1,2,3,4\n")
+                f.write("5,6,7,8,\n")
 
-        data = read_txt_file(fname_input)
-        assert data.shape == (2, 4)
-        assert np.array_equal(data[0], np.array([1, 2, 3, 4]))
-        assert np.array_equal(data[1], np.array([5, 6, 7, 8]))
+            data = read_txt_file(fname_input)
+            assert data.shape == (2, 4)
+            assert np.array_equal(data[0], np.array([1, 2, 3, 4]))
+            assert np.array_equal(data[1], np.array([5, 6, 7, 8]))
+
+    def test_read_text_file_pipe(self):
+        """Test the function to read text files with shim coefs"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            fname_input = os.path.join(tmp, 'shim_coefs.txt')
+            with open(fname_input, 'w', encoding='utf-8') as f:
+                f.write("f0| x|y|z\n")
+                f.write("1|2|3| 4\n")
+                f.write("5|6 |7|8|\n")
+
+            data = read_txt_file(fname_input, sep="|")
+            assert data.shape == (2, 4)
+            assert np.array_equal(data[0], np.array([1, 2, 3, 4]))
+            assert np.array_equal(data[1], np.array([5, 6, 7, 8]))
