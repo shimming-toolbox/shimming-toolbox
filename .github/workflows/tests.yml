@@ -44,7 +44,7 @@ jobs:
         run: |
           echo ~
           echo $HOME
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -166,7 +166,7 @@ jobs:
     name: Test on Windows
     runs-on: 'windows-latest'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Shimming Toolbox installation
         shell: cmd /C call {0}

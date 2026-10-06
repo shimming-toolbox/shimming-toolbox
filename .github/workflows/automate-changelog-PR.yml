@@ -26,7 +26,7 @@ jobs:
       run: |
         pip install git+https://github.com/neuropoly/changelog@master
     - name: Checkout '${{ github.event.repository.name }}'
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         path: ${{ github.event.repository.name }}
     - name: Update '${{ github.event.inputs.fname_changelog }}' for '${{ github.event.repository.name }}'
