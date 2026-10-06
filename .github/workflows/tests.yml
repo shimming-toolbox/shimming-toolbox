@@ -79,7 +79,7 @@ jobs:
 
       - name: Cache SCT
         id: cache-sct
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/work/spinalcordtoolbox
           # Use commit hash file from previous step as key

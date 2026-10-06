@@ -20,7 +20,7 @@ jobs:
           python-version: '3.x'
       - name: Cache pip dependencies
         id: cache-pip-dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           # Ubuntu-specific, see
           # https://github.com/actions/cache/blob/main/examples.md#python---pip
