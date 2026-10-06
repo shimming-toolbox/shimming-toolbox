@@ -178,7 +178,7 @@ jobs:
           echo "CONDA=$USERPROFILE\shimming-toolbox\python" >> $GITHUB_ENV
           echo "ST_DIR=$USERPROFILE\shimming-toolbox" >> $GITHUB_ENV
 
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           channels: conda-forge,defaults
           auto-activate: true
