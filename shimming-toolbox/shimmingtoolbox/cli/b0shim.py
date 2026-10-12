@@ -395,6 +395,13 @@ def dynamic(fname_fmap, fname_target, fname_mask_target, method, opt_criteria, s
             if (fname_sph_constr is not None) and (slices == 'volume'):
                 write_updated_scanner_constraints(scanner_coil_order, manufacturer, coefs_coil, coil, path_output)
 
+            if slices == 'volume' and manufacturer == "Siemens":
+                initial_coefs = concatenate_shim_settings(coil.coefs_used, scanner_coil_order)
+                initial_coefs_dict = coefs_to_dict(np.array(initial_coefs), scanner_coil_order, manufacturer)
+                coefs_dict = coefs_to_dict(coefs_coil[0], scanner_coil_order, manufacturer)
+                fname_adj_val = os.path.join(path_output, 'commands_to_apply_coefs_at_the_scanner.txt')
+                write_adj_validate_commands(coefs_dict, fname_adj_val, initial_coefs_dict)
+
             if 'hrd' in o_format_sph:
                 coefs_coil = coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer)
 
@@ -1950,7 +1957,7 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
     """ Convert the shim coefficients to a dictionary format based on the scanner coil order.
 
     Args:
-        coefs_coil (np.array): Array of shim coefficients (n_shims x n_channels)
+        coefs_coil (np.array): Array of shim coefficients (n_shims x n_channels) or (n_channels)
         scanner_coil_order (list): List of scanner coil orders (e.g. [0, 1, 2])
         manufacturer (str): Manufacturer of the scanner (e.g. 'GE', 'Siemens', 'Philips')
 
@@ -1961,7 +1968,12 @@ def coefs_to_dict(coefs_coil, scanner_coil_order, manufacturer):
     start_channel_scanner = 0
     for order in scanner_coil_order:
         end_channel_scanner_order = start_channel_scanner + channels_per_order(order, manufacturer)
-        coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+        if coefs_coil.ndim == 2:
+            coefs_scanner[order] = coefs_coil[:, start_channel_scanner:end_channel_scanner_order]
+        elif coefs_coil.ndim == 1:
+            coefs_scanner[order] = coefs_coil[start_channel_scanner:end_channel_scanner_order]
+        else:
+            ValueError("Unsupported number of dimensions for coefs_coil")
         start_channel_scanner = end_channel_scanner_order
     coefs_coil = coefs_scanner
 
@@ -2033,6 +2045,98 @@ def find_text_file_separator(fname):
             sep = ","
 
     return sep
+
+
+def write_adj_validate_commands(coefs, fname_output, initial_coefs):
+    """ Write the adjValidate commands to a text file.
+
+    Args:
+        coefs (dict): Dict of shim coefficients. Order 0 must be an absolute input.
+        fname_output (str): Path to the output text file.
+        initial_coefs (dict): Dict of initial coefficients.
+    """
+    # Todo: make sure format is fine , make sure init coefs are defined correctly before outputting the text file
+
+    if not isinstance(coefs, dict):
+        raise ValueError("Input is not a dictionary")
+    if not isinstance(initial_coefs, dict):
+        raise ValueError("Initial coefficients is not a dictionary")
+
+    with open(fname_output, "w") as outfile:
+        orders_with_valid_init_coefs = []
+        outfile.write(f"# To set the volume shim coefficients, you can open a 'cmd' terminal at the scanner, plan a protocol and enter the following commands:\n")
+        if 0 in coefs:
+            outfile.write(f"# Command to set the frequency\n")
+            # Frequency adjust must be in absolute format
+            if isinstance(initial_coefs[0][0], (int, float)):
+                freq = initial_coefs[0][0] + coefs[0][0]
+                outfile.write(f"AdjValidate -fre -set {np.round(freq).astype(int)}\n")
+                orders_with_valid_init_coefs.append(0)
+            else:
+                # Initial frequency
+                outfile.write(f"# WARNING: The frequency before shimming could not be retrieved, therefore the absolute frequency after shimming could not be calculated\n")
+                outfile.write(f"AdjValidate -fre -set XXXXXX\n")
+
+        def init_coef_is_valid(coefs):
+            valid = True
+            for coef in coefs:
+                if not isinstance(coef, (int, float)):
+                    valid = False
+            return valid
+
+        # Check if all initial coef values are valid to output in absolute format if possible
+        all_orders_are_valid = True
+        for order in (1, 2, 3):
+            if order in coefs and not init_coef_is_valid(initial_coefs[order]):
+                all_orders_are_valid = False
+
+        if 1 in coefs or 2 in coefs or 3 in coefs:
+            if all_orders_are_valid:
+                outfile.write(f"# Command to set the shim coefficients (absolute values):\n")
+                outfile.write(f"AdjValidate -shim -mp -set")
+            else:
+                outfile.write(f"# Command to set the shim coefficients (relative values):\n")
+                outfile.write(f"AdjValidate -shim -delta -mp -set")
+
+        for order in (1, 2, 3):
+            if order in coefs:
+                if all_orders_are_valid:
+                    tmp = [f"{coef + init_coef:.6f}" for coef, init_coef in zip(coefs[order], initial_coefs[order])]
+                else:
+                    tmp = [f"{coef:.6f}" for coef in coefs[order]]
+                outfile.write(f" {' '.join(tmp)}")
+                if init_coef_is_valid(initial_coefs[order]):
+                    orders_with_valid_init_coefs.append(order)
+        outfile.write(f"\n\n")
+
+        if (0 in orders_with_valid_init_coefs or
+            1 in orders_with_valid_init_coefs or
+            2 in orders_with_valid_init_coefs or
+            3 in orders_with_valid_init_coefs):
+            outfile.write(f"# To return to the initial shim value, you can run the following commands: \n")
+
+            if 0 in coefs:
+                if 0 in orders_with_valid_init_coefs:
+                    outfile.write(f"AdjValidate -fre -set {np.round(initial_coefs[0][0]).astype(int)}\n")
+                else:
+                    # Initial frequency
+                    outfile.write(
+                        f"# WARNING: The frequency before shimming could not be retrieved\n")
+                    outfile.write(f"AdjValidate -fre -set XXXXXX\n")
+
+            if (((1 in coefs) or (2 in coefs) or (3 in coefs)) and
+                ((1 in orders_with_valid_init_coefs) or
+                 (2 in orders_with_valid_init_coefs) or
+                 (3 in orders_with_valid_init_coefs))):
+                outfile.write(f"AdjValidate -shim -mp -set")
+            for order in (1, 2, 3):
+                if order in coefs:
+                    if order in orders_with_valid_init_coefs:
+                        tmp = [f"{coef:.6f}" for coef in initial_coefs[order]]
+                        outfile.write(f" {' '.join(tmp)}")
+                    else:
+                        outfile.write(f"\n# WARNING: The order {order} coefficients before shimming could not be retrieved")
+            outfile.write(f"\n")
 
 
 b0shim_cli.add_command(dynamic)
