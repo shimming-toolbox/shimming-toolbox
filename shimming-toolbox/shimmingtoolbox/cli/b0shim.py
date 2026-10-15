@@ -1609,6 +1609,7 @@ def add_shim_coefs(fname_input, fname_input2, fname_output, verbose):
     logger.debug(coefs2)
     logger.debug(coefs)
     write_coefs_to_text_file(coefs, fname_output, 'slicewise')
+    logger.info("Successfully added shim coefficients")
 
 
 @command(context_settings=CONTEXT_SETTINGS)
@@ -1786,6 +1787,7 @@ def convert_shim_coefs_format(fname_input, i_format, o_format, fname_target, rev
                 raise ValueError("The 2nd order shims must be the same for all slices to convert to 'custom-cl' format")
 
     write_coefs_to_text_file(coefs, fname_output, o_format, rev_slice_order, sep)
+    logger.info("Successfully converted shim coefficients")
 
 
 def parse_add_channels(channels: str, n_channels: int):
