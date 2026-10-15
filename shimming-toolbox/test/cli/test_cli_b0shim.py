@@ -1022,6 +1022,49 @@ class TestCliDynamic(object):
             assert os.path.isfile(os.path.join(tmp, "scanner_shim.txt"))
             assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Dummy_coil.txt"))
 
+    def test_cli_dynamic_volume_adj_validate(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
+        """Test cli with scanner coil with volume shim and look at adjvalidate command"""
+        with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+            # Save the inputs to the new directory
+            fname_fmap = os.path.join(tmp, 'fmap.nii.gz')
+            fname_fm_json = os.path.join(tmp, 'fmap.json')
+            fname_mask = os.path.join(tmp, 'mask.nii.gz')
+            fname_softmask = os.path.join(tmp, 'softmask.nii.gz')
+            fname_target = os.path.join(tmp, 'target.nii.gz')
+            fname_target_json = os.path.join(tmp, 'target.json')
+
+            # fm_data['ImagingFrequency'] = 123.259000
+            # target_data['ImagingFrequency'] = 123.259000
+
+            _save_inputs(nii_fmap=nii_fmap, fname_fmap=fname_fmap,
+                         nii_target=nii_target, fname_target=fname_target,
+                         nii_mask=nii_mask, fname_mask=fname_mask,
+                         nii_softmask=nii_softmask, fname_softmask=fname_softmask,
+                         fm_data=fm_data, fname_fm_json=fname_fm_json,
+                         target_data=target_data, fname_target_json=fname_target_json)
+
+            runner = CliRunner()
+            res = runner.invoke(b0shim_cli, ['dynamic',
+                                             '--fmap', fname_fmap,
+                                             '--target', fname_target,
+                                             '--mask', fname_mask,
+                                             '--scanner-coil-order', '0,1,2',
+                                             '--output-file-format-scanner', 'chronological-coil',
+                                             '--slices', 'volume',
+                                             '--output', tmp],
+                                catch_exceptions=False)
+
+            assert res.exit_code == 0
+            assert os.path.isfile(os.path.join(tmp, "coefs_coil0_Prisma_fit_167006.txt"))
+            assert os.path.isfile(os.path.join(tmp, "commands_to_apply_coefs_at_the_scanner.txt"))
+            with open(os.path.join(tmp, "commands_to_apply_coefs_at_the_scanner.txt"), 'r') as f:
+                txt = f.read()
+                assert "AdjValidate -fre -set 123258972" in txt
+                assert "AdjValidate -shim -mp -set 96.594844 -1271.791846 -1499.569280 -3764.728054 141.369616 -647.577628 -217.729604 -3.488000" in txt
+                assert "AdjValidate -fre -set 123259000" in txt
+                assert "AdjValidate -shim -mp -set 105.950402 -1179.586400 -1545.233179 -706.800285 141.369616 -85.497595 17.049602 -3.488000" in txt
+
+
     def test_cli_dynamic_format_chronological_hrd_order0(self, nii_fmap, nii_target, nii_mask, nii_softmask, fm_data, target_data):
         """Test cli with scanner coil with chronological hrd o_format"""
         with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
