@@ -219,6 +219,8 @@ def set_all_loggers(verbose, list_exclude=('matplotlib', 'indexed_gzip', 'pydico
     for a_logger in loggers:
         a_logger.setLevel(verbose.upper())
 
+    logger.debug(f"All loggers set to level: {verbose.upper()}")
+
 
 def montage(X):
     """Concatenates images stored in a 3D array
