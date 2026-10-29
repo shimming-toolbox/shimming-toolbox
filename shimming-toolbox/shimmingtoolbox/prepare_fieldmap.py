@@ -114,9 +114,8 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
                                            is_unwrapping_in_2d=process_in_2d,
                                            fname_save_mask=fname_save_mask)
 
-        # If it's 4d (i.e. there are timepoints)
-        if len(phasediff_unwrapped.shape) == 4:
-            phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
+        # If 4d, correct 2pi offset between timepoints, if it's 3d, bring offset closest to the mean
+        phasediff_unwrapped = correct_2pi_offset(phasediff_unwrapped, mag, mask, VALIDITY_THRESHOLD)
 
         # Divide by echo time
         fieldmap_rad = phasediff_unwrapped / echo_time_diff  # [rad / s]
@@ -264,7 +263,10 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
     """
     unwrapped_cp = copy.deepcopy(unwrapped)
     # Create a mask that excludes the noise
-    validity_masks = mask_threshold(mag - mag.min(), validity_threshold * (mag.max() - mag.min()))
+    mag_min0 = mag - mag.min()
+    # threshold = min + (validity_threshold * delta)
+    threshold = mag_min0[mask > 0].min() + (validity_threshold * (mag_min0[mask > 0].max() - mag_min0[mask > 0].min()))
+    validity_masks = mask_threshold(mag_min0, threshold)
 
     # Logical and with the mask used for calculating the fieldmap
     validity_masks = np.logical_and(mask, validity_masks)
