@@ -77,6 +77,11 @@ def prepare_fieldmap(list_nii_phase, echo_times, mag, unwrapper='prelude', nii_m
 
     mask = get_mask(list_nii_phase[0], mag, nii_mask=nii_mask, threshold=threshold)
 
+    # If mask is empty, return empty fieldmap
+    if not np.any(mask):
+        logger.warning("The provided mask is empty. Returning an empty fieldmap.")
+        return np.zeros_like(phase[0]), mask
+
     # Get the time between echoes and calculate phase difference depending on number of echoes
     if len(phase) == 1:
         # phase should be a phasediff
@@ -261,7 +266,11 @@ def correct_2pi_offset(unwrapped, mag, mask, validity_threshold):
         numpy.ndarray: 4d array of the unwrapped phase corrected if there were n*2*pi offsets between time points
 
     """
+    if not np.any(mask > 0):
+        raise ValueError("The provided mask has no values greater than 0. Can't correct for 2*pi offsets.")
+
     unwrapped_cp = copy.deepcopy(unwrapped)
+
     # Create a mask that excludes the noise
     mag_min0 = mag - mag.min()
     # threshold = min + (validity_threshold * delta)
