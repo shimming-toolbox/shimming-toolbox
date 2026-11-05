@@ -145,7 +145,6 @@ def __test_st_plugin_fieldmap(view, overlayList, displayCtx, options):
             assert os.path.exists(fname_output_mask)
 
 
-
 def get_mask_from_fmap():
     fname_mag = os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz')
     nii_fmap = nib.load(fname_mag)
@@ -154,7 +153,7 @@ def get_mask_from_fmap():
     mask = shapes(nii_fmap.get_fdata(), 'cube',
                   center_dim1=int(nx / 2),
                   center_dim2=int(ny / 2),
-                  len_dim1=10, len_dim2=10, len_dim3=nz - 10)
+                  len_dim1=10, len_dim2=10, len_dim3=nz - 5)
 
     nii_mask = nib.Nifti1Image(mask.astype(np.uint8), nii_fmap.affine)
     return nii_mask
