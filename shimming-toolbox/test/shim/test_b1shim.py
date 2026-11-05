@@ -144,9 +144,11 @@ def test_load_siemens_vop_wrong_path():
 def test_load_siemens_vop_no_vop():
     data_no_vop = scipy.io.loadmat(fname_sar_file)
     data_no_vop.pop('ZZ')
+    # Saving data with keys starting with "__" creates warnings. We remove them here:
+    data_no_vop_cleaned = {k: v for k, v in data_no_vop.items() if not k.startswith('__')}
     fname_sar_file_no_vop = os.path.join(__dir_testing__, 'ds_tb1', 'derivatives', 'shimming-toolbox', 'sub-tb1tfl',
                                         'SarDataUser_no_vop.mat')
-    scipy.io.savemat(fname_sar_file_no_vop, data_no_vop)
+    scipy.io.savemat(fname_sar_file_no_vop, data_no_vop_cleaned)
     with pytest.raises(ValueError, match="The SAR data does not contain the expected VOP values."):
         load_siemens_vop(fname_sar_file_no_vop)
     os.remove(fname_sar_file_no_vop)

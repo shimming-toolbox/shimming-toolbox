@@ -94,7 +94,7 @@ def test_get_spec2nii_version():
     """Checks spec2nii version output for expected structure.
     """
     spec2nii_version_info = st_ce.get_spec2nii_version()
-    version_regex = "\d\.\d"
+    version_regex = r"\d\.\d"
     assert re.search(version_regex, spec2nii_version_info)
 
 
