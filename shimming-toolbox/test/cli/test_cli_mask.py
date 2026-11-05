@@ -106,19 +106,19 @@ def test_cli_mask_threshold():
 
 
 @pytest.mark.usefixtures("return_to_cwd")
-def test_cli_mask_rel_path():
+def test_cli_mask_rel_path(tmp_path):
     runner = CliRunner()
-    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
-        os.chdir(tmp)
-        shutil.copy(os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz'), tmp)
-        fname_input = 'sub-fieldmap_magnitude1.nii.gz'
-        fname_out = 'mask.nii.gz'
-        thr = 780
-        result = runner.invoke(mask_cli, ['threshold', '--input', fname_input, '--output', fname_out, '--thr', thr],
-                               catch_exceptions=False)
 
-        assert result.exit_code == 0
-        assert os.path.isfile(os.path.join(tmp, fname_out))
+    os.chdir(tmp_path)
+    shutil.copy(os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz'), tmp_path)
+    fname_input = 'sub-fieldmap_magnitude1.nii.gz'
+    fname_out = 'mask.nii.gz'
+    thr = 780
+    result = runner.invoke(mask_cli, ['threshold', '--input', fname_input, '--output', fname_out, '--thr', thr],
+                           catch_exceptions=False)
+
+    assert result.exit_code == 0
+    assert os.path.isfile(os.path.join(tmp_path, fname_out))
 
 
 def test_cli_mask_threshold_scaled():
