@@ -107,9 +107,9 @@ def test_cli_mask_threshold():
 
 def test_cli_mask_rel_path():
     runner = CliRunner()
-    with runner.isolated_filesystem():
-        path_cwd = os.getcwd()
-        shutil.copy(os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz'), path_cwd)
+    with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:
+        os.chdir(tmp)
+        shutil.copy(os.path.join(__dir_testing__, 'ds_b0', 'sub-fieldmap', 'fmap', 'sub-fieldmap_magnitude1.nii.gz'), tmp)
         fname_input = 'sub-fieldmap_magnitude1.nii.gz'
         fname_out = 'mask.nii.gz'
         thr = 780
@@ -117,7 +117,7 @@ def test_cli_mask_rel_path():
                                catch_exceptions=False)
 
         assert result.exit_code == 0
-        assert os.path.isfile(os.path.join(path_cwd, fname_out))
+        assert os.path.isfile(os.path.join(tmp, fname_out))
 
 
 def test_cli_mask_threshold_scaled():
