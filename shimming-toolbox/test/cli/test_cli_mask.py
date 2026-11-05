@@ -105,6 +105,7 @@ def test_cli_mask_threshold():
         assert np.all(mask[58:62, 28:31, 7:9] == expected)
 
 
+@pytest.mark.usefixtures("return_to_cwd")
 def test_cli_mask_rel_path():
     runner = CliRunner()
     with tempfile.TemporaryDirectory(prefix='st_' + pathlib.Path(__file__).stem) as tmp:

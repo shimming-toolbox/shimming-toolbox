@@ -86,6 +86,13 @@ def test_data_integrity(request):
     request.addfinalizer(lambda: check_testing_data_integrity(files_checksums))
 
 
+@pytest.fixture(scope="function", autouse=False)
+def return_to_cwd():
+    path_cwd = os.getcwd()
+    yield
+    os.chdir(path_cwd)
+
+
 def checksum(fname: os.PathLike) -> str:
     with open(fname, 'rb') as f:
         data = f.read()
