@@ -51,6 +51,7 @@ def test_niftimask_init(temp_nifti_file):
     assert isinstance(nifti.nii, nib.Nifti1Image)
     assert isinstance(nifti.data, np.ndarray)
     assert nifti.data.shape == (10, 10, 10)
+    assert np.allclose(nifti.affine, nifti.nii.affine)
 
 
 def test_set_nii_wrong_dim(temp_nifti_file):
@@ -92,12 +93,13 @@ def test_set_nii_resample(temp_nifti_file):
     """Test resampling when setting a new NIfTI image."""
     nifti = NiftiMask(temp_nifti_file)
     new_data = np.ones((5, 5, 5))
-    new_nii = nib.Nifti1Image(new_data, affine=np.eye(4))
+    new_nii = nib.Nifti1Image(new_data, affine=np.eye(4) * 2)  # Different affine
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        nifti_target = create_nifti_target(tmpdir, (10, 10, 10), np.eye(4))
+        nifti_target = create_nifti_target(tmpdir, (10, 10, 10), np.eye(4) * 3)
         nifti.set_nii(new_nii, nifti_target)
         assert nifti.data.shape == (10, 10, 10)
+        assert np.allclose(nifti.affine, nifti_target.affine)
         del nifti_target
 
 

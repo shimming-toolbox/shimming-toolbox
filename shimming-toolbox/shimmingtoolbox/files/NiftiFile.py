@@ -165,6 +165,7 @@ class NiftiFile:
         self.data = np.asanyarray(nii.dataobj)
         self.shape = self.data.shape
         self.ndim = self.data.ndim
+        self.affine = self.nii.affine
 
     @safe_getter(default_value=None)
     def get_json(self, json_needed: bool = True) -> str | None:
