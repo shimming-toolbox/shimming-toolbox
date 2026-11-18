@@ -397,11 +397,13 @@ class TestSequencer(object):
         diff_affine = nif_mask.affine
         diff_affine[0, 0] = 2
         nii_diff_mask = nib.Nifti1Image(nif_mask.data, diff_affine, header=nif_mask.header)
-        nif_diff_mask = nif_mask
+        nif_diff_mask = copy.deepcopy(nif_mask)
         nif_diff_mask.set_nii(nii_diff_mask, nif_target)
         sequencer_test = ShimSequencer(nif_fieldmap, nif_target, nif_diff_mask, slices,
                                        [sph_coil])
         currents = sequencer_test.shim()
+        # currents new PR : [[0.7130017379668524, -1.4649530595503386, 20.62615388201728, -24.33480271477528, 0.604365739799558, -0.8275654892057777, -5.907105111055468, -1.3229607488747859], [-0.0994675176783762, -0.645134651956524, 42.27557447264081, -5.537545047264406, 1.1825678334743304, -23.85697835811011, -4.213842578525472, -0.518546581310297]]
+        #                   [[0.7130017379668524, -1.4649530595503386, 20.62615388201728, -24.33480271477528, 0.604365739799558, -0.8275654892057777, -5.907105111055468, -1.3229607488747859], [-0.0994675176783762, -0.645134651956524, 42.27557447264081, -5.537545047264406, 1.1825678334743304, -23.85697835811011, -4.213842578525472, -0.518546581310297]]
         sequencer_test.eval(currents)
         assert_results(nif_fieldmap, nif_target, nif_diff_mask, [sph_coil], currents, slices, off_channel_values_expected)
 
