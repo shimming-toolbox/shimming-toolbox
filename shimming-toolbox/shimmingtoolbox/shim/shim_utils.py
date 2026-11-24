@@ -17,14 +17,15 @@ SHIM_CS = {'SIEMENS': 'LAI',
            'GE': 'LPI',
            'PHILIPS': 'RPI'}
 
-def get_phase_encode_direction_sign(fname_nii):
-    """ Returns the phase encode direction sign
+
+def get_phase_encode_direction(fname_nii):
+    """ Returns the phase encode direction
 
     Args:
         fname_nii (str): Filename to a NIfTI file with its corresponding json file.
 
     Returns:
-        bool: Returns whether the encoding direction is positive (True) or negative (False)
+        str: Returns the phase encode direction (i, j, k, i-, j-, k-)
     """
 
     # Load nibabel
@@ -43,17 +44,9 @@ def get_phase_encode_direction_sign(fname_nii):
     if (phase_en_dir[0] == 'i' and dim_info[1] != 0) \
             or (phase_en_dir[0] == 'j' and dim_info[1] != 1) \
             or (phase_en_dir[0] == 'k' and dim_info[1] != 2):
-        raise RuntimeError("Inconsistency between dim_info of fieldmap and PhaseEncodeDirection tag in the json")
+        raise RuntimeError("Inconsistency between dim_info of the NIfTI and PhaseEncodeDirection tag in the json")
 
-    # Find if the phase encode direction is negative or positive
-    if len(phase_en_dir) == 2 and phase_en_dir[1] == '-':
-        en_is_positive = False
-    elif len(phase_en_dir) == 1:
-        en_is_positive = True
-    else:
-        raise ValueError(f"Unexpected value for PhaseEncodingDirection: {phase_en_dir}")
-
-    return en_is_positive
+    return phase_en_dir
 
 
 def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
@@ -125,13 +118,13 @@ def phys_to_gradient_cs(coefs_x, coefs_y, coefs_z, fname_target):
         # if there are 2 highest cosines. It will raise an exception if there is a problem
         orientation = get_main_orientation(json_target_data['ImageOrientationPatientDICOM'])
 
-    phase_encode_is_positive = get_phase_encode_direction_sign(fname_target)
+    phase_encode_dir = get_phase_encode_direction(fname_target)
 
     nii_target = nib.load(fname_target)
     new_affine = convert_affine_to_gradient_cs(manufacturer,
                                                patient_position,
                                                orientation,
-                                               phase_encode_is_positive,
+                                               phase_encode_dir,
                                                nii_target.affine,
                                                nii_target.shape)
 
@@ -178,13 +171,13 @@ def gradient_to_phys_cs(coefs_freq, coefs_phase, coefs_slice, fname_target):
         # if there are 2 highest cosines. It will raise an exception if there is a problem
         orientation = get_main_orientation(json_target_data['ImageOrientationPatientDICOM'])
 
-    phase_encode_is_positive = get_phase_encode_direction_sign(fname_target)
+    phase_encode_dir = get_phase_encode_direction(fname_target)
 
     nii_target = nib.load(fname_target)
     new_affine = convert_affine_to_gradient_cs(manufacturer,
                                                patient_position,
                                                orientation,
-                                               phase_encode_is_positive,
+                                               phase_encode_dir,
                                                nii_target.affine,
                                                nii_target.shape)
 
@@ -193,14 +186,14 @@ def gradient_to_phys_cs(coefs_freq, coefs_phase, coefs_slice, fname_target):
 
 
 def convert_affine_to_gradient_cs(manufacturer: str, patient_position: str, orientation: str,
-                                  phase_encode_is_positive: bool, affine, shape):
+                                  phase_encode_dir: str, affine, shape):
     """ Output the affine matrix to transform from the gradient CS to RAS World Coordinate System.
 
     Args:
         manufacturer (str): Manufacturer
         patient_position (str): Only HFS is supported
         orientation (str): TRA or SAG or COR
-        phase_encode_is_positive (bool): Whether the phase encoding is positive or negative
+        phase_encode_dir (str): The phase encoding direction
         affine (np.ndarray): Affine matrix
         shape (np.ndarray): Dimensions of the image
 
@@ -213,20 +206,38 @@ def convert_affine_to_gradient_cs(manufacturer: str, patient_position: str, orie
         raise NotImplementedError(f"PatientPosition {patient_position} is not supported. Only HFS is implemented")
 
     if orientation == 'TRA':
-        if phase_encode_is_positive:
+        if phase_encode_dir == 'j':
             target_ornt = nib.orientations.axcodes2ornt(('L', 'A', 'S'))
-        else:
+        elif phase_encode_dir == 'j-':
             target_ornt = nib.orientations.axcodes2ornt(('R', 'P', 'S'))
+        elif phase_encode_dir == 'i':
+            target_ornt = nib.orientations.axcodes2ornt(('P', 'L', 'S'))
+        elif phase_encode_dir == 'i-':
+            target_ornt = nib.orientations.axcodes2ornt(('A', 'R', 'S'))
+        else:
+            raise RuntimeError(f"Unexpected value for phase_encode_dir: {phase_encode_dir}")
     elif orientation == 'SAG':
-        if phase_encode_is_positive:
+        if phase_encode_dir == 'i':
             target_ornt = nib.orientations.axcodes2ornt(('S', 'P', 'L'))
-        else:
+        elif phase_encode_dir == 'i-':
             target_ornt = nib.orientations.axcodes2ornt(('I', 'A', 'L'))
-    elif orientation == 'COR':
-        if phase_encode_is_positive:
-            target_ornt = nib.orientations.axcodes2ornt(('I', 'L', 'P'))
+        elif phase_encode_dir == 'j':
+            target_ornt = nib.orientations.axcodes2ornt(('A', 'S', 'L'))
+        elif phase_encode_dir == 'j-':
+            target_ornt = nib.orientations.axcodes2ornt(('P', 'I', 'L'))
         else:
+            raise RuntimeError(f"Unexpected value for phase_encode_dir: {phase_encode_dir}")
+    elif orientation == 'COR':
+        if phase_encode_dir == 'i':
+            target_ornt = nib.orientations.axcodes2ornt(('I', 'L', 'P'))
+        elif phase_encode_dir == 'i-':
             target_ornt = nib.orientations.axcodes2ornt(('S', 'R', 'P'))
+        elif phase_encode_dir == 'j':
+            target_ornt = nib.orientations.axcodes2ornt(('L', 'S', 'P'))
+        elif phase_encode_dir == 'j-':
+            target_ornt = nib.orientations.axcodes2ornt(('R', 'S', 'P'))
+        else:
+            raise RuntimeError(f"Unexpected value for phase_encode_dir: {phase_encode_dir}")
     else:
         raise RuntimeError(f"Unexpected value for orientation: {orientation}")
 
