@@ -2,6 +2,8 @@
 # -*- coding: utf-8
 
 import json
+import shutil
+
 import nibabel as nib
 import numpy as np
 import os
@@ -109,7 +111,9 @@ def test_phys_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expecte
     ([1, 10, 100], "COR", "i", [100, 1, -10]),  # PE: RL
     ([1, 10, 100], "COR", "i-", [-100, -1, -10]),  # PE: LR
     ([1, 10, 100], "COR", "j-", [-1, -100, -10]),  # PE: HF
-    ([1, 10, 100], "COR", "j", [1, -100, -10])  # PE: FH
+    ([1, 10, 100], "COR", "j", [1, -100, -10]),  # PE: FH
+    ([1, 10, 100], "TRA>SAG20", "j-", [33.2623, -10.0, -94.3113]),  # PE: AP
+    ([1, 10, 100], "TRA>COR20", "j-", [-1.0, -43.5989, -90.5491]),  # PE: AP
 ])
 def test_phys_lai_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
     # This test is somewhat redundant with test_phys_to_gradient_cs but can be more easily confirmed on IDEA
@@ -152,6 +156,18 @@ def create_nifti(orientation, phase_encode_dir, path_output):
         affine = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
     elif orientation == "COR":
         affine = np.array([[-1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+    elif orientation == "TRA>SAG20":
+        affine = np.array(
+            [[-2.05557775, 0.    ,  1.02605963,  124.88800049],
+             [-0.        , 2.1875, -0.        , -108.96459961],
+             [ 0.74816859, 0.    ,  2.81907773, -68.61650085 ],
+             [ 0.        , 0.    ,  0.        ,  1.          ]]
+        )
+    elif orientation == "TRA>COR20":
+        affine = np.array([[ -2.1875,  0.        , -0.        ,  140.        ],
+                           [  0.    ,  2.05557775,  1.02602792, -110.22515869],
+                           [  0.    , -0.74816859,  2.81899047,  9.94129181  ],
+                           [  0.    ,  0.        ,  0.        ,  1.          ]])
     else:
         raise ValueError(f"Unknown orientation: {orientation}")
     nii = nib.Nifti1Image(data, affine)
@@ -165,9 +181,11 @@ def create_nifti(orientation, phase_encode_dir, path_output):
     image_orientation = {
         "TRA": [1, 0, 0, 0, 1, 0],
         "SAG": [0, 1, 0, 0, 0, -1],
-        "COR": [1, 0, 0, 0, 0, -1]
+        "COR": [1, 0, 0, 0, 0, -1],
+        "TRA>SAG20": [0.939693, 0, 0.34202, 0, 1, 0],
+        "TRA>COR20": [1, 0, 0, 0, 0.939693, 0.34202]
     }[orientation]
-    assert get_main_orientation(image_orientation) == orientation
+    assert get_main_orientation(image_orientation) == orientation[:3]
     data_json = {
         "Manufacturer": "Siemens",
         "PatientPosition": "HFS",
