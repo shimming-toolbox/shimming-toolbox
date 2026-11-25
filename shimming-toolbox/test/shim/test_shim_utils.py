@@ -117,7 +117,6 @@ def test_phys_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expecte
 ])
 def test_phys_lai_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
     # This test is somewhat redundant with test_phys_to_gradient_cs but can be more easily confirmed on IDEA
-    # There are other orientations not being tested. Notably, phase encodes in other dimensions (TRA, PE RL/LR...)
     fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
     coefs_ras = shim_to_phys_cs(np.array(input_coefs), "Siemens", [1, ])
     output_coefs = phys_to_gradient_cs(*coefs_ras, fname_target)
@@ -172,7 +171,7 @@ def create_nifti(orientation, phase_encode_dir, path_output):
         raise ValueError(f"Unknown orientation: {orientation}")
     nii = nib.Nifti1Image(data, affine)
     nii.header.set_dim_info(*dim_info)
-    fname_nii = os.path.join(path_output, f"target_{orientation}_pe{phase_encode_dir}.nii.gz")
+    fname_nii = os.path.join(path_output, f"target_{orientation.replace('>', '-')}_pe{phase_encode_dir}.nii.gz")
     nii.to_filename(fname_nii)
     nii2 = nib.as_closest_canonical(nii)  # Make sure the target is in canonical orientation (RAS)
     nii2.to_filename(fname_nii.replace(".nii.gz", "canon.nii.gz"))
