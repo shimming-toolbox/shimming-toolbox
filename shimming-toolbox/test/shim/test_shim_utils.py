@@ -2,8 +2,6 @@
 # -*- coding: utf-8
 
 import json
-import shutil
-
 import nibabel as nib
 import numpy as np
 import os
