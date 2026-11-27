@@ -84,12 +84,12 @@ class TestCalculateMetricWithinMask:
 
 
 @pytest.mark.parametrize("input_coefs, orientation, phase_encode_dir, expected_coefs", [
-    ([1, 2, 3], "TRA", "-", [1, -2, 3]),  # PE: AP
-    ([1, 2, 3], "TRA", "", [-1, 2, 3]),  # PE: PA
-    ([1, 2, 3], "SAG", "", [3, -2, -1]),  # PE: AP
-    ([1, 2, 3], "SAG", "-", [-3, 2, -1]),  # PE: PA
-    ([1, 2, 3], "COR", "", [-3, -1, -2]),  # PE: RL
-    ([1, 2, 3], "COR", "-", [3, 1, -2])  # PE: LR
+    ([1, 2, 3], "TRA", "j-", [1, -2, 3]),  # PE: AP
+    ([1, 2, 3], "TRA", "j", [-1, 2, 3]),  # PE: PA
+    ([1, 2, 3], "SAG", "i", [3, -2, -1]),  # PE: AP
+    ([1, 2, 3], "SAG", "i-", [-3, 2, -1]),  # PE: PA
+    ([1, 2, 3], "COR", "i", [-3, -1, -2]),  # PE: RL
+    ([1, 2, 3], "COR", "i-", [3, 1, -2])  # PE: LR
 ])
 def test_phys_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
     fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
@@ -97,13 +97,37 @@ def test_phys_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expecte
     assert np.allclose(output_coefs, expected_coefs)
 
 
+@pytest.mark.parametrize("input_coefs, orientation, phase_encode_dir, expected_coefs", [
+    ([1, 10, 100], "TRA", "j-", [-1, -10, -100]),  # PE: AP
+    ([1, 10, 100], "TRA", "j", [1, 10, -100]),  # PE: PA
+    ([1, 10, 100], "TRA", "i-", [10, -1, -100]),  # PE: LR
+    ([1, 10, 100], "TRA", "i", [-10, 1, -100]),  # PE: RL
+    ([1, 10, 100], "SAG", "i", [-100, -10, 1]),  # PE: AP
+    ([1, 10, 100], "SAG", "i-", [100, 10, 1]),  # PE: PA
+    ([1, 10, 100], "SAG", "j-", [-10, 100, 1]),  # PE: HF
+    ([1, 10, 100], "SAG", "j", [10, -100, 1]),  # PE: FH
+    ([1, 10, 100], "COR", "i", [100, 1, -10]),  # PE: RL
+    ([1, 10, 100], "COR", "i-", [-100, -1, -10]),  # PE: LR
+    ([1, 10, 100], "COR", "j-", [-1, -100, -10]),  # PE: HF
+    ([1, 10, 100], "COR", "j", [1, -100, -10]),  # PE: FH
+    ([1, 10, 100], "TRA>SAG20", "j-", [33.2623, -10.0, -94.3113]),  # PE: AP
+    ([1, 10, 100], "TRA>COR20", "j-", [-1.0, -43.5989, -90.5491]),  # PE: AP
+])
+def test_phys_lai_to_gradient_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
+    # This test is somewhat redundant with test_phys_to_gradient_cs but can be more easily confirmed on IDEA
+    fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
+    coefs_ras = shim_to_phys_cs(np.array(input_coefs), "Siemens", [1, ])
+    output_coefs = phys_to_gradient_cs(*coefs_ras, fname_target)
+    assert np.allclose(output_coefs, expected_coefs)
+
+
 @pytest.mark.parametrize("expected_coefs, orientation, phase_encode_dir, input_coefs", [
-    ([1, 2, 3], "TRA", "-", [1, -2, 3]),  # PE: AP
-    ([1, 2, 3], "TRA", "", [-1, 2, 3]),  # PE: PA
-    ([1, 2, 3], "SAG", "", [3, -2, -1]),  # PE: AP
-    ([1, 2, 3], "SAG", "-", [-3, 2, -1]),  # PE: PA
-    ([1, 2, 3], "COR", "", [-3, -1, -2]),  # PE: RL
-    ([1, 2, 3], "COR", "-", [3, 1, -2])  # PE: LR
+    ([1, 2, 3], "TRA", "j-", [1, -2, 3]),  # PE: AP
+    ([1, 2, 3], "TRA", "j", [-1, 2, 3]),  # PE: PA
+    ([1, 2, 3], "SAG", "i", [3, -2, -1]),  # PE: AP
+    ([1, 2, 3], "SAG", "i-", [-3, 2, -1]),  # PE: PA
+    ([1, 2, 3], "COR", "i", [-3, -1, -2]),  # PE: RL
+    ([1, 2, 3], "COR", "i-", [3, 1, -2])  # PE: LR
 ])
 def test_gradient_to_phys_cs(input_coefs, orientation, phase_encode_dir, expected_coefs, tmpdir):
     fname_target = create_nifti(orientation, phase_encode_dir, tmpdir)
@@ -115,24 +139,37 @@ def create_nifti(orientation, phase_encode_dir, path_output):
     if not os.path.exists(path_output):
         os.makedirs(path_output)
 
+    if phase_encode_dir[0] == "i":
+        dim_info = (1, 0, 2)
+    elif phase_encode_dir[0] == "j":
+        dim_info = (0, 1, 2)
+    else:
+        raise ValueError(f"Unknown phase encoding direction: {phase_encode_dir}")
+
     data = np.zeros((5, 5, 5))
     if orientation == "TRA":
         affine = np.array([[-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-        dim_info = (0, 1, 2)
-        pe_letter = "j"
     elif orientation == "SAG":
         affine = np.array([[0, 0, 1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-        dim_info = (1, 0, 2)
-        pe_letter = "i"
     elif orientation == "COR":
         affine = np.array([[-1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
-        dim_info = (1, 0, 2)
-        pe_letter = "i"
+    elif orientation == "TRA>SAG20":
+        affine = np.array(
+            [[-2.05557775, 0.    ,  1.02605963,  124.88800049],
+             [-0.        , 2.1875, -0.        , -108.96459961],
+             [ 0.74816859, 0.    ,  2.81907773, -68.61650085 ],
+             [ 0.        , 0.    ,  0.        ,  1.          ]]
+        )
+    elif orientation == "TRA>COR20":
+        affine = np.array([[ -2.1875,  0.        , -0.        ,  140.        ],
+                           [  0.    ,  2.05557775,  1.02602792, -110.22515869],
+                           [  0.    , -0.74816859,  2.81899047,  9.94129181  ],
+                           [  0.    ,  0.        ,  0.        ,  1.          ]])
     else:
         raise ValueError(f"Unknown orientation: {orientation}")
     nii = nib.Nifti1Image(data, affine)
     nii.header.set_dim_info(*dim_info)
-    fname_nii = os.path.join(path_output, f"target_{orientation}_pe{phase_encode_dir}.nii.gz")
+    fname_nii = os.path.join(path_output, f"target_{orientation.replace('>', '-')}_pe{phase_encode_dir}.nii.gz")
     nii.to_filename(fname_nii)
     nii2 = nib.as_closest_canonical(nii)  # Make sure the target is in canonical orientation (RAS)
     nii2.to_filename(fname_nii.replace(".nii.gz", "canon.nii.gz"))
@@ -141,14 +178,16 @@ def create_nifti(orientation, phase_encode_dir, path_output):
     image_orientation = {
         "TRA": [1, 0, 0, 0, 1, 0],
         "SAG": [0, 1, 0, 0, 0, -1],
-        "COR": [1, 0, 0, 0, 0, -1]
+        "COR": [1, 0, 0, 0, 0, -1],
+        "TRA>SAG20": [0.939693, 0, 0.34202, 0, 1, 0],
+        "TRA>COR20": [1, 0, 0, 0, 0.939693, 0.34202]
     }[orientation]
-    assert get_main_orientation(image_orientation) == orientation
+    assert get_main_orientation(image_orientation) == orientation[:3]
     data_json = {
         "Manufacturer": "Siemens",
         "PatientPosition": "HFS",
         "ImageOrientationPatientDICOM": image_orientation,
-        "PhaseEncodingDirection": f"{pe_letter}{phase_encode_dir}"
+        "PhaseEncodingDirection": f"{phase_encode_dir}"
     }
     with open(fname_json, "w") as f:
         json.dump(data_json, f)
